@@ -1,0 +1,456 @@
+'use client';
+
+import { useState } from 'react';
+import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { db } from './lib/firebase';
+
+export default function Home() {
+  const [marca, setMarca] = useState('');
+  const [modelo, setModelo] = useState('');
+  const [ano, setAno] = useState('');
+  const [resultados, setResultados] = useState([]);
+  const [buscando, setBuscando] = useState(false);
+  const [busquedaHecha, setBusquedaHecha] = useState(false);
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [yonkeSeleccionado, setYonkeSeleccionado] = useState(null);
+  const [piezaSolicitada, setPiezaSolicitada] = useState('');
+  const [nombreCliente, setNombreCliente] = useState('');
+  const [telefonoCliente, setTelefonoCliente] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [numeroPedido, setNumeroPedido] = useState(null);
+
+  async function obtenerCalificacion(yonkeId) {
+    try {
+      const califRef = collection(db, 'calificaciones');
+      const q = query(califRef, where('yonkeId', '==', yonkeId));
+      const snap = await getDocs(q);
+
+      if (snap.empty) return { promedio: null, total: 0 };
+
+      let suma = 0;
+      snap.forEach((doc) => {
+        suma += doc.data().estrellas || 0;
+      });
+
+      return {
+        promedio: (suma / snap.size).toFixed(1),
+        total: snap.size,
+      };
+    } catch (error) {
+      return { promedio: null, total: 0 };
+    }
+  }
+
+  async function buscarPiezas() {
+    if (!marca || !modelo || !ano) {
+      alert('Llena marca, modelo y año');
+      return;
+    }
+    setBuscando(true);
+    setBusquedaHecha(true);
+
+    try {
+      const yonkesSnap = await getDocs(collection(db, 'yonkes'));
+      const encontrados = [];
+
+      for (const yonkeDoc of yonkesSnap.docs) {
+        const yonkeData = yonkeDoc.data();
+        if (!yonkeData.activo) continue;
+
+        const vehiculosRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos');
+        const q = query(
+          vehiculosRef,
+          where('marca', '==', marca.trim()),
+          where('modelo', '==', modelo.trim()),
+          where('ano', '==', parseInt(ano))
+        );
+        const vehiculosSnap = await getDocs(q);
+
+        for (const vDoc of vehiculosSnap.docs) {
+          const calificacion = await obtenerCalificacion(yonkeDoc.id);
+
+          encontrados.push({
+            yonkeId: yonkeDoc.id,
+            vehiculoId: vDoc.id,
+            yonkeNombre: yonkeData.nombre,
+            direccion: yonkeData.direccion,
+            telefono: yonkeData.telefono,
+            metodosPago: yonkeData.metodosPago || [],
+            plan: yonkeData.plan,
+            vehiculo: vDoc.data(),
+            calificacion,
+          });
+        }
+      }
+
+      encontrados.sort((a, b) => {
+        if (a.plan === 'premium' && b.plan !== 'premium') return -1;
+        if (a.plan !== 'premium' && b.plan === 'premium') return 1;
+        return 0;
+      });
+
+      setResultados(encontrados);
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al buscar');
+    } finally {
+      setBuscando(false);
+    }
+  }
+
+  function abrirModalReserva(resultado) {
+    setYonkeSeleccionado(resultado);
+    setPiezaSolicitada('');
+    setNombreCliente('');
+    setTelefonoCliente('');
+    setNumeroPedido(null);
+    setModalVisible(true);
+  }
+
+  function generarNumeroPedido() {
+    const random = Math.floor(1000 + Math.random() * 9000);
+    const fecha = new Date();
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    return `MYV-${mes}${dia}-${random}`;
+  }
+
+  async function confirmarReserva() {
+    if (!piezaSolicitada || !nombreCliente || !telefonoCliente) {
+      alert('Llena todos los campos');
+      return;
+    }
+    setGuardando(true);
+    try {
+      const numero = generarNumeroPedido();
+
+      await addDoc(collection(db, 'reservaciones'), {
+        numeroPedido: numero,
+        yonkeId: yonkeSeleccionado.yonkeId,
+        vehiculoId: yonkeSeleccionado.vehiculoId,
+        yonkeNombre: yonkeSeleccionado.yonkeNombre,
+        vehiculo: yonkeSeleccionado.vehiculo,
+        piezaSolicitada: piezaSolicitada.trim(),
+        nombreCliente: nombreCliente.trim(),
+        telefonoCliente: telefonoCliente.trim(),
+        estado: 'pendiente',
+        fecha: new Date(),
+      });
+
+      setNumeroPedido(numero);
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al generar tu reservación');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  function cerrarModal() {
+    setModalVisible(false);
+    setYonkeSeleccionado(null);
+    setNumeroPedido(null);
+  }
+
+  const metodosPagoLabels = {
+    efectivo: 'Efectivo',
+    tarjeta: 'Tarjeta',
+    transferencia: 'Transferencia',
+    spei: 'SPEI',
+    codi: 'CoDi',
+    zelle: 'Zelle',
+    paypal: 'PayPal',
+  };
+
+  return (
+    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '24px 16px' }}>
+      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <img
+            src="/mecanix-logo.png"
+            alt="Mecanix"
+            style={{ width: '280px', maxWidth: '100%', margin: '0 auto', display: 'block' }}
+          />
+          <p style={{ fontSize: '16px', color: '#E8720C', letterSpacing: '2px', marginTop: '8px', fontWeight: 'bold' }}>
+            YONKE VIRTUAL
+          </p>
+        </div>
+
+        <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+          <h2 style={{ fontSize: '18px', color: '#1A3C5E', marginBottom: '16px', fontWeight: 'bold' }}>
+            Busca tu pieza
+          </h2>
+
+          <input
+            type="text"
+            placeholder="Marca (ej. Nissan)"
+            value={marca}
+            onChange={(e) => setMarca(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            type="text"
+            placeholder="Modelo (ej. Sentra)"
+            value={modelo}
+            onChange={(e) => setModelo(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            type="number"
+            placeholder="Año (ej. 2015)"
+            value={ano}
+            onChange={(e) => setAno(e.target.value)}
+            style={inputStyle}
+          />
+
+          <button onClick={buscarPiezas} disabled={buscando} style={buttonStyle}>
+            {buscando ? 'Buscando...' : 'Buscar'}
+          </button>
+        </div>
+
+        {busquedaHecha && !buscando && (
+          <div style={{ marginTop: '24px' }}>
+            <h3 style={{ color: '#1A3C5E', fontSize: '15px', marginBottom: '12px' }}>
+              {resultados.length === 0
+                ? 'No encontramos ese vehículo en ningún yonke registrado'
+                : `${resultados.length} yonke(s) tienen este vehículo`}
+            </h3>
+
+            {resultados.map((r, i) => (
+              <div key={i} style={resultCardStyle}>
+                {r.plan === 'premium' && (
+                  <div style={premiumBadgeStyle}>⭐ Premium</div>
+                )}
+
+                <p style={{ fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px', margin: 0 }}>
+                  {r.yonkeNombre}
+                </p>
+
+                {r.calificacion.promedio ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                    <span style={{ color: '#E8720C', fontSize: '14px' }}>
+                      {'★'.repeat(Math.round(r.calificacion.promedio))}
+                      {'☆'.repeat(5 - Math.round(r.calificacion.promedio))}
+                    </span>
+                    <span style={{ color: '#888', fontSize: '13px' }}>
+                      {r.calificacion.promedio} ({r.calificacion.total} {r.calificacion.total === 1 ? 'opinión' : 'opiniones'})
+                    </span>
+                  </div>
+                ) : (
+                  <p style={{ color: '#aaa', fontSize: '12px', marginTop: '4px' }}>
+                    Sin calificaciones todavía
+                  </p>
+                )}
+
+                <p style={{ color: '#666', fontSize: '14px', margin: '8px 0 4px' }}>
+                  📍 {r.direccion}
+                </p>
+                <p style={{ color: '#666', fontSize: '14px', margin: '4px 0' }}>
+                  📞 {r.telefono}
+                </p>
+                <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '8px 0 4px', fontWeight: 'bold' }}>
+                  🚗 {r.vehiculo.marca} {r.vehiculo.modelo} {r.vehiculo.ano}
+                </p>
+                {r.metodosPago.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', marginBottom: '12px' }}>
+                    {r.metodosPago.map((m) => (
+                      <span key={m} style={pagoTagStyle}>
+                        {metodosPagoLabels[m] || m}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => abrirModalReserva(r)} style={reservarButtonStyle}>
+                  Reservar pieza
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ textAlign: 'center', marginTop: '32px' }}>
+          <a href="/calificar" style={{ color: '#888', fontSize: '13px', textDecoration: 'underline' }}>
+            ¿Ya compraste? Califica tu experiencia
+          </a>
+        </div>
+      </div>
+
+      {modalVisible && (
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            {numeroPedido ? (
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: '40px', margin: '0 0 8px' }}>✅</p>
+                <h3 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '8px' }}>
+                  ¡Reservación confirmada!
+                </h3>
+                <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+                  Presenta este número en el yonke:
+                </p>
+                <div style={numeroPedidoBox}>
+                  {numeroPedido}
+                </div>
+                <button onClick={cerrarModal} style={{ ...buttonStyle, marginTop: '20px' }}>
+                  Cerrar
+                </button>
+              </div>
+            ) : (
+              <>
+                <h3 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '4px' }}>
+                  Reservar pieza
+                </h3>
+                <p style={{ color: '#666', fontSize: '13px', marginBottom: '16px' }}>
+                  en {yonkeSeleccionado?.yonkeNombre}
+                </p>
+
+                <input
+                  type="text"
+                  placeholder="¿Qué pieza necesitas? (ej. Espejo lateral izquierdo)"
+                  value={piezaSolicitada}
+                  onChange={(e) => setPiezaSolicitada(e.target.value)}
+                  style={inputStyle}
+                />
+                <input
+                  type="text"
+                  placeholder="Tu nombre"
+                  value={nombreCliente}
+                  onChange={(e) => setNombreCliente(e.target.value)}
+                  style={inputStyle}
+                />
+                <input
+                  type="tel"
+                  placeholder="Tu teléfono"
+                  value={telefonoCliente}
+                  onChange={(e) => setTelefonoCliente(e.target.value)}
+                  style={inputStyle}
+                />
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                  <button onClick={cerrarModal} style={cancelButtonStyle}>
+                    Cancelar
+                  </button>
+                  <button onClick={confirmarReserva} disabled={guardando} style={buttonStyle}>
+                    {guardando ? 'Generando...' : 'Confirmar'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+const inputStyle = {
+  width: '100%',
+  padding: '12px',
+  borderRadius: '8px',
+  border: '1px solid #ddd',
+  marginBottom: '12px',
+  fontSize: '15px',
+  backgroundColor: '#F4F5F5',
+  color: '#333',
+  boxSizing: 'border-box',
+};
+
+const buttonStyle = {
+  width: '100%',
+  padding: '14px',
+  borderRadius: '8px',
+  border: 'none',
+  backgroundColor: '#E8720C',
+  color: '#fff',
+  fontWeight: 'bold',
+  fontSize: '15px',
+  cursor: 'pointer',
+  marginTop: '4px',
+};
+
+const cancelButtonStyle = {
+  width: '100%',
+  padding: '14px',
+  borderRadius: '8px',
+  border: 'none',
+  backgroundColor: '#F4F5F5',
+  color: '#888',
+  fontWeight: 'bold',
+  fontSize: '15px',
+  cursor: 'pointer',
+};
+
+const reservarButtonStyle = {
+  width: '100%',
+  padding: '12px',
+  borderRadius: '8px',
+  border: 'none',
+  backgroundColor: '#1A3C5E',
+  color: '#fff',
+  fontWeight: 'bold',
+  fontSize: '14px',
+  cursor: 'pointer',
+};
+
+const resultCardStyle = {
+  backgroundColor: '#fff',
+  borderRadius: '12px',
+  padding: '16px',
+  marginBottom: '12px',
+  boxShadow: '0 1px 6px rgba(0,0,0,0.05)',
+  position: 'relative',
+};
+
+const premiumBadgeStyle = {
+  position: 'absolute',
+  top: '12px',
+  right: '12px',
+  backgroundColor: '#FAEEDA',
+  color: '#854F0B',
+  fontSize: '11px',
+  fontWeight: 'bold',
+  padding: '4px 10px',
+  borderRadius: '20px',
+};
+
+const pagoTagStyle = {
+  backgroundColor: '#F4F5F5',
+  color: '#1A3C5E',
+  fontSize: '12px',
+  padding: '4px 10px',
+  borderRadius: '20px',
+  fontWeight: 'bold',
+};
+
+const overlayStyle = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '16px',
+  zIndex: 1000,
+};
+
+const modalStyle = {
+  backgroundColor: '#fff',
+  borderRadius: '16px',
+  padding: '24px',
+  maxWidth: '420px',
+  width: '100%',
+};
+
+const numeroPedidoBox = {
+  backgroundColor: '#1A3C5E',
+  color: '#fff',
+  fontSize: '24px',
+  fontWeight: 'bold',
+  padding: '16px',
+  borderRadius: '10px',
+  letterSpacing: '2px',
+};
