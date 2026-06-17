@@ -97,6 +97,7 @@ for (const vDoc of vehiculosCoincidentes) {
     calificacion,
   });
 }
+      }
 
       encontrados.sort((a, b) => {
         if (a.plan === 'premium' && b.plan !== 'premium') return -1;
