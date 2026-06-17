@@ -19,6 +19,7 @@ export default function Home() {
   const [telefonoCliente, setTelefonoCliente] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [numeroPedido, setNumeroPedido] = useState(null);
+  const [piezaBuscada, setPiezaBuscada] = useState('');
 
   async function obtenerCalificacion(yonkeId) {
     try {
@@ -59,30 +60,43 @@ export default function Home() {
         if (!yonkeData.activo) continue;
 
         const vehiculosRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos');
-        const q = query(
-          vehiculosRef,
-          where('marca', '==', marca.trim()),
-          where('modelo', '==', modelo.trim()),
-          where('ano', '==', parseInt(ano))
-        );
-        const vehiculosSnap = await getDocs(q);
+const q = query(vehiculosRef, where('ano', '==', parseInt(ano)));
+const vehiculosSnapTodos = await getDocs(q);
 
-        for (const vDoc of vehiculosSnap.docs) {
-          const calificacion = await obtenerCalificacion(yonkeDoc.id);
+const vehiculosCoincidentes = vehiculosSnapTodos.docs.filter((vDoc) => {
+  const data = vDoc.data();
+  return data.marca?.toLowerCase() === marca.trim().toLowerCase() &&
+    data.modelo?.toLowerCase() === modelo.trim().toLowerCase();
+});
 
-          encontrados.push({
-            yonkeId: yonkeDoc.id,
-            vehiculoId: vDoc.id,
-            yonkeNombre: yonkeData.nombre,
-            direccion: yonkeData.direccion,
-            telefono: yonkeData.telefono,
-            metodosPago: yonkeData.metodosPago || [],
-            plan: yonkeData.plan,
-            vehiculo: vDoc.data(),
-            calificacion,
-          });
-        }
-      }
+for (const vDoc of vehiculosCoincidentes) {
+  if (piezaBuscada.trim()) {
+    const piezasRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos', vDoc.id, 'piezas');
+    const piezasSnap = await getDocs(piezasRef);
+
+    const tienePiezaDisponible = piezasSnap.docs.some((pDoc) => {
+      const data = pDoc.data();
+      return data.disponible &&
+        data.nombre.toLowerCase().includes(piezaBuscada.trim().toLowerCase());
+    });
+
+    if (!tienePiezaDisponible) continue;
+  }
+
+  const calificacion = await obtenerCalificacion(yonkeDoc.id);
+
+  encontrados.push({
+    yonkeId: yonkeDoc.id,
+    vehiculoId: vDoc.id,
+    yonkeNombre: yonkeData.nombre,
+    direccion: yonkeData.direccion,
+    telefono: yonkeData.telefono,
+    metodosPago: yonkeData.metodosPago || [],
+    plan: yonkeData.plan,
+    vehiculo: vDoc.data(),
+    calificacion,
+  });
+}
 
       encontrados.sort((a, b) => {
         if (a.plan === 'premium' && b.plan !== 'premium') return -1;
@@ -198,12 +212,25 @@ export default function Home() {
             style={inputStyle}
           />
           <input
-            type="number"
-            placeholder="Año (ej. 2015)"
-            value={ano}
-            onChange={(e) => setAno(e.target.value)}
-            style={inputStyle}
-          />
+  type="number"
+  placeholder="Año (ej. 2015)"
+  value={ano}
+  onChange={(e) => setAno(e.target.value)}
+  style={inputStyle}
+/>
+
+<input
+  type="text"
+  placeholder="¿Qué pieza buscas? (opcional)"
+  value={piezaBuscada}
+  onChange={(e) => setPiezaBuscada(e.target.value)}
+  style={inputStyle}
+/>
+<p style={{ fontSize: '12px', color: '#999', marginTop: '-6px', marginBottom: '14px' }}>
+  Déjalo vacío si solo quieres ver qué vehículos hay disponibles
+</p>
+
+<button onClick={buscarPiezas} disabled={buscando} style={buttonStyle}>
 
           <button onClick={buscarPiezas} disabled={buscando} style={buttonStyle}>
             {buscando ? 'Buscando...' : 'Buscar'}
