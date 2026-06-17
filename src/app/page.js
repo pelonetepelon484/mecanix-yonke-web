@@ -11,6 +11,7 @@ export default function Home() {
   const [resultados, setResultados] = useState([]);
   const [buscando, setBuscando] = useState(false);
   const [busquedaHecha, setBusquedaHecha] = useState(false);
+  const [piezaNoEncontrada, setPiezaNoEncontrada] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [yonkeSeleccionado, setYonkeSeleccionado] = useState(null);
@@ -50,62 +51,81 @@ export default function Home() {
     }
     setBuscando(true);
     setBusquedaHecha(true);
+    setPiezaNoEncontrada(false);
 
     try {
       const yonkesSnap = await getDocs(collection(db, 'yonkes'));
-      const encontrados = [];
+
+      const conPiezaExacta = [];
+      const soloVehiculo = [];
 
       for (const yonkeDoc of yonkesSnap.docs) {
         const yonkeData = yonkeDoc.data();
         if (!yonkeData.activo) continue;
 
         const vehiculosRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos');
-const q = query(vehiculosRef, where('ano', '==', parseInt(ano)));
-const vehiculosSnapTodos = await getDocs(q);
+        const q = query(vehiculosRef, where('ano', '==', parseInt(ano)));
+        const vehiculosSnapTodos = await getDocs(q);
 
-const vehiculosCoincidentes = vehiculosSnapTodos.docs.filter((vDoc) => {
-  const data = vDoc.data();
-  return data.marca?.toLowerCase() === marca.trim().toLowerCase() &&
-    data.modelo?.toLowerCase() === modelo.trim().toLowerCase();
-});
+        const vehiculosCoincidentes = vehiculosSnapTodos.docs.filter((vDoc) => {
+          const data = vDoc.data();
+          return data.marca?.toLowerCase() === marca.trim().toLowerCase() &&
+            data.modelo?.toLowerCase() === modelo.trim().toLowerCase();
+        });
 
-for (const vDoc of vehiculosCoincidentes) {
-  if (piezaBuscada.trim()) {
-    const piezasRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos', vDoc.id, 'piezas');
-    const piezasSnap = await getDocs(piezasRef);
+        for (const vDoc of vehiculosCoincidentes) {
+          const calificacion = await obtenerCalificacion(yonkeDoc.id);
 
-    const tienePiezaDisponible = piezasSnap.docs.some((pDoc) => {
-      const data = pDoc.data();
-      return data.disponible &&
-        data.nombre.toLowerCase().includes(piezaBuscada.trim().toLowerCase());
-    });
+          const resultadoBase = {
+            yonkeId: yonkeDoc.id,
+            vehiculoId: vDoc.id,
+            yonkeNombre: yonkeData.nombre,
+            direccion: yonkeData.direccion,
+            telefono: yonkeData.telefono,
+            metodosPago: yonkeData.metodosPago || [],
+            plan: yonkeData.plan,
+            vehiculo: vDoc.data(),
+            calificacion,
+          };
 
-    if (!tienePiezaDisponible) continue;
-  }
+          if (!piezaBuscada.trim()) {
+            soloVehiculo.push(resultadoBase);
+            continue;
+          }
 
-  const calificacion = await obtenerCalificacion(yonkeDoc.id);
+          const piezasRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos', vDoc.id, 'piezas');
+          const piezasSnap = await getDocs(piezasRef);
 
-  encontrados.push({
-    yonkeId: yonkeDoc.id,
-    vehiculoId: vDoc.id,
-    yonkeNombre: yonkeData.nombre,
-    direccion: yonkeData.direccion,
-    telefono: yonkeData.telefono,
-    metodosPago: yonkeData.metodosPago || [],
-    plan: yonkeData.plan,
-    vehiculo: vDoc.data(),
-    calificacion,
-  });
-}
+          const tienePiezaDisponible = piezasSnap.docs.some((pDoc) => {
+            const data = pDoc.data();
+            return data.disponible &&
+              data.nombre.toLowerCase().includes(piezaBuscada.trim().toLowerCase());
+          });
+
+          if (tienePiezaDisponible) {
+            conPiezaExacta.push(resultadoBase);
+          } else {
+            soloVehiculo.push(resultadoBase);
+          }
+        }
       }
 
-      encontrados.sort((a, b) => {
+      const ordenar = (lista) => lista.sort((a, b) => {
         if (a.plan === 'premium' && b.plan !== 'premium') return -1;
         if (a.plan !== 'premium' && b.plan === 'premium') return 1;
         return 0;
       });
 
-      setResultados(encontrados);
+      ordenar(conPiezaExacta);
+      ordenar(soloVehiculo);
+
+      if (piezaBuscada.trim() && conPiezaExacta.length === 0 && soloVehiculo.length > 0) {
+        setPiezaNoEncontrada(true);
+        setResultados(soloVehiculo);
+      } else {
+        setPiezaNoEncontrada(false);
+        setResultados(piezaBuscada.trim() ? conPiezaExacta : soloVehiculo);
+      }
     } catch (error) {
       console.error(error);
       alert('Hubo un error al buscar');
@@ -116,7 +136,7 @@ for (const vDoc of vehiculosCoincidentes) {
 
   function abrirModalReserva(resultado) {
     setYonkeSeleccionado(resultado);
-    setPiezaSolicitada('');
+    setPiezaSolicitada(piezaNoEncontrada ? piezaBuscada.trim() : '');
     setNombreCliente('');
     setTelefonoCliente('');
     setNumeroPedido(null);
@@ -213,25 +233,25 @@ for (const vDoc of vehiculosCoincidentes) {
             style={inputStyle}
           />
           <input
-  type="number"
-  placeholder="Año (ej. 2015)"
-  value={ano}
-  onChange={(e) => setAno(e.target.value)}
-  style={inputStyle}
-/>
+            type="number"
+            placeholder="Año (ej. 2015)"
+            value={ano}
+            onChange={(e) => setAno(e.target.value)}
+            style={inputStyle}
+          />
 
-<input
-  type="text"
-  placeholder="¿Qué pieza buscas? (opcional)"
-  value={piezaBuscada}
-  onChange={(e) => setPiezaBuscada(e.target.value)}
-  style={inputStyle}
-/>
-<p style={{ fontSize: '12px', color: '#999', marginTop: '-6px', marginBottom: '14px' }}>
-  Déjalo vacío si solo quieres ver qué vehículos hay disponibles
-</p>
+          <input
+            type="text"
+            placeholder="¿Qué pieza buscas? (opcional)"
+            value={piezaBuscada}
+            onChange={(e) => setPiezaBuscada(e.target.value)}
+            style={inputStyle}
+          />
+          <p style={{ fontSize: '12px', color: '#999', marginTop: '-6px', marginBottom: '14px' }}>
+            Déjalo vacío si solo quieres ver qué vehículos hay disponibles
+          </p>
 
- <button onClick={buscarPiezas} disabled={buscando} style={buttonStyle}>
+          <button onClick={buscarPiezas} disabled={buscando} style={buttonStyle}>
             {buscando ? 'Buscando...' : 'Buscar'}
           </button>
         </div>
@@ -241,8 +261,16 @@ for (const vDoc of vehiculosCoincidentes) {
             <h3 style={{ color: '#1A3C5E', fontSize: '15px', marginBottom: '12px' }}>
               {resultados.length === 0
                 ? 'No encontramos ese vehículo en ningún yonke registrado'
-                : `${resultados.length} yonke(s) tienen este vehículo`}
+                : piezaNoEncontrada
+                  ? `No encontramos esa pieza exacta, pero ${resultados.length} yonke(s) tienen este vehículo`
+                  : `${resultados.length} yonke(s) tienen este vehículo`}
             </h3>
+
+            {piezaNoEncontrada && (
+              <p style={{ color: '#888', fontSize: '13px', marginTop: '-6px', marginBottom: '14px' }}>
+                Puedes preguntar directamente por tu pieza al reservar — el yonke te confirma si la tiene.
+              </p>
+            )}
 
             {resultados.map((r, i) => (
               <div key={i} style={resultCardStyle}>
