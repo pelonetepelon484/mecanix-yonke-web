@@ -230,9 +230,7 @@ for (const vDoc of vehiculosCoincidentes) {
   Déjalo vacío si solo quieres ver qué vehículos hay disponibles
 </p>
 
-<button onClick={buscarPiezas} disabled={buscando} style={buttonStyle}>
-
-          <button onClick={buscarPiezas} disabled={buscando} style={buttonStyle}>
+ <button onClick={buscarPiezas} disabled={buscando} style={buttonStyle}>
             {buscando ? 'Buscando...' : 'Buscar'}
           </button>
         </div>
