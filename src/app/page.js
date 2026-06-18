@@ -46,19 +46,19 @@ export default function Home() {
   }
 
   useEffect(() => {
-  async function cargarLogos() {
-    try {
-      const yonkesSnap = await getDocs(collection(db, 'yonkes'));
-      const conLogo = yonkesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(y => y.activo && y.logoUrl);
-      setYonkesConLogo(conLogo);
-    } catch (error) {
-      console.error(error);
+    async function cargarLogos() {
+      try {
+        const yonkesSnap = await getDocs(collection(db, 'yonkes'));
+        const conLogo = yonkesSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(y => y.activo && y.logoUrl);
+        setYonkesConLogo(conLogo);
+      } catch (error) {
+        console.error(error);
+      }
     }
-  }
-  cargarLogos();
-}, []);
+    cargarLogos();
+  }, []);
 
   async function buscarPiezas() {
     if (!marca || !modelo || !ano) {
@@ -347,13 +347,6 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ textAlign: 'center', marginTop: '32px' }}>
-          <a href="/calificar" style={{ color: '#888', fontSize: '13px', textDecoration: 'underline' }}>
-            ¿Ya compraste? Califica tu experiencia
-          </a>
-        </div>
-      </div>
-
       {yonkesConLogo.length > 0 && (
         <div style={{ marginTop: '48px', overflow: 'hidden', padding: '20px 0', backgroundColor: '#fff', borderTop: '1px solid #eee' }}>
           <p style={{ textAlign: 'center', color: '#888', fontSize: '12px', marginBottom: '16px', letterSpacing: '1px' }}>
@@ -372,9 +365,6 @@ export default function Home() {
           </div>
         </div>
       )}
-    </main>
-  );
-}
 
       {modalVisible && (
         <div style={overlayStyle}>
