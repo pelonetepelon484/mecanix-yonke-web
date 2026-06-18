@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
@@ -21,6 +21,7 @@ export default function Home() {
   const [guardando, setGuardando] = useState(false);
   const [numeroPedido, setNumeroPedido] = useState(null);
   const [piezaBuscada, setPiezaBuscada] = useState('');
+  const [yonkesConLogo, setYonkesConLogo] = useState([]);
 
   async function obtenerCalificacion(yonkeId) {
     try {
@@ -43,6 +44,21 @@ export default function Home() {
       return { promedio: null, total: 0 };
     }
   }
+
+  useEffect(() => {
+  async function cargarLogos() {
+    try {
+      const yonkesSnap = await getDocs(collection(db, 'yonkes'));
+      const conLogo = yonkesSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(y => y.activo && y.logoUrl);
+      setYonkesConLogo(conLogo);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  cargarLogos();
+}, []);
 
   async function buscarPiezas() {
     if (!marca || !modelo || !ano) {
@@ -330,6 +346,35 @@ export default function Home() {
           </a>
         </div>
       </div>
+
+      <div style={{ textAlign: 'center', marginTop: '32px' }}>
+          <a href="/calificar" style={{ color: '#888', fontSize: '13px', textDecoration: 'underline' }}>
+            ¿Ya compraste? Califica tu experiencia
+          </a>
+        </div>
+      </div>
+
+      {yonkesConLogo.length > 0 && (
+        <div style={{ marginTop: '48px', overflow: 'hidden', padding: '20px 0', backgroundColor: '#fff', borderTop: '1px solid #eee' }}>
+          <p style={{ textAlign: 'center', color: '#888', fontSize: '12px', marginBottom: '16px', letterSpacing: '1px' }}>
+            YONKES REGISTRADOS EN LA PLATAFORMA
+          </p>
+          <div className="banner-track">
+            {[...yonkesConLogo, ...yonkesConLogo].map((y, i) => (
+              <div key={i} style={{ flexShrink: 0, padding: '0 32px', display: 'flex', alignItems: 'center' }}>
+                <img
+                  src={y.logoUrl}
+                  alt={y.nombre}
+                  style={{ height: '60px', objectFit: 'contain' }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
 
       {modalVisible && (
         <div style={overlayStyle}>

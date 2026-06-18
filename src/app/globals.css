@@ -24,3 +24,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes scroll-banner {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.banner-track {
+  display: flex;
+  animation: scroll-banner 25s linear infinite;
+  width: max-content;
+}
+
+.banner-track:hover {
+  animation-play-state: paused;
+}
