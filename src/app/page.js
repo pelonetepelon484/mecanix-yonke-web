@@ -12,7 +12,7 @@ export default function Home() {
   const [buscando, setBuscando] = useState(false);
   const [busquedaHecha, setBusquedaHecha] = useState(false);
   const [piezaNoEncontrada, setPiezaNoEncontrada] = useState(false);
-  const [tipoResultado, setTipoResultado] = useState('exacto'); // 'exacto' | 'cercano' | 'cualquierAno'
+  const [tipoResultado, setTipoResultado] = useState('exacto');
 
   const [modalVisible, setModalVisible] = useState(false);
   const [yonkeSeleccionado, setYonkeSeleccionado] = useState(null);
@@ -53,7 +53,6 @@ export default function Home() {
     cargarLogos();
   }, []);
 
-  // Busca vehículos en un array de años específicos
   async function buscarEnAnos(yonkesSnap, marcaBuscar, modeloBuscar, anos) {
     const encontrados = [];
     for (const yonkeDoc of yonkesSnap.docs) {
@@ -95,7 +94,6 @@ export default function Home() {
     return encontrados;
   }
 
-  // Busca todos los vehículos de marca+modelo sin importar año
   async function buscarCualquierAno(yonkesSnap, marcaBuscar, modeloBuscar) {
     const encontrados = [];
     for (const yonkeDoc of yonkesSnap.docs) {
@@ -215,7 +213,6 @@ export default function Home() {
         resultadosFinales = piezaBuscada.trim() ? conPiezaExacta : soloVehiculo;
       }
 
-      // Nivel 2: buscar ±3 años
       if (resultadosFinales.length === 0) {
         const anosRango = [];
         for (let d = 1; d <= 3; d++) {
@@ -230,7 +227,6 @@ export default function Home() {
         }
       }
 
-      // Nivel 3: cualquier año con misma marca y modelo
       if (resultadosFinales.length === 0) {
         const cualquierAno = await buscarCualquierAno(yonkesSnap, marca, modelo);
         ordenar(cualquierAno);
@@ -344,6 +340,30 @@ export default function Home() {
           <p style={{ fontSize: '16px', color: '#E8720C', letterSpacing: '2px', marginTop: '8px', fontWeight: 'bold' }}>
             YONKE VIRTUAL
           </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '14px', flexWrap: 'wrap' }}>
+            <a
+              href="https://wa.me/526611034260"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={contactLinkStyle}
+            >
+              💬 WhatsApp
+            </a>
+
+            <a
+              href="mailto:powerpctijuana@gmail.com"
+              style={contactLinkStyle}
+            >
+              ✉️ Correo
+            </a>
+
+            <a
+              href="/privacidad"
+              style={contactLinkStyle}
+            >
+              🔒 Privacidad
+            </a>
+          </div>
         </div>
 
         <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
@@ -506,3 +526,13 @@ const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
 const modalStyle = { backgroundColor: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '420px', width: '100%' };
 const numeroPedidoBox = { backgroundColor: '#1A3C5E', color: '#fff', fontSize: '24px', fontWeight: 'bold', padding: '16px', borderRadius: '10px', letterSpacing: '2px' };
 const compatibilidadBannerStyle = { backgroundColor: '#FFF8E1', border: '1px solid #FFD54F', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px' };
+const contactLinkStyle = {
+  fontSize: '13px',
+  color: '#1A3C5E',
+  textDecoration: 'none',
+  fontWeight: 'bold',
+  backgroundColor: '#fff',
+  padding: '8px 16px',
+  borderRadius: '20px',
+  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+};
