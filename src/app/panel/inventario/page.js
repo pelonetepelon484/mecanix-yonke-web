@@ -62,16 +62,21 @@ export default function InventarioPanel() {
   }, [user, loading]);
 
   useEffect(() => {
-    if (!yonkeId) return;
-    const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
-    const q = query(ref, orderBy('fechaIngreso', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const lista = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setVehiculos(lista);
-      setLoadingVehiculos(false);
-    });
-    return unsubscribe;
-  }, [yonkeId]);
+  console.log('Inventario: yonkeId =', yonkeId);
+  if (!yonkeId) return;
+  console.log('Inventario: armando query de vehículos');
+  const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
+  const q = query(ref, orderBy('fechaIngreso', 'desc'));
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    console.log('Inventario: snapshot recibido, docs =', snapshot.docs.length);
+    const lista = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    setVehiculos(lista);
+    setLoadingVehiculos(false);
+  }, (error) => {
+    console.log('Inventario: ERROR en onSnapshot:', error);
+  });
+  return unsubscribe;
+}, [yonkeId]);
 
   async function agregarVehiculo() {
     if (!marca || !modelo || !ano) {
