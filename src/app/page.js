@@ -390,6 +390,21 @@ export default function Home() {
               {getHeaderText()}
             </h3>
 
+            <h3 style={{ color: '#1A3C5E', fontSize: '15px', marginBottom: '12px' }}>
+  {getHeaderText()}
+</h3>
+
+{resultados.length === 0 && (
+  <div style={avisoActualizacionStyle}>
+    <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
+      📦 No te desanimes — seguimos actualizando el inventario día con día. Es posible que tu pieza esté disponible pronto. Vuelve a intentar más tarde o{' '}
+      <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>
+        escríbenos por WhatsApp
+      </a>.
+    </p>
+  </div>
+)}
+
             {bannerTexto && (
               <div style={compatibilidadBannerStyle}>
                 <p style={{ margin: 0, fontSize: '13px', color: '#7A4F00', fontWeight: 'bold' }}>
@@ -535,4 +550,11 @@ const contactLinkStyle = {
   padding: '8px 16px',
   borderRadius: '20px',
   boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+};
+const avisoActualizacionStyle = {
+  backgroundColor: '#E8F0F7',
+  border: '1px solid #B8D4E8',
+  borderRadius: '10px',
+  padding: '14px 16px',
+  marginBottom: '16px',
 };
