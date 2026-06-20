@@ -19,21 +19,25 @@ export default function PanelLogin() {
   }
 
   async function handleLogin() {
-    if (!email || !password) {
-      setError('Llena correo y contraseña');
-      return;
-    }
-    setEntrando(true);
-    setError('');
-    try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.push('/panel/inventario');
-    } catch (err) {
-      setError('Correo o contraseña incorrectos');
-    } finally {
-      setEntrando(false);
-    }
+  console.log('1. handleLogin ejecutándose', { email, password, auth });
+  if (!email || !password) {
+    setError('Llena correo y contraseña');
+    return;
   }
+  setEntrando(true);
+  setError('');
+  try {
+    console.log('2. Intentando signInWithEmailAndPassword');
+    const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+    console.log('3. ÉXITO', result);
+    router.push('/panel/inventario');
+  } catch (err) {
+    console.log('4. ERROR COMPLETO:', err);
+    setError('Correo o contraseña incorrectos');
+  } finally {
+    setEntrando(false);
+  }
+}
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
