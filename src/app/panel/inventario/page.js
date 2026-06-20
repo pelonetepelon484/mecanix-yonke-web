@@ -41,6 +41,7 @@ export default function InventarioPanel() {
   const [loadingVehiculos, setLoadingVehiculos] = useState(true);
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [vehiculoEditando, setVehiculoEditando] = useState(null);
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
   const [ano, setAno] = useState('');
@@ -62,53 +63,76 @@ export default function InventarioPanel() {
   }, [user, loading]);
 
   useEffect(() => {
-  console.log('Inventario: yonkeId =', yonkeId);
-  if (!yonkeId) return;
-  console.log('Inventario: armando query de vehículos');
-  const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
-  const q = query(ref, orderBy('fechaIngreso', 'desc'));
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    console.log('Inventario: snapshot recibido, docs =', snapshot.docs.length);
-    const lista = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    setVehiculos(lista);
-    setLoadingVehiculos(false);
-  }, (error) => {
-    console.log('Inventario: ERROR en onSnapshot:', error);
-  });
-  return unsubscribe;
-}, [yonkeId]);
+    if (!yonkeId) return;
+    const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
+    const q = query(ref, orderBy('fechaIngreso', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const lista = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setVehiculos(lista);
+      setLoadingVehiculos(false);
+    });
+    return unsubscribe;
+  }, [yonkeId]);
 
-  async function agregarVehiculo() {
+  function abrirModalAgregar() {
+    setVehiculoEditando(null);
+    setMarca('');
+    setModelo('');
+    setAno('');
+    setTransmision('Manual');
+    setTraccion('Sencillo');
+    setCilindrada('');
+    setModalVisible(true);
+  }
+
+  function abrirModalEditar(vehiculo) {
+    setVehiculoEditando(vehiculo);
+    setMarca(vehiculo.marca || '');
+    setModelo(vehiculo.modelo || '');
+    setAno(String(vehiculo.ano || ''));
+    setTransmision(vehiculo.transmision || 'Manual');
+    setTraccion(vehiculo.traccion || 'Sencillo');
+    setCilindrada(vehiculo.cilindrada || '');
+    setModalVisible(true);
+  }
+
+  async function guardarVehiculo() {
     if (!marca || !modelo || !ano) {
       alert('Llena marca, modelo y año');
       return;
     }
     setGuardando(true);
     try {
-      const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
-      const vehiculoRef = await addDoc(ref, {
-        marca: marca.trim(),
-        modelo: modelo.trim(),
-        ano: parseInt(ano),
-        transmision,
-        traccion,
-        cilindrada: cilindrada.trim() || null,
-        disponible: true,
-        fechaIngreso: new Date(),
-      });
+      if (vehiculoEditando) {
+        const vehiculoRef = doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoEditando.id);
+        await updateDoc(vehiculoRef, {
+          marca: marca.trim(),
+          modelo: modelo.trim(),
+          ano: parseInt(ano),
+          transmision,
+          traccion,
+          cilindrada: cilindrada.trim() || null,
+        });
+      } else {
+        const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
+        const vehiculoRef = await addDoc(ref, {
+          marca: marca.trim(),
+          modelo: modelo.trim(),
+          ano: parseInt(ano),
+          transmision,
+          traccion,
+          cilindrada: cilindrada.trim() || null,
+          disponible: true,
+          fechaIngreso: new Date(),
+        });
+        await crearPiezasComunes(vehiculoRef);
+      }
 
-      await crearPiezasComunes(vehiculoRef);
-
-      setMarca('');
-      setModelo('');
-      setAno('');
-      setCilindrada('');
-      setTransmision('Manual');
-      setTraccion('Sencillo');
       setModalVisible(false);
+      setVehiculoEditando(null);
     } catch (error) {
       console.error(error);
-      alert('No se pudo agregar el vehículo');
+      alert('No se pudo guardar el vehículo');
     } finally {
       setGuardando(false);
     }
@@ -171,7 +195,14 @@ export default function InventarioPanel() {
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
       <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '600px', margin: '0 auto' }}>
-          <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Inventario</h1>
+          <div>
+            <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Inventario</h1>
+            {!loadingVehiculos && (
+              <p style={{ color: '#cdd9e4', fontSize: '13px', margin: '4px 0 0' }}>
+                {vehiculos.length} {vehiculos.length === 1 ? 'vehículo' : 'vehículos'} en tu inventario
+              </p>
+            )}
+          </div>
           <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#E8720C', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
             Cerrar sesión
           </button>
@@ -179,7 +210,7 @@ export default function InventarioPanel() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
-        <button onClick={() => setModalVisible(true)} style={addButtonStyle}>
+        <button onClick={abrirModalAgregar} style={addButtonStyle}>
           + Agregar vehículo
         </button>
 
@@ -188,22 +219,30 @@ export default function InventarioPanel() {
         ) : vehiculos.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#888', marginTop: '32px' }}>Aún no has agregado vehículos</p>
         ) : (
-          vehiculos.map((v) => (
+          vehiculos.map((v, index) => (
             <div key={v.id} style={vehiculoCardStyle}>
-              <div onClick={() => abrirPiezas(v)} style={{ flex: 1, cursor: 'pointer' }}>
-                <p style={{ fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px', margin: 0 }}>
-                  {v.marca} {v.modelo}
-                </p>
-                <p style={{ color: '#888', fontSize: '13px', margin: '2px 0 0' }}>
-                  {v.ano} · {v.transmision} · {v.traccion}{v.cilindrada ? ` · ${v.cilindrada}` : ''}
-                </p>
-                <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: 'bold', marginTop: '6px' }}>
-                  Ver / editar piezas →
-                </p>
+              <div onClick={() => abrirPiezas(v)} style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'flex-start' }}>
+                <div style={numeroBadgeStyle}>{index + 1}</div>
+                <div style={{ marginLeft: '10px' }}>
+                  <p style={{ fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px', margin: 0 }}>
+                    {v.marca} {v.modelo}
+                  </p>
+                  <p style={{ color: '#888', fontSize: '13px', margin: '2px 0 0' }}>
+                    {v.ano} · {v.transmision} · {v.traccion}{v.cilindrada ? ` · ${v.cilindrada}` : ''}
+                  </p>
+                  <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: 'bold', marginTop: '6px' }}>
+                    Ver / editar piezas →
+                  </p>
+                </div>
               </div>
-              <button onClick={() => eliminarVehiculo(v.id)} style={{ background: 'none', border: 'none', color: '#D85A30', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
-                Eliminar
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+                <button onClick={() => abrirModalEditar(v)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Editar
+                </button>
+                <button onClick={() => eliminarVehiculo(v.id)} style={{ background: 'none', border: 'none', color: '#D85A30', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Eliminar
+                </button>
+              </div>
             </div>
           ))
         )}
@@ -212,7 +251,9 @@ export default function InventarioPanel() {
       {modalVisible && (
         <div style={overlayStyle}>
           <div style={modalStyle}>
-            <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '16px' }}>Agregar vehículo</h2>
+            <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '16px' }}>
+              {vehiculoEditando ? 'Editar vehículo' : 'Agregar vehículo'}
+            </h2>
 
             <input type="text" placeholder="Marca (ej. Nissan)" value={marca} onChange={(e) => setMarca(e.target.value)} style={inputStyle} />
             <input type="text" placeholder="Modelo (ej. Sentra)" value={modelo} onChange={(e) => setModelo(e.target.value)} style={inputStyle} />
@@ -246,10 +287,16 @@ export default function InventarioPanel() {
 
             <input type="text" placeholder="Cilindrada (ej. 2.0L, V6)" value={cilindrada} onChange={(e) => setCilindrada(e.target.value)} style={inputStyle} />
 
+            {vehiculoEditando && (
+              <p style={{ fontSize: '12px', color: '#999', marginTop: '4px', marginBottom: '8px', fontStyle: 'italic' }}>
+                Las piezas de este vehículo no se modifican aquí — usa "Ver / editar piezas" para eso.
+              </p>
+            )}
+
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
               <button onClick={() => setModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
-              <button onClick={agregarVehiculo} disabled={guardando} style={buttonStyle}>
-                {guardando ? 'Guardando...' : 'Guardar'}
+              <button onClick={guardarVehiculo} disabled={guardando} style={buttonStyle}>
+                {guardando ? 'Guardando...' : (vehiculoEditando ? 'Guardar cambios' : 'Guardar')}
               </button>
             </div>
           </div>
@@ -321,6 +368,12 @@ const addButtonStyle = {
 const vehiculoCardStyle = {
   backgroundColor: '#fff', borderRadius: '10px', padding: '16px', marginBottom: '12px',
   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+};
+
+const numeroBadgeStyle = {
+  backgroundColor: '#F4F5F5', width: '26px', height: '26px', borderRadius: '50%',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontSize: '12px', fontWeight: 'bold', color: '#1A3C5E', flexShrink: 0,
 };
 
 const overlayStyle = {
