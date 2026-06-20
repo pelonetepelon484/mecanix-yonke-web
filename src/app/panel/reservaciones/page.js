@@ -8,6 +8,7 @@ import {
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
+import BottomNav from '../BottomNav';
 
 export default function ReservacionesPanel() {
   const router = useRouter();
@@ -102,7 +103,7 @@ export default function ReservacionesPanel() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5' }}>
+    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
       <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '600px', margin: '0 auto' }}>
           <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Reservaciones</h1>
@@ -169,72 +170,36 @@ export default function ReservacionesPanel() {
           </div>
         </div>
       )}
+
+      <BottomNav />
     </main>
   );
 }
 
 const inputStyle = {
-  width: '100%',
-  padding: '12px',
-  borderRadius: '8px',
-  border: '1px solid #ddd',
-  marginBottom: '12px',
-  fontSize: '15px',
-  backgroundColor: '#F4F5F5',
-  color: '#333',
-  boxSizing: 'border-box',
+  width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '12px',
+  fontSize: '15px', backgroundColor: '#F4F5F5', color: '#333', boxSizing: 'border-box',
 };
 
 const cardStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '12px',
-  padding: '16px',
-  marginBottom: '14px',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+  backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '14px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };
 
 const cancelButtonStyle = {
-  flex: 1,
-  padding: '10px',
-  borderRadius: '8px',
-  border: 'none',
-  backgroundColor: '#F4F5F5',
-  color: '#D85A30',
-  fontWeight: 'bold',
-  fontSize: '13px',
-  cursor: 'pointer',
+  flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#F4F5F5',
+  color: '#D85A30', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer',
 };
 
 const confirmButtonStyle = {
-  flex: 1,
-  padding: '10px',
-  borderRadius: '8px',
-  border: 'none',
-  backgroundColor: '#E8720C',
-  color: '#fff',
-  fontWeight: 'bold',
-  fontSize: '13px',
-  cursor: 'pointer',
+  flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#E8720C',
+  color: '#fff', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer',
 };
 
 const overlayStyle = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '16px',
-  zIndex: 1000,
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000,
 };
 
 const modalStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '16px',
-  padding: '24px',
-  maxWidth: '420px',
-  width: '100%',
+  backgroundColor: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '420px', width: '100%',
 };

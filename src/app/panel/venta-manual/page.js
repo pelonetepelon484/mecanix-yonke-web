@@ -6,6 +6,7 @@ import { collection, query, orderBy, getDocs, addDoc } from 'firebase/firestore'
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
+import BottomNav from '../BottomNav';
 
 export default function VentaManualPanel() {
   const router = useRouter();
@@ -117,7 +118,7 @@ export default function VentaManualPanel() {
 
   if (folioGenerado) {
     return (
-      <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5' }}>
+      <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
         <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Venta manual</h1>
@@ -139,12 +140,14 @@ export default function VentaManualPanel() {
             Listo
           </button>
         </div>
+
+        <BottomNav />
       </main>
     );
   }
 
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5' }}>
+    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
       <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '600px', margin: '0 auto' }}>
           <div>
@@ -222,97 +225,49 @@ export default function VentaManualPanel() {
           </div>
         </div>
       )}
+
+      <BottomNav />
     </main>
   );
 }
 
 const sectionStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '12px',
-  padding: '18px',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+  backgroundColor: '#fff', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };
 
 const labelStyle = {
-  fontSize: '13px',
-  color: '#666',
-  marginBottom: '6px',
-  marginTop: '12px',
+  fontSize: '13px', color: '#666', marginBottom: '6px', marginTop: '12px',
 };
 
 const inputStyle = {
-  width: '100%',
-  padding: '12px',
-  borderRadius: '8px',
-  border: '1px solid #ddd',
-  fontSize: '15px',
-  backgroundColor: '#F4F5F5',
-  color: '#333',
-  boxSizing: 'border-box',
+  width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
+  fontSize: '15px', backgroundColor: '#F4F5F5', color: '#333', boxSizing: 'border-box',
 };
 
 const selectorButtonStyle = {
-  width: '100%',
-  padding: '12px',
-  borderRadius: '8px',
-  border: '1px solid #ddd',
-  backgroundColor: '#F4F5F5',
-  color: '#888',
-  fontSize: '15px',
-  textAlign: 'left',
-  cursor: 'pointer',
+  width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
+  backgroundColor: '#F4F5F5', color: '#888', fontSize: '15px', textAlign: 'left', cursor: 'pointer',
 };
 
 const primaryButtonStyle = {
-  width: '100%',
-  padding: '14px',
-  borderRadius: '10px',
-  border: 'none',
-  backgroundColor: '#E8720C',
-  color: '#fff',
-  fontWeight: 'bold',
-  fontSize: '15px',
-  cursor: 'pointer',
+  width: '100%', padding: '14px', borderRadius: '10px', border: 'none', backgroundColor: '#E8720C',
+  color: '#fff', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer',
 };
 
 const secondaryButtonStyle = {
-  width: '100%',
-  padding: '14px',
-  borderRadius: '10px',
-  border: '1.5px solid #1A3C5E',
-  backgroundColor: '#fff',
-  color: '#1A3C5E',
-  fontWeight: 'bold',
-  fontSize: '15px',
-  cursor: 'pointer',
+  width: '100%', padding: '14px', borderRadius: '10px', border: '1.5px solid #1A3C5E',
+  backgroundColor: '#fff', color: '#1A3C5E', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer',
 };
 
 const overlayStyle = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '16px',
-  zIndex: 1000,
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000,
 };
 
 const modalStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '16px',
-  padding: '24px',
-  maxWidth: '420px',
-  width: '100%',
+  backgroundColor: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '420px', width: '100%',
 };
 
 const vehiculoOpcionStyle = {
-  padding: '14px 0',
-  borderBottom: '1px solid #F4F5F5',
-  fontSize: '15px',
-  color: '#333',
-  cursor: 'pointer',
+  padding: '14px 0', borderBottom: '1px solid #F4F5F5', fontSize: '15px', color: '#333', cursor: 'pointer',
 };

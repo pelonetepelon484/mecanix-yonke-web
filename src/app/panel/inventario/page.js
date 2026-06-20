@@ -8,55 +8,19 @@ import {
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
+import BottomNav from '../BottomNav';
 
 const PIEZAS_COMUNES = [
-  'Faro delantero izquierdo',
-  'Faro delantero derecho',
-  'Calavera trasera izquierda',
-  'Calavera trasera derecha',
-  'Cofre',
-  'Cajuela',
-  'Parachoques delantero',
-  'Parachoques trasero',
-  'Espejo izquierdo',
-  'Espejo derecho',
-  'Puerta delantera izquierda',
-  'Puerta delantera derecha',
-  'Puerta trasera izquierda',
-  'Puerta trasera derecha',
-  'Parabrisas',
-  'Rines',
-  'Tablero',
-  'Asientos',
-  'Orquilla derecha',
-  'Orquilla izquierda',
-  'Disco de freno delantero',
-  'Disco de freno trasero',
-  'Prensa de freno',
-  'Amortiguador delantero izquierdo',
-  'Amortiguador delantero derecho',
-  'Resortes delanteros',
-  'Resortes traseros',
-  'Amortiguador trasero derecho',
-  'Amortiguador trasero izquierdo',
-  'Compresor A/C',
-  'Alternador',
-  'Computadora de motor',
-  'Computadora de transmisión',
-  'Caja de fusibles',
-  'Cremallera',
-  'Bomba de dirección',
-  'Barra estabilizadora',
-  'Múltiple de admisión',
-  'Múltiple de escape',
-  'Garganta',
-  'Filtro de aire',
-  'Manguera de aire',
-  'Sensor MAF',
-  'Flecha delantera izquierda',
-  'Flecha delantera derecha',
-  'Motor',
-  'Transmisión',
+  'Faro delantero izquierdo', 'Faro delantero derecho', 'Calavera trasera izquierda', 'Calavera trasera derecha',
+  'Cofre', 'Cajuela', 'Parachoques delantero', 'Parachoques trasero', 'Espejo izquierdo', 'Espejo derecho',
+  'Puerta delantera izquierda', 'Puerta delantera derecha', 'Puerta trasera izquierda', 'Puerta trasera derecha',
+  'Parabrisas', 'Rines', 'Tablero', 'Asientos', 'Orquilla derecha', 'Orquilla izquierda',
+  'Disco de freno delantero', 'Disco de freno trasero', 'Prensa de freno', 'Amortiguador delantero izquierdo',
+  'Amortiguador delantero derecho', 'Resortes delanteros', 'Resortes traseros', 'Amortiguador trasero derecho',
+  'Amortiguador trasero izquierdo', 'Compresor A/C', 'Alternador', 'Computadora de motor',
+  'Computadora de transmisión', 'Caja de fusibles', 'Cremallera', 'Bomba de dirección', 'Barra estabilizadora',
+  'Múltiple de admisión', 'Múltiple de escape', 'Garganta', 'Filtro de aire', 'Manguera de aire', 'Sensor MAF',
+  'Flecha delantera izquierda', 'Flecha delantera derecha', 'Motor', 'Transmisión',
 ];
 
 async function crearPiezasComunes(vehiculoRef) {
@@ -90,14 +54,12 @@ export default function InventarioPanel() {
   const [piezas, setPiezas] = useState([]);
   const [loadingPiezas, setLoadingPiezas] = useState(false);
 
- useEffect(() => {
-  if (!loading && !user) {
-    const timer = setTimeout(() => {
-      router.push('/panel');
-    }, 1500);
-    return () => clearTimeout(timer);
-  }
-}, [user, loading]);
+  useEffect(() => {
+    if (!loading && !user) {
+      const timer = setTimeout(() => router.push('/panel'), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [user, loading]);
 
   useEffect(() => {
     if (!yonkeId) return;
@@ -201,7 +163,7 @@ export default function InventarioPanel() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5' }}>
+    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
       <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '600px', margin: '0 auto' }}>
           <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Inventario</h1>
@@ -325,120 +287,59 @@ export default function InventarioPanel() {
           </div>
         </div>
       )}
+
+      <BottomNav />
     </main>
   );
 }
 
 const inputStyle = {
-  width: '100%',
-  padding: '12px',
-  borderRadius: '8px',
-  border: '1px solid #ddd',
-  marginBottom: '12px',
-  fontSize: '15px',
-  backgroundColor: '#F4F5F5',
-  color: '#333',
-  boxSizing: 'border-box',
+  width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '12px',
+  fontSize: '15px', backgroundColor: '#F4F5F5', color: '#333', boxSizing: 'border-box',
 };
 
 const buttonStyle = {
-  flex: 1,
-  padding: '14px',
-  borderRadius: '8px',
-  border: 'none',
-  backgroundColor: '#E8720C',
-  color: '#fff',
-  fontWeight: 'bold',
-  fontSize: '15px',
-  cursor: 'pointer',
+  flex: 1, padding: '14px', borderRadius: '8px', border: 'none', backgroundColor: '#E8720C',
+  color: '#fff', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer',
 };
 
 const cancelButtonStyle = {
-  flex: 1,
-  padding: '14px',
-  borderRadius: '8px',
-  border: 'none',
-  backgroundColor: '#F4F5F5',
-  color: '#888',
-  fontWeight: 'bold',
-  fontSize: '15px',
-  cursor: 'pointer',
+  flex: 1, padding: '14px', borderRadius: '8px', border: 'none', backgroundColor: '#F4F5F5',
+  color: '#888', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer',
 };
 
 const addButtonStyle = {
-  width: '100%',
-  padding: '14px',
-  borderRadius: '10px',
-  border: 'none',
-  backgroundColor: '#E8720C',
-  color: '#fff',
-  fontWeight: 'bold',
-  fontSize: '15px',
-  cursor: 'pointer',
-  marginBottom: '16px',
+  width: '100%', padding: '14px', borderRadius: '10px', border: 'none', backgroundColor: '#E8720C',
+  color: '#fff', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', marginBottom: '16px',
 };
 
 const vehiculoCardStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '10px',
-  padding: '16px',
-  marginBottom: '12px',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+  backgroundColor: '#fff', borderRadius: '10px', padding: '16px', marginBottom: '12px',
+  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };
 
 const overlayStyle = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '16px',
-  zIndex: 1000,
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000,
 };
 
 const modalStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '16px',
-  padding: '24px',
-  maxWidth: '420px',
-  width: '100%',
+  backgroundColor: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '420px', width: '100%',
 };
 
 const selectorStyle = {
-  flex: 1,
-  padding: '10px',
-  borderRadius: '8px',
-  border: '1px solid #ddd',
-  backgroundColor: '#F4F5F5',
-  color: '#888',
-  fontWeight: '600',
-  cursor: 'pointer',
-  fontSize: '14px',
+  flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#F4F5F5',
+  color: '#888', fontWeight: '600', cursor: 'pointer', fontSize: '14px',
 };
 
 const selectorActiveStyle = {
-  ...selectorStyle,
-  backgroundColor: '#1A3C5E',
-  borderColor: '#1A3C5E',
-  color: '#fff',
+  ...selectorStyle, backgroundColor: '#1A3C5E', borderColor: '#1A3C5E', color: '#fff',
 };
 
 const piezaRowStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '12px 0',
-  borderBottom: '1px solid #F4F5F5',
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #F4F5F5',
 };
 
 const switchStyle = {
-  display: 'flex',
-  alignItems: 'center',
+  display: 'flex', alignItems: 'center',
 };

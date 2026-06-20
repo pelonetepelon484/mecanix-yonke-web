@@ -6,6 +6,7 @@ import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestor
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
+import BottomNav from '../BottomNav';
 
 export default function VentasPanel() {
   const router = useRouter();
@@ -62,7 +63,7 @@ export default function VentasPanel() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5' }}>
+    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
       <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '600px', margin: '0 auto' }}>
           <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Mis ventas</h1>
@@ -111,26 +112,17 @@ export default function VentasPanel() {
           ))
         )}
       </div>
+
+      <BottomNav />
     </main>
   );
 }
 
 const resumenCardStyle = {
-  flex: 1,
-  backgroundColor: '#fff',
-  borderRadius: '12px',
-  padding: '16px',
-  textAlign: 'center',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+  flex: 1, backgroundColor: '#fff', borderRadius: '12px', padding: '16px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };
 
 const ventaCardStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '10px',
-  padding: '16px',
-  marginBottom: '12px',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+  backgroundColor: '#fff', borderRadius: '10px', padding: '16px', marginBottom: '12px',
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };

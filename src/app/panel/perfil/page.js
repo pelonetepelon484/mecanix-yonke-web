@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
+import BottomNav from '../BottomNav';
 
 const METODOS_PAGO = [
   { key: 'efectivo', label: 'Efectivo' },
@@ -95,7 +96,7 @@ export default function PerfilPanel() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5' }}>
+    <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
       <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '600px', margin: '0 auto' }}>
           <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Mi negocio</h1>
@@ -149,52 +150,30 @@ export default function PerfilPanel() {
           {guardando ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </div>
+
+      <BottomNav />
     </main>
   );
 }
 
 const sectionStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '12px',
-  padding: '18px',
-  marginBottom: '16px',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+  backgroundColor: '#fff', borderRadius: '12px', padding: '18px', marginBottom: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };
 
 const labelStyle = {
-  fontSize: '13px',
-  color: '#666',
-  marginBottom: '6px',
-  marginTop: '12px',
+  fontSize: '13px', color: '#666', marginBottom: '6px', marginTop: '12px',
 };
 
 const inputStyle = {
-  width: '100%',
-  padding: '12px',
-  borderRadius: '8px',
-  border: '1px solid #ddd',
-  fontSize: '15px',
-  backgroundColor: '#F4F5F5',
-  color: '#333',
-  boxSizing: 'border-box',
+  width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
+  fontSize: '15px', backgroundColor: '#F4F5F5', color: '#333', boxSizing: 'border-box',
 };
 
 const checkboxRowStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  padding: '10px 0',
-  cursor: 'pointer',
+  display: 'flex', alignItems: 'center', padding: '10px 0', cursor: 'pointer',
 };
 
 const saveButtonStyle = {
-  width: '100%',
-  padding: '16px',
-  borderRadius: '10px',
-  border: 'none',
-  backgroundColor: '#E8720C',
-  color: '#fff',
-  fontWeight: 'bold',
-  fontSize: '16px',
-  cursor: 'pointer',
-  marginBottom: '40px',
+  width: '100%', padding: '16px', borderRadius: '10px', border: 'none', backgroundColor: '#E8720C',
+  color: '#fff', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', marginBottom: '40px',
 };
