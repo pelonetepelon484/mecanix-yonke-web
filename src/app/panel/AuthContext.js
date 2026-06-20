@@ -14,25 +14,29 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const docRef = doc(db, 'usuarios', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setUserRole(data.rol);
-          setYonkeId(data.yonkeId || null);
-        }
-        setUser(firebaseUser);
-      } else {
-        setUser(null);
-        setUserRole(null);
-        setYonkeId(null);
+  console.log('AuthContext: montando, escuchando onAuthStateChanged');
+  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    console.log('AuthContext: onAuthStateChanged disparado, firebaseUser =', firebaseUser);
+    if (firebaseUser) {
+      const docRef = doc(db, 'usuarios', firebaseUser.uid);
+      const docSnap = await getDoc(docRef);
+      console.log('AuthContext: documento de usuario existe?', docSnap.exists());
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setUserRole(data.rol);
+        setYonkeId(data.yonkeId || null);
       }
-      setLoading(false);
-    });
-    return unsubscribe;
-  }, []);
+      setUser(firebaseUser);
+    } else {
+      console.log('AuthContext: firebaseUser es null, no hay sesión');
+      setUser(null);
+      setUserRole(null);
+      setYonkeId(null);
+    }
+    setLoading(false);
+  });
+  return unsubscribe;
+}, []);
 
   return (
     <AuthContext.Provider value={{ user, userRole, yonkeId, loading }}>
