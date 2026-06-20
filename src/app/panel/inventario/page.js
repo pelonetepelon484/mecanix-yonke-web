@@ -61,11 +61,14 @@ export default function InventarioPanel() {
   const [piezas, setPiezas] = useState([]);
   const [loadingPiezas, setLoadingPiezas] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !user) {
+ useEffect(() => {
+  if (!loading && !user) {
+    const timer = setTimeout(() => {
       router.push('/panel');
-    }
-  }, [user, loading]);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }
+}, [user, loading]);
 
   useEffect(() => {
     if (!yonkeId) return;
