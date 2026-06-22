@@ -11,35 +11,46 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [yonkeId, setYonkeId] = useState(null);
+  const [yonkePlan, setYonkePlan] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  console.log('AuthContext: montando, escuchando onAuthStateChanged');
-  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-    console.log('AuthContext: onAuthStateChanged disparado, firebaseUser =', firebaseUser);
-    if (firebaseUser) {
-      const docRef = doc(db, 'usuarios', firebaseUser.uid);
-      const docSnap = await getDoc(docRef);
-      console.log('AuthContext: documento de usuario existe?', docSnap.exists());
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setUserRole(data.rol);
-        setYonkeId(data.yonkeId || null);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const docRef = doc(db, 'usuarios', firebaseUser.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setUserRole(data.rol);
+          setYonkeId(data.yonkeId || null);
+
+          // Leer el plan del yonke
+          if (data.yonkeId) {
+            const yonkeRef = doc(db, 'yonkes', data.yonkeId);
+            const yonkeSnap = await getDoc(yonkeRef);
+            if (yonkeSnap.exists()) {
+              setYonkePlan(yonkeSnap.data().plan || 'freemium');
+            } else {
+              setYonkePlan('freemium');
+            }
+          } else {
+            setYonkePlan(null);
+          }
+        }
+        setUser(firebaseUser);
+      } else {
+        setUser(null);
+        setUserRole(null);
+        setYonkeId(null);
+        setYonkePlan(null);
       }
-      setUser(firebaseUser);
-    } else {
-      console.log('AuthContext: firebaseUser es null, no hay sesión');
-      setUser(null);
-      setUserRole(null);
-      setYonkeId(null);
-    }
-    setLoading(false);
-  });
-  return unsubscribe;
-}, []);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, userRole, yonkeId, loading }}>
+    <AuthContext.Provider value={{ user, userRole, yonkeId, yonkePlan, loading }}>
       {children}
     </AuthContext.Provider>
   );

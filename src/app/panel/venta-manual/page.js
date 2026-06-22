@@ -10,7 +10,7 @@ import BottomNav from '../BottomNav';
 
 export default function VentaManualPanel() {
   const router = useRouter();
-  const { user, yonkeId, loading } = useAuth();
+  const { user, yonkeId, yonkePlan, loading } = useAuth();
 
   const [vehiculos, setVehiculos] = useState([]);
   const [loadingVehiculos, setLoadingVehiculos] = useState(true);
@@ -31,7 +31,7 @@ export default function VentaManualPanel() {
 
   useEffect(() => {
     async function cargarVehiculos() {
-      if (!yonkeId) return;
+      if (!yonkeId || yonkePlan !== 'premium') return;
       try {
         const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
         const q = query(ref, orderBy('marca'));
@@ -45,7 +45,7 @@ export default function VentaManualPanel() {
       }
     }
     cargarVehiculos();
-  }, [yonkeId]);
+  }, [yonkeId, yonkePlan]);
 
   function generarFolioManual() {
     const random = Math.floor(1000 + Math.random() * 9000);
@@ -72,7 +72,6 @@ export default function VentaManualPanel() {
     setGuardando(true);
     try {
       const folio = generarFolioManual();
-
       await addDoc(collection(db, 'ventas'), {
         numeroPedido: folio,
         yonkeId,
@@ -86,7 +85,6 @@ export default function VentaManualPanel() {
         monto: parseFloat(monto),
         fecha: new Date(),
       });
-
       setFolioGenerado(folio);
     } catch (error) {
       console.error(error);
@@ -116,6 +114,33 @@ export default function VentaManualPanel() {
     );
   }
 
+  // Pantalla de bloqueo para plan freemium
+  if (yonkePlan !== 'premium') {
+    return (
+      <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
+        <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Venta manual</h1>
+          </div>
+        </div>
+        <div style={lockContainerStyle}>
+          <p style={{ fontSize: '64px', margin: '0 0 16px' }}>🔒</p>
+          <h2 style={lockTituloStyle}>Función Premium</h2>
+          <p style={lockMensajeStyle}>
+            El registro de ventas manuales está disponible en el plan Premium.
+          </p>
+          <p style={lockContactoStyle}>
+            Comunícate con nosotros para activar tu plan Premium y acceder a todas las funciones.
+          </p>
+          <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={lockBotonStyle}>
+            💬 Contactar por WhatsApp
+          </a>
+        </div>
+        <BottomNav />
+      </main>
+    );
+  }
+
   if (folioGenerado) {
     return (
       <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
@@ -124,7 +149,6 @@ export default function VentaManualPanel() {
             <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Venta manual</h1>
           </div>
         </div>
-
         <div style={{ maxWidth: '420px', margin: '40px auto', padding: '16px', textAlign: 'center' }}>
           <p style={{ fontSize: '48px', margin: '0 0 12px' }}>✅</p>
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px' }}>¡Venta registrada!</h2>
@@ -132,7 +156,6 @@ export default function VentaManualPanel() {
           <div style={{ backgroundColor: '#1A3C5E', color: '#fff', fontSize: '22px', fontWeight: 'bold', padding: '16px', borderRadius: '10px', letterSpacing: '1px', marginBottom: '24px' }}>
             {folioGenerado}
           </div>
-
           <button onClick={registrarOtra} style={{ ...secondaryButtonStyle, marginBottom: '12px' }}>
             Registrar otra venta
           </button>
@@ -140,7 +163,6 @@ export default function VentaManualPanel() {
             Listo
           </button>
         </div>
-
         <BottomNav />
       </main>
     );
@@ -234,40 +256,49 @@ export default function VentaManualPanel() {
 const sectionStyle = {
   backgroundColor: '#fff', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };
-
 const labelStyle = {
   fontSize: '13px', color: '#666', marginBottom: '6px', marginTop: '12px',
 };
-
 const inputStyle = {
   width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
   fontSize: '15px', backgroundColor: '#F4F5F5', color: '#333', boxSizing: 'border-box',
 };
-
 const selectorButtonStyle = {
   width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
   backgroundColor: '#F4F5F5', color: '#888', fontSize: '15px', textAlign: 'left', cursor: 'pointer',
 };
-
 const primaryButtonStyle = {
   width: '100%', padding: '14px', borderRadius: '10px', border: 'none', backgroundColor: '#E8720C',
   color: '#fff', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer',
 };
-
 const secondaryButtonStyle = {
   width: '100%', padding: '14px', borderRadius: '10px', border: '1.5px solid #1A3C5E',
   backgroundColor: '#fff', color: '#1A3C5E', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer',
 };
-
 const overlayStyle = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000,
 };
-
 const modalStyle = {
   backgroundColor: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '420px', width: '100%',
 };
-
 const vehiculoOpcionStyle = {
   padding: '14px 0', borderBottom: '1px solid #F4F5F5', fontSize: '15px', color: '#333', cursor: 'pointer',
+};
+const lockContainerStyle = {
+  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+  padding: '48px 32px', textAlign: 'center', maxWidth: '400px', margin: '0 auto',
+};
+const lockTituloStyle = {
+  fontSize: '22px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '12px',
+};
+const lockMensajeStyle = {
+  fontSize: '15px', color: '#555', lineHeight: '1.6', marginBottom: '12px',
+};
+const lockContactoStyle = {
+  fontSize: '13px', color: '#888', lineHeight: '1.6', marginBottom: '24px',
+};
+const lockBotonStyle = {
+  backgroundColor: '#25D366', color: '#fff', fontWeight: 'bold', fontSize: '14px',
+  padding: '12px 24px', borderRadius: '24px', textDecoration: 'none', display: 'inline-block',
 };
