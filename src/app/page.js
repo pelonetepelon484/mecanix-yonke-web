@@ -537,7 +537,23 @@ export default function Home() {
             ¿Ya compraste? Califica tu experiencia
           </a>
         </div>
-      </div>
+
+        {/* Bloque para yonkeros */}
+        <div style={yonkeCtaStyle}>
+          <p style={{ fontSize: '18px', margin: '0 0 6px' }}>🏪</p>
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1A3C5E', margin: '0 0 8px' }}>
+            ¿Tienes un yonke?
+          </h3>
+          <p style={{ fontSize: '13px', color: '#555', margin: '0 0 6px', lineHeight: '1.5' }}>
+            Registra tu negocio gratis y aparece en las búsquedas de miles de clientes en Baja California.
+          </p>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 14px', lineHeight: '1.5' }}>
+            ⚠️ Tu perfil será verificado por nuestro equipo en un plazo de 24 horas antes de aparecer en la plataforma.
+          </p>
+          <a href="/panel/registro" style={yonkeCtaButtonStyle}>
+            🆓 Registra tu yonke gratis
+          </a>
+        </div>
 
       {yonkesConLogo.length > 0 && (
         <div style={{ marginTop: '48px', overflow: 'hidden', padding: '20px 0', backgroundColor: '#fff', borderTop: '1px solid #eee' }}>
@@ -603,3 +619,5 @@ const numeroPedidoBox = { backgroundColor: '#1A3C5E', color: '#fff', fontSize: '
 const compatibilidadBannerStyle = { backgroundColor: '#FFF8E1', border: '1px solid #FFD54F', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px' };
 const contactLinkStyle = { fontSize: '13px', color: '#1A3C5E', textDecoration: 'none', fontWeight: 'bold', backgroundColor: '#fff', padding: '8px 16px', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' };
 const avisoActualizacionStyle = { backgroundColor: '#E8F0F7', border: '1px solid #B8D4E8', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' };
+const yonkeCtaStyle = { backgroundColor: '#fff', borderRadius: '16px', padding: '24px', marginTop: '24px', textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '2px solid #1A3C5E' };
+const yonkeCtaButtonStyle = { display: 'inline-block', backgroundColor: '#1A3C5E', color: '#fff', fontWeight: 'bold', fontSize: '14px', padding: '12px 24px', borderRadius: '24px', textDecoration: 'none' };
