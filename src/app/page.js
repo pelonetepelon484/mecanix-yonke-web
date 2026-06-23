@@ -4,7 +4,17 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
+const CIUDADES_BC = [
+  { key: 'tijuana', label: 'Tijuana' },
+  { key: 'mexicali', label: 'Mexicali' },
+  { key: 'ensenada', label: 'Ensenada' },
+  { key: 'tecate', label: 'Tecate' },
+  { key: 'rosarito', label: 'Playas de Rosarito' },
+  { key: 'sanquintin', label: 'San Quintín' },
+];
+
 export default function Home() {
+  const [ciudad, setCiudad] = useState('');
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
   const [ano, setAno] = useState('');
@@ -53,9 +63,18 @@ export default function Home() {
     cargarLogos();
   }, []);
 
-  async function buscarEnAnos(yonkesSnap, marcaBuscar, modeloBuscar, anos) {
+  // Filtra yonkes por ciudad si se seleccionó una
+  function filtrarPorCiudad(yonkesSnap) {
+    if (!ciudad) return yonkesSnap.docs;
+    return yonkesSnap.docs.filter(d => {
+      const c = d.data().ciudad || '';
+      return c.toLowerCase() === ciudad.toLowerCase();
+    });
+  }
+
+  async function buscarEnAnos(yonkesDocs, marcaBuscar, modeloBuscar, anos) {
     const encontrados = [];
-    for (const yonkeDoc of yonkesSnap.docs) {
+    for (const yonkeDoc of yonkesDocs) {
       const yonkeData = yonkeDoc.data();
       if (!yonkeData.activo) continue;
 
@@ -85,6 +104,7 @@ export default function Home() {
             telefono: yonkeData.telefono,
             metodosPago: yonkeData.metodosPago || [],
             plan: yonkeData.plan,
+            ciudad: yonkeData.ciudad || '',
             vehiculo: vDoc.data(),
             calificacion,
           });
@@ -94,9 +114,9 @@ export default function Home() {
     return encontrados;
   }
 
-  async function buscarCualquierAno(yonkesSnap, marcaBuscar, modeloBuscar) {
+  async function buscarCualquierAno(yonkesDocs, marcaBuscar, modeloBuscar) {
     const encontrados = [];
-    for (const yonkeDoc of yonkesSnap.docs) {
+    for (const yonkeDoc of yonkesDocs) {
       const yonkeData = yonkeDoc.data();
       if (!yonkeData.activo) continue;
 
@@ -124,6 +144,7 @@ export default function Home() {
           telefono: yonkeData.telefono,
           metodosPago: yonkeData.metodosPago || [],
           plan: yonkeData.plan,
+          ciudad: yonkeData.ciudad || '',
           vehiculo: vDoc.data(),
           calificacion,
         });
@@ -144,10 +165,11 @@ export default function Home() {
 
     try {
       const yonkesSnap = await getDocs(collection(db, 'yonkes'));
+      const yonkesFiltrados = filtrarPorCiudad(yonkesSnap);
       const conPiezaExacta = [];
       const soloVehiculo = [];
 
-      for (const yonkeDoc of yonkesSnap.docs) {
+      for (const yonkeDoc of yonkesFiltrados) {
         const yonkeData = yonkeDoc.data();
         if (!yonkeData.activo) continue;
 
@@ -171,6 +193,7 @@ export default function Home() {
             telefono: yonkeData.telefono,
             metodosPago: yonkeData.metodosPago || [],
             plan: yonkeData.plan,
+            ciudad: yonkeData.ciudad || '',
             vehiculo: vDoc.data(),
             calificacion,
           };
@@ -219,7 +242,7 @@ export default function Home() {
           anosRango.push(parseInt(ano) - d);
           anosRango.push(parseInt(ano) + d);
         }
-        const cercanos = await buscarEnAnos(yonkesSnap, marca, modelo, anosRango);
+        const cercanos = await buscarEnAnos(yonkesFiltrados, marca, modelo, anosRango);
         ordenar(cercanos);
         if (cercanos.length > 0) {
           resultadosFinales = cercanos;
@@ -228,7 +251,7 @@ export default function Home() {
       }
 
       if (resultadosFinales.length === 0) {
-        const cualquierAno = await buscarCualquierAno(yonkesSnap, marca, modelo);
+        const cualquierAno = await buscarCualquierAno(yonkesFiltrados, marca, modelo);
         ordenar(cualquierAno);
         if (cualquierAno.length > 0) {
           resultadosFinales = cualquierAno;
@@ -308,11 +331,13 @@ export default function Home() {
   };
 
   function getHeaderText() {
-    if (resultados.length === 0) return 'No encontramos ese vehículo en ningún yonke registrado';
-    if (tipoResultado === 'cercano') return `No encontramos el ${marca} ${modelo} ${ano} exacto, pero hay ${resultados.length} yonke(s) con años cercanos`;
-    if (tipoResultado === 'cualquierAno') return `No encontramos años cercanos, pero hay ${resultados.length} yonke(s) con ${marca} ${modelo} en otros años`;
-    if (piezaNoEncontrada) return `No encontramos esa pieza exacta, pero ${resultados.length} yonke(s) tienen este vehículo`;
-    return `${resultados.length} yonke(s) tienen este vehículo`;
+    const ciudadLabel = ciudad ? CIUDADES_BC.find(c => c.key === ciudad)?.label : null;
+    const sufijoCiudad = ciudadLabel ? ` en ${ciudadLabel}` : '';
+    if (resultados.length === 0) return `No encontramos ese vehículo en ningún yonke registrado${sufijoCiudad}`;
+    if (tipoResultado === 'cercano') return `No encontramos el ${marca} ${modelo} ${ano} exacto, pero hay ${resultados.length} yonke(s) con años cercanos${sufijoCiudad}`;
+    if (tipoResultado === 'cualquierAno') return `No encontramos años cercanos, pero hay ${resultados.length} yonke(s) con ${marca} ${modelo} en otros años${sufijoCiudad}`;
+    if (piezaNoEncontrada) return `No encontramos esa pieza exacta, pero ${resultados.length} yonke(s) tienen este vehículo${sufijoCiudad}`;
+    return `${resultados.length} yonke(s) tienen este vehículo${sufijoCiudad}`;
   }
 
   function getBannerCompatibilidad() {
@@ -341,26 +366,13 @@ export default function Home() {
             YONKE VIRTUAL
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '14px', flexWrap: 'wrap' }}>
-            <a
-              href="https://wa.me/526611034260"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={contactLinkStyle}
-            >
+            <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={contactLinkStyle}>
               💬 WhatsApp
             </a>
-
-            <a
-              href="mailto:powerpctijuana@gmail.com"
-              style={contactLinkStyle}
-            >
+            <a href="mailto:powerpctijuana@gmail.com" style={contactLinkStyle}>
               ✉️ Correo
             </a>
-
-            <a
-              href="/privacidad"
-              style={contactLinkStyle}
-            >
+            <a href="/privacidad" style={contactLinkStyle}>
               🔒 Privacidad
             </a>
           </div>
@@ -370,6 +382,18 @@ export default function Home() {
           <h2 style={{ fontSize: '18px', color: '#1A3C5E', marginBottom: '16px', fontWeight: 'bold' }}>
             Busca tu pieza
           </h2>
+
+          {/* Dropdown de ciudades */}
+          <select
+            value={ciudad}
+            onChange={(e) => setCiudad(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="">🌎 Todas las ciudades</option>
+            {CIUDADES_BC.map(c => (
+              <option key={c.key} value={c.key}>{c.label}</option>
+            ))}
+          </select>
 
           <input type="text" placeholder="Marca (ej. Nissan)" value={marca} onChange={(e) => setMarca(e.target.value)} style={inputStyle} />
           <input type="text" placeholder="Modelo (ej. Sentra)" value={modelo} onChange={(e) => setModelo(e.target.value)} style={inputStyle} />
@@ -390,20 +414,16 @@ export default function Home() {
               {getHeaderText()}
             </h3>
 
-            <h3 style={{ color: '#1A3C5E', fontSize: '15px', marginBottom: '12px' }}>
-  {getHeaderText()}
-</h3>
-
-{resultados.length === 0 && (
-  <div style={avisoActualizacionStyle}>
-    <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
-      📦 No te desanimes — seguimos actualizando el inventario día con día. Es posible que tu pieza esté disponible pronto. Vuelve a intentar más tarde o{' '}
-      <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>
-        escríbenos por WhatsApp
-      </a>.
-    </p>
-  </div>
-)}
+            {resultados.length === 0 && (
+              <div style={avisoActualizacionStyle}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
+                  📦 No te desanimes — seguimos actualizando el inventario día con día. Es posible que tu pieza esté disponible pronto. Vuelve a intentar más tarde o{' '}
+                  <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>
+                    escríbenos por WhatsApp
+                  </a>.
+                </p>
+              </div>
+            )}
 
             {bannerTexto && (
               <div style={compatibilidadBannerStyle}>
@@ -431,6 +451,12 @@ export default function Home() {
                 <p style={{ fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px', margin: 0 }}>
                   {r.yonkeNombre}
                 </p>
+
+                {r.ciudad && (
+                  <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: 'bold', margin: '2px 0 0' }}>
+                    📌 {CIUDADES_BC.find(c => c.key === r.ciudad)?.label || r.ciudad}
+                  </p>
+                )}
 
                 {r.calificacion.promedio ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
@@ -530,6 +556,7 @@ export default function Home() {
   );
 }
 
+const selectStyle = { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '12px', fontSize: '15px', backgroundColor: '#F4F5F5', color: '#333', boxSizing: 'border-box', cursor: 'pointer' };
 const inputStyle = { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '12px', fontSize: '15px', backgroundColor: '#F4F5F5', color: '#333', boxSizing: 'border-box' };
 const buttonStyle = { width: '100%', padding: '14px', borderRadius: '8px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', marginTop: '4px' };
 const cancelButtonStyle = { width: '100%', padding: '14px', borderRadius: '8px', border: 'none', backgroundColor: '#F4F5F5', color: '#888', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
@@ -541,20 +568,5 @@ const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
 const modalStyle = { backgroundColor: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '420px', width: '100%' };
 const numeroPedidoBox = { backgroundColor: '#1A3C5E', color: '#fff', fontSize: '24px', fontWeight: 'bold', padding: '16px', borderRadius: '10px', letterSpacing: '2px' };
 const compatibilidadBannerStyle = { backgroundColor: '#FFF8E1', border: '1px solid #FFD54F', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px' };
-const contactLinkStyle = {
-  fontSize: '13px',
-  color: '#1A3C5E',
-  textDecoration: 'none',
-  fontWeight: 'bold',
-  backgroundColor: '#fff',
-  padding: '8px 16px',
-  borderRadius: '20px',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-};
-const avisoActualizacionStyle = {
-  backgroundColor: '#E8F0F7',
-  border: '1px solid #B8D4E8',
-  borderRadius: '10px',
-  padding: '14px 16px',
-  marginBottom: '16px',
-};
+const contactLinkStyle = { fontSize: '13px', color: '#1A3C5E', textDecoration: 'none', fontWeight: 'bold', backgroundColor: '#fff', padding: '8px 16px', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' };
+const avisoActualizacionStyle = { backgroundColor: '#E8F0F7', border: '1px solid #B8D4E8', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' };
