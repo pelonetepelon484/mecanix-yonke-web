@@ -105,6 +105,7 @@ export default function Home() {
             metodosPago: yonkeData.metodosPago || [],
             plan: yonkeData.plan,
             ciudad: yonkeData.ciudad || '',
+            horario: yonkeData.horario || null,
             vehiculo: vDoc.data(),
             calificacion,
           });
@@ -194,6 +195,7 @@ export default function Home() {
             metodosPago: yonkeData.metodosPago || [],
             plan: yonkeData.plan,
             ciudad: yonkeData.ciudad || '',
+            horario: yonkeData.horario || null,
             vehiculo: vDoc.data(),
             calificacion,
           };
@@ -352,6 +354,32 @@ export default function Home() {
 
   const bannerTexto = getBannerCompatibilidad();
 
+  const DIAS_ORDEN = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+  const DIAS_LABELS = { lunes:'Lun', martes:'Mar', miercoles:'Mié', jueves:'Jue', viernes:'Vie', sabado:'Sáb', domingo:'Dom' };
+
+  function formatearHorario(horario) {
+    if (!horario) return null;
+    const diasAbiertos = DIAS_ORDEN.filter(d => horario[d]?.abierto);
+    if (diasAbiertos.length === 0) return null;
+    // Agrupa días consecutivos con el mismo horario
+    const grupos = [];
+    let grupoActual = null;
+    for (const dia of diasAbiertos) {
+      const h = `${horario[dia].apertura}–${horario[dia].cierre}`;
+      if (grupoActual && grupoActual.horario === h) {
+        grupoActual.hasta = dia;
+      } else {
+        grupoActual = { desde: dia, hasta: dia, horario: h };
+        grupos.push(grupoActual);
+      }
+    }
+    return grupos.map(g =>
+      g.desde === g.hasta
+        ? `${DIAS_LABELS[g.desde]} ${g.horario}`
+        : `${DIAS_LABELS[g.desde]}–${DIAS_LABELS[g.hasta]} ${g.horario}`
+    ).join('  ·  ');
+  }
+
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '24px 16px' }}>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
@@ -474,6 +502,11 @@ export default function Home() {
 
                 <p style={{ color: '#666', fontSize: '14px', margin: '8px 0 4px' }}>📍 {r.direccion}</p>
                 <p style={{ color: '#666', fontSize: '14px', margin: '4px 0' }}>📞 {r.telefono}</p>
+                {formatearHorario(r.horario) && (
+                  <p style={{ color: '#555', fontSize: '13px', margin: '4px 0' }}>
+                    🕐 {formatearHorario(r.horario)}
+                  </p>
+                )}
                 <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '8px 0 4px', fontWeight: 'bold' }}>
                   🚗 {r.vehiculo.marca} {r.vehiculo.modelo} {r.vehiculo.ano}
                   {(tipoResultado === 'cercano' || tipoResultado === 'cualquierAno') && r.vehiculo.ano !== parseInt(ano) && (

@@ -18,6 +18,26 @@ const METODOS_PAGO = [
   { key: 'paypal', label: 'PayPal' },
 ];
 
+const DIAS = [
+  { key: 'lunes', label: 'Lunes' },
+  { key: 'martes', label: 'Martes' },
+  { key: 'miercoles', label: 'Miércoles' },
+  { key: 'jueves', label: 'Jueves' },
+  { key: 'viernes', label: 'Viernes' },
+  { key: 'sabado', label: 'Sábado' },
+  { key: 'domingo', label: 'Domingo' },
+];
+
+const HORARIO_DEFAULT = {
+  lunes:     { abierto: true,  apertura: '08:00', cierre: '17:00' },
+  martes:    { abierto: true,  apertura: '08:00', cierre: '17:00' },
+  miercoles: { abierto: true,  apertura: '08:00', cierre: '17:00' },
+  jueves:    { abierto: true,  apertura: '08:00', cierre: '17:00' },
+  viernes:   { abierto: true,  apertura: '08:00', cierre: '17:00' },
+  sabado:    { abierto: true,  apertura: '08:00', cierre: '14:00' },
+  domingo:   { abierto: false, apertura: '09:00', cierre: '13:00' },
+};
+
 export default function PerfilPanel() {
   const router = useRouter();
   const { user, yonkeId, loading } = useAuth();
@@ -26,6 +46,7 @@ export default function PerfilPanel() {
   const [direccion, setDireccion] = useState('');
   const [telefono, setTelefono] = useState('');
   const [metodosPago, setMetodosPago] = useState([]);
+  const [horario, setHorario] = useState(HORARIO_DEFAULT);
   const [loadingPerfil, setLoadingPerfil] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
@@ -47,6 +68,7 @@ export default function PerfilPanel() {
         setDireccion(data.direccion || '');
         setTelefono(data.telefono || '');
         setMetodosPago(data.metodosPago || []);
+        setHorario(data.horario || HORARIO_DEFAULT);
       }
       setLoadingPerfil(false);
     }
@@ -57,6 +79,21 @@ export default function PerfilPanel() {
     setMetodosPago(prev =>
       prev.includes(key) ? prev.filter(m => m !== key) : [...prev, key]
     );
+  }
+
+  function toggleDia(dia) {
+    setHorario(prev => ({
+      ...prev,
+      [dia]: { ...prev[dia], abierto: !prev[dia].abierto }
+    }));
+  }
+
+  function actualizarHora(dia, campo, valor) {
+    const limpio = valor.replace(/[^0-9:]/g, '');
+    setHorario(prev => ({
+      ...prev,
+      [dia]: { ...prev[dia], [campo]: limpio }
+    }));
   }
 
   async function guardarPerfil() {
@@ -72,6 +109,7 @@ export default function PerfilPanel() {
         direccion: direccion.trim(),
         telefono: telefono.trim(),
         metodosPago,
+        horario,
       }, { merge: true });
       alert('Tu perfil se guardó correctamente');
     } catch (error) {
@@ -107,10 +145,10 @@ export default function PerfilPanel() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
+
+        {/* Información del negocio */}
         <div style={sectionStyle}>
-          <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '12px' }}>
-            Información del negocio
-          </h2>
+          <h2 style={sectionTitleStyle}>Información del negocio</h2>
 
           <p style={labelStyle}>Nombre del yonke</p>
           <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Yonke El Tigre" style={inputStyle} />
@@ -122,10 +160,69 @@ export default function PerfilPanel() {
           <input type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="664 000 0000" style={inputStyle} />
         </div>
 
+        {/* Horarios */}
         <div style={sectionStyle}>
-          <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '4px' }}>
-            Métodos de pago que aceptas
-          </h2>
+          <h2 style={sectionTitleStyle}>Horario de atención</h2>
+          <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
+            El cliente verá esto en los resultados de búsqueda
+          </p>
+
+          {DIAS.map(({ key, label }) => {
+            const diaData = horario[key] || { abierto: false, apertura: '08:00', cierre: '17:00' };
+            return (
+              <div key={key} style={diaRowStyle}>
+                <div style={diaHeaderStyle}>
+                  <span style={{ fontSize: '15px', fontWeight: 'bold', color: diaData.abierto ? '#1A3C5E' : '#bbb' }}>
+                    {label}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '12px', color: '#888' }}>
+                      {diaData.abierto ? 'Abierto' : 'Cerrado'}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={diaData.abierto}
+                      onChange={() => toggleDia(key)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#1A3C5E' }}
+                    />
+                  </div>
+                </div>
+
+                {diaData.abierto && (
+                  <div style={horasRowStyle}>
+                    <div style={{ flex: 1 }}>
+                      <p style={horaLabelStyle}>Apertura</p>
+                      <input
+                        type="text"
+                        value={diaData.apertura}
+                        onChange={(e) => actualizarHora(key, 'apertura', e.target.value)}
+                        placeholder="08:00"
+                        maxLength={5}
+                        style={horaInputStyle}
+                      />
+                    </div>
+                    <span style={{ fontSize: '18px', color: '#ccc', marginTop: '20px' }}>—</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={horaLabelStyle}>Cierre</p>
+                      <input
+                        type="text"
+                        value={diaData.cierre}
+                        onChange={(e) => actualizarHora(key, 'cierre', e.target.value)}
+                        placeholder="17:00"
+                        maxLength={5}
+                        style={horaInputStyle}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Métodos de pago */}
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Métodos de pago que aceptas</h2>
           <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
             El cliente verá esto antes de visitarte
           </p>
@@ -138,7 +235,7 @@ export default function PerfilPanel() {
                   type="checkbox"
                   checked={activo}
                   onChange={() => toggleMetodo(metodo.key)}
-                  style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
+                  style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer', accentColor: '#E8720C' }}
                 />
                 <span style={{ fontSize: '15px', color: '#333' }}>{metodo.label}</span>
               </label>
@@ -157,23 +254,41 @@ export default function PerfilPanel() {
 }
 
 const sectionStyle = {
-  backgroundColor: '#fff', borderRadius: '12px', padding: '18px', marginBottom: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+  backgroundColor: '#fff', borderRadius: '12px', padding: '18px',
+  marginBottom: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };
-
+const sectionTitleStyle = {
+  fontSize: '16px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '12px',
+};
 const labelStyle = {
   fontSize: '13px', color: '#666', marginBottom: '6px', marginTop: '12px',
 };
-
 const inputStyle = {
   width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
   fontSize: '15px', backgroundColor: '#F4F5F5', color: '#333', boxSizing: 'border-box',
 };
-
+const diaRowStyle = {
+  borderBottom: '1px solid #F4F5F5', paddingTop: '10px', paddingBottom: '10px',
+};
+const diaHeaderStyle = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+};
+const horasRowStyle = {
+  display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px',
+};
+const horaLabelStyle = {
+  fontSize: '11px', color: '#999', marginBottom: '4px',
+};
+const horaInputStyle = {
+  width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd',
+  fontSize: '16px', color: '#1A3C5E', fontWeight: 'bold', textAlign: 'center',
+  backgroundColor: '#F4F5F5', boxSizing: 'border-box',
+};
 const checkboxRowStyle = {
   display: 'flex', alignItems: 'center', padding: '10px 0', cursor: 'pointer',
 };
-
 const saveButtonStyle = {
-  width: '100%', padding: '16px', borderRadius: '10px', border: 'none', backgroundColor: '#E8720C',
-  color: '#fff', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', marginBottom: '40px',
+  width: '100%', padding: '16px', borderRadius: '10px', border: 'none',
+  backgroundColor: '#E8720C', color: '#fff', fontWeight: 'bold',
+  fontSize: '16px', cursor: 'pointer', marginBottom: '40px',
 };
