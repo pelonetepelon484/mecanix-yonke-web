@@ -74,6 +74,16 @@ export default function RegistroYonke() {
         fechaRegistro: new Date(),
       });
 
+      // Notificación por WhatsApp
+      try {
+        const mensaje = encodeURIComponent(
+          `🏪 Nuevo yonke registrado en Mecanix!\n\nNombre: ${nombre.trim()}\nCiudad: ${CIUDADES_BC.find(c => c.key === ciudad)?.label}\nTeléfono: ${telefono.trim()}\nCorreo: ${email.trim()}\n\nRevisa Firebase para activarlo.`
+        );
+        await fetch(`https://api.callmebot.com/whatsapp.php?phone=5216611034260&text=${mensaje}&apikey=3852207`);
+      } catch (e) {
+        console.log('WhatsApp notification failed', e);
+      }
+
       setExitoso(true);
     } catch (err) {
       console.error(err);
