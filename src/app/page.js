@@ -555,6 +555,10 @@ export default function Home() {
           </a>
         </div>
 
+      </div>  {/* cierre del maxWidth */}
+
+      {yonkesConLogo.length > 0 && (
+
       {yonkesConLogo.length > 0 && (
         <div style={{ marginTop: '48px', overflow: 'hidden', padding: '20px 0', backgroundColor: '#fff', borderTop: '1px solid #eee' }}>
           <p style={{ textAlign: 'center', color: '#888', fontSize: '12px', marginBottom: '16px', letterSpacing: '1px' }}>
