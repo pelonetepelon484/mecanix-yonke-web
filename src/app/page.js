@@ -557,7 +557,6 @@ export default function Home() {
 
       </div>  {/* cierre del maxWidth */}
 
-      {yonkesConLogo.length > 0 && (
 
       {yonkesConLogo.length > 0 && (
         <div style={{ marginTop: '48px', overflow: 'hidden', padding: '20px 0', backgroundColor: '#fff', borderTop: '1px solid #eee' }}>
