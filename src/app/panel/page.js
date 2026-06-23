@@ -19,25 +19,21 @@ export default function PanelLogin() {
   }
 
   async function handleLogin() {
-  console.log('1. handleLogin ejecutándose', { email, password, auth });
-  if (!email || !password) {
-    setError('Llena correo y contraseña');
-    return;
+    if (!email || !password) {
+      setError('Llena correo y contraseña');
+      return;
+    }
+    setEntrando(true);
+    setError('');
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      router.push('/panel/inventario');
+    } catch (err) {
+      setError('Correo o contraseña incorrectos');
+    } finally {
+      setEntrando(false);
+    }
   }
-  setEntrando(true);
-  setError('');
-  try {
-    console.log('2. Intentando signInWithEmailAndPassword');
-    const result = await signInWithEmailAndPassword(auth, email.trim(), password);
-    console.log('3. ÉXITO', result);
-    router.push('/panel/inventario');
-  } catch (err) {
-    console.log('4. ERROR COMPLETO:', err);
-    setError('Correo o contraseña incorrectos');
-  } finally {
-    setEntrando(false);
-  }
-}
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
@@ -79,6 +75,18 @@ export default function PanelLogin() {
           <button onClick={handleLogin} disabled={entrando} style={buttonStyle}>
             {entrando ? 'Entrando...' : 'Iniciar sesión'}
           </button>
+
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <p style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>
+              ¿Tienes un yonke y quieres aparecer en la plataforma?
+            </p>
+            <button
+              onClick={() => router.push('/panel/registro')}
+              style={registerButtonStyle}
+            >
+              🆓 Regístrate gratis
+            </button>
+          </div>
         </div>
       </div>
     </main>
@@ -86,26 +94,17 @@ export default function PanelLogin() {
 }
 
 const inputStyle = {
-  width: '100%',
-  padding: '12px',
-  borderRadius: '8px',
-  border: '1px solid #ddd',
-  marginBottom: '12px',
-  fontSize: '15px',
-  backgroundColor: '#F4F5F5',
-  color: '#333',
-  boxSizing: 'border-box',
+  width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
+  marginBottom: '12px', fontSize: '15px', backgroundColor: '#F4F5F5',
+  color: '#333', boxSizing: 'border-box',
 };
-
 const buttonStyle = {
-  width: '100%',
-  padding: '14px',
-  borderRadius: '8px',
-  border: 'none',
-  backgroundColor: '#E8720C',
-  color: '#fff',
-  fontWeight: 'bold',
-  fontSize: '15px',
-  cursor: 'pointer',
-  marginTop: '4px',
+  width: '100%', padding: '14px', borderRadius: '8px', border: 'none',
+  backgroundColor: '#E8720C', color: '#fff', fontWeight: 'bold',
+  fontSize: '15px', cursor: 'pointer', marginTop: '4px',
+};
+const registerButtonStyle = {
+  width: '100%', padding: '12px', borderRadius: '8px',
+  border: '2px solid #1A3C5E', backgroundColor: '#fff',
+  color: '#1A3C5E', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer',
 };
