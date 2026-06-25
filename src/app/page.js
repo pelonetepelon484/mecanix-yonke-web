@@ -403,6 +403,9 @@ export default function Home() {
             <a href="/privacidad" style={contactLinkStyle}>
               🔒 Privacidad
             </a>
+            <a href="/panel" style={contactLinkStyle}>
+              🔑 Soy yonke
+            </a>
           </div>
         </div>
 
