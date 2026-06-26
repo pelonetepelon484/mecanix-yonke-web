@@ -13,8 +13,46 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Mecanix Yonke Virtual",
-  description: "Encuentra autopartes usadas en yonkes de Tijuana al instante",
+  title: "Mecanix Yonke Virtual — Refacciones usadas en Baja California",
+  description: "Encuentra autopartes y refacciones usadas en yonkes de Tijuana, Mexicali, Ensenada y toda Baja California. Busca por marca, modelo y año. Reserva en línea al instante.",
+  keywords: "yonke Tijuana, refacciones usadas Tijuana, autopartes Tijuana, yonke Mexicali, refacciones Baja California, piezas de carro usadas, yonke virtual, comprar refacciones en línea",
+  authors: [{ name: "Mecanix" }],
+  creator: "Mecanix",
+  publisher: "Mecanix",
+  metadataBase: new URL("https://mecanixyonkevirtual.com"),
+  alternates: {
+    canonical: "https://mecanixyonkevirtual.com",
+  },
+  openGraph: {
+    title: "Mecanix Yonke Virtual — Refacciones usadas en Baja California",
+    description: "Encuentra autopartes y refacciones usadas en yonkes de Tijuana, Mexicali, Ensenada y toda Baja California. Busca por marca, modelo y año.",
+    url: "https://mecanixyonkevirtual.com",
+    siteName: "Mecanix Yonke Virtual",
+    locale: "es_MX",
+    type: "website",
+    images: [
+      {
+        url: "/mecanix-logo.png",
+        width: 800,
+        height: 600,
+        alt: "Mecanix Yonke Virtual",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mecanix Yonke Virtual — Refacciones usadas en Baja California",
+    description: "Encuentra autopartes y refacciones usadas en yonkes de Tijuana, Mexicali y toda Baja California.",
+    images: ["/mecanix-logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -34,6 +72,26 @@ export default function RootLayout({ children }) {
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', 'G-GCZQQKY0TM');
+          `}
+        </Script>
+        <Script id="schema-org" type="application/ld+json" strategy="afterInteractive">
+          {`
+            {
+              "@context": "https://schema.org",
+              "@type": "AutoPartsStore",
+              "name": "Mecanix Yonke Virtual",
+              "description": "Plataforma que conecta compradores de refacciones usadas con yonkes de Baja California",
+              "url": "https://mecanixyonkevirtual.com",
+              "areaServed": ["Tijuana", "Mexicali", "Ensenada", "Tecate", "Playas de Rosarito", "San Quintín"],
+              "address": {
+                "@type": "PostalAddress",
+                "addressRegion": "Baja California",
+                "addressCountry": "MX"
+              },
+              "sameAs": [
+                "https://mecanixyonkevirtual.com"
+              ]
+            }
           `}
         </Script>
       </head>
