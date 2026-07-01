@@ -289,6 +289,9 @@ export default function Home() {
           <p style={{ fontSize: '13px', color: '#E8720C', letterSpacing: '3px', marginTop: '8px', fontWeight: '700' }}>
             YONKE VIRTUAL
           </p>
+          <p style={{ fontSize: '17px', color: '#1A3C5E', marginTop: '12px', fontWeight: '600', lineHeight: '1.4', maxWidth: '340px', margin: '12px auto 0' }}>
+            Encuentra la pieza exacta para tu auto en minutos
+          </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
             {[
               { href: 'https://wa.me/526611034260', label: '💬 WhatsApp', ext: true },
@@ -536,4 +539,4 @@ const numeroPedidoBox = { backgroundColor: '#1A3C5E', color: '#fff', fontSize: '
 const compatibilidadBannerStyle = { backgroundColor: '#FFF8E1', border: '1px solid #FFD54F', borderRadius: '12px', padding: '12px 16px', marginBottom: '16px' };
 const avisoActualizacionStyle = { backgroundColor: '#EEF4FA', border: '1px solid #C5D8EC', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' };
 const yonkeCtaStyle = { background: 'linear-gradient(135deg, #EEF2F7 0%, #E8EFF7 100%)', borderRadius: '20px', padding: '28px', marginTop: '24px', textAlign: 'center', border: '1.5px solid #C5D4E8' };
-const yonkeCtaButtonStyle = { display: 'inline-block', background: 'linear-gradient(135deg, #1A3C5E 0%, #0f2640 100%)', color: '#fff', fontWeight: '700', fontSize: '14px', padding: '14px 28px', borderRadius: '50px', textDecoration: 'none', boxShadow: '0 4px 14px rgba(26,60,94,0.3)' };
+const yonkeCtaButtonStyle = { display: 'inline-block', background: 'linear-gradient(135deg, #E8720C 0%, #cf6209 100%)', color: '#fff', fontWeight: '700', fontSize: '14px', padding: '14px 28px', borderRadius: '50px', textDecoration: 'none', boxShadow: '0 4px 14px rgba(232,114,12,0.4)' };
