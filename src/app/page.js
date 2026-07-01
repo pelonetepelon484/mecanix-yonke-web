@@ -478,7 +478,7 @@ export default function Home() {
       </div>
 
       {/* Banner logos */}
-      {yonkesConLogo.length > 0 && (
+      {false &&yonkesConLogo.length > 0 && (
         <div style={{ marginTop: '48px', overflow: 'hidden', padding: '20px 0', backgroundColor: '#fff', borderTop: '1px solid #eee' }}>
           <p style={{ textAlign: 'center', color: '#ccc', fontSize: '11px', marginBottom: '16px', letterSpacing: '2px', fontWeight: '600' }}>
             YONKES REGISTRADOS EN LA PLATAFORMA
