@@ -4,7 +4,7 @@ export default function Terminos() {
       <div style={{ maxWidth: '700px', margin: '0 auto', backgroundColor: '#fff', borderRadius: '16px', padding: '40px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
 
         <img
-          src="/mecanix-logo.png"
+          src="/mecanix-logo.webp"
           alt="Mecanix"
           style={{ width: '200px', display: 'block', marginBottom: '24px' }}
         />

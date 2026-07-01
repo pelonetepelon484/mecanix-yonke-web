@@ -40,7 +40,7 @@ export default function PanelLogin() {
       <div style={{ maxWidth: '380px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <img
-            src="/mecanix-logo.png"
+            src="/mecanix-logo.webp"
             alt="Mecanix"
             style={{ width: '220px', maxWidth: '100%', margin: '0 auto', display: 'block' }}
           />

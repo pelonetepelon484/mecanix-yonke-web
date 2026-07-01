@@ -285,7 +285,7 @@ export default function Home() {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <img src="/mecanix-logo.png" alt="Mecanix" style={{ width: '260px', maxWidth: '100%', margin: '0 auto', display: 'block' }} />
+          <img src="/mecanix-logo.webp" alt="Mecanix" style={{ width: '260px', maxWidth: '100%', margin: '0 auto', display: 'block' }} />
           <p style={{ fontSize: '13px', color: '#E8720C', letterSpacing: '3px', marginTop: '8px', fontWeight: '700' }}>
             YONKE VIRTUAL
           </p>

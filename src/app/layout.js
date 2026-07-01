@@ -32,7 +32,7 @@ export const metadata = {
     type: "website",
     images: [
       {
-        url: "/mecanix-logo.png",
+        url: "/mecanix-logo.webp",
         width: 800,
         height: 600,
         alt: "Mecanix Yonke Virtual",
@@ -43,7 +43,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Mecanix Yonke Virtual — Refacciones usadas en Baja California",
     description: "Encuentra autopartes y refacciones usadas en yonkes de Tijuana, Mexicali y toda Baja California.",
-    images: ["/mecanix-logo.png"],
+    images: ["/mecanix-logo.webp"],
   },
   robots: {
     index: true,

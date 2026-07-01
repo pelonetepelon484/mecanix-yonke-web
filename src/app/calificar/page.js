@@ -82,7 +82,7 @@ export default function Calificar() {
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img
-            src="/mecanix-logo.png"
+            src="/mecanix-logo.webp"
             alt="Mecanix"
             style={{ width: '240px', maxWidth: '100%', margin: '0 auto', display: 'block' }}
           />
