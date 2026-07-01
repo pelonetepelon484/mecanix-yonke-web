@@ -1,37 +1,133 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --primary: #1A3C5E;
+  --accent: #E8720C;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Inputs con focus animado */
+.mecanix-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #ddd;
+  margin-bottom: 12px;
+  font-size: 15px;
+  background-color: #F8F9FA;
+  color: #333;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.mecanix-input:focus {
+  border-color: #1A3C5E;
+  box-shadow: 0 0 0 3px rgba(26, 60, 94, 0.12);
+  background-color: #fff;
+}
+
+.mecanix-input::placeholder {
+  color: #aaa;
+}
+
+/* Select con mismo estilo */
+.mecanix-select {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #ddd;
+  margin-bottom: 12px;
+  font-size: 15px;
+  background-color: #F8F9FA;
+  color: #333;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%231A3C5E' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+}
+
+.mecanix-select:focus {
+  border-color: #1A3C5E;
+  box-shadow: 0 0 0 3px rgba(26, 60, 94, 0.12);
+  background-color: #fff;
+}
+
+/* Botón buscar con hover */
+.mecanix-btn-primary {
+  width: 100%;
+  padding: 16px;
+  border-radius: 50px;
+  border: none;
+  background-color: #E8720C;
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 4px;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.5px;
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(232, 114, 12, 0.35);
+}
+
+.mecanix-btn-primary:hover {
+  background-color: #cf6209;
+  box-shadow: 0 6px 18px rgba(232, 114, 12, 0.45);
+  transform: translateY(-1px);
+}
+
+.mecanix-btn-primary:active {
+  transform: translateY(0px);
+}
+
+.mecanix-btn-primary:disabled {
+  background-color: #f0a06a;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Botón reservar */
+.mecanix-btn-secondary {
+  width: 100%;
+  padding: 13px;
+  border-radius: 50px;
+  border: none;
+  background-color: #1A3C5E;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.mecanix-btn-secondary:hover {
+  background-color: #142f4a;
+  transform: translateY(-1px);
+}
+
+/* Banner scroll */
 @keyframes scroll-banner {
-  0% {
-    transform: translateX(100%);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 .banner-track {
