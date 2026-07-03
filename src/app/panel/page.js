@@ -8,14 +8,19 @@ import { useAuth } from './AuthContext';
 
 export default function PanelLogin() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, userRole, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [entrando, setEntrando] = useState(false);
 
+  // Redirigir según rol cuando ya hay sesión
   if (!loading && user) {
-    router.push('/panel/inventario');
+    if (userRole === 'admin') {
+      router.push('/admin');
+    } else {
+      router.push('/panel/inventario');
+    }
   }
 
   async function handleLogin() {
@@ -27,7 +32,7 @@ export default function PanelLogin() {
     setError('');
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.push('/panel/inventario');
+      // La redirección la maneja el useEffect de arriba
     } catch (err) {
       setError('Correo o contraseña incorrectos');
     } finally {

@@ -2,9 +2,9 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../panel/AuthContext';
+import { AuthProvider, useAuth } from '../panel/AuthContext';
 
-export default function AdminLayout({ children }) {
+function AdminGuard({ children }) {
   const { user, userRole, loading } = useAuth();
   const router = useRouter();
 
@@ -25,4 +25,12 @@ export default function AdminLayout({ children }) {
   if (!user || userRole !== 'admin') return null;
 
   return <>{children}</>;
+}
+
+export default function AdminLayout({ children }) {
+  return (
+    <AuthProvider>
+      <AdminGuard>{children}</AdminGuard>
+    </AuthProvider>
+  );
 }
