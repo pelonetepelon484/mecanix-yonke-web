@@ -13,8 +13,15 @@ const CIUDADES_BC = [
   { key: 'sanquintin', label: 'San Quintín' },
 ];
 
+const TIPO_BUSQUEDA = [
+  { key: 'vehiculo', label: '🚗 Vehículo', desc: 'Con motor y transmisión' },
+  { key: 'motor', label: '🔧 Motor', desc: 'Motor suelto' },
+  { key: 'transmision', label: '⚙️ Transmisión', desc: 'Transmisión suelta' },
+];
+
 export default function Home() {
   const [ciudad, setCiudad] = useState('');
+  const [tipoBusqueda, setTipoBusqueda] = useState('vehiculo');
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
   const [ano, setAno] = useState('');
@@ -56,9 +63,7 @@ export default function Home() {
           .map(d => ({ id: d.id, ...d.data() }))
           .filter(y => y.activo && y.logoUrl);
         setYonkesConLogo(conLogo);
-      } catch (error) {
-        console.error(error);
-      }
+      } catch (error) { console.error(error); }
     }
     cargarLogos();
   }, []);
@@ -69,6 +74,45 @@ export default function Home() {
       const c = d.data().ciudad || '';
       return c.toLowerCase() === ciudad.toLowerCase();
     });
+  }
+
+  async function buscarMotoresOTransmisiones(yonkesDocs) {
+    const encontrados = [];
+    const tipoFiltro = tipoBusqueda === 'motor' ? 'Motor' : 'Transmisión';
+    for (const yonkeDoc of yonkesDocs) {
+      const yonkeData = yonkeDoc.data();
+      if (!yonkeData.activo) continue;
+      const motoresRef = collection(db, 'yonkes', yonkeDoc.id, 'motores');
+      const motoresSnap = await getDocs(motoresRef);
+      const coincidentes = motoresSnap.docs.filter(mDoc => {
+        const data = mDoc.data();
+        if (data.disponible === false) return false;
+        if (data.tipo !== tipoFiltro) return false;
+        if (marca && data.marca?.toLowerCase() !== marca.trim().toLowerCase()) return false;
+        if (modelo && data.modelo?.toLowerCase() !== modelo.trim().toLowerCase()) return false;
+        if (ano && data.ano !== parseInt(ano)) return false;
+        return true;
+      });
+      for (const mDoc of coincidentes) {
+        const calificacion = await obtenerCalificacion(yonkeDoc.id);
+        encontrados.push({
+          yonkeId: yonkeDoc.id,
+          esMotor: true,
+          motorId: mDoc.id,
+          motor: mDoc.data(),
+          yonkeNombre: yonkeData.nombre,
+          direccion: yonkeData.direccion,
+          telefono: yonkeData.telefono,
+          whatsapp: yonkeData.whatsapp || '',
+          metodosPago: yonkeData.metodosPago || [],
+          plan: yonkeData.plan,
+          ciudad: yonkeData.ciudad || '',
+          horario: yonkeData.horario || null,
+          calificacion,
+        });
+      }
+    }
+    return encontrados;
   }
 
   async function buscarEnAnos(yonkesDocs, marcaBuscar, modeloBuscar, anos) {
@@ -133,11 +177,32 @@ export default function Home() {
   }
 
   async function buscarPiezas() {
-    if (!marca || !modelo || !ano) { alert('Llena marca, modelo y año'); return; }
+    if (tipoBusqueda === 'vehiculo' && (!marca || !modelo || !ano)) {
+      alert('Llena marca, modelo y año'); return;
+    }
+    if ((tipoBusqueda === 'motor' || tipoBusqueda === 'transmision') && !marca) {
+      alert('Llena al menos la marca'); return;
+    }
     setBuscando(true); setBusquedaHecha(true); setPiezaNoEncontrada(false); setTipoResultado('exacto');
     try {
       const yonkesSnap = await getDocs(collection(db, 'yonkes'));
       const yonkesFiltrados = filtrarPorCiudad(yonkesSnap);
+
+      // Búsqueda de motor o transmisión
+      if (tipoBusqueda === 'motor' || tipoBusqueda === 'transmision') {
+        const encontrados = await buscarMotoresOTransmisiones(yonkesFiltrados);
+        const ordenar = (lista) => lista.sort((a, b) => {
+          if (a.plan === 'premium' && b.plan !== 'premium') return -1;
+          if (a.plan !== 'premium' && b.plan === 'premium') return 1;
+          return 0;
+        });
+        ordenar(encontrados);
+        setResultados(encontrados);
+        setBuscando(false);
+        return;
+      }
+
+      // Búsqueda de vehículo
       const conPiezaExacta = [], soloVehiculo = [];
       for (const yonkeDoc of yonkesFiltrados) {
         const yonkeData = yonkeDoc.data();
@@ -199,14 +264,14 @@ export default function Home() {
       setResultados(resultadosFinales);
     } catch (error) {
       console.error(error); alert('Hubo un error al buscar');
-    } finally {
-      setBuscando(false);
-    }
+    } finally { setBuscando(false); }
   }
 
   function abrirModalReserva(resultado) {
     setYonkeSeleccionado(resultado);
-    setPiezaSolicitada(piezaNoEncontrada ? piezaBuscada.trim() : '');
+    setPiezaSolicitada(resultado.esMotor
+      ? `${resultado.motor.tipo} ${resultado.motor.marca} ${resultado.motor.modelo} ${resultado.motor.ano}`
+      : (piezaNoEncontrada ? piezaBuscada.trim() : ''));
     setNombreCliente(''); setTelefonoCliente(''); setNumeroPedido(null); setModalVisible(true);
   }
 
@@ -225,8 +290,11 @@ export default function Home() {
       const numero = generarNumeroPedido();
       await addDoc(collection(db, 'reservaciones'), {
         numeroPedido: numero, yonkeId: yonkeSeleccionado.yonkeId,
-        vehiculoId: yonkeSeleccionado.vehiculoId, yonkeNombre: yonkeSeleccionado.yonkeNombre,
-        vehiculo: yonkeSeleccionado.vehiculo, piezaSolicitada: piezaSolicitada.trim(),
+        vehiculoId: yonkeSeleccionado.vehiculoId || null,
+        yonkeNombre: yonkeSeleccionado.yonkeNombre,
+        vehiculo: yonkeSeleccionado.vehiculo || null,
+        motor: yonkeSeleccionado.motor || null,
+        piezaSolicitada: piezaSolicitada.trim(),
         nombreCliente: nombreCliente.trim(), telefonoCliente: telefonoCliente.trim(),
         estado: 'pendiente', fecha: new Date(),
       });
@@ -246,7 +314,13 @@ export default function Home() {
   function getHeaderText() {
     const ciudadLabel = ciudad ? CIUDADES_BC.find(c => c.key === ciudad)?.label : null;
     const sufijoCiudad = ciudadLabel ? ` en ${ciudadLabel}` : '';
-    if (resultados.length === 0) return `No encontramos ese vehículo en ningún yonke registrado${sufijoCiudad}`;
+    if (resultados.length === 0) {
+      if (tipoBusqueda === 'motor') return `No encontramos motores disponibles${sufijoCiudad}`;
+      if (tipoBusqueda === 'transmision') return `No encontramos transmisiones disponibles${sufijoCiudad}`;
+      return `No encontramos ese vehículo en ningún yonke registrado${sufijoCiudad}`;
+    }
+    if (tipoBusqueda === 'motor') return `${resultados.length} yonke(s) tienen el motor que buscas${sufijoCiudad}`;
+    if (tipoBusqueda === 'transmision') return `${resultados.length} yonke(s) tienen la transmisión que buscas${sufijoCiudad}`;
     if (tipoResultado === 'cercano') return `No encontramos el ${marca} ${modelo} ${ano} exacto, pero hay ${resultados.length} yonke(s) con años cercanos${sufijoCiudad}`;
     if (tipoResultado === 'cualquierAno') return `No encontramos años cercanos, pero hay ${resultados.length} yonke(s) con ${marca} ${modelo} en otros años${sufijoCiudad}`;
     if (piezaNoEncontrada) return `No encontramos esa pieza exacta, pero ${resultados.length} yonke(s) tienen este vehículo${sufijoCiudad}`;
@@ -314,6 +388,29 @@ export default function Home() {
             🔍 Busca tu pieza
           </h2>
 
+          {/* Selector tipo de búsqueda */}
+          <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '10px' }}>¿Qué estás buscando?</p>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+            {TIPO_BUSQUEDA.map(t => (
+              <button
+                key={t.key}
+                onClick={() => { setTipoBusqueda(t.key); setResultados([]); setBusquedaHecha(false); }}
+                style={{
+                  flex: 1, padding: '10px 6px', borderRadius: '10px', border: '2px solid',
+                  borderColor: tipoBusqueda === t.key ? '#1A3C5E' : '#ddd',
+                  backgroundColor: tipoBusqueda === t.key ? '#1A3C5E' : '#F8F9FA',
+                  color: tipoBusqueda === t.key ? '#fff' : '#888',
+                  fontWeight: '700', fontSize: '12px', cursor: 'pointer', textAlign: 'center',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <div style={{ fontSize: '18px', marginBottom: '2px' }}>{t.label.split(' ')[0]}</div>
+                <div>{t.label.split(' ').slice(1).join(' ')}</div>
+                <div style={{ fontSize: '10px', fontWeight: '400', marginTop: '2px', opacity: 0.8 }}>{t.desc}</div>
+              </button>
+            ))}
+          </div>
+
           <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="mecanix-select">
             <option value="">🌎 Todas las ciudades</option>
             {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
@@ -322,13 +419,24 @@ export default function Home() {
           <input className="mecanix-input" type="text" placeholder="Marca (ej. Nissan)" value={marca} onChange={(e) => setMarca(e.target.value)} />
           <input className="mecanix-input" type="text" placeholder="Modelo (ej. Sentra)" value={modelo} onChange={(e) => setModelo(e.target.value)} />
           <input className="mecanix-input" type="number" placeholder="Año (ej. 2015)" value={ano} onChange={(e) => setAno(e.target.value)} />
-          <input className="mecanix-input" type="text" placeholder="¿Qué pieza buscas? (opcional)" value={piezaBuscada} onChange={(e) => setPiezaBuscada(e.target.value)} />
-          <p style={{ fontSize: '12px', color: '#bbb', marginTop: '-6px', marginBottom: '18px' }}>
-            Déjalo vacío si solo quieres ver qué vehículos hay disponibles
-          </p>
+
+          {tipoBusqueda === 'vehiculo' && (
+            <>
+              <input className="mecanix-input" type="text" placeholder="¿Qué pieza buscas? (opcional)" value={piezaBuscada} onChange={(e) => setPiezaBuscada(e.target.value)} />
+              <p style={{ fontSize: '12px', color: '#bbb', marginTop: '-6px', marginBottom: '18px' }}>
+                Déjalo vacío si solo quieres ver qué vehículos hay disponibles
+              </p>
+            </>
+          )}
+
+          {(tipoBusqueda === 'motor' || tipoBusqueda === 'transmision') && (
+            <p style={{ fontSize: '12px', color: '#bbb', marginTop: '-6px', marginBottom: '18px' }}>
+              Modelo y año son opcionales — puedes buscar solo por marca
+            </p>
+          )}
 
           <button onClick={buscarPiezas} disabled={buscando} className="mecanix-btn-primary">
-            {buscando ? 'Buscando...' : '🔍 Buscar refacción'}
+            {buscando ? 'Buscando...' : `🔍 Buscar ${tipoBusqueda === 'motor' ? 'motor' : tipoBusqueda === 'transmision' ? 'transmisión' : 'refacción'}`}
           </button>
         </div>
 
@@ -370,7 +478,7 @@ export default function Home() {
               </div>
             )}
 
-            {bannerTexto && (
+            {bannerTexto && tipoBusqueda === 'vehiculo' && (
               <div style={compatibilidadBannerStyle}>
                 <p style={{ margin: 0, fontSize: '13px', color: '#7A4F00', fontWeight: 'bold' }}>
                   ⚠️ Resultados de años {tipoResultado === 'cercano' ? 'similares' : 'distintos'}
@@ -417,14 +525,32 @@ export default function Home() {
                   <p style={{ color: '#555', fontSize: '13px', margin: '4px 0' }}>🕐 {formatearHorario(r.horario)}</p>
                 )}
 
-                <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 6px', fontWeight: '600' }}>
-                  🚗 {r.vehiculo.marca} {r.vehiculo.modelo} {r.vehiculo.ano}
-                  {(tipoResultado === 'cercano' || tipoResultado === 'cualquierAno') && r.vehiculo.ano !== parseInt(ano) && (
-                    <span style={{ fontSize: '11px', color: '#E8720C', fontWeight: 'normal', marginLeft: '6px' }}>
-                      (confirma compatibilidad con tu {ano})
+                {/* Resultado de motor/transmisión */}
+                {r.esMotor && (
+                  <div style={{ backgroundColor: '#F0F4F8', borderRadius: '10px', padding: '12px', margin: '10px 0' }}>
+                    <span style={{ backgroundColor: r.motor.tipo === 'Motor' ? '#E8720C' : '#1A3C5E', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '12px' }}>
+                      {r.motor.tipo === 'Motor' ? '🔧 Motor' : '⚙️ Transmisión'}
                     </span>
-                  )}
-                </p>
+                    <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: '8px 0 2px' }}>
+                      {r.motor.marca} {r.motor.modelo} {r.motor.ano}
+                    </p>
+                    {r.motor.cilindrada && (
+                      <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Resultado de vehículo */}
+                {!r.esMotor && (
+                  <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 6px', fontWeight: '600' }}>
+                    🚗 {r.vehiculo.marca} {r.vehiculo.modelo} {r.vehiculo.ano}
+                    {(tipoResultado === 'cercano' || tipoResultado === 'cualquierAno') && r.vehiculo.ano !== parseInt(ano) && (
+                      <span style={{ fontSize: '11px', color: '#E8720C', fontWeight: 'normal', marginLeft: '6px' }}>
+                        (confirma compatibilidad con tu {ano})
+                      </span>
+                    )}
+                  </p>
+                )}
 
                 {r.metodosPago.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', marginBottom: '14px' }}>
@@ -434,17 +560,12 @@ export default function Home() {
 
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {r.whatsapp && (
-                    <a
-                      href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={whatsappButtonStyle}
-                    >
+                    <a href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" style={whatsappButtonStyle}>
                       💬 WhatsApp
                     </a>
                   )}
                   <button onClick={() => abrirModalReserva(r)} className="mecanix-btn-secondary" style={{ flex: 1 }}>
-                    Reservar pieza
+                    Reservar
                   </button>
                 </div>
               </div>
@@ -477,8 +598,7 @@ export default function Home() {
 
       </div>
 
-      {/* Banner logos */}
-      {false &&yonkesConLogo.length > 0 && (
+      {false && yonkesConLogo.length > 0 && (
         <div style={{ marginTop: '48px', overflow: 'hidden', padding: '20px 0', backgroundColor: '#fff', borderTop: '1px solid #eee' }}>
           <p style={{ textAlign: 'center', color: '#ccc', fontSize: '11px', marginBottom: '16px', letterSpacing: '2px', fontWeight: '600' }}>
             YONKES REGISTRADOS EN LA PLATAFORMA
@@ -493,7 +613,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Modal */}
       {modalVisible && (
         <div style={overlayStyle}>
           <div style={modalStyle}>
@@ -527,7 +646,7 @@ export default function Home() {
   );
 }
 
-const contactLinkStyle = { fontSize: '12px', color: '#1A3C5E', textDecoration: 'none', fontWeight: '600', backgroundColor: '#fff', padding: '7px 14px', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', transition: 'box-shadow 0.2s' };
+const contactLinkStyle = { fontSize: '12px', color: '#1A3C5E', textDecoration: 'none', fontWeight: '600', backgroundColor: '#fff', padding: '7px 14px', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' };
 const resultCardStyle = { backgroundColor: '#fff', borderRadius: '16px', padding: '20px', marginBottom: '14px', boxShadow: '0 4px 16px rgba(26,60,94,0.08)', position: 'relative' };
 const premiumBadgeStyle = { position: 'absolute', top: '14px', right: '14px', backgroundColor: '#FAEEDA', color: '#854F0B', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' };
 const pagoTagStyle = { backgroundColor: '#F0F4F8', color: '#1A3C5E', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: '600' };
