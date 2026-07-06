@@ -2,15 +2,10 @@
 
 import { AuthProvider } from './AuthContext';
 
-export default function robots() {
-  return {
-    rules: [
-      {
-        userAgent: '*',
-        allow: '/',
-        disallow: ['/panel/', '/admin/'],
-      },
-    ],
-    sitemap: 'https://mecanixyonkevirtual.com/sitemap.xml',
-  };
+export default function PanelLayout({ children }) {
+  return (
+    <AuthProvider>
+      {children}
+    </AuthProvider>
+  );
 }
