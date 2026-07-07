@@ -19,6 +19,65 @@ const TIPO_BUSQUEDA = [
   { key: 'transmision', label: '⚙️ Transmisión', desc: 'Transmisión suelta' },
 ];
 
+const BANNER_IMAGES = [
+  '/rigs1.png', '/rigs2.png', '/rigs3.png', '/rigs4.png', '/rigs5.png',
+  '/rigs6.png', '/rigs7.png', '/rigs8.png', '/rigs9.png',
+];
+
+function BannerRH() {
+  const [indice, setIndice] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndice(prev => (prev + 1) % BANNER_IMAGES.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <a
+      href="https://wa.me/526633349151"
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'block',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        marginBottom: '16px',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        position: 'relative',
+      }}
+    >
+    
+      <div style={{
+        position: 'absolute', top: '8px', right: '8px',
+        backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff',
+        fontSize: '10px', padding: '3px 8px', borderRadius: '12px',
+        fontWeight: '600', letterSpacing: '0.5px',
+      }}>
+        Publicidad
+      </div>
+      <img
+        src={BANNER_IMAGES[indice]}
+        alt="RH Diagnóstico Automotriz"
+        style={{ width: '100%', display: 'block', transition: 'opacity 0.5s ease' }}
+      />
+      <div style={{
+        display: 'flex', justifyContent: 'center', gap: '6px',
+        padding: '8px', backgroundColor: 'rgba(0,0,0,0.03)',
+      }}>
+        {BANNER_IMAGES.map((_, i) => (
+          <div key={i} style={{
+            width: '6px', height: '6px', borderRadius: '50%',
+            backgroundColor: i === indice ? '#E8720C' : '#ddd',
+            transition: 'background-color 0.3s',
+          }} />
+        ))}
+      </div>
+    </a>
+  );
+}
+
 export default function Home() {
   const [ciudad, setCiudad] = useState('');
   const [tipoBusqueda, setTipoBusqueda] = useState('vehiculo');
@@ -493,9 +552,14 @@ function obtenerEstadoAbierto(horario) {
             ))}
           </div>
         </div>
+{/* Banner publicitario RH Diagnóstico */}
+        {busquedaHecha && !buscando && resultados.length > 0 && (
+          <BannerRH />
+        )}
 
         {/* Resultados */}
         {busquedaHecha && !buscando && (
+
           <div style={{ marginTop: '20px' }}>
             <h3 style={{ color: '#1A3C5E', fontSize: '15px', marginBottom: '12px', fontWeight: '600' }}>
               {getHeaderText()}
