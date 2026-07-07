@@ -63,7 +63,7 @@ function BannerRH() {
       <img
         src={BANNER_IMAGES[indice]}
         alt="RH Diagnóstico Automotriz"
-        style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }}
+        style={{ width: '160px', height: '160px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }}
       />
       <div style={{ flex: 1 }}>
         <p style={{ color: '#fff', fontWeight: '700', fontSize: '13px', margin: '0 0 4px' }}>
