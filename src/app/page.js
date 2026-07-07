@@ -391,13 +391,28 @@ function obtenerEstadoAbierto(horario) {
               { href: 'mailto:powerpctijuana@gmail.com', label: '✉️ Correo', ext: false },
               { href: '/privacidad', label: '🔒 Privacidad', ext: false },
               { href: '/terminos', label: '📋 Términos', ext: false },
-              { href: '/panel', label: '🔑 Soy yonke', ext: false },
             ].map(link => (
               <a key={link.href} href={link.href} target={link.ext ? '_blank' : undefined}
                 rel={link.ext ? 'noopener noreferrer' : undefined} style={contactLinkStyle}>
                 {link.label}
               </a>
             ))}
+          </div>
+          <div style={{ marginTop: '14px' }}>
+            <a href="/panel" style={{
+              display: 'inline-block',
+              backgroundColor: '#1A3C5E',
+              color: '#fff',
+              fontWeight: '700',
+              fontSize: '14px',
+              padding: '11px 28px',
+              borderRadius: '24px',
+              textDecoration: 'none',
+              boxShadow: '0 4px 12px rgba(26,60,94,0.3)',
+              letterSpacing: '0.3px',
+            }}>
+              🔑 Acceso yonkes registrados
+            </a>
           </div>
         </div>
 
