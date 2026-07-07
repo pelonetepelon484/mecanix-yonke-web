@@ -20,8 +20,7 @@ const TIPO_BUSQUEDA = [
 ];
 
 const BANNER_IMAGES = [
-  '/rigs1.png', '/rigs2.png', '/rigs3.png', '/rigs4.png', '/rigs5.png',
-  '/rigs6.png', '/rigs7.png', '/rigs8.png', '/rigs9.png',
+  '/rigs1.png', '/rigs2.png', '/rigs3.png',
 ];
 
 function BannerRH() {
@@ -40,19 +39,23 @@ function BannerRH() {
       target="_blank"
       rel="noopener noreferrer"
       style={{
-        display: 'block',
-        borderRadius: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        borderRadius: '12px',
         overflow: 'hidden',
         marginBottom: '16px',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        backgroundColor: '#111',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+        textDecoration: 'none',
+        padding: '8px',
         position: 'relative',
       }}
     >
-    
       <div style={{
-        position: 'absolute', top: '8px', right: '8px',
-        backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff',
-        fontSize: '10px', padding: '3px 8px', borderRadius: '12px',
+        position: 'absolute', top: '6px', right: '8px',
+        backgroundColor: 'rgba(255,255,255,0.15)', color: '#ccc',
+        fontSize: '9px', padding: '2px 6px', borderRadius: '10px',
         fontWeight: '600', letterSpacing: '0.5px',
       }}>
         Publicidad
@@ -60,19 +63,22 @@ function BannerRH() {
       <img
         src={BANNER_IMAGES[indice]}
         alt="RH Diagnóstico Automotriz"
-        style={{ width: '100%', display: 'block', transition: 'opacity 0.5s ease' }}
+        style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }}
       />
-      <div style={{
-        display: 'flex', justifyContent: 'center', gap: '6px',
-        padding: '8px', backgroundColor: 'rgba(0,0,0,0.03)',
-      }}>
-        {BANNER_IMAGES.map((_, i) => (
-          <div key={i} style={{
-            width: '6px', height: '6px', borderRadius: '50%',
-            backgroundColor: i === indice ? '#E8720C' : '#ddd',
-            transition: 'background-color 0.3s',
-          }} />
-        ))}
+      <div style={{ flex: 1 }}>
+        <p style={{ color: '#fff', fontWeight: '700', fontSize: '13px', margin: '0 0 4px' }}>
+          RH Diagnóstico Automotriz
+        </p>
+        <p style={{ color: '#aaa', fontSize: '12px', margin: '0 0 6px', lineHeight: '1.4' }}>
+          Sensores TPMS · Escaneo · Servicio a domicilio
+        </p>
+        <span style={{
+          backgroundColor: '#25D366', color: '#fff',
+          fontSize: '11px', fontWeight: '700', padding: '4px 10px',
+          borderRadius: '12px', display: 'inline-block',
+        }}>
+          💬 Contactar
+        </span>
       </div>
     </a>
   );
