@@ -580,6 +580,15 @@ export default function Home() {
         </div>
 
         {/* CTA yonkeros */}
+        {/* Sección SEO */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginTop: '12px', marginBottom: '12px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#1A3C5E', marginBottom: '12px' }}>
+            Refacciones usadas en Baja California
+          </h2>
+          <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.8', margin: 0 }}>
+            Mecanix Yonke Virtual conecta compradores de <strong>refacciones usadas en Tijuana</strong>, Mexicali, Ensenada, Tecate y Playas de Rosarito con los mejores <strong>yonkes de Baja California</strong>. Encuentra <strong>autopartes usadas</strong> como motores, transmisiones, puertas, faroles, defensas y más piezas de carro a precios accesibles. Busca por marca, modelo y año — tenemos inventario de Nissan, Toyota, Chevrolet, Honda, Ford y muchas marcas más. El <strong>deshuesadero virtual</strong> más completo de Baja California.
+          </p>
+        </div>
         <div style={yonkeCtaStyle}>
           <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏪</div>
           <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>

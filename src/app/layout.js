@@ -15,8 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Mecanix Yonke Virtual — Refacciones usadas en Baja California",
   description: "Encuentra autopartes y refacciones usadas en yonkes de Tijuana, Mexicali, Ensenada y toda Baja California. Busca por marca, modelo y año. Reserva en línea al instante.",
-  keywords: "yonke Tijuana, refacciones usadas Tijuana, autopartes Tijuana, yonke Mexicali, refacciones Baja California, piezas de carro usadas, yonke virtual, comprar refacciones en línea",
-  authors: [{ name: "Mecanix" }],
+keywords: "yonke Tijuana, refacciones usadas Tijuana, autopartes Tijuana, yonke Mexicali, refacciones Baja California, piezas de carro usadas, yonke virtual, comprar refacciones en línea, motor usado Tijuana, transmisión usada Tijuana, piezas usadas Tijuana, dónde comprar refacciones Tijuana, yonke Ensenada, yonke Tecate, yonke Rosarito, refacciones Nissan Tijuana, refacciones Toyota Tijuana, refacciones Chevrolet Tijuana, refacciones Honda Tijuana, refacciones Ford Tijuana, autopartes baratas Tijuana, deshuese Tijuana, deshuesadero Tijuana, partes de carro Tijuana, yonkes en Tijuana, yonkes Baja California",  authors: [{ name: "Mecanix" }],
   creator: "Mecanix",
   publisher: "Mecanix",
   metadataBase: new URL("https://mecanixyonkevirtual.com"),
