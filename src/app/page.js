@@ -352,7 +352,26 @@ export default function Home() {
       g.desde === g.hasta ? `${DIAS_LABELS[g.desde]} ${g.horario}` : `${DIAS_LABELS[g.desde]}–${DIAS_LABELS[g.hasta]} ${g.horario}`
     ).join('  ·  ');
   }
-
+function obtenerEstadoAbierto(horario) {
+    if (!horario) return null;
+    const ahora = new Date();
+    const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const diaActual = diasSemana[ahora.getDay()];
+    const diaData = horario[diaActual];
+    if (!diaData || !diaData.abierto) return { abierto: false, texto: 'Cerrado hoy' };
+    const [horaAbre, minAbre] = diaData.apertura.split(':').map(Number);
+    const [horaCierra, minCierra] = diaData.cierre.split(':').map(Number);
+    const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+    const minutosAbre = horaAbre * 60 + minAbre;
+    const minutosCierra = horaCierra * 60 + minCierra;
+    if (minutosAhora >= minutosAbre && minutosAhora < minutosCierra) {
+      return { abierto: true, texto: `Abierto · Cierra a las ${diaData.cierre}` };
+    }
+    if (minutosAhora < minutosAbre) {
+      return { abierto: false, texto: `Abre a las ${diaData.apertura}` };
+    }
+    return { abierto: false, texto: 'Cerrado por hoy' };
+  }
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', padding: '32px 16px', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: '620px', margin: '0 auto' }}>
@@ -517,7 +536,22 @@ export default function Home() {
                 ) : (
                   <p style={{ color: '#ccc', fontSize: '12px', marginTop: '4px' }}>Sin calificaciones todavía</p>
                 )}
-
+{r.horario && (() => {
+                  const estado = obtenerEstadoAbierto(r.horario);
+                  if (!estado) return null;
+                  return (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      backgroundColor: estado.abierto ? '#E8F5E9' : '#FDECEA',
+                      color: estado.abierto ? '#2E7D32' : '#C62828',
+                      fontSize: '12px', fontWeight: '700', padding: '4px 10px',
+                      borderRadius: '20px', marginTop: '6px', marginBottom: '4px',
+                    }}>
+                      <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: estado.abierto ? '#2E7D32' : '#C62828', display: 'inline-block' }} />
+                      {estado.texto}
+                    </div>
+                  );
+                })()}
                 <p style={{ color: '#666', fontSize: '14px', margin: '10px 0 4px' }}>📍 {r.direccion}</p>
                 <p style={{ color: '#666', fontSize: '14px', margin: '4px 0' }}>📞 {r.telefono}</p>
 
