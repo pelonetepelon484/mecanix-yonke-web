@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
+function registrarEvento(nombre, params = {}) {
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', nombre, params);
+  }
+}
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -38,6 +43,10 @@ function BannerRH() {
       href="https://wa.me/526633349151"
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => registrarEvento('click_publicidad', {
+        anunciante: 'rh_diagnostico',
+        medio: 'whatsapp',
+      })}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -263,6 +272,15 @@ export default function Home() {
         });
         ordenar(encontrados);
         setResultados(encontrados);
+        registrarEvento('busqueda_pieza', {
+          tipo: tipoBusqueda,
+          marca: marca.trim().toLowerCase(),
+          modelo: modelo.trim().toLowerCase() || '(sin modelo)',
+          ano: ano || '(sin año)',
+          ciudad: ciudad || 'todas',
+          resultados: encontrados.length,
+          encontrado: encontrados.length > 0 ? 'si' : 'no',
+        });
         setBuscando(false);
         return;
       }
@@ -327,6 +345,16 @@ export default function Home() {
         if (cualquierAno.length > 0) { resultadosFinales = cualquierAno; setTipoResultado('cualquierAno'); }
       }
       setResultados(resultadosFinales);
+      registrarEvento('busqueda_pieza', {
+        tipo: 'vehiculo',
+        marca: marca.trim().toLowerCase(),
+        modelo: modelo.trim().toLowerCase(),
+        ano: ano,
+        pieza: piezaBuscada.trim().toLowerCase() || '(sin pieza)',
+        ciudad: ciudad || 'todas',
+        resultados: resultadosFinales.length,
+        encontrado: resultadosFinales.length > 0 ? 'si' : 'no',
+      });
     } catch (error) {
       console.error(error); alert('Hubo un error al buscar');
     } finally { setBuscando(false); }
@@ -364,6 +392,12 @@ export default function Home() {
         estado: 'pendiente', fecha: new Date(),
       });
       setNumeroPedido(numero);
+      registrarEvento('reserva_creada', {
+        yonke: yonkeSeleccionado.yonkeNombre,
+        yonke_id: yonkeSeleccionado.yonkeId,
+        pieza: piezaSolicitada.trim().toLowerCase(),
+        orden: numero,
+      });
     } catch (error) {
       console.error(error); alert('Hubo un error al generar tu reservación');
     } finally { setGuardando(false); }
@@ -679,7 +713,18 @@ function obtenerEstadoAbierto(horario) {
 
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {r.whatsapp && (
-                    <a href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" style={whatsappButtonStyle}>
+                    <a
+                      href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={whatsappButtonStyle}
+                      onClick={() => registrarEvento('contacto_yonke', {
+                        yonke: r.yonkeNombre,
+                        yonke_id: r.yonkeId,
+                        medio: 'whatsapp',
+                        ciudad: r.ciudad || 'sin_ciudad',
+                      })}
+                    >
                       💬 WhatsApp
                     </a>
                   )}
