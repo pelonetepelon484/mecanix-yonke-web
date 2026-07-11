@@ -113,6 +113,7 @@ export default function Home() {
   const [guardando, setGuardando] = useState(false);
   const [numeroPedido, setNumeroPedido] = useState(null);
   const [piezaBuscada, setPiezaBuscada] = useState('');
+  const [piezaSeleccion, setPiezaSeleccion] = useState('');
   const [yonkesConLogo, setYonkesConLogo] = useState([]);
   const [interesaEnvio, setInteresaEnvio] = useState(false);
   const [respuestaEncuestaEnvio, setRespuestaEncuestaEnvio] = useState(null);
@@ -310,12 +311,13 @@ export default function Home() {
             ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
             vehiculo: vDoc.data(), calificacion,
           };
-          if (!piezaBuscada.trim()) { soloVehiculo.push(resultadoBase); continue; }
+          const piezaFiltro = (piezaSeleccion && piezaSeleccion !== 'OTRA') ? piezaSeleccion : '';
+          if (!piezaFiltro) { soloVehiculo.push(resultadoBase); continue; }
           const piezasRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos', vDoc.id, 'piezas');
           const piezasSnap = await getDocs(piezasRef);
           const tienePiezaDisponible = piezasSnap.docs.some((pDoc) => {
             const data = pDoc.data();
-            return data.disponible && data.nombre.toLowerCase().includes(piezaBuscada.trim().toLowerCase());
+            return data.disponible && data.nombre.toLowerCase() === piezaFiltro.toLowerCase();
           });
           if (tienePiezaDisponible) conPiezaExacta.push(resultadoBase);
           else soloVehiculo.push(resultadoBase);
@@ -327,12 +329,13 @@ export default function Home() {
         return 0;
       });
       ordenar(conPiezaExacta); ordenar(soloVehiculo);
+      const hayFiltroPieza = piezaSeleccion && piezaSeleccion !== 'OTRA';
       let resultadosFinales = [];
-      if (piezaBuscada.trim() && conPiezaExacta.length === 0 && soloVehiculo.length > 0) {
+      if (hayFiltroPieza && conPiezaExacta.length === 0 && soloVehiculo.length > 0) {
         setPiezaNoEncontrada(true); resultadosFinales = soloVehiculo; setTipoResultado('exacto');
       } else {
         setPiezaNoEncontrada(false);
-        resultadosFinales = piezaBuscada.trim() ? conPiezaExacta : soloVehiculo;
+        resultadosFinales = hayFiltroPieza ? conPiezaExacta : soloVehiculo;
       }
       if (resultadosFinales.length === 0) {
         const anosRango = [];
@@ -352,7 +355,10 @@ export default function Home() {
         marca: marca.trim().toLowerCase(),
         modelo: modelo.trim().toLowerCase(),
         ano: ano,
-        pieza: piezaBuscada.trim().toLowerCase() || '(sin pieza)',
+        pieza: piezaSeleccion === 'OTRA'
+          ? (piezaBuscada.trim().toLowerCase() || '(otra sin texto)')
+          : (piezaSeleccion.toLowerCase() || '(sin pieza)'),
+        origen_pieza: piezaSeleccion === 'OTRA' ? 'libre' : (piezaSeleccion ? 'catalogo' : 'ninguna'),
         ciudad: ciudad || 'todas',
         resultados: resultadosFinales.length,
         encontrado: resultadosFinales.length > 0 ? 'si' : 'no',
@@ -366,7 +372,7 @@ export default function Home() {
     setYonkeSeleccionado(resultado);
     setPiezaSolicitada(resultado.esMotor
       ? `${resultado.motor.tipo} ${resultado.motor.marca} ${resultado.motor.modelo} ${resultado.motor.ano}`
-      : (piezaNoEncontrada ? piezaBuscada.trim() : ''));
+      : (piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion));
     setNombreCliente(''); setTelefonoCliente(''); setNumeroPedido(null); setInteresaEnvio(false); setModalVisible(true);
   }
 
@@ -571,10 +577,26 @@ function obtenerEstadoAbierto(horario) {
 
           {tipoBusqueda === 'vehiculo' && (
             <>
-              <input className="mecanix-input" type="text" placeholder="¿Qué pieza buscas? (opcional)" value={piezaBuscada} onChange={(e) => setPiezaBuscada(e.target.value)} />
-              <p style={{ fontSize: '12px', color: '#bbb', marginTop: '-6px', marginBottom: '18px' }}>
-                Déjalo vacío si solo quieres ver qué vehículos hay disponibles
-              </p>
+              <select
+                value={piezaSeleccion}
+                onChange={(e) => { setPiezaSeleccion(e.target.value); if (e.target.value !== 'OTRA') setPiezaBuscada(''); }}
+                className="mecanix-select"
+              >
+                <option value="">🔧 Sin parte específica</option>
+                {[...PIEZAS_CATALOGO].sort((a, b) => a.localeCompare(b, 'es')).map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+                <option value="OTRA">✏️ Otra pieza (escribir)</option>
+              </select>
+
+              {piezaSeleccion === 'OTRA' && (
+                <>
+                  <input className="mecanix-input" type="text" placeholder="Escribe la pieza que buscas" value={piezaBuscada} onChange={(e) => setPiezaBuscada(e.target.value)} />
+                  <p style={{ fontSize: '12px', color: '#bbb', marginTop: '-6px', marginBottom: '18px' }}>
+                    Te mostraremos los vehículos disponibles — pregunta por tu pieza al reservar
+                  </p>
+                </>
+              )}
             </>
           )}
 
