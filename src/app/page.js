@@ -18,6 +18,19 @@ const CIUDADES_BC = [
   { key: 'sanquintin', label: 'San Quintín' },
 ];
 
+const PIEZAS_CATALOGO = [
+  'Faro delantero izquierdo', 'Faro delantero derecho', 'Calavera trasera izquierda', 'Calavera trasera derecha',
+  'Cofre', 'Cajuela', 'Parachoques delantero', 'Parachoques trasero', 'Espejo izquierdo', 'Espejo derecho',
+  'Puerta delantera izquierda', 'Puerta delantera derecha', 'Puerta trasera izquierda', 'Puerta trasera derecha',
+  'Parabrisas', 'Rines', 'Tablero', 'Asientos', 'Orquilla derecha', 'Orquilla izquierda',
+  'Disco de freno delantero', 'Disco de freno trasero', 'Prensa de freno', 'Amortiguador delantero izquierdo',
+  'Amortiguador delantero derecho', 'Resortes delanteros', 'Resortes traseros', 'Amortiguador trasero derecho',
+  'Amortiguador trasero izquierdo', 'Compresor A/C', 'Alternador', 'Computadora de motor',
+  'Computadora de transmisión', 'Caja de fusibles', 'Cremallera', 'Bomba de dirección', 'Barra estabilizadora',
+  'Múltiple de admisión', 'Múltiple de escape', 'Garganta', 'Filtro de aire', 'Manguera de aire', 'Sensor MAF',
+  'Flecha delantera izquierda', 'Flecha delantera derecha', 'Motor', 'Transmisión',
+];
+
 const TIPO_BUSQUEDA = [
   { key: 'vehiculo', label: '🚗 Vehículo', desc: 'Con motor y transmisión' },
   { key: 'motor', label: '🔧 Motor', desc: 'Motor suelto' },
