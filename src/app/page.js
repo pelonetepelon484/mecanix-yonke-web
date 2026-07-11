@@ -114,6 +114,7 @@ export default function Home() {
   const [numeroPedido, setNumeroPedido] = useState(null);
   const [piezaBuscada, setPiezaBuscada] = useState('');
   const [yonkesConLogo, setYonkesConLogo] = useState([]);
+  const [interesaEnvio, setInteresaEnvio] = useState(false);
 
   async function obtenerCalificacion(yonkeId) {
     try {
@@ -365,7 +366,7 @@ export default function Home() {
     setPiezaSolicitada(resultado.esMotor
       ? `${resultado.motor.tipo} ${resultado.motor.marca} ${resultado.motor.modelo} ${resultado.motor.ano}`
       : (piezaNoEncontrada ? piezaBuscada.trim() : ''));
-    setNombreCliente(''); setTelefonoCliente(''); setNumeroPedido(null); setModalVisible(true);
+    setNombreCliente(''); setTelefonoCliente(''); setNumeroPedido(null); setInteresaEnvio(false); setModalVisible(true);
   }
 
   function generarNumeroPedido() {
@@ -390,6 +391,7 @@ export default function Home() {
         piezaSolicitada: piezaSolicitada.trim(),
         nombreCliente: nombreCliente.trim(), telefonoCliente: telefonoCliente.trim(),
         estado: 'pendiente', fecha: new Date(),
+        interesaEnvio: interesaEnvio,
       });
       setNumeroPedido(numero);
       registrarEvento('reserva_creada', {
@@ -397,6 +399,7 @@ export default function Home() {
         yonke_id: yonkeSeleccionado.yonkeId,
         pieza: piezaSolicitada.trim().toLowerCase(),
         orden: numero,
+        interesa_envio: interesaEnvio ? 'si' : 'no',
       });
     } catch (error) {
       console.error(error); alert('Hubo un error al generar tu reservación');
@@ -804,6 +807,24 @@ function obtenerEstadoAbierto(horario) {
                 <input className="mecanix-input" type="text" placeholder="¿Qué pieza necesitas?" value={piezaSolicitada} onChange={(e) => setPiezaSolicitada(e.target.value)} />
                 <input className="mecanix-input" type="text" placeholder="Tu nombre" value={nombreCliente} onChange={(e) => setNombreCliente(e.target.value)} />
                 <input className="mecanix-input" type="tel" placeholder="Tu teléfono" value={telefonoCliente} onChange={(e) => setTelefonoCliente(e.target.value)} />
+                <label style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '10px',
+                  backgroundColor: '#F0F4F8', borderRadius: '10px', padding: '12px',
+                  marginBottom: '12px', cursor: 'pointer',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={interesaEnvio}
+                    onChange={(e) => setInteresaEnvio(e.target.checked)}
+                    style={{ marginTop: '2px', width: '16px', height: '16px', accentColor: '#E8720C', cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '13px', color: '#1A3C5E', lineHeight: '1.4' }}>
+                    🚚 <strong>¿Te interesaría entrega a domicilio con costo?</strong>
+                    <span style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                      Próximamente — tu respuesta nos ayuda a saber si ofrecerlo
+                    </span>
+                  </span>
+                </label>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                   <button onClick={cerrarModal} style={cancelButtonStyle}>Cancelar</button>
                   <button onClick={confirmarReserva} disabled={guardando} className="mecanix-btn-primary" style={{ flex: 1, width: 'auto', marginTop: 0 }}>
