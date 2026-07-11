@@ -115,6 +115,7 @@ export default function Home() {
   const [piezaBuscada, setPiezaBuscada] = useState('');
   const [yonkesConLogo, setYonkesConLogo] = useState([]);
   const [interesaEnvio, setInteresaEnvio] = useState(false);
+  const [respuestaEncuestaEnvio, setRespuestaEncuestaEnvio] = useState(null);
 
   async function obtenerCalificacion(yonkeId) {
     try {
@@ -408,6 +409,18 @@ export default function Home() {
 
   function cerrarModal() { setModalVisible(false); setYonkeSeleccionado(null); setNumeroPedido(null); }
 
+  function responderEncuestaEnvio(respuesta) {
+    setRespuestaEncuestaEnvio(respuesta);
+    registrarEvento('encuesta_envio', {
+      respuesta: respuesta,
+      marca: marca.trim().toLowerCase() || '(sin marca)',
+      modelo: modelo.trim().toLowerCase() || '(sin modelo)',
+      pieza: piezaBuscada.trim().toLowerCase() || '(sin pieza)',
+      tipo: tipoBusqueda,
+      ciudad: ciudad || 'todas',
+    });
+  }
+
   const metodosPagoLabels = {
     efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia',
     spei: 'SPEI', codi: 'CoDi', zelle: 'Zelle', paypal: 'PayPal',
@@ -598,6 +611,49 @@ function obtenerEstadoAbierto(horario) {
 {/* Banner publicitario RH Diagnóstico */}
         {busquedaHecha && !buscando && resultados.length > 0 && (
           <BannerRH />
+        )}
+
+        {/* Encuesta: interés en entrega a domicilio */}
+        {busquedaHecha && !buscando && resultados.length > 0 && (
+          <div style={{
+            backgroundColor: '#fff', borderRadius: '14px', padding: '16px 18px',
+            marginBottom: '16px', boxShadow: '0 2px 10px rgba(26,60,94,0.07)',
+            border: '1.5px dashed #C5D4E8',
+          }}>
+            {respuestaEncuestaEnvio === null ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', fontWeight: '600', flex: 1, minWidth: '200px' }}>
+                  🚚 ¿Te interesaría que te llevemos la pieza a domicilio (con costo)?
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => responderEncuestaEnvio('si')}
+                    style={{
+                      padding: '8px 20px', borderRadius: '20px', border: 'none',
+                      backgroundColor: '#E8720C', color: '#fff', fontWeight: '700',
+                      fontSize: '13px', cursor: 'pointer',
+                    }}
+                  >
+                    Sí 👍
+                  </button>
+                  <button
+                    onClick={() => responderEncuestaEnvio('no')}
+                    style={{
+                      padding: '8px 20px', borderRadius: '20px', border: '1.5px solid #ddd',
+                      backgroundColor: '#fff', color: '#888', fontWeight: '700',
+                      fontSize: '13px', cursor: 'pointer',
+                    }}
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: '13px', color: '#2E7D32', fontWeight: '600', textAlign: 'center' }}>
+                ✅ ¡Gracias! Tu respuesta nos ayuda a mejorar el servicio.
+              </p>
+            )}
+          </div>
         )}
 
         {/* Resultados */}
