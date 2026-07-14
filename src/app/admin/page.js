@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc, getDoc, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 
