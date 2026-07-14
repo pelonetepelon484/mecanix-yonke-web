@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
@@ -126,10 +126,23 @@ export default function Home() {
   const [guardando, setGuardando] = useState(false);
   const [numeroPedido, setNumeroPedido] = useState(null);
   const [piezaBuscada, setPiezaBuscada] = useState('');
-  const [piezaSeleccion, setPiezaSeleccion] = useState('');
   const [yonkesConLogo, setYonkesConLogo] = useState([]);
   const [interesaEnvio, setInteresaEnvio] = useState(false);
   const [respuestaEncuestaEnvio, setRespuestaEncuestaEnvio] = useState(null);
+  const [piezaSeleccion, setPiezaSeleccion] = useState('');
+  const [catalogoVehiculos, setCatalogoVehiculos] = useState({});
+  const [marcaSel, setMarcaSel] = useState('');
+  const [modeloSel, setModeloSel] = useState('');
+
+  useEffect(() => {
+    async function cargarCatalogo() {
+      try {
+        const snap = await getDoc(doc(db, 'config', 'catalogoVehiculos'));
+        if (snap.exists()) setCatalogoVehiculos(snap.data().catalogo || {});
+      } catch (e) { console.error('No se pudo cargar el catálogo', e); }
+    }
+    cargarCatalogo();
+  }, []);
 
   async function obtenerCalificacion(yonkeId) {
     try {
@@ -372,6 +385,7 @@ export default function Home() {
           ? (piezaBuscada.trim().toLowerCase() || '(otra sin texto)')
           : (piezaSeleccion.toLowerCase() || '(sin pieza)'),
         origen_pieza: piezaSeleccion === 'OTRA' ? 'libre' : (piezaSeleccion ? 'catalogo' : 'ninguna'),
+        origen_marca: marcaSel === 'OTRA' ? 'libre' : (marcaSel ? 'catalogo' : 'texto'),
         ciudad: ciudad || 'todas',
         resultados: resultadosFinales.length,
         encontrado: resultadosFinales.length > 0 ? 'si' : 'no',
@@ -584,8 +598,56 @@ function obtenerEstadoAbierto(horario) {
             {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
 
-          <input className="mecanix-input" type="text" placeholder="Marca (ej. Nissan)" value={marca} onChange={(e) => setMarca(e.target.value)} />
-          <input className="mecanix-input" type="text" placeholder="Modelo (ej. Sentra)" value={modelo} onChange={(e) => setModelo(e.target.value)} />
+         {Object.keys(catalogoVehiculos).length > 0 ? (
+            <>
+              <select
+                className="mecanix-select"
+                value={marcaSel}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setMarcaSel(v); setModeloSel(''); setModelo('');
+                  setMarca(v === 'OTRA' ? '' : v);
+                }}
+              >
+                <option value="">Marca</option>
+                {Object.keys(catalogoVehiculos).map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+                <option value="OTRA">✏️ Otra marca (escribir)</option>
+              </select>
+
+              {marcaSel === 'OTRA' && (
+                <input className="mecanix-input" type="text" placeholder="Escribe la marca" value={marca} onChange={(e) => setMarca(e.target.value)} />
+              )}
+
+              {marcaSel && marcaSel !== 'OTRA' ? (
+                <select
+                  className="mecanix-select"
+                  value={modeloSel}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setModeloSel(v);
+                    setModelo(v === 'OTRA' ? '' : v);
+                  }}
+                >
+                  <option value="">Modelo</option>
+                  {(catalogoVehiculos[marcaSel] || []).map(mo => (
+                    <option key={mo} value={mo}>{mo}</option>
+                  ))}
+                  <option value="OTRA">✏️ Otro modelo (escribir)</option>
+                </select>
+              ) : null}
+
+              {(marcaSel === 'OTRA' || modeloSel === 'OTRA') && (
+                <input className="mecanix-input" type="text" placeholder="Escribe el modelo" value={modelo} onChange={(e) => setModelo(e.target.value)} />
+              )}
+            </>
+          ) : (
+            <>
+              <input className="mecanix-input" type="text" placeholder="Marca (ej. Nissan)" value={marca} onChange={(e) => setMarca(e.target.value)} />
+              <input className="mecanix-input" type="text" placeholder="Modelo (ej. Sentra)" value={modelo} onChange={(e) => setModelo(e.target.value)} />
+            </>
+          )}
           <input className="mecanix-input" type="number" placeholder="Año (ej. 2015)" value={ano} onChange={(e) => setAno(e.target.value)} />
 
           {tipoBusqueda === 'vehiculo' && (
