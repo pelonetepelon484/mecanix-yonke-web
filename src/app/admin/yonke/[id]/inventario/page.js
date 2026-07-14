@@ -129,6 +129,7 @@ export default function InventarioAdminPage() {
         });
         await crearPiezasComunes(vehiculoRef);
       }
+      await registrarEnCatalogo(marca.trim(), modelo.trim());
       setModalVisible(false);
     } catch (error) {
       console.error(error); alert('No se pudo guardar');
@@ -280,8 +281,11 @@ export default function InventarioAdminPage() {
             <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '16px' }}>
               {vehiculoEditando ? 'Editar vehículo' : 'Agregar vehículo'}
             </h2>
-            <input type="text" placeholder="Marca" value={marca} onChange={(e) => setMarca(e.target.value)} style={inputStyle} />
-            <input type="text" placeholder="Modelo" value={modelo} onChange={(e) => setModelo(e.target.value)} style={inputStyle} />
+            <SelectorMarcaModelo
+              marca={marca} modelo={modelo}
+              onMarca={setMarca} onModelo={setModelo}
+              inputStyle={inputStyle}
+            />
             <input type="number" placeholder="Año" value={ano} onChange={(e) => setAno(e.target.value)} style={inputStyle} />
             <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '6px' }}>Transmisión</p>
             <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
