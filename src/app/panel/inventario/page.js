@@ -151,6 +151,7 @@ export default function InventarioPanel() {
         });
         await crearPiezasComunes(vehiculoRef);
       }
+      await registrarEnCatalogo(marca.trim(), modelo.trim());
       setModalVisible(false); setVehiculoEditando(null);
     } catch (error) {
       console.error(error); alert('No se pudo guardar el vehículo');
