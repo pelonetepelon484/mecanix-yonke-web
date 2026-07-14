@@ -9,6 +9,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarcaModelo';
 
 const PIEZAS_COMUNES = [
   'Faro delantero izquierdo', 'Faro delantero derecho', 'Calavera trasera izquierda', 'Calavera trasera derecha',
@@ -348,8 +349,11 @@ export default function InventarioPanel() {
             <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '16px' }}>
               {vehiculoEditando ? 'Editar vehículo' : 'Agregar vehículo'}
             </h2>
-            <input type="text" placeholder="Marca (ej. Nissan)" value={marca} onChange={(e) => setMarca(e.target.value)} style={inputStyle} />
-            <input type="text" placeholder="Modelo (ej. Sentra)" value={modelo} onChange={(e) => setModelo(e.target.value)} style={inputStyle} />
+            <SelectorMarcaModelo
+              marca={marca} modelo={modelo}
+              onMarca={setMarca} onModelo={setModelo}
+              inputStyle={inputStyle}
+            />
             <input type="number" placeholder="Año (ej. 2015)" value={ano} onChange={(e) => setAno(e.target.value)} style={inputStyle} />
             <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px' }}>Transmisión</p>
             <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
