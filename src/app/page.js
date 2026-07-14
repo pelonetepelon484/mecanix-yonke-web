@@ -610,7 +610,7 @@ function obtenerEstadoAbierto(horario) {
                 }}
               >
                 <option value="">Marca</option>
-                {Object.keys(catalogoVehiculos).map(m => (
+                {Object.keys(catalogoVehiculos).sort((a, b) => a.localeCompare(b, 'es')).map(m => (
                   <option key={m} value={m}>{m}</option>
                 ))}
                 <option value="OTRA">✏️ Otra marca (escribir)</option>
@@ -631,7 +631,7 @@ function obtenerEstadoAbierto(horario) {
                   }}
                 >
                   <option value="">Modelo</option>
-                  {(catalogoVehiculos[marcaSel] || []).map(mo => (
+                  {[...(catalogoVehiculos[marcaSel] || [])].sort((a, b) => a.localeCompare(b, 'es')).map(mo => (
                     <option key={mo} value={mo}>{mo}</option>
                   ))}
                   <option value="OTRA">✏️ Otro modelo (escribir)</option>
