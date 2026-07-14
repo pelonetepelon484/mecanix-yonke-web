@@ -7,8 +7,7 @@ import {
   orderBy, writeBatch, updateDoc, getDoc
 } from 'firebase/firestore';
 import { db } from '../../../../lib/firebase';
-import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarcaModelo';
-
+import SelectorMarcaModelo, { registrarEnCatalogo } from '../../../../lib/SelectorMarcaModelo';
 const PIEZAS_COMUNES = [
   'Faro delantero izquierdo', 'Faro delantero derecho', 'Calavera trasera izquierda', 'Calavera trasera derecha',
   'Cofre', 'Cajuela', 'Parachoques delantero', 'Parachoques trasero', 'Espejo izquierdo', 'Espejo derecho',
