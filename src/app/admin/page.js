@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 
@@ -20,6 +20,42 @@ export default function AdminPage() {
   const [yonkes, setYonkes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
+  const [regenerandoCatalogo, setRegenerandoCatalogo] = useState(false);
+
+  const regenerarCatalogo = async () => {
+    setRegenerandoCatalogo(true);
+    try {
+      const catalogo = {};
+      const yonkesSnap = await getDocs(collection(db, 'yonkes'));
+      for (const yonkeDoc of yonkesSnap.docs) {
+        const vehSnap = await getDocs(collection(db, 'yonkes', yonkeDoc.id, 'vehiculos'));
+        vehSnap.forEach((v) => {
+          const d = v.data();
+          if (!d.marca || !d.modelo) return;
+          if (!catalogo[d.marca]) catalogo[d.marca] = new Set();
+          catalogo[d.marca].add(d.modelo);
+        });
+      }
+      const catalogoFinal = {};
+      Object.keys(catalogo).sort().forEach((m) => {
+        catalogoFinal[m] = [...catalogo[m]].sort();
+      });
+      await setDoc(doc(db, 'config', 'catalogoVehiculos'), {
+        catalogo: catalogoFinal,
+        actualizado: new Date(),
+      });
+      const verificacion = await getDoc(doc(db, 'config', 'catalogoVehiculos'));
+      if (verificacion.exists()) {
+        alert(`✅ Catálogo actualizado: ${Object.keys(catalogoFinal).length} marcas`);
+      } else {
+        alert('❌ El catálogo no se pudo verificar. Revisa las reglas de Firestore.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert(`❌ Error: ${e.code || ''} ${e.message}`);
+    }
+    setRegenerandoCatalogo(false);
+  };
 
   useEffect(() => {
     const ref = collection(db, 'yonkes');
@@ -63,12 +99,24 @@ export default function AdminPage() {
               {yonkes.length} yonkes · {yonkes.filter(y => y.activo).length} activos · {yonkes.filter(y => y.plan === 'premium').length} premium
             </p>
           </div>
+          
           <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#E8720C', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
             Cerrar sesión
           </button>
         </div>
       </div>
-
+<button
+            onClick={regenerarCatalogo}
+            disabled={regenerandoCatalogo}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: regenerandoCatalogo ? 'wait' : 'pointer',
+              marginRight: '8px', opacity: regenerandoCatalogo ? 0.6 : 1,
+            }}
+          >
+            {regenerandoCatalogo ? '⏳ Actualizando...' : '🔄 Actualizar catálogo'}
+          </button>
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
 
         {/* Búsqueda */}
