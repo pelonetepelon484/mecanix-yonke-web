@@ -36,6 +36,93 @@ export default function AdminPage() {
           catalogo[d.marca].add(d.modelo);
         });
       }
+      const [migrando, setMigrando] = useState(false);
+
+  const migrarInventario = async () => {
+    if (!confirm('Esto corregirá marcas y modelos de TODOS los vehículos. ¿Continuar?')) return;
+    setMigrando(true);
+    try {
+      const MARCAS = {
+        'ford': 'Ford', 'chevrolet': 'Chevrolet', 'honda': 'Honda', 'toyota': 'Toyota',
+        'jeep': 'Jeep', 'volkswagen': 'Volkswagen', 'volkaswagen': 'Volkswagen',
+        'nissan': 'Nissan', 'mitsubishi': 'Mitsubishi', 'mitsubushi': 'Mitsubishi',
+        'gmc': 'GMC', 'chrysler': 'Chrysler', 'dodge': 'Dodge', 'scion': 'Scion',
+        'hyundai': 'Hyundai', 'mazda': 'Mazda', 'saturn': 'Saturn', 'cadillac': 'Cadillac',
+        'kia': 'Kia', 'land rover': 'Land Rover', 'mini': 'Mini', 'buick': 'Buick',
+        'ram': 'RAM', 'acura': 'Acura', 'geo': 'Geo', 'bmw': 'BMW', 'suzuki': 'Suzuki',
+        'isuzu': 'Isuzu', 'mercury': 'Mercury', 'mercedes benz': 'Mercedes-Benz',
+        'mercedes-benz': 'Mercedes-Benz', 'lincoln': 'Lincoln', 'audi': 'Audi',
+        'lexus': 'Lexus', 'ponriac': 'Pontiac', 'pontiac': 'Pontiac', 'volvo': 'Volvo',
+      };
+      const MODELOS = {
+        'Chevrolet|1500': 'Silverado 1500', 'Toyota|wagon': 'Corolla Wagon',
+        'Lexus|cs300': 'GS300', 'RAM|aventure': '700',
+        'Ford|f150': 'F-150', 'Ford|f350': 'F-350', 'Ford|fusión': 'Fusion',
+        'Ford|explorer sportrac': 'Explorer', 'Ford|explorer sport trac': 'Explorer',
+        'Ford|explorer sport': 'Explorer', 'Ford|explorer xlt': 'Explorer',
+        'Ford|explorer eddie bauer': 'Explorer', 'Ford|crown victoria': 'Crown Victoria',
+        'Chevrolet|s10': 'S10', 'Chevrolet|hhr': 'HHR', 'Chevrolet|equinox ltz': 'Equinox',
+        'Chevrolet|malibu maxx': 'Malibu', 'Chevrolet|cobalt lt': 'Cobalt',
+        'Chevrolet|pop': 'Chevy Pop', 'Chevrolet|chevy pop': 'Chevy Pop',
+        'Chevrolet|chevy van': 'Chevy Van',
+        'Toyota|rav 4': 'RAV4', 'Toyota|rav4': 'RAV4', 'Toyota|t100': 'T100',
+        'Honda|crv': 'CR-V', 'Nissan|np300': 'NP300',
+        'Kia|río': 'Rio', 'Kia|óptima': 'Optima',
+        'Mazda|3': '3', 'Mazda|5': '5', 'Mazda|6': '6',
+        'Mazda|cx9': 'CX-9', 'Mazda|cx7': 'CX-7', 'Mazda|protege 5': 'Protege',
+        'Mazda|protegé': 'Protege',
+        'Hyundai|santa fe': 'Santa Fe', 'Hyundai|h100': 'H100', 'Hyundai|i10': 'i10',
+        'Chrysler|pt cruiser': 'PT Cruiser', 'Chrysler|town country': 'Town & Country',
+        'Jeep|cherokee latitud': 'Cherokee', 'Volkswagen|gti': 'Golf',
+        'Mercedes-Benz|ml350': 'ML350', 'Mercedes-Benz|ml320': 'ML320', 'Mercedes-Benz|c230': 'C230',
+        'Lincoln|mkx': 'MKX',
+        'GMC|acadia denali': 'Acadia', 'GMC|jimmy': 'Jimmy',
+        'Acura|mdx': 'MDX', 'Acura|tl': 'TL',
+        'Scion|xb': 'xB', 'Scion|tc': 'tC',
+        'Mercury|mountainer': 'Mountaineer', 'Isuzu|ascend': 'Ascender',
+        'Land Rover|lr3': 'LR3',
+        'BMW|x5': 'X5', 'BMW|325i': '325i', 'BMW|328i': '328i', 'BMW|323i': '323i', 'BMW|750i': '750i',
+      };
+      const REUBICAR = {
+        'Chevrolet|acadia': { marca: 'GMC', modelo: 'Acadia' },
+        'Chevrolet|yukon': { marca: 'GMC', modelo: 'Yukon' },
+      };
+      const REVISAR = new Set(['Dodge|ram']);
+      const titulo = (s) => s.trim().toLowerCase().split(' ')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+      let cambios = 0;
+      const yonkesSnap = await getDocs(collection(db, 'yonkes'));
+      for (const yonkeDoc of yonkesSnap.docs) {
+        const vehSnap = await getDocs(collection(db, 'yonkes', yonkeDoc.id, 'vehiculos'));
+        for (const v of vehSnap.docs) {
+          const d = v.data();
+          const marcaOrig = (d.marca || '').trim();
+          const modeloOrig = (d.modelo || '').trim();
+          let marcaNueva = MARCAS[marcaOrig.toLowerCase()] || titulo(marcaOrig);
+          const clave = `${marcaNueva}|${modeloOrig.toLowerCase()}`;
+          if (REVISAR.has(clave)) continue;
+          let modeloNuevo;
+          if (REUBICAR[clave]) {
+            marcaNueva = REUBICAR[clave].marca;
+            modeloNuevo = REUBICAR[clave].modelo;
+          } else {
+            modeloNuevo = MODELOS[clave] || titulo(modeloOrig);
+          }
+          if (marcaNueva === marcaOrig && modeloNuevo === modeloOrig) continue;
+          await updateDoc(doc(db, 'yonkes', yonkeDoc.id, 'vehiculos', v.id), {
+            marca: marcaNueva, modelo: modeloNuevo,
+          });
+          cambios++;
+        }
+      }
+      alert(`✅ Migración aplicada: ${cambios} vehículos corregidos. Ahora dale a "Actualizar catálogo".`);
+    } catch (e) {
+      console.error(e);
+      alert(`❌ Error: ${e.code || ''} ${e.message}`);
+    }
+    setMigrando(false);
+  };
       const catalogoFinal = {};
       Object.keys(catalogo).sort().forEach((m) => {
         catalogoFinal[m] = [...catalogo[m]].sort();
@@ -118,6 +205,18 @@ export default function AdminPage() {
             {regenerandoCatalogo ? '⏳ Actualizando...' : '🔄 Actualizar catálogo'}
           </button>
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
+        <button
+            onClick={migrarInventario}
+            disabled={migrando}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#E8720C', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: migrando ? 'wait' : 'pointer',
+              marginRight: '8px', opacity: migrando ? 0.6 : 1,
+            }}
+          >
+            {migrando ? '⏳ Migrando...' : '🔧 Migrar inventario (1 vez)'}
+          </button>
 
         {/* Búsqueda */}
         <input
