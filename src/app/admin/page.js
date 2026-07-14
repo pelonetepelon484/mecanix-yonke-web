@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [regenerandoCatalogo, setRegenerandoCatalogo] = useState(false);
+  const [migrando, setMigrando] = useState(false);
 
   const regenerarCatalogo = async () => {
     setRegenerandoCatalogo(true);
@@ -36,7 +37,26 @@ export default function AdminPage() {
           catalogo[d.marca].add(d.modelo);
         });
       }
-      const [migrando, setMigrando] = useState(false);
+      const catalogoFinal = {};
+      Object.keys(catalogo).sort().forEach((m) => {
+        catalogoFinal[m] = [...catalogo[m]].sort();
+      });
+      await setDoc(doc(db, 'config', 'catalogoVehiculos'), {
+        catalogo: catalogoFinal,
+        actualizado: new Date(),
+      });
+      const verificacion = await getDoc(doc(db, 'config', 'catalogoVehiculos'));
+      if (verificacion.exists()) {
+        alert(`✅ Catálogo actualizado: ${Object.keys(catalogoFinal).length} marcas`);
+      } else {
+        alert('❌ El catálogo no se pudo verificar. Revisa las reglas de Firestore.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert(`❌ Error: ${e.code || ''} ${e.message}`);
+    }
+    setRegenerandoCatalogo(false);
+  };
 
   const migrarInventario = async () => {
     if (!confirm('Esto corregirá marcas y modelos de TODOS los vehículos. ¿Continuar?')) return;
@@ -123,26 +143,6 @@ export default function AdminPage() {
     }
     setMigrando(false);
   };
-      const catalogoFinal = {};
-      Object.keys(catalogo).sort().forEach((m) => {
-        catalogoFinal[m] = [...catalogo[m]].sort();
-      });
-      await setDoc(doc(db, 'config', 'catalogoVehiculos'), {
-        catalogo: catalogoFinal,
-        actualizado: new Date(),
-      });
-      const verificacion = await getDoc(doc(db, 'config', 'catalogoVehiculos'));
-      if (verificacion.exists()) {
-        alert(`✅ Catálogo actualizado: ${Object.keys(catalogoFinal).length} marcas`);
-      } else {
-        alert('❌ El catálogo no se pudo verificar. Revisa las reglas de Firestore.');
-      }
-    } catch (e) {
-      console.error(e);
-      alert(`❌ Error: ${e.code || ''} ${e.message}`);
-    }
-    setRegenerandoCatalogo(false);
-  };
 
   useEffect(() => {
     const ref = collection(db, 'yonkes');
@@ -186,37 +186,41 @@ export default function AdminPage() {
               {yonkes.length} yonkes · {yonkes.filter(y => y.activo).length} activos · {yonkes.filter(y => y.plan === 'premium').length} premium
             </p>
           </div>
-          
+
           <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#E8720C', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
             Cerrar sesión
           </button>
         </div>
       </div>
-<button
+
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
+        {/* Herramientas de catálogo */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <button
             onClick={regenerarCatalogo}
             disabled={regenerandoCatalogo}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: 'none',
               backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
               fontSize: '13px', cursor: regenerandoCatalogo ? 'wait' : 'pointer',
-              marginRight: '8px', opacity: regenerandoCatalogo ? 0.6 : 1,
+              opacity: regenerandoCatalogo ? 0.6 : 1,
             }}
           >
             {regenerandoCatalogo ? '⏳ Actualizando...' : '🔄 Actualizar catálogo'}
           </button>
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
-        <button
+          <button
             onClick={migrarInventario}
             disabled={migrando}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: 'none',
               backgroundColor: '#E8720C', color: '#fff', fontWeight: '600',
               fontSize: '13px', cursor: migrando ? 'wait' : 'pointer',
-              marginRight: '8px', opacity: migrando ? 0.6 : 1,
+              opacity: migrando ? 0.6 : 1,
             }}
           >
             {migrando ? '⏳ Migrando...' : '🔧 Migrar inventario (1 vez)'}
           </button>
+        </div>
 
         {/* Búsqueda */}
         <input
