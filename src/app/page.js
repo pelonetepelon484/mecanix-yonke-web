@@ -537,6 +537,7 @@ function obtenerEstadoAbierto(horario) {
             {[
               { href: 'https://wa.me/526611034260', label: '💬 WhatsApp', ext: true },
               { href: 'mailto:powerpctijuana@gmail.com', label: '✉️ Correo', ext: false },
+              { href: '#planes', label: '💳 Planes', ext: false },
               { href: '/privacidad', label: '🔒 Privacidad', ext: false },
               { href: '/terminos', label: '📋 Términos', ext: false },
             ].map(link => (
@@ -925,6 +926,107 @@ function obtenerEstadoAbierto(horario) {
           </a>
         </div>
 
+        {/* Planes de suscripción */}
+        <div id="planes" style={{ marginTop: '32px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 8px' }}>
+              Planes para tu yonke
+            </h2>
+            <p style={{ fontSize: '14px', color: '#666', margin: 0, lineHeight: '1.5' }}>
+              Pon tu inventario en línea y recibe clientes listos para comprar.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+
+            {/* Plan Básico */}
+            <div style={planCardStyle}>
+              <p style={planNombreStyle}>Plan Básico</p>
+              <p style={planPrecioStyle}>Gratis</p>
+              <p style={planDescStyle}>
+                Todo lo necesario para que los clientes te encuentren y aparten piezas contigo.
+              </p>
+              <ul style={planListaStyle}>
+                {[
+                  'Sube y administra tu inventario de vehículos y piezas',
+                  'Tu yonke aparece en los resultados cuando tienes la pieza que buscan',
+                  'Nombre, dirección y teléfono de tu yonke visibles para el cliente',
+                  'Botón de WhatsApp para que el cliente te contacte directo',
+                  'Botón de "Reservar" para apartar piezas',
+                  'Control de reservaciones desde tu panel',
+                ].map((item) => (
+                  <li key={item} style={planItemStyle}>
+                    <span style={{ color: '#1A3C5E', fontWeight: '700', marginRight: '8px' }}>✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <div style={planNotaAzulStyle}>
+                Sin caducidad: gratis para siempre. Solo dejas la plataforma si tú decides darte de baja.
+              </div>
+              <a
+                href="/panel/registro"
+                className="mecanix-btn-primary"
+                style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+              >
+                Registra tu yonke gratis
+              </a>
+            </div>
+
+            {/* Plan Premium */}
+            <div style={planPremiumCardStyle}>
+              <div style={premiumBadgeStyle}>Recomendado</div>
+              <p style={planNombreStyle}>Plan Premium</p>
+              <p style={planPrecioStyle}>Pregunta por tu prueba gratis</p>
+              <p style={planDescStyle}>
+                Para yonkes que quieren vender más y llevar el control completo de su negocio.
+              </p>
+              <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
+                ✓ Todo lo del Plan Básico, más:
+              </p>
+              <ul style={planListaStyle}>
+                {[
+                  'Registro de ventas y venta manual',
+                  'Notificaciones push al recibir una reservación',
+                  'Botón de WhatsApp para contactar al cliente que reservó',
+                ].map((item) => (
+                  <li key={item} style={planItemStyle}>
+                    <span style={{ color: '#E8720C', fontWeight: '700', marginRight: '8px' }}>✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <p style={{ fontSize: '11px', fontWeight: '700', color: '#E8720C', letterSpacing: '0.5px', margin: '14px 0 8px' }}>
+                PRÓXIMAMENTE EN PREMIUM
+              </p>
+              <ul style={planListaStyle}>
+                {[
+                  'Indicador de piezas agotadas en tu inventario',
+                  'Control de disponibilidad de piezas desde tu propio panel',
+                ].map((item) => (
+                  <li key={item} style={{ ...planItemStyle, color: '#aaa' }}>
+                    <span style={{ color: '#aaa', fontWeight: '700', marginRight: '8px' }}>+</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <div style={planNotaNaranjaStyle}>
+                Incluye periodo de prueba sin costo
+              </div>
+              <a
+                href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mecanix-btn-primary"
+                style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+              >
+                Quiero Premium
+              </a>
+            </div>
+
+          </div>
+        </div>
+
       </div>
 
       {false && yonkesConLogo.length > 0 && (
@@ -1006,3 +1108,12 @@ const compatibilidadBannerStyle = { backgroundColor: '#FFF8E1', border: '1px sol
 const avisoActualizacionStyle = { backgroundColor: '#EEF4FA', border: '1px solid #C5D8EC', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' };
 const yonkeCtaStyle = { background: 'linear-gradient(135deg, #EEF2F7 0%, #E8EFF7 100%)', borderRadius: '20px', padding: '28px', marginTop: '24px', textAlign: 'center', border: '1.5px solid #C5D4E8' };
 const yonkeCtaButtonStyle = { display: 'inline-block', background: 'linear-gradient(135deg, #E8720C 0%, #cf6209 100%)', color: '#fff', fontWeight: '700', fontSize: '14px', padding: '14px 28px', borderRadius: '50px', textDecoration: 'none', boxShadow: '0 4px 14px rgba(232,114,12,0.4)' };
+const planCardStyle = { backgroundColor: '#fff', borderRadius: '20px', padding: '28px 24px', boxShadow: '0 4px 16px rgba(26,60,94,0.08)', position: 'relative' };
+const planPremiumCardStyle = { ...planCardStyle, border: '2px solid #E8720C' };
+const planNombreStyle = { fontSize: '15px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 4px', letterSpacing: '0.3px', textTransform: 'uppercase' };
+const planPrecioStyle = { fontSize: '22px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' };
+const planDescStyle = { fontSize: '13px', color: '#666', lineHeight: '1.6', margin: '0 0 16px' };
+const planListaStyle = { listStyle: 'none', padding: 0, margin: '0 0 4px' };
+const planItemStyle = { display: 'flex', alignItems: 'flex-start', fontSize: '13px', color: '#444', lineHeight: '1.5', marginBottom: '10px' };
+const planNotaAzulStyle = { backgroundColor: '#EEF2F7', border: '1.5px dashed #1A3C5E', borderRadius: '10px', padding: '12px 14px', fontSize: '12px', color: '#1A3C5E', lineHeight: '1.5', fontWeight: '600', marginTop: '16px' };
+const planNotaNaranjaStyle = { backgroundColor: '#FEF3EC', border: '1.5px dashed #E8720C', borderRadius: '10px', padding: '12px 14px', fontSize: '12px', color: '#7A3C0C', lineHeight: '1.5', fontWeight: '600', marginTop: '16px' };
