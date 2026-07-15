@@ -13,7 +13,7 @@ export default function Terminos() {
           Términos y Condiciones de Uso
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: junio de 2026
+          Última actualización: julio de 2026
         </p>
 
         <Seccion titulo="1. Aceptación de los términos">
@@ -32,9 +32,9 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="4. Planes de servicio">
-          <p style={parrafoStyle}><strong>Plan Freemium:</strong> acceso gratuito que permite publicar inventario y aparecer en el motor de búsqueda público. Mecanix se reserva el derecho de modificar o descontinuar este plan con notificación previa.</p>
+          <p style={parrafoStyle}><strong>Plan Básico (anteriormente denominado Plan Freemium):</strong> acceso gratuito que permite publicar inventario y aparecer en el motor de búsqueda público. Mecanix se reserva el derecho de modificar o descontinuar este plan con notificación previa de al menos 30 días naturales a los yonkes registrados.</p>
           <p style={parrafoStyle}><strong>Plan Premium:</strong> acceso a funciones avanzadas mediante pago periódico acordado entre el yonke y Mecanix. Las condiciones de pago y renovación se establecen en un acuerdo por separado.</p>
-          <p style={parrafoStyle}>Mecanix Yonke Virtual puede modificar las funciones incluidas en cada plan en cualquier momento, notificando a los usuarios con anticipación razonable.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual puede modificar las funciones incluidas en cada plan en cualquier momento, notificando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
         </Seccion>
 
         <Seccion titulo="5. Responsabilidades del yonke">
@@ -68,7 +68,8 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="11. Modificaciones a los términos">
-          Mecanix Yonke Virtual puede modificar estos Términos y Condiciones en cualquier momento. Los cambios serán publicados en esta página con la fecha de actualización. El uso continuado de la plataforma después de dichos cambios implica la aceptación de los nuevos términos.
+          <p style={parrafoStyle}>Mecanix Yonke Virtual puede modificar estos Términos y Condiciones en cualquier momento. Los cambios serán publicados en esta página con la fecha de actualización. El uso continuado de la plataforma después de dichos cambios implica la aceptación de los nuevos términos.</p>
+          <p style={parrafoStyle}>Los cambios que afecten las características, condiciones o precios de los planes de suscripción se notificarán con al menos 30 días naturales de anticipación, conforme a la sección 15.</p>
         </Seccion>
 
         <Seccion titulo="12. Ley aplicable">
@@ -80,6 +81,32 @@ export default function Terminos() {
           <p style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '8px' }}>
             powerpctijuana@gmail.com
           </p>
+        </Seccion>
+
+        <Seccion titulo="14. Planes y suscripciones">
+          <p style={parrafoStyle}>Mecanix Yonke Virtual ofrece dos planes para yonkes registrados: Plan Básico y Plan Premium.</p>
+          <p style={parrafoStyle}>El <strong>Plan Básico</strong> es gratuito e incluye: carga y administración de inventario, aparición en resultados de búsqueda con nombre, dirección y teléfono del yonke, botón de contacto por WhatsApp, botón de reservación para clientes y control de reservaciones desde el panel.</p>
+          <p style={parrafoStyle}>El <strong>Plan Premium</strong> incluye todo lo del Plan Básico más: registro de ventas y venta manual, notificaciones push al recibir una reservación, y botón de WhatsApp para contactar al cliente que reservó.</p>
+          <p style={parrafoStyle}>Las funciones anunciadas como "próximamente" son mejoras planeadas sin fecha comprometida; su disponibilidad puede cambiar sin que esto genere obligación alguna para Mecanix Yonke Virtual.</p>
+        </Seccion>
+
+        <Seccion titulo="15. Vigencia del Plan Básico">
+          <p style={parrafoStyle}>El Plan Básico no tiene fecha de caducidad y permanece sin costo por tiempo indefinido.</p>
+          <p style={parrafoStyle}>El yonke solo deja la plataforma si solicita su baja voluntaria.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual se reserva el derecho de modificar las características de los planes, notificando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
+        </Seccion>
+
+        <Seccion titulo="16. Periodo de prueba y pagos del Plan Premium">
+          <p style={parrafoStyle}>El Plan Premium puede incluir un periodo de prueba sin costo, cuya duración se comunica al yonke al activarlo.</p>
+          <p style={parrafoStyle}>No existen cobros automáticos: los pagos se acuerdan y confirman directamente entre el yonke y Mecanix Yonke Virtual.</p>
+          <p style={parrafoStyle}>Al terminar el periodo de prueba o de pago sin renovación, la cuenta regresa automáticamente al Plan Básico, sin pérdida del inventario ni de la información del yonke.</p>
+          <p style={parrafoStyle}>Los pagos por periodos ya iniciados no son reembolsables.</p>
+        </Seccion>
+
+        <Seccion titulo="17. Baja de la plataforma">
+          <p style={parrafoStyle}>El yonke puede solicitar su baja en cualquier momento contactando a Mecanix Yonke Virtual por WhatsApp o los medios de contacto publicados en la plataforma.</p>
+          <p style={parrafoStyle}>Una vez recibida la solicitud, Mecanix Yonke Virtual la procesará en un plazo máximo de 5 días hábiles.</p>
+          <p style={parrafoStyle}>Al procesarse la baja, el inventario y el perfil del yonke dejan de mostrarse públicamente, y sus datos se eliminan conforme a lo establecido en el Aviso de Privacidad.</p>
         </Seccion>
 
         <div style={{ textAlign: 'center', marginTop: '40px' }}>

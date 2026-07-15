@@ -194,7 +194,7 @@ export default function EditarYonkePage() {
                 backgroundColor: plan === p ? (p === 'premium' ? '#FEF3EC' : '#EEF2F7') : '#F8F9FA',
                 color: plan === p ? '#1A3C5E' : '#888', fontWeight: '700', cursor: 'pointer', fontSize: '14px',
               }}>
-                {p === 'premium' ? '⭐ Premium' : '🆓 Freemium'}
+                {p === 'premium' ? '⭐ Premium' : '🆓 Básico'}
               </button>
             ))}
           </div>

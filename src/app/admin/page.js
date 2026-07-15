@@ -259,7 +259,7 @@ export default function AdminPage() {
                       color: y.plan === 'premium' ? '#854F0B' : '#1A3C5E',
                       fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px'
                     }}>
-                      {y.plan === 'premium' ? '⭐ Premium' : '🆓 Freemium'}
+                      {y.plan === 'premium' ? '⭐ Premium' : '🆓 Básico'}
                     </span>
                     <span style={{
                       backgroundColor: y.activo ? '#E8F5E9' : '#FDECEA',
@@ -291,7 +291,7 @@ export default function AdminPage() {
                   🚗 Inventario
                 </button>
                 <button onClick={() => cambiarPlan(y)} style={actionButtonStyle(y.plan === 'premium' ? '#666' : '#2E7D32')}>
-                  {y.plan === 'premium' ? '⬇️ Bajar a Freemium' : '⬆️ Subir a Premium'}
+                  {y.plan === 'premium' ? '⬇️ Bajar a Básico' : '⬆️ Subir a Premium'}
                 </button>
                 <button onClick={() => toggleActivo(y)} style={actionButtonStyle(y.activo ? '#C62828' : '#2E7D32')}>
                   {y.activo ? '🔴 Desactivar' : '🟢 Activar'}

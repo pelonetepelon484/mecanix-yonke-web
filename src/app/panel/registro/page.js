@@ -108,7 +108,7 @@ export default function RegistroYonke() {
             ¡Registro exitoso!
           </h2>
           <p style={{ fontSize: '15px', color: '#555', lineHeight: '1.6', marginBottom: '8px' }}>
-            Tu yonke ya está registrado en la plataforma con el plan Freemium.
+            Tu yonke ya está registrado en la plataforma con el Plan Básico.
           </p>
           <p style={{ fontSize: '14px', color: '#888', lineHeight: '1.6', marginBottom: '24px' }}>
             Ahora puedes iniciar sesión y empezar a agregar tu inventario para aparecer en las búsquedas.
@@ -142,7 +142,7 @@ export default function RegistroYonke() {
         {/* Banner freemium */}
         <div style={freemiumBannerStyle}>
           <p style={{ margin: 0, fontSize: '14px', color: '#1A3C5E', fontWeight: 'bold' }}>
-            🆓 Plan Freemium — Completamente gratis
+            🆓 Plan Básico — Completamente gratis
           </p>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#555' }}>
             Sube tu inventario y aparece en búsquedas sin costo. Actualiza a Premium cuando quieras más funciones.
