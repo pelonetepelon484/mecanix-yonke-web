@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc, getDoc, getDocs, Timestamp, deleteField } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 
@@ -15,6 +15,27 @@ const CIUDADES_BC = [
   { key: 'sanquintin', label: 'San Quintín' },
 ];
 
+function formatearFechaCorta(fecha) {
+  return fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function obtenerEstadoPremium(premiumHasta) {
+  if (!premiumHasta) return null;
+  const fecha = premiumHasta?.toDate ? premiumHasta.toDate() : new Date(premiumHasta);
+  const ahora = new Date();
+  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const diffDias = Math.ceil((fecha - inicioHoy) / (1000 * 60 * 60 * 24));
+
+  if (diffDias < 0) {
+    const dias = Math.abs(diffDias);
+    return { texto: `⚠️ VENCIDO hace ${dias} día${dias === 1 ? '' : 's'}`, bg: '#FDECEA', color: '#C62828' };
+  }
+  if (diffDias <= 7) {
+    return { texto: `⏳ Vence: ${formatearFechaCorta(fecha)} (${diffDias} día${diffDias === 1 ? '' : 's'})`, bg: '#FEF3EC', color: '#E8720C' };
+  }
+  return { texto: `⏳ Vence: ${formatearFechaCorta(fecha)} (${diffDias} días)`, bg: '#E8F5E9', color: '#2E7D32' };
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [yonkes, setYonkes] = useState([]);
@@ -22,6 +43,9 @@ export default function AdminPage() {
   const [busqueda, setBusqueda] = useState('');
   const [regenerandoCatalogo, setRegenerandoCatalogo] = useState(false);
   const [migrando, setMigrando] = useState(false);
+  const [modalPremiumVisible, setModalPremiumVisible] = useState(false);
+  const [yonkeParaPremium, setYonkeParaPremium] = useState(null);
+  const [fechaPremium, setFechaPremium] = useState('');
 
   const regenerarCatalogo = async () => {
     setRegenerandoCatalogo(true);
@@ -159,10 +183,34 @@ export default function AdminPage() {
     await updateDoc(doc(db, 'yonkes', yonke.id), { activo: !yonke.activo });
   }
 
-  async function cambiarPlan(yonke) {
-    const nuevoPlan = yonke.plan === 'premium' ? 'freemium' : 'premium';
-    if (!confirm(`¿Cambiar a ${yonke.nombre} al plan ${nuevoPlan}?`)) return;
-    await updateDoc(doc(db, 'yonkes', yonke.id), { plan: nuevoPlan });
+  function formatearFechaInput(fecha) {
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function abrirModalPremium(yonke) {
+    const sugerida = new Date();
+    sugerida.setDate(sugerida.getDate() + 30);
+    setFechaPremium(formatearFechaInput(sugerida));
+    setYonkeParaPremium(yonke);
+    setModalPremiumVisible(true);
+  }
+
+  async function confirmarPremium() {
+    if (!fechaPremium) { alert('Selecciona una fecha de vencimiento'); return; }
+    await updateDoc(doc(db, 'yonkes', yonkeParaPremium.id), {
+      plan: 'premium',
+      premiumHasta: Timestamp.fromDate(new Date(`${fechaPremium}T00:00:00`)),
+    });
+    setModalPremiumVisible(false);
+    setYonkeParaPremium(null);
+  }
+
+  async function bajarABasico(yonke) {
+    if (!confirm(`¿Cambiar a ${yonke.nombre} al plan básico?`)) return;
+    await updateDoc(doc(db, 'yonkes', yonke.id), { plan: 'freemium', premiumHasta: deleteField() });
   }
 
   async function handleLogout() {
@@ -268,6 +316,27 @@ export default function AdminPage() {
                     }}>
                       {y.activo ? '✓ Activo' : '✗ Inactivo'}
                     </span>
+                    {y.plan === 'premium' && (() => {
+                      const estado = obtenerEstadoPremium(y.premiumHasta);
+                      if (!estado) {
+                        return (
+                          <span style={{
+                            backgroundColor: '#F0F0F0', color: '#999',
+                            fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px'
+                          }}>
+                            ⏳ Sin fecha registrada
+                          </span>
+                        );
+                      }
+                      return (
+                        <span style={{
+                          backgroundColor: estado.bg, color: estado.color,
+                          fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px'
+                        }}>
+                          {estado.texto}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <p style={{ color: '#888', fontSize: '13px', margin: '4px 0 0' }}>
                     📍 {y.direccion || 'Sin dirección'}
@@ -290,7 +359,7 @@ export default function AdminPage() {
                 <button onClick={() => router.push(`/admin/yonke/${y.id}/inventario`)} style={actionButtonStyle('#E8720C')}>
                   🚗 Inventario
                 </button>
-                <button onClick={() => cambiarPlan(y)} style={actionButtonStyle(y.plan === 'premium' ? '#666' : '#2E7D32')}>
+                <button onClick={() => y.plan === 'premium' ? bajarABasico(y) : abrirModalPremium(y)} style={actionButtonStyle(y.plan === 'premium' ? '#666' : '#2E7D32')}>
                   {y.plan === 'premium' ? '⬇️ Bajar a Básico' : '⬆️ Subir a Premium'}
                 </button>
                 <button onClick={() => toggleActivo(y)} style={actionButtonStyle(y.activo ? '#C62828' : '#2E7D32')}>
@@ -301,6 +370,30 @@ export default function AdminPage() {
           ))
         )}
       </div>
+
+      {modalPremiumVisible && (
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '4px', fontWeight: '700' }}>
+              Activar Plan Premium
+            </h2>
+            <p style={{ color: '#888', fontSize: '13px', marginBottom: '16px' }}>
+              {yonkeParaPremium?.nombre}
+            </p>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>Premium vence el</p>
+            <input
+              type="date"
+              value={fechaPremium}
+              onChange={(e) => setFechaPremium(e.target.value)}
+              style={inputStyle}
+            />
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              <button onClick={() => setModalPremiumVisible(false)} style={modalCancelarStyle}>Cancelar</button>
+              <button onClick={confirmarPremium} style={modalConfirmarStyle}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -324,3 +417,19 @@ const actionButtonStyle = (color) => ({
   color: '#fff', fontWeight: '600', fontSize: '13px', cursor: 'pointer',
   fontFamily: "'Inter', sans-serif",
 });
+const overlayStyle = {
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000,
+};
+const modalStyle = {
+  backgroundColor: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '380px', width: '100%',
+  fontFamily: "'Inter', sans-serif",
+};
+const modalCancelarStyle = {
+  flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#F4F5F5',
+  color: '#888', fontWeight: '700', fontSize: '14px', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+};
+const modalConfirmarStyle = {
+  flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#E8720C',
+  color: '#fff', fontWeight: '700', fontSize: '14px', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+};

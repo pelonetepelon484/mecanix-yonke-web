@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, deleteField } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 
 const CIUDADES_BC = [
@@ -44,6 +44,13 @@ const HORARIO_DEFAULT = {
   domingo:   { abierto: false, apertura: '09:00', cierre: '13:00' },
 };
 
+function formatearFechaInput(fecha) {
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export default function EditarYonkePage() {
   const router = useRouter();
   const { id } = useParams();
@@ -58,6 +65,7 @@ export default function EditarYonkePage() {
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
   const [plan, setPlan] = useState('freemium');
+  const [premiumHasta, setPremiumHasta] = useState('');
   const [activo, setActivo] = useState(true);
   const [metodosPago, setMetodosPago] = useState([]);
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
@@ -75,6 +83,10 @@ export default function EditarYonkePage() {
         setWhatsapp(data.whatsapp || '');
         setEmail(data.email || '');
         setPlan(data.plan || 'freemium');
+        if (data.premiumHasta) {
+          const fecha = data.premiumHasta?.toDate ? data.premiumHasta.toDate() : new Date(data.premiumHasta);
+          setPremiumHasta(formatearFechaInput(fecha));
+        }
         setActivo(data.activo !== false);
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
@@ -119,6 +131,9 @@ export default function EditarYonkePage() {
         whatsapp: whatsapp.trim() || telefono.trim(),
         email: email.trim(),
         plan,
+        premiumHasta: plan === 'premium' && premiumHasta
+          ? Timestamp.fromDate(new Date(`${premiumHasta}T00:00:00`))
+          : deleteField(),
         activo,
         metodosPago,
         horario,
@@ -198,6 +213,18 @@ export default function EditarYonkePage() {
               </button>
             ))}
           </div>
+
+          {plan === 'premium' && (
+            <>
+              <p style={labelStyle}>Premium vence el</p>
+              <input
+                type="date"
+                value={premiumHasta}
+                onChange={(e) => setPremiumHasta(e.target.value)}
+                style={inputStyle}
+              />
+            </>
+          )}
 
           <p style={labelStyle}>Estado</p>
           <div style={{ display: 'flex', gap: '10px' }}>
