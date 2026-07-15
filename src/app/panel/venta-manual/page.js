@@ -8,6 +8,12 @@ import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 
+function registrarEvento(nombre, params = {}) {
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', nombre, params);
+  }
+}
+
 export default function VentaManualPanel() {
   const router = useRouter();
   const { user, yonkeId, yonkePlan, loading } = useAuth();
@@ -125,15 +131,24 @@ export default function VentaManualPanel() {
         </div>
         <div style={lockContainerStyle}>
           <p style={{ fontSize: '64px', margin: '0 0 16px' }}>🔒</p>
-          <h2 style={lockTituloStyle}>Función Premium</h2>
+          <h2 style={lockTituloStyle}>Función del Plan Premium</h2>
           <p style={lockMensajeStyle}>
-            El registro de ventas manuales está disponible en el plan Premium.
+            El registro de ventas manuales está disponible en el Plan Premium.
           </p>
           <p style={lockContactoStyle}>
-            Comunícate con nosotros para activar tu plan Premium y acceder a todas las funciones.
+            Comunícate con nosotros para activar tu Plan Premium y acceder a todas las funciones.
           </p>
-          <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={lockBotonStyle}>
-            💬 Contactar por WhatsApp
+          <a
+            href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={lockBotonStyle}
+            onClick={() => registrarEvento('clic_premium', {
+              ubicacion: 'venta_manual_bloqueada',
+              plan_actual: yonkePlan,
+            })}
+          >
+            Quiero Premium
           </a>
         </div>
         <BottomNav />
@@ -299,6 +314,6 @@ const lockContactoStyle = {
   fontSize: '13px', color: '#888', lineHeight: '1.6', marginBottom: '24px',
 };
 const lockBotonStyle = {
-  backgroundColor: '#25D366', color: '#fff', fontWeight: 'bold', fontSize: '14px',
+  backgroundColor: '#E8720C', color: '#fff', fontWeight: 'bold', fontSize: '14px',
   padding: '12px 24px', borderRadius: '24px', textDecoration: 'none', display: 'inline-block',
 };

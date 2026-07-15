@@ -8,6 +8,12 @@ import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 
+function registrarEvento(nombre, params = {}) {
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', nombre, params);
+  }
+}
+
 export default function VentasPanel() {
   const router = useRouter();
   const { user, yonkeId, yonkePlan, loading } = useAuth();
@@ -25,7 +31,7 @@ export default function VentasPanel() {
   }, [user, loading]);
 
   useEffect(() => {
-    if (!yonkeId || yonkePlan !== 'premium') return;
+    if (!yonkeId) return;
     const ref = collection(db, 'ventas');
     const q = query(ref, where('yonkeId', '==', yonkeId), orderBy('fecha', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -242,7 +248,15 @@ export default function VentasPanel() {
     );
   }
 
-  if (yonkePlan !== 'premium') {
+  if (yonkePlan !== 'premium' && loadingVentas) {
+    return (
+      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A3C5E' }}>
+        <p style={{ color: '#fff' }}>Cargando...</p>
+      </main>
+    );
+  }
+
+  if (yonkePlan !== 'premium' && ventas.length === 0) {
     return (
       <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
         <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
@@ -251,12 +265,21 @@ export default function VentasPanel() {
           </div>
         </div>
         <div style={lockContainerStyle}>
-          <p style={{ fontSize: '64px', margin: '0 0 16px' }}>🔒</p>
-          <h2 style={lockTituloStyle}>Función Premium</h2>
-          <p style={lockMensajeStyle}>El historial y registro de ventas está disponible en el plan Premium.</p>
-          <p style={lockContactoStyle}>Comunícate con nosotros para activar tu plan Premium y acceder a todas las funciones.</p>
-          <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={lockBotonStyle}>
-            💬 Contactar por WhatsApp
+          <p style={{ fontSize: '64px', margin: '0 0 16px' }}>🧾</p>
+          <h2 style={lockTituloStyle}>Aún no tienes ventas registradas</h2>
+          <p style={lockMensajeStyle}>Las ventas generadas por tus reservaciones entregadas aparecerán aquí automáticamente.</p>
+          <p style={lockContactoStyle}>Con el Plan Premium además puedes registrar tus ventas de mostrador con Venta Manual.</p>
+          <a
+            href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={lockBotonStyle}
+            onClick={() => registrarEvento('clic_premium', {
+              ubicacion: 'ventas_sin_ventas',
+              plan_actual: yonkePlan,
+            })}
+          >
+            Quiero Premium
           </a>
         </div>
         <BottomNav />
@@ -276,6 +299,26 @@ export default function VentasPanel() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
+
+        {yonkePlan !== 'premium' && (
+          <div style={avisoBasicoStyle}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', fontWeight: '600' }}>
+              🔒 Estas son tus ventas generadas por reservaciones de la plataforma. Con el Plan Premium también puedes registrar tus ventas de mostrador con Venta Manual.
+            </p>
+            <a
+              href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={avisoBasicoBotonStyle}
+              onClick={() => registrarEvento('clic_premium', {
+                ubicacion: 'ventas_aviso_historial',
+                plan_actual: yonkePlan,
+              })}
+            >
+              Quiero Premium
+            </a>
+          </div>
+        )}
 
         {/* Selector de período */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -430,6 +473,15 @@ const lockTituloStyle = { fontSize: '22px', fontWeight: 'bold', color: '#1A3C5E'
 const lockMensajeStyle = { fontSize: '15px', color: '#555', lineHeight: '1.6', marginBottom: '12px' };
 const lockContactoStyle = { fontSize: '13px', color: '#888', lineHeight: '1.6', marginBottom: '24px' };
 const lockBotonStyle = {
-  backgroundColor: '#25D366', color: '#fff', fontWeight: 'bold', fontSize: '14px',
+  backgroundColor: '#E8720C', color: '#fff', fontWeight: 'bold', fontSize: '14px',
   padding: '12px 24px', borderRadius: '24px', textDecoration: 'none', display: 'inline-block',
+};
+const avisoBasicoStyle = {
+  backgroundColor: '#EEF2F7', border: '1.5px dashed #1A3C5E', borderRadius: '12px',
+  padding: '14px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center',
+  justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+};
+const avisoBasicoBotonStyle = {
+  backgroundColor: '#E8720C', color: '#fff', fontWeight: 'bold', fontSize: '13px',
+  padding: '8px 16px', borderRadius: '20px', textDecoration: 'none', whiteSpace: 'nowrap',
 };

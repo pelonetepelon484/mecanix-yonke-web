@@ -1041,6 +1041,10 @@ function obtenerEstadoAbierto(horario) {
                 rel="noopener noreferrer"
                 className="mecanix-btn-primary"
                 style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+                onClick={() => registrarEvento('clic_premium', {
+                  ubicacion: 'seccion_planes',
+                  plan_actual: 'visitante',
+                })}
               >
                 Quiero Premium
               </a>
