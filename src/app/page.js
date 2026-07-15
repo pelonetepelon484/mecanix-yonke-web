@@ -520,6 +520,28 @@ function obtenerEstadoAbierto(horario) {
     }
     return { abierto: false, texto: 'Cerrado por hoy' };
   }
+
+  function construirMensajeWhatsApp(r) {
+    const pieza = r.esMotor
+      ? (r.motor?.tipo || '')
+      : (piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion) || '';
+
+    if (!pieza) {
+      return 'Hola, los encontré en Mecanix Yonke Virtual. ¿Me pueden ayudar con una pieza?';
+    }
+
+    const datosVehiculo = r.esMotor ? r.motor : r.vehiculo;
+    const marcaTexto = datosVehiculo?.marca || marca;
+    const modeloTexto = datosVehiculo?.modelo || modelo;
+    const anoTexto = datosVehiculo?.ano || ano;
+
+    if (marcaTexto && modeloTexto) {
+      const anoParte = anoTexto ? ` ${anoTexto}` : '';
+      return `Hola, encontré esta pieza en Mecanix Yonke Virtual: ${pieza} para ${marcaTexto} ${modeloTexto}${anoParte}. ¿Sigue disponible?`;
+    }
+
+    return `Hola, encontré esta pieza en Mecanix Yonke Virtual: ${pieza}. ¿Sigue disponible?`;
+  }
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', padding: '32px 16px', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: '620px', margin: '0 auto' }}>
@@ -871,7 +893,7 @@ function obtenerEstadoAbierto(horario) {
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {r.whatsapp && (
                     <a
-                      href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}`}
+                      href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp(r))}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={whatsappButtonStyle}

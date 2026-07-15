@@ -146,7 +146,7 @@ function YonkeCard({ yonke }) {
 
       {yonke.whatsapp && (
         <a
-          href={`https://wa.me/52${yonke.whatsapp.replace(/\D/g, '')}`}
+          href={`https://wa.me/52${yonke.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, los encontré en Mecanix Yonke Virtual. ¿Me pueden ayudar con una pieza?')}`}
           target="_blank"
           rel="noopener noreferrer"
           style={whatsappButtonStyle}
