@@ -999,7 +999,7 @@ function obtenerEstadoAbierto(horario) {
             <div style={planPremiumCardStyle}>
               <div style={premiumBadgeStyle}>Recomendado</div>
               <p style={planNombreStyle}>Plan Premium</p>
-              <p style={planPrecioStyle}>Pregunta por tu prueba gratis</p>
+              <p style={planPrecioStyle}>$500/mes</p>
               <p style={planDescStyle}>
                 Para yonkes que quieren vender más y llevar el control completo de su negocio.
               </p>
@@ -1008,6 +1008,7 @@ function obtenerEstadoAbierto(horario) {
               </p>
               <ul style={planListaStyle}>
                 {[
+                  'Tu propio buscador con tu marca: tuyonke.mecanixyonkevirtual.com — tu logo, tus colores, tu nombre',
                   'Registro de ventas y venta manual',
                   'Notificaciones push al recibir una reservación',
                   'Botón de WhatsApp para contactar al cliente que reservó',
@@ -1047,6 +1048,43 @@ function obtenerEstadoAbierto(horario) {
                 })}
               >
                 Quiero Premium
+              </a>
+            </div>
+
+            {/* Plan Marca Propia */}
+            <div style={planCardStyle}>
+              <p style={planNombreStyle}>Plan Marca Propia</p>
+              <p style={planPrecioStyle}>$900/mes</p>
+              <p style={planDescStyle}>
+                Para el yonke que quiere su propia página web, con su dominio, sin que aparezca nadie más.
+              </p>
+              <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
+                ✓ Todo lo del Plan Premium, más:
+              </p>
+              <ul style={planListaStyle}>
+                {[
+                  'Tu propio dominio (tunegocio.com), no un subdominio compartido',
+                  'Nosotros configuramos todo el DNS y el certificado de seguridad',
+                  'Tu dominio siempre es tuyo — nosotros solo rentamos el motor de búsqueda que corre detrás',
+                ].map((item) => (
+                  <li key={item} style={planItemStyle}>
+                    <span style={{ color: '#1A3C5E', fontWeight: '700', marginRight: '8px' }}>✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Marca%20Propia%20de%20Mecanix%20Yonke%20Virtual"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mecanix-btn-primary"
+                style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+                onClick={() => registrarEvento('clic_marca_propia', {
+                  ubicacion: 'seccion_planes',
+                  plan_actual: 'visitante',
+                })}
+              >
+                Quiero Marca Propia
               </a>
             </div>
 
