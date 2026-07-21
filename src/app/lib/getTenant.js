@@ -11,12 +11,23 @@ const DEFAULT_BRANDING = {
 // Filtra 'activo' en JS (no en la query) para no depender de un índice compuesto.
 export async function getTenantBySub(sub) {
   if (!sub) return null;
-  const q = query(collection(dbServer, 'yonkes'), where('subdominio', '==', sub));
-  const snap = await getDocs(q);
-  const match = snap.docs.find((d) => d.data().activo !== false);
-  console.log('[getTenantBySub]', { sub, coincidencias: snap.size, encontrado: !!match }); // TODO: quitar tras verificar en producción
-  if (!match) return null;
-  return { id: match.id, ...match.data() };
+  try {
+    const q = query(collection(dbServer, 'yonkes'), where('subdominio', '==', sub));
+    const snap = await getDocs(q);
+    const match = snap.docs.find((d) => d.data().activo !== false);
+    console.log('[getTenantBySub]', { sub, coincidencias: snap.size, encontrado: !!match }); // TODO: quitar tras verificar en producción
+    if (!match) return null;
+    return { id: match.id, ...match.data() };
+  } catch (error) {
+    console.error('[getTenantBySub] ERROR', {
+      sub,
+      code: error?.code,
+      message: error?.message,
+      name: error?.name,
+      stack: error?.stack,
+    }); // TODO: quitar tras verificar en producción
+    return null;
+  }
 }
 
 export async function getInventarioDeTenant(yonkeId) {
