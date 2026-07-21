@@ -50,8 +50,9 @@ export async function getInventarioDeTenant(yonkeId) {
 // Combina el branding del tenant con los defaults campo por campo — nunca todo-o-nada.
 export function resolveBranding(tenant) {
   const b = tenant.branding || {};
+  console.log('[resolveBranding] llaves recibidas en tenant.branding:', Object.keys(b)); // TODO: quitar tras verificar en producción
   return {
-    nombre: tenant.nombre || 'Yonke Demo',
+    nombre: b.nombreComercial || tenant.nombre || 'Yonke Demo',
     logoUrl: b.logoUrl || DEFAULT_BRANDING.logoUrl,
     colorPrimario: b.colorPrimario || DEFAULT_BRANDING.colorPrimario,
     colorAcento: b.colorAcento || DEFAULT_BRANDING.colorAcento,
