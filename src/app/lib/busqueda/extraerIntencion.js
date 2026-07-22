@@ -59,8 +59,74 @@ function extraerAnio(textoNormalizado) {
   return anio >= 1980 && anio <= 2035 ? anio : null;
 }
 
+function escaparRegex(texto) {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Distancia de Levenshtein clásica (edición mínima entre dos strings).
+function distanciaLevenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const fila = new Array(n + 1);
+  for (let j = 0; j <= n; j++) fila[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let anterior = fila[0];
+    fila[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const temp = fila[j];
+      const costo = a[i - 1] === b[j - 1] ? 0 : 1;
+      fila[j] = Math.min(fila[j] + 1, fila[j - 1] + 1, anterior + costo);
+      anterior = temp;
+    }
+  }
+  return fila[n];
+}
+
+// Umbral conservador y proporcional: palabras cortas/medianas toleran menos error para
+// evitar confundir marcas/modelos distintos que casualmente se parecen (ej. "hola" no debe
+// hacer match con "honda" — distancia real 2 — ni "carro" con "camaro" — también distancia 2).
+function umbralMaximo(longitud) {
+  if (longitud <= 6) return 1;
+  if (longitud <= 9) return 2;
+  return 3;
+}
+
+const MIN_LARGO_PARA_DIFUSO = 4;
+
+// Palabras genéricas/comunes del dominio que NUNCA deben tratarse como posible typo de
+// marca/modelo, por más cerca que caigan en distancia — el umbral numérico solo no basta
+// (ej. "carro"~"camaro" y "hola"~"honda" caen dentro de distancias razonables).
+const PALABRAS_EXCLUIDAS_DIFUSO = new Set([
+  'carro', 'carros', 'coche', 'coches', 'auto', 'autos', 'vehiculo', 'vehiculos',
+  'pieza', 'piezas', 'parte', 'partes', 'necesito', 'busco', 'quiero', 'tengo',
+  'hola', 'gracias', 'favor', 'ayuda', 'urgente', 'rapido', 'bueno', 'buena',
+  'para', 'como', 'estas', 'esta', 'este', 'usado', 'usados', 'comprar', 'vender',
+]);
+
+function mejorCandidatoDifuso(palabra, candidatos) {
+  if (palabra.length < MIN_LARGO_PARA_DIFUSO) return null;
+  if (PALABRAS_EXCLUIDAS_DIFUSO.has(palabra)) return null;
+  let mejor = null;
+  let mejorDist = Infinity;
+  for (const candidato of candidatos) {
+    const candidatoNorm = normalizar(candidato);
+    if (candidatoNorm.length < MIN_LARGO_PARA_DIFUSO) continue;
+    if (candidatoNorm === palabra) continue; // ya lo habría encontrado el match exacto
+    const dist = distanciaLevenshtein(palabra, candidatoNorm);
+    if (dist <= umbralMaximo(candidatoNorm.length) && dist < mejorDist) {
+      mejor = candidato;
+      mejorDist = dist;
+    }
+  }
+  return mejor;
+}
+
 function extraerMarcaModelo(textoNormalizado) {
-  // 1. Buscar alias/marca directamente.
+  const palabras = textoNormalizado.split(/\s+/).filter(Boolean);
+  let difuso = false;
+
+  // 1. Exacto: alias/marca por substring en todo el texto.
   let marcaEncontrada = null;
   for (const [alias, canonica] of Object.entries(ALIAS_MARCA)) {
     if (textoNormalizado.includes(normalizar(alias))) {
@@ -69,7 +135,7 @@ function extraerMarcaModelo(textoNormalizado) {
     }
   }
 
-  // 2. Buscar modelo (funciona incluso si la marca no se mencionó, ej. "tsuru 2010").
+  // 2. Exacto: modelo por palabra completa (funciona incluso sin marca, ej. "tsuru 2010").
   let modeloEncontrado = null;
   let marcaDelModelo = null;
   for (const [marca, modelos] of Object.entries(CATALOGO_BASE)) {
@@ -77,7 +143,7 @@ function extraerMarcaModelo(textoNormalizado) {
       const modeloNorm = normalizar(modelo);
       // Evita falsos positivos con modelos de una sola letra/número corto (ej. Mazda "2", "3").
       if (modeloNorm.length < 2) continue;
-      const regex = new RegExp(`\\b${modeloNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+      const regex = new RegExp(`\\b${escaparRegex(modeloNorm)}\\b`);
       if (regex.test(textoNormalizado)) {
         modeloEncontrado = modelo;
         marcaDelModelo = marca;
@@ -87,9 +153,42 @@ function extraerMarcaModelo(textoNormalizado) {
     if (modeloEncontrado) break;
   }
 
-  const marcaFinal = marcaEncontrada || marcaDelModelo || null;
-  const modeloFinal = modeloEncontrado || null;
-  return { marca: marcaFinal, modelo: modeloFinal };
+  let marca = marcaEncontrada || marcaDelModelo || null;
+  let modelo = modeloEncontrado || null;
+
+  // 3. Difuso: si el exacto no encontró marca, busca la palabra del texto más cercana
+  // a algún alias de marca (typos tipo "hiundia" -> "hyundai").
+  if (!marca) {
+    for (const palabra of palabras) {
+      const alias = mejorCandidatoDifuso(palabra, Object.keys(ALIAS_MARCA));
+      if (alias) {
+        marca = ALIAS_MARCA[alias];
+        difuso = true;
+        break;
+      }
+    }
+  }
+
+  // 4. Difuso: si el exacto no encontró modelo, busca contra los modelos de la marca ya
+  // resuelta (si la hay) para mayor precisión, o contra todo el catálogo si no.
+  if (!modelo) {
+    const marcasABuscar = marca ? [marca] : Object.keys(CATALOGO_BASE);
+    for (const palabra of palabras) {
+      let encontrado = null;
+      for (const m of marcasABuscar) {
+        const candidato = mejorCandidatoDifuso(palabra, CATALOGO_BASE[m] || []);
+        if (candidato) { encontrado = { marca: m, modelo: candidato }; break; }
+      }
+      if (encontrado) {
+        modelo = encontrado.modelo;
+        if (!marca) marca = encontrado.marca;
+        difuso = true;
+        break;
+      }
+    }
+  }
+
+  return { marca, modelo, difuso };
 }
 
 // Palabras de lado/posición: se tratan como calificadores OPCIONALES. Si el usuario no las
@@ -149,14 +248,17 @@ function extraerPieza(textoNormalizado) {
   return mejor;
 }
 
-// Capa 1 (reglas): extrae { pieza, marca, modelo, anio, reconocido } de texto libre en español.
+// Capa 1 (reglas): extrae { pieza, marca, modelo, anio, reconocido, requiereConfirmacion }
+// de texto libre en español. requiereConfirmacion es true si marca o modelo se resolvieron
+// por coincidencia difusa (typo) en vez de exacta — en ese caso, quien llama debe pedir
+// confirmación al usuario antes de consultar Firestore, no ejecutar la búsqueda directo.
 export function extraerIntencion(textoOriginal) {
   const textoNormalizado = normalizar(textoOriginal);
   const anio = extraerAnio(textoNormalizado);
-  const { marca, modelo } = extraerMarcaModelo(textoNormalizado);
+  const { marca, modelo, difuso } = extraerMarcaModelo(textoNormalizado);
   const pieza = extraerPieza(textoNormalizado);
 
   const reconocido = Boolean(pieza && (marca || modelo));
 
-  return { pieza, marca, modelo, anio, reconocido };
+  return { pieza, marca, modelo, anio, reconocido, requiereConfirmacion: reconocido && difuso };
 }

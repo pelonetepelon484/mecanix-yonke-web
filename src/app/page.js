@@ -401,6 +401,32 @@ export default function Home() {
     } finally { setBuscando(false); }
   }
 
+  function aplicarRespuestaBusquedaLibre(data) {
+    if (data.estado === 'resultados') {
+      setMensajeLibre(null);
+      setTipoBusqueda('vehiculo');
+      setMarca(data.marca || '');
+      setModelo(data.modelo || '');
+      setAno(data.anio ? String(data.anio) : '');
+      setPiezaSeleccion(data.pieza || '');
+      setResultados(data.resultados);
+      setTipoResultado(data.tipoResultado);
+      setPiezaNoEncontrada(Boolean(data.piezaNoEncontrada));
+      setBusquedaHecha(true);
+      registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: data.resultados.length });
+    } else if (data.estado === 'confirmar') {
+      setResultados([]);
+      setBusquedaHecha(false);
+      setMensajeLibre({ tipo: 'confirmar', texto: data.mensaje, sugerencia: data.sugerencia });
+      registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
+    } else {
+      setResultados([]);
+      setBusquedaHecha(false);
+      setMensajeLibre({ tipo: data.estado, texto: data.mensaje });
+      registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
+    }
+  }
+
   async function buscarConTextoLibre() {
     if (!textoLibre.trim()) return;
     setBuscandoLibre(true);
@@ -412,28 +438,27 @@ export default function Home() {
         body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim() }),
       });
       const data = await res.json();
+      aplicarRespuestaBusquedaLibre(data);
+    } catch (error) {
+      console.error(error);
+      setMensajeLibre({ tipo: 'error', texto: 'Hubo un error al buscar, intenta de nuevo.' });
+    } finally {
+      setBuscandoLibre(false);
+    }
+  }
 
-      if (data.estado === 'resultados') {
-        setMensajeLibre(null);
-        setTipoBusqueda('vehiculo');
-        setMarca(data.marca || '');
-        setModelo(data.modelo || '');
-        setAno(data.anio ? String(data.anio) : '');
-        setPiezaSeleccion(data.pieza || '');
-        setResultados(data.resultados);
-        setTipoResultado(data.tipoResultado);
-        setPiezaNoEncontrada(Boolean(data.piezaNoEncontrada));
-        setBusquedaHecha(true);
-        registrarEvento('busqueda_texto_libre', {
-          estado: data.estado,
-          resultados: data.resultados.length,
-        });
-      } else {
-        setResultados([]);
-        setBusquedaHecha(false);
-        setMensajeLibre({ tipo: data.estado, texto: data.mensaje });
-        registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
-      }
+  async function confirmarSugerenciaLibre() {
+    const sugerencia = mensajeLibre?.sugerencia;
+    if (!sugerencia) return;
+    setBuscandoLibre(true);
+    try {
+      const res = await fetch('/api/buscar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim(), confirmado: sugerencia }),
+      });
+      const data = await res.json();
+      aplicarRespuestaBusquedaLibre(data);
     } catch (error) {
       console.error(error);
       setMensajeLibre({ tipo: 'error', texto: 'Hubo un error al buscar, intenta de nuevo.' });
@@ -670,6 +695,27 @@ function obtenerEstadoAbierto(horario) {
               <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
                 {mensajeLibre.texto}
               </p>
+              {mensajeLibre.tipo === 'confirmar' && (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                  <button
+                    onClick={confirmarSugerenciaLibre}
+                    disabled={buscandoLibre}
+                    className="mecanix-btn-primary"
+                    style={{ flex: 1, width: 'auto' }}
+                  >
+                    Sí, buscar así
+                  </button>
+                  <button
+                    onClick={() => setMensajeLibre(null)}
+                    style={{
+                      flex: 1, padding: '13px', borderRadius: '50px', border: '1.5px solid #ddd',
+                      backgroundColor: '#fff', color: '#888', fontWeight: '700', fontSize: '14px', cursor: 'pointer',
+                    }}
+                  >
+                    No, corregir
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

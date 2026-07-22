@@ -31,6 +31,53 @@ async function guardarSinBloquear(coleccion, datos) {
   }
 }
 
+// Paso 3 en adelante: ya con {pieza, marca, modelo, anio} resueltos (ya sea por extracción
+// exacta o porque el usuario confirmó una sugerencia difusa), valida contra el catálogo vivo
+// y consulta inventario real.
+async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto) {
+  if (!modelo) {
+    await guardarSinBloquear('modelos_no_reconocidos', {
+      textoOriginal: texto,
+      piezaExtraida: pieza,
+      marcaExtraida: marca,
+      modeloExtraido: modelo,
+      anioExtraido: anio,
+      fecha: new Date(),
+    });
+    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
+  }
+
+  const enCatalogo = await existeEnCatalogoVivo(marca, modelo);
+  if (!enCatalogo) {
+    await guardarSinBloquear('modelos_no_reconocidos', {
+      textoOriginal: texto,
+      piezaExtraida: pieza,
+      marcaExtraida: marca,
+      modeloExtraido: modelo,
+      anioExtraido: anio,
+      fecha: new Date(),
+    });
+    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
+  }
+
+  const { resultados, tipoResultado, piezaNoEncontrada } = await consultarInventario({ marca, modelo, anio, pieza });
+
+  if (resultados.length === 0) {
+    await guardarSinBloquear('busquedas_pendientes', {
+      pieza, marca, modelo, anio,
+      textoOriginal: texto,
+      fecha: new Date(),
+      ...(contacto ? { contacto } : {}),
+    });
+    return NextResponse.json({ estado: 'sin_inventario', mensaje: MENSAJE_SIN_INVENTARIO });
+  }
+
+  return NextResponse.json({
+    estado: 'resultados', resultados, tipoResultado, piezaNoEncontrada,
+    marca, modelo, anio, pieza,
+  });
+}
+
 export async function POST(request) {
   let body;
   try {
@@ -41,17 +88,12 @@ export async function POST(request) {
 
   const texto = typeof body?.texto === 'string' ? body.texto : '';
   const contacto = typeof body?.contacto === 'string' ? body.contacto.trim() : '';
+  const confirmado = body?.confirmado;
 
-  // Capa 0: filtro barato, sin Firestore, sin gastar rate limit.
-  const { permitido } = filtrarPrevio(texto);
-  if (!permitido) {
-    return NextResponse.json({ estado: 'rechazado', mensaje: MENSAJE_RECHAZO_CAPA0 });
-  }
-
-  // Rate limit: después de Capa 0, antes de cualquier otro trabajo.
-  // Si el propio chequeo falla (ej. reglas de Firestore aún no configuradas para
-  // busqueda_rate_limit), se deja pasar la búsqueda en vez de romper el feature completo —
-  // se pierde temporalmente la protección de rate limit, pero no la funcionalidad.
+  // Rate limit: se aplica siempre (flujo normal o confirmación), antes de tocar Firestore
+  // para la búsqueda en sí. Si el propio chequeo falla (ej. reglas de Firestore aún no
+  // configuradas para busqueda_rate_limit), se deja pasar en vez de romper el feature
+  // completo — se pierde temporalmente la protección, no la funcionalidad.
   const ip = obtenerIp(request);
   let permitidoPorRate = true;
   try {
@@ -66,7 +108,24 @@ export async function POST(request) {
     return NextResponse.json({ estado: 'rate_limited', mensaje: MENSAJE_RATE_LIMIT });
   }
 
-  // Capa 1: extracción de intención (reglas + catálogo de 38 marcas).
+  // Modo confirmación: el usuario ya aceptó una sugerencia difusa ("¿Quisiste decir...?").
+  // Se salta Capa 0/Capa 1 por completo y se va directo al catálogo/inventario.
+  if (confirmado && typeof confirmado.marca === 'string' && typeof confirmado.modelo === 'string') {
+    return resolverBusqueda({
+      pieza: typeof confirmado.pieza === 'string' ? confirmado.pieza : null,
+      marca: confirmado.marca,
+      modelo: confirmado.modelo,
+      anio: typeof confirmado.anio === 'number' ? confirmado.anio : null,
+    }, texto, contacto);
+  }
+
+  // Capa 0: filtro barato, sin Firestore.
+  const { permitido } = filtrarPrevio(texto);
+  if (!permitido) {
+    return NextResponse.json({ estado: 'rechazado', mensaje: MENSAJE_RECHAZO_CAPA0 });
+  }
+
+  // Capa 1: extracción de intención (reglas + catálogo de 38 marcas, con fuzzy matching).
   const intencion = extraerIntencion(texto);
 
   if (!intencion.reconocido) {
@@ -77,62 +136,18 @@ export async function POST(request) {
     return NextResponse.json({ estado: 'no_interpretado', mensaje: MENSAJE_RECHAZO_CAPA0 });
   }
 
-  // Reconocido pero sin modelo específico: no alcanza para consultar inventario.
-  if (!intencion.modelo) {
-    await guardarSinBloquear('modelos_no_reconocidos', {
-      textoOriginal: texto,
-      piezaExtraida: intencion.pieza,
-      marcaExtraida: intencion.marca,
-      modeloExtraido: intencion.modelo,
-      anioExtraido: intencion.anio,
-      fecha: new Date(),
+  // Marca/modelo resuelto por coincidencia difusa (typo): pedir confirmación antes de
+  // consultar Firestore, en vez de corregir en silencio.
+  if (intencion.requiereConfirmacion) {
+    const partes = [intencion.marca, intencion.modelo, intencion.anio].filter(Boolean);
+    return NextResponse.json({
+      estado: 'confirmar',
+      mensaje: `¿Quisiste decir ${partes.join(' ')}?`,
+      sugerencia: {
+        pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
+      },
     });
-    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
-  // Paso 3.1-3.2: validar contra el catálogo VIVO (config/catalogoVehiculos).
-  const enCatalogo = await existeEnCatalogoVivo(intencion.marca, intencion.modelo);
-  if (!enCatalogo) {
-    await guardarSinBloquear('modelos_no_reconocidos', {
-      textoOriginal: texto,
-      piezaExtraida: intencion.pieza,
-      marcaExtraida: intencion.marca,
-      modeloExtraido: intencion.modelo,
-      anioExtraido: intencion.anio,
-      fecha: new Date(),
-    });
-    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
-  }
-
-  // Paso 3.3-3.5: consultar inventario real.
-  const { resultados, tipoResultado, piezaNoEncontrada } = await consultarInventario({
-    marca: intencion.marca,
-    modelo: intencion.modelo,
-    anio: intencion.anio,
-    pieza: intencion.pieza,
-  });
-
-  if (resultados.length === 0) {
-    await guardarSinBloquear('busquedas_pendientes', {
-      pieza: intencion.pieza,
-      marca: intencion.marca,
-      modelo: intencion.modelo,
-      anio: intencion.anio,
-      textoOriginal: texto,
-      fecha: new Date(),
-      ...(contacto ? { contacto } : {}),
-    });
-    return NextResponse.json({ estado: 'sin_inventario', mensaje: MENSAJE_SIN_INVENTARIO });
-  }
-
-  return NextResponse.json({
-    estado: 'resultados',
-    resultados,
-    tipoResultado,
-    piezaNoEncontrada,
-    marca: intencion.marca,
-    modelo: intencion.modelo,
-    anio: intencion.anio,
-    pieza: intencion.pieza,
-  });
+  return resolverBusqueda(intencion, texto, contacto);
 }
