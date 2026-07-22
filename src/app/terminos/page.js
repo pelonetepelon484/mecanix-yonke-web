@@ -109,6 +109,11 @@ export default function Terminos() {
           <p style={parrafoStyle}>Al procesarse la baja, el inventario y el perfil del yonke dejan de mostrarse públicamente, y sus datos se eliminan conforme a lo establecido en el Aviso de Privacidad.</p>
         </Seccion>
 
+        <Seccion titulo="18. Buscador Inteligente">
+          <p style={parrafoStyle}>El uso del buscador de texto libre es opcional y complementario al buscador estructurado por menús. Al usarlo, aceptas que el texto que ingreses sea almacenado con fines de mejora del servicio y de nuestro catálogo de vehículos.</p>
+          <p style={parrafoStyle}>Nos reservamos el derecho de limitar el número de búsquedas por usuario en un periodo determinado, con el fin de garantizar el buen funcionamiento de la plataforma para todos.</p>
+        </Seccion>
+
         <div style={{ textAlign: 'center', marginTop: '40px' }}>
           <p style={{ color: '#aaa', fontSize: '13px', fontStyle: 'italic' }}>
             Mecanix • Tecnología al servicio del mecánico

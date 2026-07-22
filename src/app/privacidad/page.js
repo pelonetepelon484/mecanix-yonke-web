@@ -82,6 +82,12 @@ export default function Privacidad() {
           Las notificaciones push del Plan Premium requieren el consentimiento del yonke en su dispositivo y pueden desactivarse en cualquier momento desde la configuración del mismo.
         </Seccion>
 
+        <Seccion titulo="15. Buscador Inteligente">
+          <p style={parrafoStyle}>Cuando utilizas el buscador de texto libre, almacenamos el texto que escribes para identificar la pieza, marca, modelo y año que buscas. Usamos esta información para:</p>
+          <p style={parrafoStyle}>(a) Mostrarte resultados de inventario disponible entre nuestros yonkes afiliados; (b) Mejorar y ampliar nuestro catálogo de vehículos y piezas; (c) Si no encontramos tu pieza y tú decides dejarnos un WhatsApp o correo de forma voluntaria, notificarte cuando esa pieza esté disponible.</p>
+          <p style={parrafoStyle}>Dejar tu WhatsApp o correo es completamente opcional. No compartimos esta información con terceros, salvo lo necesario para conectarte directamente con el yonke que tiene la pieza que buscas.</p>
+        </Seccion>
+
         <div style={{ textAlign: 'center', marginTop: '40px' }}>
           <p style={{ color: '#aaa', fontSize: '13px', fontStyle: 'italic' }}>
             Mecanix • Tecnología al servicio del mecánico
