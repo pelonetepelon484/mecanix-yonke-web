@@ -65,12 +65,24 @@ async function buscarVehiculos(yonkesDocs, marca, modelo, anio) {
   return encontrados;
 }
 
+function normalizarPalabras(texto) {
+  return (texto || '').toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+// Match por subconjunto de palabras, no igualdad exacta: así "Parachoques" (extraído sin
+// lado especificado) encuentra tanto "Parachoques delantero" como "Parachoques trasero".
+function piezaCoincide(piezaBuscada, nombreInventario) {
+  const palabrasBuscada = normalizarPalabras(piezaBuscada);
+  const palabrasInventario = new Set(normalizarPalabras(nombreInventario));
+  return palabrasBuscada.length > 0 && palabrasBuscada.every((p) => palabrasInventario.has(p));
+}
+
 async function tienePiezaDisponible(yonkeId, vehiculoId, pieza) {
   const piezasRef = collection(dbServer, 'yonkes', yonkeId, 'vehiculos', vehiculoId, 'piezas');
   const snap = await getDocs(piezasRef);
   return snap.docs.some((pDoc) => {
     const data = pDoc.data();
-    return data.disponible && data.nombre?.toLowerCase() === pieza.toLowerCase();
+    return data.disponible && piezaCoincide(pieza, data.nombre);
   });
 }
 

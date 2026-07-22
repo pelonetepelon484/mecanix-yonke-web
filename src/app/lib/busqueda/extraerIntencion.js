@@ -92,20 +92,59 @@ function extraerMarcaModelo(textoNormalizado) {
   return { marca: marcaFinal, modelo: modeloFinal };
 }
 
+// Palabras de lado/posición: se tratan como calificadores OPCIONALES. Si el usuario no las
+// menciona ("defensa" sin decir delantera/trasera), igual se reconoce la pieza por su base
+// ("Parachoques"), y consultarInventario hace match por subconjunto de palabras (no igualdad
+// exacta) para que "Parachoques" encuentre tanto "Parachoques delantero" como "...trasero".
+const CALIFICADORES_LADO = new Set([
+  'delantero', 'delanteros', 'delantera', 'delanteras',
+  'trasero', 'traseros', 'trasera', 'traseras',
+  'izquierdo', 'izquierdos', 'izquierda', 'izquierdas',
+  'derecho', 'derechos', 'derecha', 'derechas',
+]);
+
+const PIEZAS_INFO = PIEZAS_CATALOGO.map((nombre) => {
+  const palabras = normalizar(nombre).split(/\s+/).filter(Boolean);
+  const calificadores = palabras.filter((p) => CALIFICADORES_LADO.has(p));
+  const base = palabras.filter((p) => !CALIFICADORES_LADO.has(p));
+  return { nombre, palabras, base };
+});
+
 function extraerPieza(textoNormalizado) {
   const palabras = textoNormalizado.split(/\s+/).filter(Boolean)
     .map((p) => SINONIMOS_PALABRA[p] || p);
   const set = new Set(palabras);
 
+  // 1. Match exacto: todas las palabras del nombre canónico (incluye lado si lo tiene).
   let mejor = null;
   let mejorPuntaje = 0;
-  for (const canon of PIEZAS_CATALOGO) {
-    const palabrasCanon = normalizar(canon).split(/\s+/).filter(Boolean);
+  for (const { nombre, palabras: palabrasCanon } of PIEZAS_INFO) {
     const coincideTodo = palabrasCanon.every((pc) => set.has(pc));
     if (coincideTodo && palabrasCanon.length > mejorPuntaje) {
-      mejor = canon;
+      mejor = nombre;
       mejorPuntaje = palabrasCanon.length;
     }
+  }
+  if (mejor) return mejor;
+
+  // 2. Sin calificador de lado: coincidencia solo por la "base" (ej. "parachoques").
+  //    Se agrupan variantes que comparten la misma base para no repetir el mismo puntaje.
+  const basesVistas = new Set();
+  let mejorBase = null;
+  let mejorPuntajeBase = 0;
+  for (const { base } of PIEZAS_INFO) {
+    if (base.length === 0) continue;
+    const clave = base.join(' ');
+    if (basesVistas.has(clave)) continue;
+    basesVistas.add(clave);
+    const coincideBase = base.every((pb) => set.has(pb));
+    if (coincideBase && base.length > mejorPuntajeBase) {
+      mejorPuntajeBase = base.length;
+      mejorBase = clave;
+    }
+  }
+  if (mejorBase) {
+    return mejorBase.charAt(0).toUpperCase() + mejorBase.slice(1);
   }
   return mejor;
 }
