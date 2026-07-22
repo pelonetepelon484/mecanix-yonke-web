@@ -2,7 +2,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { dbServer } from './firebase-server';
 import { CIUDADES_BC } from './ciudades';
 
-async function getRatingParaYonke(yonkeId) {
+export async function getRatingParaYonke(yonkeId) {
   const q = query(collection(dbServer, 'calificaciones'), where('yonkeId', '==', yonkeId));
   const snap = await getDocs(q);
   if (snap.empty) return { promedio: null, total: 0 };

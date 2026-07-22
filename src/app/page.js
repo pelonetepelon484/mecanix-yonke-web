@@ -134,6 +134,12 @@ export default function Home() {
   const [marcaSel, setMarcaSel] = useState('');
   const [modeloSel, setModeloSel] = useState('');
 
+  // Buscador inteligente (texto libre)
+  const [textoLibre, setTextoLibre] = useState('');
+  const [contactoLibre, setContactoLibre] = useState('');
+  const [buscandoLibre, setBuscandoLibre] = useState(false);
+  const [mensajeLibre, setMensajeLibre] = useState(null);
+
   useEffect(() => {
     async function cargarCatalogo() {
       try {
@@ -395,6 +401,47 @@ export default function Home() {
     } finally { setBuscando(false); }
   }
 
+  async function buscarConTextoLibre() {
+    if (!textoLibre.trim()) return;
+    setBuscandoLibre(true);
+    setMensajeLibre(null);
+    try {
+      const res = await fetch('/api/buscar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim() }),
+      });
+      const data = await res.json();
+
+      if (data.estado === 'resultados') {
+        setMensajeLibre(null);
+        setTipoBusqueda('vehiculo');
+        setMarca(data.marca || '');
+        setModelo(data.modelo || '');
+        setAno(data.anio ? String(data.anio) : '');
+        setPiezaSeleccion(data.pieza || '');
+        setResultados(data.resultados);
+        setTipoResultado(data.tipoResultado);
+        setPiezaNoEncontrada(Boolean(data.piezaNoEncontrada));
+        setBusquedaHecha(true);
+        registrarEvento('busqueda_texto_libre', {
+          estado: data.estado,
+          resultados: data.resultados.length,
+        });
+      } else {
+        setResultados([]);
+        setBusquedaHecha(false);
+        setMensajeLibre({ tipo: data.estado, texto: data.mensaje });
+        registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
+      }
+    } catch (error) {
+      console.error(error);
+      setMensajeLibre({ tipo: 'error', texto: 'Hubo un error al buscar, intenta de nuevo.' });
+    } finally {
+      setBuscandoLibre(false);
+    }
+  }
+
   function abrirModalReserva(resultado) {
     setYonkeSeleccionado(resultado);
     setPiezaSolicitada(resultado.esMotor
@@ -585,6 +632,46 @@ function obtenerEstadoAbierto(horario) {
               🔑 Acceso yonkes registrados
             </a>
           </div>
+        </div>
+
+        {/* Buscador inteligente (texto libre) */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 8px 32px rgba(26,60,94,0.10)', marginBottom: '12px' }}>
+          <h2 style={{ fontSize: '18px', color: '#1A3C5E', marginBottom: '6px', fontWeight: '700', letterSpacing: '-0.3px' }}>
+            ✨ Buscador inteligente
+          </h2>
+          <p style={{ fontSize: '13px', color: '#888', marginBottom: '16px' }}>
+            Descríbelo con tus palabras, ej. "defensa delantera para un tsuru 2010"
+          </p>
+          <input
+            className="mecanix-input"
+            type="text"
+            placeholder="¿Qué pieza necesitas?"
+            value={textoLibre}
+            onChange={(e) => setTextoLibre(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') buscarConTextoLibre(); }}
+          />
+          <input
+            className="mecanix-input"
+            type="text"
+            placeholder="Tu WhatsApp (opcional, para avisarte si no hay stock)"
+            value={contactoLibre}
+            onChange={(e) => setContactoLibre(e.target.value)}
+          />
+          <button onClick={buscarConTextoLibre} disabled={buscandoLibre} className="mecanix-btn-primary">
+            {buscandoLibre ? 'Buscando...' : '✨ Buscar con IA'}
+          </button>
+
+          {mensajeLibre && (
+            <div style={{
+              marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
+              backgroundColor: mensajeLibre.tipo === 'sin_inventario' ? '#EEF4FA' : '#FFF8E1',
+              border: `1px solid ${mensajeLibre.tipo === 'sin_inventario' ? '#C5D8EC' : '#FFD54F'}`,
+            }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
+                {mensajeLibre.texto}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Buscador */}
