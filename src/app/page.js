@@ -139,6 +139,7 @@ export default function Home() {
   const [contactoLibre, setContactoLibre] = useState('');
   const [buscandoLibre, setBuscandoLibre] = useState(false);
   const [mensajeLibre, setMensajeLibre] = useState(null);
+  const [encabezadoVehiculo, setEncabezadoVehiculo] = useState(null);
 
   useEffect(() => {
     async function cargarCatalogo() {
@@ -404,6 +405,7 @@ export default function Home() {
   function aplicarRespuestaBusquedaLibre(data) {
     if (data.estado === 'resultados') {
       setMensajeLibre(null);
+      setEncabezadoVehiculo(data.encabezadoVehiculo || null);
       setTipoBusqueda('vehiculo');
       setMarca(data.marca || '');
       setModelo(data.modelo || '');
@@ -417,11 +419,13 @@ export default function Home() {
     } else if (data.estado === 'confirmar') {
       setResultados([]);
       setBusquedaHecha(false);
+      setEncabezadoVehiculo(null);
       setMensajeLibre({ tipo: 'confirmar', texto: data.mensaje, sugerencia: data.sugerencia });
       registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
     } else {
       setResultados([]);
       setBusquedaHecha(false);
+      setEncabezadoVehiculo(null);
       setMensajeLibre({ tipo: data.estado, texto: data.mensaje });
       registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
     }
@@ -837,7 +841,7 @@ function obtenerEstadoAbierto(horario) {
             </p>
           )}
 
-          <button onClick={buscarPiezas} disabled={buscando} className="mecanix-btn-primary">
+          <button onClick={() => { setEncabezadoVehiculo(null); buscarPiezas(); }} disabled={buscando} className="mecanix-btn-primary">
             {buscando ? 'Buscando...' : `🔍 Buscar ${tipoBusqueda === 'motor' ? 'motor' : tipoBusqueda === 'transmision' ? 'transmisión' : 'refacción'}`}
           </button>
         </div>
@@ -913,6 +917,11 @@ function obtenerEstadoAbierto(horario) {
         {busquedaHecha && !buscando && (
 
           <div style={{ marginTop: '20px' }}>
+            {encabezadoVehiculo && (
+              <p style={{ color: '#1A3C5E', fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>
+                {encabezadoVehiculo}
+              </p>
+            )}
             <h3 style={{ color: '#1A3C5E', fontSize: '15px', marginBottom: '12px', fontWeight: '600' }}>
               {getHeaderText()}
             </h3>

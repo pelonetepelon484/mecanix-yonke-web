@@ -259,6 +259,13 @@ export function extraerIntencion(textoOriginal) {
   const pieza = extraerPieza(textoNormalizado);
 
   const reconocido = Boolean(pieza && (marca || modelo));
+  // Vehículo reconocido aunque falte la pieza (ej. "honda civic 2000"): el usuario
+  // probablemente quiere explorar todo el inventario disponible de ese vehículo, no un
+  // error. Distinto de "reconocido", que sigue exigiendo pieza para la búsqueda filtrada.
+  const vehiculoReconocido = Boolean(marca || modelo);
 
-  return { pieza, marca, modelo, anio, reconocido, requiereConfirmacion: reconocido && difuso };
+  return {
+    pieza, marca, modelo, anio, reconocido, vehiculoReconocido,
+    requiereConfirmacion: (reconocido || vehiculoReconocido) && difuso,
+  };
 }

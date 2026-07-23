@@ -3,13 +3,15 @@ import { addDoc, collection } from 'firebase/firestore';
 import { dbServer } from '../../lib/firebase-server';
 import { filtrarPrevio, MENSAJE_RECHAZO_CAPA0 } from '../../lib/busqueda/filtroPrevio';
 import { extraerIntencion } from '../../lib/busqueda/extraerIntencion';
-import { existeEnCatalogoVivo, consultarInventario } from '../../lib/busqueda/consultarInventario';
+import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo } from '../../lib/busqueda/consultarInventario';
 import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLimit';
 
 const MENSAJE_NO_CATALOGADO =
   'No identificamos ese modelo todavía — ¿nos confirmas la marca y el año? o cuéntanos qué modelo es y lo agregamos a la plataforma.';
 const MENSAJE_SIN_INVENTARIO =
   'No tenemos esa pieza en inventario ahorita, pero te avisamos en cuanto algún yonke la registre.';
+const MENSAJE_VEHICULO_SIN_INVENTARIO =
+  'No tenemos ese vehículo en inventario ahorita, pero te avisamos en cuanto algún yonke lo registre.';
 
 function obtenerIp(request) {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -31,9 +33,9 @@ async function guardarSinBloquear(coleccion, datos) {
   }
 }
 
-// Paso 3 en adelante: ya con {pieza, marca, modelo, anio} resueltos (ya sea por extracción
-// exacta o porque el usuario confirmó una sugerencia difusa), valida contra el catálogo vivo
-// y consulta inventario real.
+// Paso 3 en adelante (búsqueda CON pieza): ya con {pieza, marca, modelo, anio} resueltos
+// (extracción exacta o confirmación de sugerencia difusa), valida contra el catálogo vivo
+// y consulta inventario filtrado por esa pieza.
 async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto) {
   if (!modelo) {
     await guardarSinBloquear('modelos_no_reconocidos', {
@@ -78,6 +80,43 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto)
   });
 }
 
+// Búsqueda de solo vehículo (sin pieza): el usuario probablemente quiere explorar todo
+// el inventario disponible de ese vehículo, no un error. Mismo catálogo vivo, pero
+// consultarInventarioVehiculo no filtra/separa por pieza.
+async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto) {
+  const enCatalogo = await existeEnCatalogoVivo(marca, modelo);
+  if (!enCatalogo) {
+    await guardarSinBloquear('modelos_no_reconocidos', {
+      textoOriginal: texto,
+      piezaExtraida: null,
+      marcaExtraida: marca,
+      modeloExtraido: modelo,
+      anioExtraido: anio,
+      fecha: new Date(),
+    });
+    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
+  }
+
+  const { resultados, tipoResultado } = await consultarInventarioVehiculo({ marca, modelo, anio });
+
+  if (resultados.length === 0) {
+    await guardarSinBloquear('busquedas_pendientes', {
+      pieza: null, marca, modelo, anio,
+      textoOriginal: texto,
+      fecha: new Date(),
+    });
+    return NextResponse.json({ estado: 'sin_inventario', mensaje: MENSAJE_VEHICULO_SIN_INVENTARIO });
+  }
+
+  const partesEncabezado = [marca, modelo, anio].filter(Boolean);
+  return NextResponse.json({
+    estado: 'resultados', resultados, tipoResultado,
+    piezaNoEncontrada: false,
+    marca, modelo, anio, pieza: null,
+    encabezadoVehiculo: `Esto es lo que tenemos disponible para ${partesEncabezado.join(' ')}:`,
+  });
+}
+
 export async function POST(request) {
   let body;
   try {
@@ -110,13 +149,16 @@ export async function POST(request) {
 
   // Modo confirmación: el usuario ya aceptó una sugerencia difusa ("¿Quisiste decir...?").
   // Se salta Capa 0/Capa 1 por completo y se va directo al catálogo/inventario.
-  if (confirmado && typeof confirmado.marca === 'string' && typeof confirmado.modelo === 'string') {
-    return resolverBusqueda({
+  if (confirmado && (typeof confirmado.marca === 'string' || typeof confirmado.modelo === 'string')) {
+    const datos = {
       pieza: typeof confirmado.pieza === 'string' ? confirmado.pieza : null,
-      marca: confirmado.marca,
-      modelo: confirmado.modelo,
+      marca: confirmado.marca || null,
+      modelo: confirmado.modelo || null,
       anio: typeof confirmado.anio === 'number' ? confirmado.anio : null,
-    }, texto, contacto);
+    };
+    return datos.pieza
+      ? resolverBusqueda(datos, texto, contacto)
+      : resolverBusquedaVehiculo(datos, texto);
   }
 
   // Capa 0: filtro barato, sin Firestore.
@@ -128,7 +170,7 @@ export async function POST(request) {
   // Capa 1: extracción de intención (reglas + catálogo de 38 marcas, con fuzzy matching).
   const intencion = extraerIntencion(texto);
 
-  if (!intencion.reconocido) {
+  if (!intencion.reconocido && !intencion.vehiculoReconocido) {
     await guardarSinBloquear('busquedas_no_interpretadas', {
       textoOriginal: texto,
       fecha: new Date(),
@@ -137,7 +179,7 @@ export async function POST(request) {
   }
 
   // Marca/modelo resuelto por coincidencia difusa (typo): pedir confirmación antes de
-  // consultar Firestore, en vez de corregir en silencio.
+  // consultar Firestore, en vez de corregir en silencio. Aplica igual con o sin pieza.
   if (intencion.requiereConfirmacion) {
     const partes = [intencion.marca, intencion.modelo, intencion.anio].filter(Boolean);
     return NextResponse.json({
@@ -149,5 +191,10 @@ export async function POST(request) {
     });
   }
 
-  return resolverBusqueda(intencion, texto, contacto);
+  if (intencion.reconocido) {
+    return resolverBusqueda(intencion, texto, contacto);
+  }
+
+  // Vehículo reconocido pero sin pieza: explorar todo el inventario disponible.
+  return resolverBusquedaVehiculo(intencion, texto);
 }

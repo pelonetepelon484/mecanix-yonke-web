@@ -22,12 +22,15 @@ function sinDuplicados(lista) {
 
 // Catálogo VIVO (config/catalogoVehiculos) = modelos con inventario alguna vez registrado.
 // Distinto de CATALOGO_BASE, que es el diccionario amplio usado solo para reconocer texto.
+// modelo=null (búsqueda solo por marca, ej. "nissan 2015"): basta con que la marca tenga
+// algún modelo vivo registrado, sin exigir uno específico.
 export async function existeEnCatalogoVivo(marca, modelo) {
   const snap = await getDoc(doc(dbServer, 'config', 'catalogoVehiculos'));
   if (!snap.exists()) return false;
   const catalogo = snap.data().catalogo || {};
   const modelos = catalogo[marca];
-  if (!modelos) return false;
+  if (!modelos || modelos.length === 0) return false;
+  if (modelo == null) return true;
   return modelos.some((m) => m.toLowerCase() === modelo.toLowerCase());
 }
 
@@ -44,6 +47,7 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
   };
 }
 
+// modelo=null: cualquier modelo de esa marca (búsqueda solo por marca, ej. "nissan 2015").
 async function buscarVehiculos(yonkesDocs, marca, modelo, anio) {
   const encontrados = [];
   for (const yonkeDoc of yonkesDocs) {
@@ -54,8 +58,9 @@ async function buscarVehiculos(yonkesDocs, marca, modelo, anio) {
     const snap = await getDocs(q);
     const coincidentes = snap.docs.filter((vDoc) => {
       const data = vDoc.data();
-      return data.marca?.toLowerCase() === marca.toLowerCase()
-        && data.modelo?.toLowerCase() === modelo.toLowerCase();
+      const marcaOk = data.marca?.toLowerCase() === marca.toLowerCase();
+      const modeloOk = modelo == null || data.modelo?.toLowerCase() === modelo.toLowerCase();
+      return marcaOk && modeloOk;
     });
     for (const vDoc of coincidentes) {
       const calificacion = await getRatingParaYonke(yonkeDoc.id);
@@ -145,4 +150,41 @@ export async function consultarInventario({ marca, modelo, anio, pieza }) {
   const cualquierAno = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));
   ordenarPorPlan(cualquierAno);
   return { resultados: cualquierAno, tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
+}
+
+// Búsqueda de solo vehículo (sin pieza): el usuario quiere ver todo el inventario
+// disponible para esa marca/modelo/año, no una pieza en particular. Mismo pipeline de
+// niveles (exacto -> cercano ±3 -> cualquier año), pero sin separar por disponibilidad
+// de pieza — regresa directamente los vehículos encontrados en el primer nivel con resultados.
+export async function consultarInventarioVehiculo({ marca, modelo, anio }) {
+  const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
+  const yonkesDocs = yonkesSnap.docs;
+
+  if (anio == null) {
+    const resultados = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));
+    ordenarPorPlan(resultados);
+    return { resultados, tipoResultado: 'cualquierAno' };
+  }
+
+  // Nivel 1: año exacto.
+  const exactos = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, anio));
+  if (exactos.length > 0) {
+    ordenarPorPlan(exactos);
+    return { resultados: exactos, tipoResultado: 'exacto' };
+  }
+
+  // Nivel 2: años cercanos ±3.
+  const anosRango = [];
+  for (let d = 1; d <= 3; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
+  const listasCercanas = await Promise.all(anosRango.map((a) => buscarVehiculos(yonkesDocs, marca, modelo, a)));
+  const cercanos = sinDuplicados(listasCercanas.flat());
+  if (cercanos.length > 0) {
+    ordenarPorPlan(cercanos);
+    return { resultados: cercanos, tipoResultado: 'cercano' };
+  }
+
+  // Nivel 3: cualquier año.
+  const cualquierAno = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));
+  ordenarPorPlan(cualquierAno);
+  return { resultados: cualquierAno, tipoResultado: 'cualquierAno' };
 }
