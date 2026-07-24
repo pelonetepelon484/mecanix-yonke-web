@@ -187,15 +187,18 @@ export default function AdminPage() {
 
       let cambios = 0;
 
+      // Nombres de campo EXACTOS exigidos por la regla de Firestore: textoOriginal
+      // (string, 1-299 chars), estado (enum), numResultados (int >= 0, nunca null), origen.
       const noInterpretadasSnap = await getDocs(collection(db, 'busquedas_no_interpretadas'));
       for (const d of noInterpretadasSnap.docs) {
         const data = d.data();
+        const textoOriginal = (data.textoOriginal || '').trim().slice(0, 299) || '(sin texto)';
         await setDoc(doc(db, 'busquedas', `migrado_busquedas_no_interpretadas_${d.id}`), {
-          texto: data.textoOriginal || '', estado: 'no_interpretada',
+          textoOriginal, estado: 'no_interpretada',
           pieza: null, marca: null, modelo: null, anio: null,
-          tipoResultado: null, totalResultados: null, piezaNoEncontrada: null,
-          categoriaFueraDeGiro: null, origen: 'web', tieneContacto: false,
-          fecha: data.fecha || new Date(),
+          tipoResultado: null, numResultados: 0, piezaNoEncontrada: null,
+          subtipo: null, origen: 'web', tieneContacto: false,
+          fecha: data.fecha || Timestamp.now(),
           migrado: true, migradoDesde: 'busquedas_no_interpretadas',
         });
         cambios++;
@@ -204,13 +207,14 @@ export default function AdminPage() {
       const modelosNoReconocidosSnap = await getDocs(collection(db, 'modelos_no_reconocidos'));
       for (const d of modelosNoReconocidosSnap.docs) {
         const data = d.data();
+        const textoOriginal = (data.textoOriginal || '').trim().slice(0, 299) || '(sin texto)';
         await setDoc(doc(db, 'busquedas', `migrado_modelos_no_reconocidos_${d.id}`), {
-          texto: data.textoOriginal || '', estado: 'fuera_de_catalogo',
+          textoOriginal, estado: 'fuera_de_catalogo',
           pieza: data.piezaExtraida || null, marca: data.marcaExtraida || null,
           modelo: data.modeloExtraido || null, anio: data.anioExtraido || null,
-          tipoResultado: null, totalResultados: null, piezaNoEncontrada: null,
-          categoriaFueraDeGiro: null, origen: 'web', tieneContacto: false,
-          fecha: data.fecha || new Date(),
+          tipoResultado: null, numResultados: 0, piezaNoEncontrada: null,
+          subtipo: null, origen: 'web', tieneContacto: false,
+          fecha: data.fecha || Timestamp.now(),
           migrado: true, migradoDesde: 'modelos_no_reconocidos',
         });
         cambios++;

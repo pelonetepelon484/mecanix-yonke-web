@@ -138,14 +138,14 @@ export default function AdminBusquedasPage() {
               titulo="Búsquedas fuera de giro recientes"
               subtitulo="Para revisar falsos positivos del heurístico"
               columnas={['Texto', 'Categoría', 'Fecha']}
-              filas={tablaFueraDeGiro.map((d) => [d.texto, d.categoriaFueraDeGiro || '—', formatearFecha(d.fecha)])}
+              filas={tablaFueraDeGiro.map((d) => [d.textoOriginal, d.subtipo || '—', formatearFecha(d.fecha)])}
             />
 
             <Tabla
               titulo="Búsquedas no interpretadas / parciales recientes"
               subtitulo="Para mejorar la extracción de intención"
               columnas={['Texto', 'Estado', 'Fecha']}
-              filas={tablaNoInterpretadas.map((d) => [d.texto, d.estado, formatearFecha(d.fecha)])}
+              filas={tablaNoInterpretadas.map((d) => [d.textoOriginal, d.estado, formatearFecha(d.fecha)])}
             />
           </>
         )}

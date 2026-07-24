@@ -188,7 +188,7 @@ export async function POST(request) {
   const { esFueraDeGiro, categoria } = await detectarFueraDeGiro(texto, intencion);
   if (esFueraDeGiro) {
     await registrarBusqueda({
-      texto, estado: 'fuera_de_giro', categoriaFueraDeGiro: categoria,
+      texto, estado: 'fuera_de_giro', subtipo: categoria,
       pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
       origen, tieneContacto,
     });
