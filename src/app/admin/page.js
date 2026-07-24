@@ -43,6 +43,7 @@ export default function AdminPage() {
   const [busqueda, setBusqueda] = useState('');
   const [regenerandoCatalogo, setRegenerandoCatalogo] = useState(false);
   const [migrando, setMigrando] = useState(false);
+  const [migrandoBusquedas, setMigrandoBusquedas] = useState(false);
   const [modalPremiumVisible, setModalPremiumVisible] = useState(false);
   const [yonkeParaPremium, setYonkeParaPremium] = useState(null);
   const [fechaPremium, setFechaPremium] = useState('');
@@ -168,6 +169,65 @@ export default function AdminPage() {
     setMigrando(false);
   };
 
+  // Migración one-time de las colecciones viejas de solo-fallos (busquedas_no_interpretadas,
+  // modelos_no_reconocidos) hacia la nueva colección unificada "busquedas". Debe correr desde
+  // aquí (sesión admin autenticada), NUNCA desde la consola del navegador: Firestore cachea
+  // escrituras offline y resuelve las promesas como exitosas aunque el servidor las rechace.
+  const migrarBusquedas = async () => {
+    try {
+      const marcador = await getDoc(doc(db, 'config', 'migracionBusquedas'));
+      if (marcador.exists() && marcador.data().ejecutada) {
+        const fecha = marcador.data().fecha?.toDate ? marcador.data().fecha.toDate() : null;
+        const aviso = `Esta migración ya se ejecutó${fecha ? ` el ${formatearFechaCorta(fecha)}` : ''} (${marcador.data().totalMigrados || 0} docs). ¿Ejecutar de nuevo de todas formas?`;
+        if (!confirm(aviso)) return;
+      } else if (!confirm('Esto migrará los documentos antiguos de busquedas_no_interpretadas y modelos_no_reconocidos hacia la colección "busquedas". ¿Continuar?')) {
+        return;
+      }
+      setMigrandoBusquedas(true);
+
+      let cambios = 0;
+
+      const noInterpretadasSnap = await getDocs(collection(db, 'busquedas_no_interpretadas'));
+      for (const d of noInterpretadasSnap.docs) {
+        const data = d.data();
+        await setDoc(doc(db, 'busquedas', `migrado_busquedas_no_interpretadas_${d.id}`), {
+          texto: data.textoOriginal || '', estado: 'no_interpretada',
+          pieza: null, marca: null, modelo: null, anio: null,
+          tipoResultado: null, totalResultados: null, piezaNoEncontrada: null,
+          categoriaFueraDeGiro: null, origen: 'web', tieneContacto: false,
+          fecha: data.fecha || new Date(),
+          migrado: true, migradoDesde: 'busquedas_no_interpretadas',
+        });
+        cambios++;
+      }
+
+      const modelosNoReconocidosSnap = await getDocs(collection(db, 'modelos_no_reconocidos'));
+      for (const d of modelosNoReconocidosSnap.docs) {
+        const data = d.data();
+        await setDoc(doc(db, 'busquedas', `migrado_modelos_no_reconocidos_${d.id}`), {
+          texto: data.textoOriginal || '', estado: 'fuera_de_catalogo',
+          pieza: data.piezaExtraida || null, marca: data.marcaExtraida || null,
+          modelo: data.modeloExtraido || null, anio: data.anioExtraido || null,
+          tipoResultado: null, totalResultados: null, piezaNoEncontrada: null,
+          categoriaFueraDeGiro: null, origen: 'web', tieneContacto: false,
+          fecha: data.fecha || new Date(),
+          migrado: true, migradoDesde: 'modelos_no_reconocidos',
+        });
+        cambios++;
+      }
+
+      await setDoc(doc(db, 'config', 'migracionBusquedas'), {
+        ejecutada: true, fecha: new Date(), totalMigrados: cambios,
+      });
+
+      alert(`✅ Migración completa: ${noInterpretadasSnap.size} docs de busquedas_no_interpretadas + ${modelosNoReconocidosSnap.size} docs de modelos_no_reconocidos → ${cambios} docs en "busquedas".`);
+    } catch (e) {
+      console.error(e);
+      alert(`❌ Error: ${e.code || ''} ${e.message}`);
+    }
+    setMigrandoBusquedas(false);
+  };
+
   useEffect(() => {
     const ref = collection(db, 'yonkes');
     const q = query(ref, orderBy('nombre'));
@@ -267,6 +327,28 @@ export default function AdminPage() {
             }}
           >
             {migrando ? '⏳ Migrando...' : '🔧 Migrar inventario (1 vez)'}
+          </button>
+          <button
+            onClick={migrarBusquedas}
+            disabled={migrandoBusquedas}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#E8720C', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: migrandoBusquedas ? 'wait' : 'pointer',
+              opacity: migrandoBusquedas ? 0.6 : 1,
+            }}
+          >
+            {migrandoBusquedas ? '⏳ Migrando...' : '🗂️ Migrar logs de búsqueda (1 vez)'}
+          </button>
+          <button
+            onClick={() => router.push('/admin/busquedas')}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            📊 Ver búsquedas
           </button>
         </div>
 
