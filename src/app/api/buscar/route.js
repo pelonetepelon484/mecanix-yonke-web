@@ -223,6 +223,18 @@ export async function POST(request) {
     return resolverBusqueda(intencion, texto, contacto, origen);
   }
 
-  // Vehículo reconocido pero sin pieza: explorar todo el inventario disponible.
+  // Marca reconocida pero el "modelo" mencionado no coincide con ninguno conocido (ej.
+  // "volkswagen atlas 2020" — Atlas no existe en el catálogo): NUNCA hacer fallback
+  // silencioso a buscar toda la marca, mostraría vehículos de un modelo distinto al pedido.
+  if (intencion.modeloDesconocido) {
+    await registrarBusqueda({
+      texto, estado: 'fuera_de_catalogo', pieza: null, marca: intencion.marca, modelo: null,
+      anio: intencion.anio, origen, tieneContacto,
+    });
+    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
+  }
+
+  // Vehículo reconocido pero sin pieza (y sin ningún modelo mencionado): explorar todo
+  // el inventario disponible de la marca.
   return resolverBusquedaVehiculo(intencion, texto, contacto, origen);
 }

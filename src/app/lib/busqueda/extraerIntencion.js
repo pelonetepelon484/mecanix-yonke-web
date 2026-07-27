@@ -122,8 +122,12 @@ function mejorCandidatoDifuso(palabra, candidatos) {
   return mejor;
 }
 
-function extraerMarcaModelo(textoNormalizado) {
-  const palabras = textoNormalizado.split(/\s+/).filter(Boolean);
+function extraerMarcaModelo(textoNormalizado, anio) {
+  // El año ya fue extraído por separado — se excluye de las palabras candidatas a difuso
+  // para que un token como "2008" nunca se compare contra modelos numéricos cortos
+  // (ej. Peugeot "3008"), que es justo el tipo de colisión que el umbral difuso no filtra.
+  const anioStr = anio != null ? String(anio) : null;
+  const palabras = textoNormalizado.split(/\s+/).filter(Boolean).filter((p) => p !== anioStr);
   let difuso = false;
 
   // 1. Exacto: alias/marca por substring en todo el texto.
@@ -191,6 +195,44 @@ function extraerMarcaModelo(textoNormalizado) {
   return { marca, modelo, difuso };
 }
 
+// Palabras que nunca cuentan como "intento de modelo sin explicar": conectores, verbos
+// comunes de búsqueda y cortesía. Todo lo que sobre después de restar marca/año/pieza/estas
+// palabras se interpreta como un modelo que el usuario mencionó pero no reconocimos.
+const PALABRAS_CONECTORAS = new Set([
+  'para', 'de', 'del', 'un', 'una', 'unos', 'unas', 'el', 'la', 'los', 'las',
+  'en', 'con', 'sin', 'y', 'o', 'a', 'al', 'por', 'mi', 'su', 'me', 'se',
+  'busco', 'necesito', 'tengo', 'quiero', 'hola', 'porfavor', 'favor', 'gracias',
+  'que', 'como', 'esta', 'este', 'ese', 'esa', 'tiene', 'tienen', 'hay',
+]);
+
+// Detecta si, con marca ya reconocida pero SIN modelo resuelto, queda en el texto una
+// palabra que probablemente era un intento de modelo (ej. "atlas" en "volkswagen atlas
+// 2020"). Distingue esto de una búsqueda genuina de solo-marca (ej. "nissan 2015"), donde
+// no queda ninguna palabra sin explicar. Es la señal que evita el fallback peligroso de
+// marca+modelo-no-reconocido -> buscar toda la marca (route.js nunca debe hacer ese fallback
+// cuando esto es true; solo lo hace cuando el usuario genuinamente no mencionó modelo).
+function detectarModeloDesconocido(textoNormalizado, { marca, modelo, anio, pieza }) {
+  if (modelo || !marca) return false;
+
+  const aliasPalabras = new Set();
+  for (const [alias, canonica] of Object.entries(ALIAS_MARCA)) {
+    if (canonica === marca) {
+      normalizar(alias).split(/\s+/).forEach((w) => aliasPalabras.add(w));
+    }
+  }
+  const piezaPalabras = new Set(pieza ? normalizar(pieza).split(/\s+/) : []);
+  const anioStr = anio != null ? String(anio) : null;
+
+  const palabras = textoNormalizado.split(/\s+/).filter(Boolean);
+  return palabras.some((p) => {
+    if (aliasPalabras.has(p)) return false;
+    if (p === anioStr) return false;
+    if (PALABRAS_CONECTORAS.has(p)) return false;
+    if (piezaPalabras.has(p)) return false;
+    return true;
+  });
+}
+
 // Palabras de lado/posición: se tratan como calificadores OPCIONALES. Si el usuario no las
 // menciona ("defensa" sin decir delantera/trasera), igual se reconoce la pieza por su base
 // ("Parachoques"), y consultarInventario hace match por subconjunto de palabras (no igualdad
@@ -255,7 +297,7 @@ function extraerPieza(textoNormalizado) {
 export function extraerIntencion(textoOriginal) {
   const textoNormalizado = normalizar(textoOriginal);
   const anio = extraerAnio(textoNormalizado);
-  const { marca, modelo, difuso } = extraerMarcaModelo(textoNormalizado);
+  const { marca, modelo, difuso } = extraerMarcaModelo(textoNormalizado, anio);
   const pieza = extraerPieza(textoNormalizado);
 
   const reconocido = Boolean(pieza && (marca || modelo));
@@ -263,9 +305,14 @@ export function extraerIntencion(textoOriginal) {
   // probablemente quiere explorar todo el inventario disponible de ese vehículo, no un
   // error. Distinto de "reconocido", que sigue exigiendo pieza para la búsqueda filtrada.
   const vehiculoReconocido = Boolean(marca || modelo);
+  // Marca reconocida pero sin modelo Y con una palabra sin explicar (ej. "atlas" en
+  // "volkswagen atlas 2020"): distingue "modelo mencionado pero no reconocido" de una
+  // búsqueda genuina de solo-marca. Quien llama NUNCA debe hacer fallback a buscar toda
+  // la marca cuando esto es true — mostraría vehículos de un modelo distinto al pedido.
+  const modeloDesconocido = detectarModeloDesconocido(textoNormalizado, { marca, modelo, anio, pieza });
 
   return {
-    pieza, marca, modelo, anio, reconocido, vehiculoReconocido,
+    pieza, marca, modelo, anio, reconocido, vehiculoReconocido, modeloDesconocido,
     requiereConfirmacion: (reconocido || vehiculoReconocido) && difuso,
   };
 }
