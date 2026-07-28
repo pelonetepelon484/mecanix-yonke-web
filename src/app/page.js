@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
+import { buscarVehiculosEnAniosParalelo } from './lib/buscarVehiculosPorAnio';
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', nombre, params);
@@ -225,34 +226,28 @@ export default function Home() {
     return encontrados;
   }
 
+  // Los años se consultan EN PARALELO (Promise.all), no uno por uno — antes esto disparaba
+  // un round-trip secuencial por cada (yonke, año), ~9.7s para ±3 años con 14 yonkes. La
+  // consulta+matching en sí vive en lib/buscarVehiculosPorAnio.js (compartido con
+  // lib/busqueda/consultarInventario.js, el buscador inteligente) — si cambia cómo se
+  // compara marca/modelo, cambia para los dos. El orden final no cambia: se reordena a
+  // "yonke primero, año después", igual que el loop secuencial que reemplaza.
   async function buscarEnAnos(yonkesDocs, marcaBuscar, modeloBuscar, anos) {
+    const pares = await buscarVehiculosEnAniosParalelo(db, yonkesDocs, marcaBuscar, modeloBuscar, anos);
     const encontrados = [];
-    for (const yonkeDoc of yonkesDocs) {
+    for (const { yonkeDoc, vDoc } of pares) {
+      const yaExiste = encontrados.some(r => r.yonkeId === yonkeDoc.id && r.vehiculoId === vDoc.id);
+      if (yaExiste) continue;
       const yonkeData = yonkeDoc.data();
-      if (!yonkeData.activo) continue;
-      for (const anoRango of anos) {
-        const vehiculosRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos');
-        const q = query(vehiculosRef, where('ano', '==', anoRango));
-        const vehiculosSnap = await getDocs(q);
-        const vehiculosCoincidentes = vehiculosSnap.docs.filter((vDoc) => {
-          const data = vDoc.data();
-          return data.marca?.toLowerCase() === marcaBuscar.trim().toLowerCase() &&
-            data.modelo?.toLowerCase() === modeloBuscar.trim().toLowerCase();
-        });
-        for (const vDoc of vehiculosCoincidentes) {
-          const yaExiste = encontrados.some(r => r.yonkeId === yonkeDoc.id && r.vehiculoId === vDoc.id);
-          if (yaExiste) continue;
-          const calificacion = await obtenerCalificacion(yonkeDoc.id);
-          encontrados.push({
-            yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-            yonkeNombre: yonkeData.nombre, direccion: yonkeData.direccion,
-            telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-            metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
-            ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
-            vehiculo: vDoc.data(), calificacion,
-          });
-        }
-      }
+      const calificacion = await obtenerCalificacion(yonkeDoc.id);
+      encontrados.push({
+        yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
+        yonkeNombre: yonkeData.nombre, direccion: yonkeData.direccion,
+        telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
+        metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+        ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+        vehiculo: vDoc.data(), calificacion,
+      });
     }
     return encontrados;
   }
@@ -264,6 +259,10 @@ export default function Home() {
       if (!yonkeData.activo) continue;
       const vehiculosRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos');
       const vehiculosSnap = await getDocs(vehiculosRef);
+      // DEUDA TÉCNICA: el filtrado de marca/modelo se hace client-side tras traer por año, lo que
+      // desperdicia lecturas de Firestore. Irrelevante con ~14 yonkes; revisar si se acerca a ~100
+      // yonkes o si el bot de WhatsApp genera tráfico alto, moviendo el filtro a la query (requiere
+      // índices compuestos marca+modelo+ano).
       const vehiculosCoincidentes = vehiculosSnap.docs.filter((vDoc) => {
         const data = vDoc.data();
         return data.marca?.toLowerCase() === marcaBuscar.trim().toLowerCase() &&
@@ -329,6 +328,10 @@ export default function Home() {
         const vehiculosRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos');
         const q = query(vehiculosRef, where('ano', '==', parseInt(ano)));
         const vehiculosSnapTodos = await getDocs(q);
+        // DEUDA TÉCNICA: el filtrado de marca/modelo se hace client-side tras traer por año, lo que
+        // desperdicia lecturas de Firestore. Irrelevante con ~14 yonkes; revisar si se acerca a ~100
+        // yonkes o si el bot de WhatsApp genera tráfico alto, moviendo el filtro a la query (requiere
+        // índices compuestos marca+modelo+ano).
         const vehiculosCoincidentes = vehiculosSnapTodos.docs.filter((vDoc) => {
           const data = vDoc.data();
           return data.marca?.toLowerCase() === marca.trim().toLowerCase() &&

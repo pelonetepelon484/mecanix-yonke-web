@@ -1,6 +1,7 @@
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { dbServer } from '../firebase-server';
 import { getRatingParaYonke } from '../yonkesServerData';
+import { buscarVehiculosPorAnio } from '../buscarVehiculosPorAnio';
 
 function ordenarPorPlan(lista) {
   return lista.sort((a, b) => {
@@ -48,24 +49,16 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
 }
 
 // modelo=null: cualquier modelo de esa marca (búsqueda solo por marca, ej. "nissan 2015").
+// El matching en sí (marca/modelo/año contra las subcolecciones de vehiculos) vive en
+// lib/buscarVehiculosPorAnio.js, compartido con el buscador manual (page.js) — si cambia
+// cómo se compara marca/modelo, cambia para los dos. Aquí solo se agrega calificación y
+// se da forma al resultado (con fechaIngreso removido, porque esto cruza a JSON en /api/buscar).
 async function buscarVehiculos(yonkesDocs, marca, modelo, anio) {
+  const pares = await buscarVehiculosPorAnio(dbServer, yonkesDocs, marca, modelo, anio);
   const encontrados = [];
-  for (const yonkeDoc of yonkesDocs) {
-    const yonkeData = yonkeDoc.data();
-    if (!yonkeData.activo) continue;
-    const vehiculosRef = collection(dbServer, 'yonkes', yonkeDoc.id, 'vehiculos');
-    const q = anio != null ? query(vehiculosRef, where('ano', '==', anio)) : vehiculosRef;
-    const snap = await getDocs(q);
-    const coincidentes = snap.docs.filter((vDoc) => {
-      const data = vDoc.data();
-      const marcaOk = data.marca?.toLowerCase() === marca.toLowerCase();
-      const modeloOk = modelo == null || data.modelo?.toLowerCase() === modelo.toLowerCase();
-      return marcaOk && modeloOk;
-    });
-    for (const vDoc of coincidentes) {
-      const calificacion = await getRatingParaYonke(yonkeDoc.id);
-      encontrados.push(toResultado(yonkeDoc, vDoc, calificacion));
-    }
+  for (const { yonkeDoc, vDoc } of pares) {
+    const calificacion = await getRatingParaYonke(yonkeDoc.id);
+    encontrados.push(toResultado(yonkeDoc, vDoc, calificacion));
   }
   return encontrados;
 }
@@ -135,6 +128,9 @@ export async function consultarInventario({ marca, modelo, anio, pieza }) {
   }
 
   // Nivel 2: años cercanos ±3, mismo marca/modelo (sin filtrar por pieza específica).
+  // Los 6 años se consultan EN PARALELO (Promise.all), no uno por uno — page.js hace lo
+  // mismo para su nivel "cercano" (vía buscarVehiculosEnAniosParalelo en
+  // lib/buscarVehiculosPorAnio.js). Si se cambia esta paralelización aquí, replicarlo allá.
   const anosRango = [];
   for (let d = 1; d <= 3; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
   const listasCercanas = await Promise.all(
@@ -173,7 +169,8 @@ export async function consultarInventarioVehiculo({ marca, modelo, anio }) {
     return { resultados: exactos, tipoResultado: 'exacto' };
   }
 
-  // Nivel 2: años cercanos ±3.
+  // Nivel 2: años cercanos ±3. En paralelo (Promise.all), no uno por uno — ver nota
+  // equivalente en consultarInventario() sobre buscarVehiculosEnAniosParalelo en page.js.
   const anosRango = [];
   for (let d = 1; d <= 3; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
   const listasCercanas = await Promise.all(anosRango.map((a) => buscarVehiculos(yonkesDocs, marca, modelo, a)));

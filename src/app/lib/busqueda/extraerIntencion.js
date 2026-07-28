@@ -59,10 +59,6 @@ function extraerAnio(textoNormalizado) {
   return anio >= 1980 && anio <= 2035 ? anio : null;
 }
 
-function escaparRegex(texto) {
-  return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 // Distancia de Levenshtein clásica (edición mínima entre dos strings).
 function distanciaLevenshtein(a, b) {
   const m = a.length, n = b.length;
@@ -122,6 +118,30 @@ function mejorCandidatoDifuso(palabra, candidatos) {
   return mejor;
 }
 
+// Quita puntuación pegada a los bordes de un token (comas, signos, etc.) preservando
+// guiones internos — así "civic," compara igual que "civic", pero "cx-3" sigue siendo
+// un solo token distinto de "3" (el guion no es borde, es parte del token).
+function limpiarToken(token) {
+  return token.replace(/^[^a-z0-9-]+/, '').replace(/[^a-z0-9-]+$/, '');
+}
+
+// Compara por SECUENCIA DE TOKENS completos (separados por espacio), no por substring con
+// límites de palabra (\b). Esto es lo que permite que modelos numéricos cortos como "3" o
+// "6" (Mazda) o multi-palabra como "Serie 3" (BMW) casen exacto sin los falsos positivos
+// que un regex \b tendría contra tokens compuestos con guion (ej. "cx-3" contiene un "3"
+// delimitado por \b, pero como TOKEN completo "cx-3" nunca es igual a "3").
+function contieneSecuenciaTokens(tokensTexto, tokensModelo) {
+  if (tokensModelo.length === 0) return false;
+  for (let i = 0; i <= tokensTexto.length - tokensModelo.length; i++) {
+    let coincide = true;
+    for (let j = 0; j < tokensModelo.length; j++) {
+      if (tokensTexto[i + j] !== tokensModelo[j]) { coincide = false; break; }
+    }
+    if (coincide) return true;
+  }
+  return false;
+}
+
 function extraerMarcaModelo(textoNormalizado, anio) {
   // El año ya fue extraído por separado — se excluye de las palabras candidatas a difuso
   // para que un token como "2008" nunca se compare contra modelos numéricos cortos
@@ -139,16 +159,20 @@ function extraerMarcaModelo(textoNormalizado, anio) {
     }
   }
 
-  // 2. Exacto: modelo por palabra completa (funciona incluso sin marca, ej. "tsuru 2010").
+  // 2. Exacto: modelo por secuencia de tokens completos (funciona incluso sin marca, ej.
+  // "tsuru 2010"). Si ya se encontró marca por alias, se prueban primero sus propios modelos
+  // (evita que un token corto/genérico case por error contra otra marca) y luego el resto.
   let modeloEncontrado = null;
   let marcaDelModelo = null;
-  for (const [marca, modelos] of Object.entries(CATALOGO_BASE)) {
+  const tokensTexto = textoNormalizado.split(/\s+/).filter(Boolean).map(limpiarToken);
+  const marcasAProbar = marcaEncontrada
+    ? [marcaEncontrada, ...Object.keys(CATALOGO_BASE).filter((m) => m !== marcaEncontrada)]
+    : Object.keys(CATALOGO_BASE);
+  for (const marca of marcasAProbar) {
+    const modelos = CATALOGO_BASE[marca] || [];
     for (const modelo of modelos) {
-      const modeloNorm = normalizar(modelo);
-      // Evita falsos positivos con modelos de una sola letra/número corto (ej. Mazda "2", "3").
-      if (modeloNorm.length < 2) continue;
-      const regex = new RegExp(`\\b${escaparRegex(modeloNorm)}\\b`);
-      if (regex.test(textoNormalizado)) {
+      const tokensModelo = normalizar(modelo).split(/\s+/).filter(Boolean);
+      if (contieneSecuenciaTokens(tokensTexto, tokensModelo)) {
         modeloEncontrado = modelo;
         marcaDelModelo = marca;
         break;
