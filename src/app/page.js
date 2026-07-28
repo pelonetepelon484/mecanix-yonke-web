@@ -212,6 +212,7 @@ export default function Home() {
           motorId: mDoc.id,
           motor: mDoc.data(),
           yonkeNombre: yonkeData.nombre,
+          logoUrl: yonkeData.logoUrl || null,
           direccion: yonkeData.direccion,
           telefono: yonkeData.telefono,
           whatsapp: yonkeData.whatsapp || '',
@@ -242,7 +243,7 @@ export default function Home() {
       const calificacion = await obtenerCalificacion(yonkeDoc.id);
       encontrados.push({
         yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-        yonkeNombre: yonkeData.nombre, direccion: yonkeData.direccion,
+        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
         metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
         ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -274,7 +275,7 @@ export default function Home() {
         const calificacion = await obtenerCalificacion(yonkeDoc.id);
         encontrados.push({
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-          yonkeNombre: yonkeData.nombre, direccion: yonkeData.direccion,
+          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
           metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
           ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -341,7 +342,7 @@ export default function Home() {
           const calificacion = await obtenerCalificacion(yonkeDoc.id);
           const resultadoBase = {
             yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-            yonkeNombre: yonkeData.nombre, direccion: yonkeData.direccion,
+            yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, direccion: yonkeData.direccion,
             telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
             metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
             ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -959,7 +960,16 @@ function obtenerEstadoAbierto(horario) {
               <div key={i} style={resultCardStyle}>
                 {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
 
-                <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {r.logoUrl && (
+                    <img
+                      src={r.logoUrl}
+                      alt={r.yonkeNombre}
+                      style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
+                    />
+                  )}
+                  <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+                </div>
 
                 {r.ciudad && (
                   <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: '600', margin: '3px 0 0' }}>

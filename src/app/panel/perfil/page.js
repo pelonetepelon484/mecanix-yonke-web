@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteField } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 
 const METODOS_PAGO = [
   { key: 'efectivo', label: 'Efectivo' },
@@ -49,6 +50,8 @@ export default function PerfilPanel() {
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
   const [loadingPerfil, setLoadingPerfil] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(null);
+  const [subiendoLogo, setSubiendoLogo] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -69,11 +72,48 @@ export default function PerfilPanel() {
         setTelefono(data.telefono || '');
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
+        setLogoUrl(data.logoUrl || null);
       }
       setLoadingPerfil(false);
     }
     cargarPerfil();
   }, [yonkeId]);
+
+  async function manejarSeleccionLogo(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite volver a elegir el mismo archivo si se corrige algo
+    if (!file) return;
+
+    const errorValidacion = validarArchivoLogo(file);
+    if (errorValidacion) { alert(errorValidacion); return; }
+
+    setSubiendoLogo(true);
+    try {
+      const url = await subirLogoYonke(yonkeId, file);
+      await setDoc(doc(db, 'yonkes', yonkeId), { logoUrl: url }, { merge: true });
+      setLogoUrl(url);
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo subir el logo. Intenta de nuevo.');
+    } finally {
+      setSubiendoLogo(false);
+    }
+  }
+
+  async function quitarLogo() {
+    if (!confirm('¿Quitar el logo actual? Volverá a mostrarse solo el nombre del yonke.')) return;
+    setSubiendoLogo(true);
+    try {
+      await borrarLogoYonke(yonkeId);
+      await setDoc(doc(db, 'yonkes', yonkeId), { logoUrl: deleteField() }, { merge: true });
+      setLogoUrl(null);
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo quitar el logo. Intenta de nuevo.');
+    } finally {
+      setSubiendoLogo(false);
+    }
+  }
 
   function toggleMetodo(key) {
     setMetodosPago(prev =>
@@ -145,6 +185,45 @@ export default function PerfilPanel() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
+
+        {/* Logo del negocio */}
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Logo del negocio</h2>
+          <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
+            Aparece junto a tu nombre en los resultados de búsqueda. PNG, JPEG o WEBP, máximo 2MB.
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px' }}>
+            <div style={logoPreviewBoxStyle}>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo actual" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              ) : (
+                <span style={{ fontSize: '11px', color: '#bbb', textAlign: 'center' }}>Sin logo</span>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ ...saveButtonStyle, display: 'block', textAlign: 'center', opacity: subiendoLogo ? 0.6 : 1, cursor: subiendoLogo ? 'wait' : 'pointer', marginBottom: logoUrl ? '8px' : 0 }}>
+                {subiendoLogo ? 'Procesando...' : (logoUrl ? 'Reemplazar logo' : 'Subir logo')}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={manejarSeleccionLogo}
+                  disabled={subiendoLogo}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {logoUrl && (
+                <button
+                  onClick={quitarLogo}
+                  disabled={subiendoLogo}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#C62828', fontWeight: 'bold', fontSize: '13px', cursor: subiendoLogo ? 'wait' : 'pointer' }}
+                >
+                  Quitar logo
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Información del negocio */}
         <div style={sectionStyle}>
@@ -253,6 +332,11 @@ export default function PerfilPanel() {
   );
 }
 
+const logoPreviewBoxStyle = {
+  width: '72px', height: '72px', borderRadius: '10px', border: '1px solid #eee',
+  backgroundColor: '#F4F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  flexShrink: 0, overflow: 'hidden',
+};
 const sectionStyle = {
   backgroundColor: '#fff', borderRadius: '12px', padding: '18px',
   marginBottom: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',

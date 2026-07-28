@@ -40,7 +40,8 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
   // fechaIngreso es un Timestamp de Firestore — se omite para que la respuesta sea JSON limpio.
   const { fechaIngreso, ...vehiculo } = vDoc.data();
   return {
-    yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, direccion: yonkeData.direccion,
+    yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
+    direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
