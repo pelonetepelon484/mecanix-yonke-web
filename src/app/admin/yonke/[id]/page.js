@@ -2,8 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, getDoc, setDoc, Timestamp, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, deleteField, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
+import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
+
+// Mismos textos que "Reenviar recuperación" en la app (UsuariosYonkeScreen.js en
+// mecanix-yonke-virtual2) para que la experiencia sea idéntica en web y app.
+function mostrarResultadoRecuperacion(resultado, email) {
+  if (resultado.ok) {
+    alert(`Listo\n\nSe envió el correo de recuperación a ${email}`);
+  } else if (resultado.tipo === 'sin-conexion') {
+    alert('Sin conexión\n\nNecesitas conexión a internet para enviar el correo de recuperación.');
+  } else if (resultado.tipo === 'invalido' || resultado.tipo === 'vacio') {
+    alert('Error\n\nEste usuario no tiene un correo válido registrado.');
+  } else {
+    alert('Error\n\nNo se pudo enviar el correo de recuperación. Intenta de nuevo.');
+  }
+}
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -69,6 +84,26 @@ export default function EditarYonkePage() {
   const [activo, setActivo] = useState(true);
   const [metodosPago, setMetodosPago] = useState([]);
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
+
+  const [usuarios, setUsuarios] = useState([]);
+  const [reenviandoId, setReenviandoId] = useState(null);
+
+  useEffect(() => {
+    async function cargarUsuarios() {
+      const ref = collection(db, 'usuarios');
+      const q = query(ref, where('yonkeId', '==', id));
+      const snap = await getDocs(q);
+      setUsuarios(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }
+    cargarUsuarios();
+  }, [id]);
+
+  async function reenviarRecuperacion(usuario) {
+    setReenviandoId(usuario.id);
+    const resultado = await enviarRecuperacionPassword(usuario.email);
+    setReenviandoId(null);
+    mostrarResultadoRecuperacion(resultado, usuario.email);
+  }
 
   useEffect(() => {
     async function cargarYonke() {
@@ -195,6 +230,25 @@ export default function EditarYonkePage() {
           <p style={labelStyle}>Correo electrónico</p>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@ejemplo.com" style={inputStyle} />
         </div>
+
+        {/* Usuarios con acceso */}
+        {usuarios.length > 0 && (
+          <div style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>Usuarios con acceso</h2>
+            {usuarios.map((u) => (
+              <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #F4F5F5' }}>
+                <span style={{ fontSize: '14px', color: '#333' }}>{u.email}</span>
+                <button
+                  onClick={() => reenviarRecuperacion(u)}
+                  disabled={reenviandoId === u.id}
+                  style={{ background: 'none', border: 'none', color: '#1A3C5E', fontWeight: 'bold', fontSize: '13px', cursor: reenviandoId === u.id ? 'wait' : 'pointer' }}
+                >
+                  {reenviandoId === u.id ? 'Enviando...' : 'Reenviar recuperación de contraseña'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Plan y estado */}
         <div style={sectionStyle}>

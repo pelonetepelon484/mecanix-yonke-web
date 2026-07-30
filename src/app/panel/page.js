@@ -5,6 +5,21 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { useAuth } from './AuthContext';
+import { enviarRecuperacionPassword } from '../lib/passwordReset';
+
+// Mismos textos que la app (LoginScreen.js en mecanix-yonke-virtual2) para que la
+// experiencia de recuperación de contraseña sea idéntica en web y app.
+function mostrarResultadoRecuperacion(resultado) {
+  if (resultado.ok) {
+    alert('Revisa tu correo\n\nSi ese correo está registrado, te llegará un enlace para restablecer tu contraseña. Revisa tu bandeja (y la carpeta de spam).');
+  } else if (resultado.tipo === 'sin-conexion') {
+    alert('Sin conexión\n\nNecesitas conexión a internet para enviar el correo de recuperación.');
+  } else if (resultado.tipo === 'invalido' || resultado.tipo === 'vacio') {
+    alert('Correo inválido\n\nEscribe un correo electrónico válido.');
+  } else {
+    alert('Error\n\nNo se pudo enviar el correo de recuperación. Intenta de nuevo.');
+  }
+}
 
 export default function PanelLogin() {
   const router = useRouter();
@@ -13,6 +28,10 @@ export default function PanelLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [entrando, setEntrando] = useState(false);
+
+  const [modalRecuperarVisible, setModalRecuperarVisible] = useState(false);
+  const [emailRecuperar, setEmailRecuperar] = useState('');
+  const [enviandoRecuperacion, setEnviandoRecuperacion] = useState(false);
 
   // Redirigir según rol cuando ya hay sesión
   if (!loading && user) {
@@ -38,6 +57,20 @@ export default function PanelLogin() {
     } finally {
       setEntrando(false);
     }
+  }
+
+  function abrirRecuperar() {
+    setEmailRecuperar(email);
+    setModalRecuperarVisible(true);
+  }
+
+  async function enviarRecuperacion() {
+    setEnviandoRecuperacion(true);
+    const resultado = await enviarRecuperacionPassword(emailRecuperar);
+    setEnviandoRecuperacion(false);
+
+    if (resultado.ok) setModalRecuperarVisible(false);
+    mostrarResultadoRecuperacion(resultado);
   }
 
   return (
@@ -81,6 +114,12 @@ export default function PanelLogin() {
             {entrando ? 'Entrando...' : 'Iniciar sesión'}
           </button>
 
+          <div style={{ textAlign: 'center', marginTop: '14px' }}>
+            <button onClick={abrirRecuperar} style={olvideButtonStyle}>
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
+
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
             <p style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>
               ¿Tienes un yonke y quieres aparecer en la plataforma?
@@ -94,6 +133,41 @@ export default function PanelLogin() {
           </div>
         </div>
       </div>
+
+      {modalRecuperarVisible && (
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            <p style={modalTitleStyle}>Recuperar contraseña</p>
+            <p style={modalSubStyle}>
+              Escribe tu correo y te enviaremos un enlace para establecer una contraseña nueva.
+            </p>
+
+            <input
+              type="email"
+              placeholder="Correo electrónico"
+              value={emailRecuperar}
+              onChange={(e) => setEmailRecuperar(e.target.value)}
+              style={inputStyle}
+            />
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+              <button
+                onClick={() => setModalRecuperarVisible(false)}
+                style={modalCancelarStyle}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={enviarRecuperacion}
+                disabled={enviandoRecuperacion}
+                style={{ ...modalEnviarStyle, opacity: enviandoRecuperacion ? 0.6 : 1, cursor: enviandoRecuperacion ? 'wait' : 'pointer' }}
+              >
+                {enviandoRecuperacion ? 'Enviando...' : 'Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -112,4 +186,33 @@ const registerButtonStyle = {
   width: '100%', padding: '12px', borderRadius: '8px',
   border: '2px solid #1A3C5E', backgroundColor: '#fff',
   color: '#1A3C5E', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer',
+};
+const olvideButtonStyle = {
+  background: 'none', border: 'none', color: '#1A3C5E',
+  fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
+};
+const overlayStyle = {
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
+  justifyContent: 'center', padding: '24px', zIndex: 200,
+};
+const modalStyle = {
+  backgroundColor: '#fff', borderRadius: '16px', padding: '24px',
+  maxWidth: '380px', width: '100%', boxSizing: 'border-box',
+};
+const modalTitleStyle = {
+  fontSize: '18px', fontWeight: 'bold', color: '#1A3C5E', margin: '0 0 8px',
+};
+const modalSubStyle = {
+  fontSize: '13px', color: '#666', margin: '0 0 16px', lineHeight: '18px',
+};
+const modalCancelarStyle = {
+  flex: 1, padding: '14px', borderRadius: '8px', border: 'none',
+  backgroundColor: '#F4F5F5', color: '#888', fontWeight: 'bold',
+  fontSize: '14px', cursor: 'pointer',
+};
+const modalEnviarStyle = {
+  flex: 1, padding: '14px', borderRadius: '8px', border: 'none',
+  backgroundColor: '#E8720C', color: '#fff', fontWeight: 'bold',
+  fontSize: '14px', cursor: 'pointer',
 };
