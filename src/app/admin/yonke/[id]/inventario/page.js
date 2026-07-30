@@ -166,6 +166,7 @@ export default function InventarioAdminPage() {
           ...(motorTipo === 'Transmisión' ? { transmision: motorTransmision } : {}),
         });
       }
+      await registrarEnCatalogo(motorMarca.trim(), motorModelo.trim());
       setMotorModalVisible(false);
     } catch (error) {
       console.error(error); alert('No se pudo guardar');
@@ -337,8 +338,11 @@ export default function InventarioAdminPage() {
                 </button>
               ))}
             </div>
-            <input type="text" placeholder="Marca" value={motorMarca} onChange={(e) => setMotorMarca(e.target.value)} style={inputStyle} />
-            <input type="text" placeholder="Modelo" value={motorModelo} onChange={(e) => setMotorModelo(e.target.value)} style={inputStyle} />
+            <SelectorMarcaModelo
+              marca={motorMarca} modelo={motorModelo}
+              onMarca={setMotorMarca} onModelo={setMotorModelo}
+              inputStyle={inputStyle}
+            />
             <input type="number" placeholder="Año" value={motorAno} onChange={(e) => setMotorAno(e.target.value)} style={inputStyle} />
             {motorTipo === 'Motor' ? (
               <>
