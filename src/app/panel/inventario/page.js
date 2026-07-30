@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  collection, addDoc, query, onSnapshot, deleteDoc, doc, orderBy, writeBatch, updateDoc
+  collection, addDoc, query, onSnapshot, deleteDoc, doc, orderBy, writeBatch, updateDoc, deleteField
 } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarcaModelo';
+import SelectorOpciones from '../../lib/SelectorOpciones';
+import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../lib/opcionesVehiculo';
 
 const PIEZAS_COMUNES = [
   'Faro delantero izquierdo', 'Faro delantero derecho', 'Calavera trasera izquierda', 'Calavera trasera derecha',
@@ -51,6 +53,7 @@ export default function InventarioPanel() {
   const [ano, setAno] = useState('');
   const [transmision, setTransmision] = useState('Manual');
   const [traccion, setTraccion] = useState('Sencillo');
+  const [configuracionMotor, setConfiguracionMotor] = useState(OTRO_NO_ESPECIFICADO);
   const [cilindrada, setCilindrada] = useState('');
   const [guardando, setGuardando] = useState(false);
 
@@ -61,6 +64,8 @@ export default function InventarioPanel() {
   const [motorMarca, setMotorMarca] = useState('');
   const [motorModelo, setMotorModelo] = useState('');
   const [motorAno, setMotorAno] = useState('');
+  const [motorConfiguracionMotor, setMotorConfiguracionMotor] = useState(OTRO_NO_ESPECIFICADO);
+  const [motorTransmision, setMotorTransmision] = useState(OTRO_NO_ESPECIFICADO);
   const [motorCilindrada, setMotorCilindrada] = useState('');
   const [motorDisponible, setMotorDisponible] = useState(true);
   const [guardandoMotor, setGuardandoMotor] = useState(false);
@@ -105,7 +110,7 @@ export default function InventarioPanel() {
   function abrirModalAgregar() {
     setVehiculoEditando(null);
     setMarca(''); setModelo(''); setAno('');
-    setTransmision('Manual'); setTraccion('Sencillo'); setCilindrada('');
+    setTransmision('Manual'); setTraccion('Sencillo'); setConfiguracionMotor(OTRO_NO_ESPECIFICADO); setCilindrada('');
     setModalVisible(true);
   }
 
@@ -113,14 +118,17 @@ export default function InventarioPanel() {
     setVehiculoEditando(vehiculo);
     setMarca(vehiculo.marca || ''); setModelo(vehiculo.modelo || '');
     setAno(String(vehiculo.ano || '')); setTransmision(vehiculo.transmision || 'Manual');
-    setTraccion(vehiculo.traccion || 'Sencillo'); setCilindrada(vehiculo.cilindrada || '');
+    setTraccion(vehiculo.traccion || 'Sencillo');
+    setConfiguracionMotor(vehiculo.configuracionMotor || OTRO_NO_ESPECIFICADO);
+    setCilindrada(vehiculo.cilindrada || '');
     setModalVisible(true);
   }
 
   function abrirModalMotor() {
     setMotorEditando(null);
     setMotorTipo('Motor'); setMotorMarca(''); setMotorModelo('');
-    setMotorAno(''); setMotorCilindrada(''); setMotorDisponible(true);
+    setMotorAno(''); setMotorConfiguracionMotor(OTRO_NO_ESPECIFICADO); setMotorTransmision(OTRO_NO_ESPECIFICADO);
+    setMotorCilindrada(''); setMotorDisponible(true);
     setMotorModalVisible(true);
   }
 
@@ -128,6 +136,8 @@ export default function InventarioPanel() {
     setMotorEditando(motor);
     setMotorTipo(motor.tipo || 'Motor'); setMotorMarca(motor.marca || '');
     setMotorModelo(motor.modelo || ''); setMotorAno(String(motor.ano || ''));
+    setMotorConfiguracionMotor(motor.configuracionMotor || OTRO_NO_ESPECIFICADO);
+    setMotorTransmision(motor.transmision || OTRO_NO_ESPECIFICADO);
     setMotorCilindrada(motor.cilindrada || ''); setMotorDisponible(motor.disponible !== false);
     setMotorModalVisible(true);
   }
@@ -140,13 +150,13 @@ export default function InventarioPanel() {
         const vehiculoRef = doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoEditando.id);
         await updateDoc(vehiculoRef, {
           marca: marca.trim(), modelo: modelo.trim(), ano: parseInt(ano),
-          transmision, traccion, cilindrada: cilindrada.trim() || null,
+          transmision, traccion, configuracionMotor, cilindrada: cilindrada.trim() || null,
         });
       } else {
         const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
         const vehiculoRef = await addDoc(ref, {
           marca: marca.trim(), modelo: modelo.trim(), ano: parseInt(ano),
-          transmision, traccion, cilindrada: cilindrada.trim() || null,
+          transmision, traccion, configuracionMotor, cilindrada: cilindrada.trim() || null,
           disponible: true, fechaIngreso: new Date(),
         });
         await crearPiezasComunes(vehiculoRef);
@@ -164,18 +174,24 @@ export default function InventarioPanel() {
     }
     setGuardandoMotor(true);
     try {
+      // configuracionMotor solo aplica a tipo "Motor"; transmision solo a tipo "Transmisión"
+      // — mismos campos y mismo vocabulario que usa el vehículo, para que las búsquedas casen.
       if (motorEditando) {
         const motorRef = doc(db, 'yonkes', yonkeId, 'motores', motorEditando.id);
         await updateDoc(motorRef, {
           tipo: motorTipo, marca: motorMarca.trim(), modelo: motorModelo.trim(),
           ano: parseInt(motorAno), cilindrada: motorCilindrada.trim() || null,
           disponible: motorDisponible,
+          configuracionMotor: motorTipo === 'Motor' ? motorConfiguracionMotor : deleteField(),
+          transmision: motorTipo === 'Transmisión' ? motorTransmision : deleteField(),
         });
       } else {
         await addDoc(collection(db, 'yonkes', yonkeId, 'motores'), {
           tipo: motorTipo, marca: motorMarca.trim(), modelo: motorModelo.trim(),
           ano: parseInt(motorAno), cilindrada: motorCilindrada.trim() || null,
           disponible: true, fechaIngreso: new Date(),
+          ...(motorTipo === 'Motor' ? { configuracionMotor: motorConfiguracionMotor } : {}),
+          ...(motorTipo === 'Transmisión' ? { transmision: motorTransmision } : {}),
         });
       }
       setMotorModalVisible(false); setMotorEditando(null);
@@ -278,7 +294,7 @@ export default function InventarioPanel() {
                       {v.marca} {v.modelo}
                     </p>
                     <p style={{ color: '#888', fontSize: '13px', margin: '2px 0 0' }}>
-                      {v.ano} · {v.transmision} · {v.traccion}{v.cilindrada ? ` · ${v.cilindrada}` : ''}
+                      {v.ano} · {v.transmision} · {v.traccion}{v.configuracionMotor ? ` · ${v.configuracionMotor}` : ''}{v.cilindrada ? ` · ${v.cilindrada}` : ''}
                     </p>
                     <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: 'bold', marginTop: '6px' }}>
                       Ver / editar piezas →
@@ -318,8 +334,10 @@ export default function InventarioPanel() {
                   <p style={{ fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px', margin: '6px 0 0' }}>
                     {m.marca} {m.modelo} {m.ano}
                   </p>
-                  {m.cilindrada && (
-                    <p style={{ color: '#888', fontSize: '13px', margin: '2px 0 0' }}>{m.cilindrada}</p>
+                  {(m.configuracionMotor || m.transmision || m.cilindrada) && (
+                    <p style={{ color: '#888', fontSize: '13px', margin: '2px 0 0' }}>
+                      {[m.configuracionMotor, m.transmision, m.cilindrada].filter(Boolean).join(' · ')}
+                    </p>
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
@@ -357,18 +375,12 @@ export default function InventarioPanel() {
             />
             <input type="number" placeholder="Año (ej. 2015)" value={ano} onChange={(e) => setAno(e.target.value)} style={inputStyle} />
             <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px' }}>Transmisión</p>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
-              {['Manual', 'Automática'].map((opt) => (
-                <button key={opt} onClick={() => setTransmision(opt)} style={transmision === opt ? selectorActiveStyle : selectorStyle}>{opt}</button>
-              ))}
-            </div>
+            <SelectorOpciones opciones={OPCIONES_TRANSMISION} valor={transmision} onChange={setTransmision} />
+            <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px' }}>Configuración de motor</p>
+            <SelectorOpciones opciones={OPCIONES_CONFIGURACION_MOTOR} valor={configuracionMotor} onChange={setConfiguracionMotor} />
             <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px' }}>Tracción</p>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
-              {['Sencillo', '4x4'].map((opt) => (
-                <button key={opt} onClick={() => setTraccion(opt)} style={traccion === opt ? selectorActiveStyle : selectorStyle}>{opt}</button>
-              ))}
-            </div>
-            <input type="text" placeholder="Cilindrada (ej. 2.0L, V6)" value={cilindrada} onChange={(e) => setCilindrada(e.target.value)} style={inputStyle} />
+            <SelectorOpciones opciones={OPCIONES_TRACCION} valor={traccion} onChange={setTraccion} />
+            <input type="text" placeholder="Cilindrada (ej. 2.0L)" value={cilindrada} onChange={(e) => setCilindrada(e.target.value)} style={inputStyle} />
             {vehiculoEditando && (
               <p style={{ fontSize: '12px', color: '#999', marginTop: '4px', marginBottom: '8px', fontStyle: 'italic' }}>
                 Las piezas de este vehículo no se modifican aquí — usa "Ver / editar piezas" para eso.
@@ -402,7 +414,18 @@ export default function InventarioPanel() {
             <input type="text" placeholder="Marca (ej. Nissan)" value={motorMarca} onChange={(e) => setMotorMarca(e.target.value)} style={inputStyle} />
             <input type="text" placeholder="Modelo (ej. Sentra)" value={motorModelo} onChange={(e) => setMotorModelo(e.target.value)} style={inputStyle} />
             <input type="number" placeholder="Año (ej. 2015)" value={motorAno} onChange={(e) => setMotorAno(e.target.value)} style={inputStyle} />
-            <input type="text" placeholder="Cilindrada (ej. 1.8L, V6)" value={motorCilindrada} onChange={(e) => setMotorCilindrada(e.target.value)} style={inputStyle} />
+            {motorTipo === 'Motor' ? (
+              <>
+                <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px' }}>Configuración de motor</p>
+                <SelectorOpciones opciones={OPCIONES_CONFIGURACION_MOTOR} valor={motorConfiguracionMotor} onChange={setMotorConfiguracionMotor} />
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px' }}>Transmisión</p>
+                <SelectorOpciones opciones={OPCIONES_TRANSMISION} valor={motorTransmision} onChange={setMotorTransmision} />
+              </>
+            )}
+            <input type="text" placeholder="Cilindrada (ej. 1.8L)" value={motorCilindrada} onChange={(e) => setMotorCilindrada(e.target.value)} style={inputStyle} />
             {motorEditando && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                 <input type="checkbox" checked={motorDisponible} onChange={(e) => setMotorDisponible(e.target.checked)} style={{ width: '18px', height: '18px' }} />

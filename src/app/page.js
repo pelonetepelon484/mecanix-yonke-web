@@ -965,7 +965,7 @@ function obtenerEstadoAbierto(horario) {
                     <img
                       src={r.logoUrl}
                       alt={r.yonkeNombre}
-                      style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
+                      style={{ width: '160px', height: '160px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
                     />
                   )}
                   <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
