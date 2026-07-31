@@ -15,17 +15,9 @@ export async function getTenantBySub(sub) {
     const q = query(collection(dbServer, 'yonkes'), where('subdominio', '==', sub));
     const snap = await getDocs(q);
     const match = snap.docs.find((d) => d.data().activo !== false);
-    console.log('[getTenantBySub]', { sub, coincidencias: snap.size, encontrado: !!match }); // TODO: quitar tras verificar en producción
     if (!match) return null;
     return { id: match.id, ...match.data() };
-  } catch (error) {
-    console.error('[getTenantBySub] ERROR', {
-      sub,
-      code: error?.code,
-      message: error?.message,
-      name: error?.name,
-      stack: error?.stack,
-    }); // TODO: quitar tras verificar en producción
+  } catch {
     return null;
   }
 }
@@ -50,7 +42,6 @@ export async function getInventarioDeTenant(yonkeId) {
 // Combina el branding del tenant con los defaults campo por campo — nunca todo-o-nada.
 export function resolveBranding(tenant) {
   const b = tenant.branding || {};
-  console.log('[resolveBranding] llaves recibidas en tenant.branding:', Object.keys(b)); // TODO: quitar tras verificar en producción
   return {
     nombre: b.nombreComercial || tenant.nombre || 'Yonke Demo',
     logoUrl: b.logoUrl || DEFAULT_BRANDING.logoUrl,

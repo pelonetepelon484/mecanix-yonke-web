@@ -17,8 +17,6 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
-  console.log('[tenant-middleware]', { host, sub }); // TODO: quitar tras verificar en producción
-
   const url = req.nextUrl.clone();
   url.pathname = '/tenant-demo';
 

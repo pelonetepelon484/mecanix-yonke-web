@@ -60,12 +60,6 @@ export default async function TenantDemoPage() {
         </div>
       </div>
 
-      <div style={{ backgroundColor: '#FFF8E1', borderBottom: '1px solid #FFD54F', padding: '10px 16px', textAlign: 'center' }}>
-        <p style={{ margin: 0, fontSize: '12px', color: '#7A4F00', fontWeight: '600' }}>
-          🔍 Vista previa para {branding.nombre} — algunos ajustes pendientes antes de publicarse
-        </p>
-      </div>
-
       <div style={{ maxWidth: '620px', margin: '0 auto', padding: '24px 16px' }}>
         <h2 style={{ fontSize: '16px', fontWeight: '700', color: branding.colorPrimario, marginBottom: '16px' }}>
           Inventario disponible ({items.length})
