@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTenantBySub, getInventarioDeTenant, resolveBranding } from '../lib/getTenant';
+import TenantPageClient from './TenantPageClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,7 @@ export async function generateMetadata() {
   const demo = await resolveDemo();
   if (!demo) return {};
   return {
-    title: `${demo.branding.nombre} — Vista previa Mecanix Yonke Virtual`,
+    title: demo.branding.nombre,
     robots: { index: false, follow: false },
   };
 }
@@ -28,108 +29,19 @@ export default async function TenantDemoPage() {
   if (!demo) notFound();
 
   const { tenant, branding, inventario } = demo;
-  const items = [
-    ...inventario.vehiculos.map((v) => ({ ...v, _categoria: 'vehiculo' })),
-    ...inventario.motores.map((m) => ({ ...m, _categoria: 'motor' })),
-  ];
 
-  function whatsappHref(item) {
-    if (!tenant.whatsapp) return null;
-    const descripcion = item._categoria === 'motor'
-      ? `${item.tipo} ${item.marca} ${item.modelo} ${item.ano}`
-      : `${item.marca} ${item.modelo} ${item.ano}`;
-    const mensaje = `Hola, vi ${descripcion} en la vista previa de ${branding.nombre}. ¿Sigue disponible?`;
-    return `https://wa.me/52${tenant.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
-  }
+  // Solo los campos serializables/públicos que la página necesita — el doc del yonke trae
+  // más cosas (premiumHasta, fechaRegistro, etc. son Timestamps y no cruzan a un Client
+  // Component tal cual).
+  const negocio = {
+    id: tenant.id,
+    nombre: tenant.nombre || branding.nombre,
+    direccion: tenant.direccion || '',
+    ciudad: tenant.ciudad || '',
+    telefono: tenant.telefono || '',
+    whatsapp: tenant.whatsapp || '',
+    horario: tenant.horario || null,
+  };
 
-  return (
-    <main style={{ minHeight: '100vh', backgroundColor: branding.colorFondo, fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ backgroundColor: branding.colorPrimario, padding: '28px 16px' }}>
-        <div style={{ maxWidth: '820px', margin: '0 auto', textAlign: 'center' }}>
-          <div style={logoMarcoStyle}>
-            <img
-              src={branding.logoUrl}
-              alt={branding.nombre}
-              style={{
-                width: '100%', maxWidth: 'min(770px, 90vw)',
-                height: 'auto', maxHeight: '252px',
-                objectFit: 'contain', display: 'block',
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: '620px', margin: '0 auto', padding: '24px 16px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: '700', color: branding.colorPrimario, marginBottom: '16px' }}>
-          Inventario disponible ({items.length})
-        </h2>
-
-        {items.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#888', marginTop: '32px' }}>
-            Aún no hay inventario cargado.
-          </p>
-        ) : (
-          items.map((item) => (
-            <div key={`${item._categoria}-${item.id}`} style={cardStyle}>
-              {item._categoria === 'motor' ? (
-                <>
-                  <span style={tipoBadgeStyle(branding.colorAcento)}>
-                    {item.tipo === 'Motor' ? '🔧 Motor' : '⚙️ Transmisión'}
-                  </span>
-                  <p style={itemTituloStyle(branding.colorPrimario)}>
-                    {item.marca} {item.modelo} {item.ano}
-                  </p>
-                  {item.cilindrada && <p style={itemSubStyle}>{item.cilindrada}</p>}
-                </>
-              ) : (
-                <>
-                  <p style={itemTituloStyle(branding.colorPrimario)}>
-                    🚗 {item.marca} {item.modelo} {item.ano}
-                  </p>
-                  <p style={itemSubStyle}>
-                    {item.transmision}{item.traccion ? ` · ${item.traccion}` : ''}{item.cilindrada ? ` · ${item.cilindrada}` : ''}
-                  </p>
-                </>
-              )}
-
-              {whatsappHref(item) && (
-                <a
-                  href={whatsappHref(item)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={whatsappBotonStyle}
-                >
-                  💬 Preguntar por WhatsApp
-                </a>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-    </main>
-  );
+  return <TenantPageClient negocio={negocio} branding={branding} inventario={inventario} />;
 }
-
-const logoMarcoStyle = {
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  backgroundColor: '#fff', borderRadius: '16px', padding: '18px 28px',
-  marginBottom: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
-};
-const cardStyle = {
-  backgroundColor: '#fff', borderRadius: '16px', padding: '18px', marginBottom: '14px',
-  boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-};
-const tipoBadgeStyle = (color) => ({
-  display: 'inline-block', backgroundColor: color, color: '#fff', fontSize: '11px',
-  fontWeight: '700', padding: '3px 8px', borderRadius: '12px', marginBottom: '8px',
-});
-const itemTituloStyle = (color) => ({
-  fontWeight: '700', color, fontSize: '16px', margin: '4px 0 2px',
-});
-const itemSubStyle = { color: '#888', fontSize: '13px', margin: 0 };
-const whatsappBotonStyle = {
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginTop: '12px',
-  padding: '10px 16px', borderRadius: '50px', backgroundColor: '#25D366', color: '#fff',
-  fontWeight: '700', fontSize: '13px', textDecoration: 'none',
-};
