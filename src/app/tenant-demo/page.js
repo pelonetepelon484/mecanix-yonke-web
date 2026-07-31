@@ -45,17 +45,18 @@ export default async function TenantDemoPage() {
   return (
     <main style={{ minHeight: '100vh', backgroundColor: branding.colorFondo, fontFamily: "'Inter', sans-serif" }}>
       <div style={{ backgroundColor: branding.colorPrimario, padding: '28px 16px' }}>
-        <div style={{ maxWidth: '620px', margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ maxWidth: '820px', margin: '0 auto', textAlign: 'center' }}>
           <div style={logoMarcoStyle}>
             <img
               src={branding.logoUrl}
               alt={branding.nombre}
-              style={{ height: '72px', maxWidth: '220px', objectFit: 'contain', display: 'block' }}
+              style={{
+                width: '100%', maxWidth: 'min(770px, 90vw)',
+                height: 'auto', maxHeight: '252px',
+                objectFit: 'contain', display: 'block',
+              }}
             />
           </div>
-          <h1 style={{ color: '#fff', fontSize: '20px', fontWeight: '700', margin: 0 }}>
-            {branding.nombre}
-          </h1>
         </div>
       </div>
 
@@ -118,7 +119,7 @@ export default async function TenantDemoPage() {
 
 const logoMarcoStyle = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  backgroundColor: '#fff', borderRadius: '16px', padding: '10px 18px',
+  backgroundColor: '#fff', borderRadius: '16px', padding: '18px 28px',
   marginBottom: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
 };
 const cardStyle = {
