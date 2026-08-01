@@ -107,6 +107,38 @@ function BannerRH() {
   );
 }
 
+// Marca de agua del sello "Yonke Verificado": capa de fondo, MUY baja opacidad para que
+// nunca compita con el texto de la tarjeta. Va como primer hijo de una tarjeta con
+// position:'relative' + overflow:'hidden'; el resto del contenido de la tarjeta debe ir en
+// un wrapper con position:'relative', zIndex:1 para quedar garantizadamente encima.
+function SelloMarcaAgua() {
+  return (
+    <img
+      src="/sello_verificado.png"
+      alt=""
+      aria-hidden="true"
+      style={{
+        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+        width: '65%', maxWidth: '200px', opacity: 0.07, pointerEvents: 'none', zIndex: 0,
+      }}
+    />
+  );
+}
+
+// Insignia visible "Verificado" — junto al nombre del yonke, no confundir con la marca de agua.
+function BadgeVerificado() {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '4px',
+      backgroundColor: '#E8F5E9', color: '#2E7D32', fontSize: '11px',
+      fontWeight: '700', padding: '3px 8px', borderRadius: '12px', flexShrink: 0,
+    }}>
+      <img src="/sello_verificado.png" alt="" style={{ width: '13px', height: '13px', objectFit: 'contain' }} />
+      Verificado
+    </span>
+  );
+}
+
 export default function Home() {
   const [ciudad, setCiudad] = useState('');
   const [tipoBusqueda, setTipoBusqueda] = useState('vehiculo');
@@ -215,6 +247,7 @@ export default function Home() {
           motor: mDoc.data(),
           yonkeNombre: yonkeData.nombre,
           logoUrl: yonkeData.logoUrl || null,
+          verificado: yonkeData.verificado === true,
           direccion: yonkeData.direccion,
           telefono: yonkeData.telefono,
           whatsapp: yonkeData.whatsapp || '',
@@ -245,7 +278,7 @@ export default function Home() {
       const calificacion = await obtenerCalificacion(yonkeDoc.id);
       encontrados.push({
         yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, direccion: yonkeData.direccion,
+        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
         metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
         ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -277,7 +310,7 @@ export default function Home() {
         const calificacion = await obtenerCalificacion(yonkeDoc.id);
         encontrados.push({
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, direccion: yonkeData.direccion,
+          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
           metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
           ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -344,7 +377,7 @@ export default function Home() {
           const calificacion = await obtenerCalificacion(yonkeDoc.id);
           const resultadoBase = {
             yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-            yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, direccion: yonkeData.direccion,
+            yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, direccion: yonkeData.direccion,
             telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
             metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
             ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -975,9 +1008,11 @@ function obtenerEstadoAbierto(horario) {
 
             {resultados.map((r, i) => (
               <div key={i} style={resultCardStyle}>
+                {r.verificado && <SelloMarcaAgua />}
+                <div style={{ position: 'relative', zIndex: 1 }}>
                 {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   {r.logoUrl && (
                     <img
                       src={r.logoUrl}
@@ -986,6 +1021,7 @@ function obtenerEstadoAbierto(horario) {
                     />
                   )}
                   <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+                  {r.verificado && <BadgeVerificado />}
                 </div>
 
                 {r.ciudad && (
@@ -1083,6 +1119,7 @@ function obtenerEstadoAbierto(horario) {
                     Reservar
                   </button>
                 </div>
+                </div>
               </div>
             ))}
 
@@ -1095,12 +1132,15 @@ function obtenerEstadoAbierto(horario) {
                 </p>
                 {resultadosMotoresLibre.map((r, i) => (
                   <div key={`motor-${i}`} style={resultCardStyle}>
+                    {r.verificado && <SelloMarcaAgua />}
+                    <div style={{ position: 'relative', zIndex: 1 }}>
                     {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       {r.logoUrl && (
                         <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
                       )}
                       <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+                      {r.verificado && <BadgeVerificado />}
                     </div>
                     <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
                       🔧 {r.motor.marca} {r.motor.modelo} {r.motor.ano}
@@ -1119,6 +1159,7 @@ function obtenerEstadoAbierto(horario) {
                         💬 WhatsApp
                       </a>
                     )}
+                    </div>
                   </div>
                 ))}
               </>
@@ -1131,12 +1172,15 @@ function obtenerEstadoAbierto(horario) {
                 </p>
                 {resultadosTransmisionesLibre.map((r, i) => (
                   <div key={`transmision-${i}`} style={resultCardStyle}>
+                    {r.verificado && <SelloMarcaAgua />}
+                    <div style={{ position: 'relative', zIndex: 1 }}>
                     {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       {r.logoUrl && (
                         <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
                       )}
                       <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+                      {r.verificado && <BadgeVerificado />}
                     </div>
                     <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
                       ⚙️ {r.motor.marca} {r.motor.modelo} {r.motor.ano}
@@ -1155,6 +1199,7 @@ function obtenerEstadoAbierto(horario) {
                         💬 WhatsApp
                       </a>
                     )}
+                    </div>
                   </div>
                 ))}
               </>
@@ -1406,7 +1451,7 @@ function obtenerEstadoAbierto(horario) {
 }
 
 const contactLinkStyle = { fontSize: '12px', color: '#1A3C5E', textDecoration: 'none', fontWeight: '600', backgroundColor: '#fff', padding: '7px 14px', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' };
-const resultCardStyle = { backgroundColor: '#fff', borderRadius: '16px', padding: '20px', marginBottom: '14px', boxShadow: '0 4px 16px rgba(26,60,94,0.08)', position: 'relative' };
+const resultCardStyle = { backgroundColor: '#fff', borderRadius: '16px', padding: '20px', marginBottom: '14px', boxShadow: '0 4px 16px rgba(26,60,94,0.08)', position: 'relative', overflow: 'hidden' };
 const premiumBadgeStyle = { position: 'absolute', top: '14px', right: '14px', backgroundColor: '#FAEEDA', color: '#854F0B', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' };
 const pagoTagStyle = { backgroundColor: '#F0F4F8', color: '#1A3C5E', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: '600' };
 const whatsappButtonStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px', borderRadius: '50px', backgroundColor: '#25D366', color: '#fff', fontWeight: '700', fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap' };

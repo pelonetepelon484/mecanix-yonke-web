@@ -82,6 +82,7 @@ export default function EditarYonkePage() {
   const [plan, setPlan] = useState('freemium');
   const [premiumHasta, setPremiumHasta] = useState('');
   const [activo, setActivo] = useState(true);
+  const [verificado, setVerificado] = useState(false);
   const [metodosPago, setMetodosPago] = useState([]);
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
 
@@ -123,6 +124,7 @@ export default function EditarYonkePage() {
           setPremiumHasta(formatearFechaInput(fecha));
         }
         setActivo(data.activo !== false);
+        setVerificado(data.verificado === true);
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
       }
@@ -170,6 +172,7 @@ export default function EditarYonkePage() {
           ? Timestamp.fromDate(new Date(`${premiumHasta}T00:00:00`))
           : deleteField(),
         activo,
+        verificado,
         metodosPago,
         horario,
       }, { merge: true });
@@ -294,6 +297,22 @@ export default function EditarYonkePage() {
               </button>
             ))}
           </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={verificado}
+              onChange={(e) => setVerificado(e.target.checked)}
+              style={{ width: '18px', height: '18px', accentColor: '#2E7D32', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>
+              🛡️ Yonke verificado
+            </span>
+          </label>
+          <p style={{ fontSize: '12px', color: '#999', marginTop: '4px', marginLeft: '28px' }}>
+            Marca esto solo si confirmaste presencialmente que el negocio es real. Se muestra
+            como sello de confianza en su ficha y en su página.
+          </p>
         </div>
 
         {/* Métodos de pago */}

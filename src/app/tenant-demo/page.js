@@ -41,6 +41,7 @@ export default async function TenantDemoPage() {
     telefono: tenant.telefono || '',
     whatsapp: tenant.whatsapp || '',
     horario: tenant.horario || null,
+    verificado: tenant.verificado === true,
   };
 
   return <TenantPageClient negocio={negocio} branding={branding} inventario={inventario} />;

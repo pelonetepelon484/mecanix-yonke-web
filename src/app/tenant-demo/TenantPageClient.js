@@ -66,6 +66,38 @@ function generarNumeroPedido() {
   return `MYV-${mes}${dia}-${random}`;
 }
 
+// Marca de agua del sello "Yonke Verificado": capa de fondo, MUY baja opacidad para que
+// nunca compita con el texto. Va como primer hijo de una tarjeta con position:'relative' +
+// overflow:'hidden'; el resto del contenido debe ir en un wrapper position:'relative',
+// zIndex:1 para quedar garantizadamente encima.
+function SelloMarcaAgua() {
+  return (
+    <img
+      src="/sello_verificado.png"
+      alt=""
+      aria-hidden="true"
+      style={{
+        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+        width: '65%', maxWidth: '200px', opacity: 0.07, pointerEvents: 'none', zIndex: 0,
+      }}
+    />
+  );
+}
+
+// Insignia visible "Verificado" — junto al nombre del negocio, no confundir con la marca de agua.
+function BadgeVerificado() {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '4px',
+      backgroundColor: '#E8F5E9', color: '#2E7D32', fontSize: '11px',
+      fontWeight: '700', padding: '3px 8px', borderRadius: '12px', flexShrink: 0,
+    }}>
+      <img src="/sello_verificado.png" alt="" style={{ width: '13px', height: '13px', objectFit: 'contain' }} />
+      Verificado
+    </span>
+  );
+}
+
 export default function TenantPageClient({ negocio, branding, inventario }) {
   const [busqueda, setBusqueda] = useState('');
   const [filtroMarca, setFiltroMarca] = useState('');
@@ -244,9 +276,14 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
 
         {/* Info del negocio */}
         <div style={infoCardStyle}>
-          <p style={{ fontWeight: '700', color: branding.colorPrimario, fontSize: '18px', margin: '0 0 8px' }}>
-            {negocio.nombre}
-          </p>
+          {negocio.verificado && <SelloMarcaAgua />}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', margin: '0 0 8px' }}>
+            <p style={{ fontWeight: '700', color: branding.colorPrimario, fontSize: '18px', margin: 0 }}>
+              {negocio.nombre}
+            </p>
+            {negocio.verificado && <BadgeVerificado />}
+          </div>
 
           {estadoAbierto && (
             <div style={{
@@ -280,6 +317,7 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           {horarioTexto && (
             <p style={{ ...infoLineStyle, marginTop: '6px' }}>🕐 {horarioTexto}</p>
           )}
+          </div>
         </div>
 
         {/* Buscador */}
@@ -453,7 +491,7 @@ const logoMarcoStyle = {
 };
 const infoCardStyle = {
   backgroundColor: '#fff', borderRadius: '16px', padding: '16px', marginBottom: '18px',
-  boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+  boxShadow: '0 4px 16px rgba(0,0,0,0.08)', position: 'relative', overflow: 'hidden',
 };
 const infoLineStyle = { color: '#555', fontSize: '13px', margin: '4px 0' };
 const infoLineLinkStyle = (color) => ({

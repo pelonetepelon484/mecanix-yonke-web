@@ -51,6 +51,7 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
   const { fechaIngreso, ...vehiculo } = vDoc.data();
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
+    verificado: yonkeData.verificado === true,
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
@@ -64,6 +65,7 @@ function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
   const { fechaIngreso, ...motor } = mDoc.data();
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
+    verificado: yonkeData.verificado === true,
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
