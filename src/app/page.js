@@ -119,7 +119,7 @@ function SelloMarcaAgua() {
       aria-hidden="true"
       style={{
         position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: '65%', maxWidth: '200px', opacity: 0.07, pointerEvents: 'none', zIndex: 0,
+        width: '65%', maxWidth: '200px', opacity: 0.17, pointerEvents: 'none', zIndex: 0,
       }}
     />
   );
@@ -129,12 +129,11 @@ function SelloMarcaAgua() {
 function BadgeVerificado() {
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '4px',
+      display: 'inline-flex', alignItems: 'center',
       backgroundColor: '#E8F5E9', color: '#2E7D32', fontSize: '11px',
       fontWeight: '700', padding: '3px 8px', borderRadius: '12px', flexShrink: 0,
     }}>
-      <img src="/sello_verificado.png" alt="" style={{ width: '13px', height: '13px', objectFit: 'contain' }} />
-      Verificado
+      ✓ Verificado
     </span>
   );
 }
@@ -1012,7 +1011,7 @@ function obtenerEstadoAbierto(horario) {
                 <div style={{ position: 'relative', zIndex: 1 }}>
                 {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
                   {r.logoUrl && (
                     <img
                       src={r.logoUrl}
@@ -1135,7 +1134,7 @@ function obtenerEstadoAbierto(horario) {
                     {r.verificado && <SelloMarcaAgua />}
                     <div style={{ position: 'relative', zIndex: 1 }}>
                     {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
                       {r.logoUrl && (
                         <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
                       )}
@@ -1175,7 +1174,7 @@ function obtenerEstadoAbierto(horario) {
                     {r.verificado && <SelloMarcaAgua />}
                     <div style={{ position: 'relative', zIndex: 1 }}>
                     {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
                       {r.logoUrl && (
                         <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
                       )}
