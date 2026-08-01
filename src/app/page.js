@@ -141,6 +141,8 @@ export default function Home() {
   const [buscandoLibre, setBuscandoLibre] = useState(false);
   const [mensajeLibre, setMensajeLibre] = useState(null);
   const [encabezadoVehiculo, setEncabezadoVehiculo] = useState(null);
+  const [resultadosMotoresLibre, setResultadosMotoresLibre] = useState([]);
+  const [resultadosTransmisionesLibre, setResultadosTransmisionesLibre] = useState([]);
 
   useEffect(() => {
     async function cargarCatalogo() {
@@ -418,16 +420,25 @@ export default function Home() {
       setResultados(data.resultados);
       setTipoResultado(data.tipoResultado);
       setPiezaNoEncontrada(Boolean(data.piezaNoEncontrada));
+      setResultadosMotoresLibre(data.resultadosMotores || []);
+      setResultadosTransmisionesLibre(data.resultadosTransmisiones || []);
       setBusquedaHecha(true);
-      registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: data.resultados.length });
+      registrarEvento('busqueda_texto_libre', {
+        estado: data.estado,
+        resultados: data.resultados.length + (data.resultadosMotores?.length || 0) + (data.resultadosTransmisiones?.length || 0),
+      });
     } else if (data.estado === 'confirmar') {
       setResultados([]);
+      setResultadosMotoresLibre([]);
+      setResultadosTransmisionesLibre([]);
       setBusquedaHecha(false);
       setEncabezadoVehiculo(null);
       setMensajeLibre({ tipo: 'confirmar', texto: data.mensaje, sugerencia: data.sugerencia });
       registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
     } else {
       setResultados([]);
+      setResultadosMotoresLibre([]);
+      setResultadosTransmisionesLibre([]);
       setBusquedaHecha(false);
       setEncabezadoVehiculo(null);
       setMensajeLibre({ tipo: data.estado, texto: data.mensaje });
@@ -845,7 +856,7 @@ function obtenerEstadoAbierto(horario) {
             </p>
           )}
 
-          <button onClick={() => { setEncabezadoVehiculo(null); buscarPiezas(); }} disabled={buscando} className="mecanix-btn-primary">
+          <button onClick={() => { setEncabezadoVehiculo(null); setResultadosMotoresLibre([]); setResultadosTransmisionesLibre([]); buscarPiezas(); }} disabled={buscando} className="mecanix-btn-primary">
             {buscando ? 'Buscando...' : `🔍 Buscar ${tipoBusqueda === 'motor' ? 'motor' : tipoBusqueda === 'transmision' ? 'transmisión' : 'refacción'}`}
           </button>
         </div>
@@ -930,7 +941,7 @@ function obtenerEstadoAbierto(horario) {
               {getHeaderText()}
             </h3>
 
-            {resultados.length === 0 && (
+            {resultados.length === 0 && resultadosMotoresLibre.length === 0 && resultadosTransmisionesLibre.length === 0 && (
               <div style={avisoActualizacionStyle}>
                 <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.6' }}>
                   📦 No te desanimes — seguimos actualizando el inventario día con día. Vuelve a intentar más tarde o{' '}
@@ -941,7 +952,13 @@ function obtenerEstadoAbierto(horario) {
               </div>
             )}
 
-            {bannerTexto && tipoBusqueda === 'vehiculo' && (
+            {(resultadosMotoresLibre.length > 0 || resultadosTransmisionesLibre.length > 0) && resultados.length > 0 && (
+              <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '4px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Partes
+              </p>
+            )}
+
+            {bannerTexto && tipoBusqueda === 'vehiculo' && resultados.length > 0 && (
               <div style={compatibilidadBannerStyle}>
                 <p style={{ margin: 0, fontSize: '13px', color: '#7A4F00', fontWeight: 'bold' }}>
                   ⚠️ Resultados de años {tipoResultado === 'cercano' ? 'similares' : 'distintos'}
@@ -1068,6 +1085,80 @@ function obtenerEstadoAbierto(horario) {
                 </div>
               </div>
             ))}
+
+            {/* Motores y transmisiones sueltos — solo del buscador inteligente; el buscador
+                estructurado ya tiene su propia pestaña Motor/Transmisión y no llena estos arreglos. */}
+            {resultadosMotoresLibre.length > 0 && (
+              <>
+                <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '20px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  🔧 Motores
+                </p>
+                {resultadosMotoresLibre.map((r, i) => (
+                  <div key={`motor-${i}`} style={resultCardStyle}>
+                    {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {r.logoUrl && (
+                        <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
+                      )}
+                      <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+                    </div>
+                    <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
+                      🔧 {r.motor.marca} {r.motor.modelo} {r.motor.ano}
+                    </p>
+                    {r.motor.cilindrada && (
+                      <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
+                    )}
+                    {r.whatsapp && (
+                      <a
+                        href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp({ ...r, esMotor: true }))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ ...whatsappButtonStyle, marginTop: '12px' }}
+                        onClick={() => registrarEvento('contacto_yonke', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, medio: 'whatsapp', ciudad: r.ciudad || 'sin_ciudad' })}
+                      >
+                        💬 WhatsApp
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+
+            {resultadosTransmisionesLibre.length > 0 && (
+              <>
+                <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '20px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  ⚙️ Transmisiones
+                </p>
+                {resultadosTransmisionesLibre.map((r, i) => (
+                  <div key={`transmision-${i}`} style={resultCardStyle}>
+                    {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {r.logoUrl && (
+                        <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
+                      )}
+                      <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+                    </div>
+                    <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
+                      ⚙️ {r.motor.marca} {r.motor.modelo} {r.motor.ano}
+                    </p>
+                    {r.motor.cilindrada && (
+                      <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
+                    )}
+                    {r.whatsapp && (
+                      <a
+                        href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp({ ...r, esMotor: true }))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ ...whatsappButtonStyle, marginTop: '12px' }}
+                        onClick={() => registrarEvento('contacto_yonke', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, medio: 'whatsapp', ciudad: r.ciudad || 'sin_ciudad' })}
+                      >
+                        💬 WhatsApp
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
 

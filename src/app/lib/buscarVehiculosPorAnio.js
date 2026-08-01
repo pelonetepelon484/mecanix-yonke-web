@@ -7,15 +7,18 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 //
 // modelo=null: cualquier modelo de esa marca (búsqueda solo por marca, ej. "nissan 2015").
 // anio=null: cualquier año (usado por el nivel "cualquier año").
+// subcoleccion: 'vehiculos' (default) o 'motores' — mismo matching de marca/modelo/año sirve
+// para buscar motores/transmisiones sueltos (consultarInventario.js), sin duplicar la
+// comparación para que "V6"/marca/modelo casen igual venga de un vehículo o de un motor suelto.
 // Devuelve pares {yonkeDoc, vDoc} SIN calificación ni forma final — cada buscador arma el
 // resultado a su manera (el inteligente, por ejemplo, quita fechaIngreso porque cruza a
 // JSON; el manual no lo necesita).
-export async function buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, modelo, anio) {
+export async function buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, modelo, anio, subcoleccion = 'vehiculos') {
   const encontrados = [];
   for (const yonkeDoc of yonkesDocs) {
     const yonkeData = yonkeDoc.data();
     if (!yonkeData.activo) continue;
-    const vehiculosRef = collection(dbInstancia, 'yonkes', yonkeDoc.id, 'vehiculos');
+    const vehiculosRef = collection(dbInstancia, 'yonkes', yonkeDoc.id, subcoleccion);
     const q = anio != null ? query(vehiculosRef, where('ano', '==', anio)) : vehiculosRef;
     const snap = await getDocs(q);
     // DEUDA TÉCNICA: el filtrado de marca/modelo se hace client-side tras traer por año, lo que

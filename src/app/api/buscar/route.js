@@ -5,7 +5,7 @@ import { filtrarPrevio, MENSAJE_RECHAZO_CAPA0 } from '../../lib/busqueda/filtroP
 import { extraerIntencion } from '../../lib/busqueda/extraerIntencion';
 import { detectarFueraDeGiro } from '../../lib/busqueda/detectarFueraDeGiro';
 import { registrarBusqueda } from '../../lib/busqueda/registrarBusqueda';
-import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo } from '../../lib/busqueda/consultarInventario';
+import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones } from '../../lib/busqueda/consultarInventario';
 import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLimit';
 
 const MENSAJE_NO_CATALOGADO =
@@ -50,15 +50,30 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
-  const enCatalogo = await existeEnCatalogoVivo(marca, modelo);
-  if (!enCatalogo) {
+  // El catálogo vivo (config/catalogoVehiculos) se nutre principalmente de vehículos — un
+  // motor/transmisión suelto puede existir sin que su marca/modelo esté ahí (registros viejos,
+  // o "Actualizar catálogo" en admin que hoy solo escanea vehiculos). Por eso el check de
+  // catálogo y la búsqueda de motores corren en PARALELO: solo se declara "no_catalogado" si
+  // NINGUNO de los dos encuentra nada — un motor real no debe quedar invisible por esto.
+  const [enCatalogo, { motores, transmisiones }] = await Promise.all([
+    existeEnCatalogoVivo(marca, modelo),
+    consultarMotoresTransmisiones({ marca, modelo, anio }),
+  ]);
+  const totalMotoresTransmisiones = motores.length + transmisiones.length;
+
+  if (!enCatalogo && totalMotoresTransmisiones === 0) {
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo, anio, origen, tieneContacto });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
-  const { resultados, tipoResultado, piezaNoEncontrada } = await consultarInventario({ marca, modelo, anio, pieza });
+  const { resultados, tipoResultado, piezaNoEncontrada } = enCatalogo
+    ? await consultarInventario({ marca, modelo, anio, pieza })
+    : { resultados: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
 
-  if (resultados.length === 0) {
+  // "Sin inventario" solo cuando NADA se encontró — un motor/transmisión suelto hallado
+  // cuenta como resultado real (estado 'ok'), igual que una pieza, para no mentir en las
+  // métricas de demanda insatisfecha.
+  if (resultados.length === 0 && totalMotoresTransmisiones === 0) {
     await guardarSinBloquear('busquedas_pendientes', {
       pieza, marca, modelo, anio,
       textoOriginal: texto,
@@ -74,11 +89,12 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
 
   await registrarBusqueda({
     texto, estado: 'ok', pieza, marca, modelo, anio,
-    tipoResultado, totalResultados: resultados.length, piezaNoEncontrada, origen, tieneContacto,
+    tipoResultado, totalResultados: resultados.length + totalMotoresTransmisiones, piezaNoEncontrada, origen, tieneContacto,
   });
 
   return NextResponse.json({
     estado: 'resultados', resultados, tipoResultado, piezaNoEncontrada,
+    resultadosMotores: motores, resultadosTransmisiones: transmisiones,
     marca, modelo, anio, pieza,
   });
 }
@@ -89,15 +105,25 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
 async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto, origen) {
   const tieneContacto = Boolean(contacto);
 
-  const enCatalogo = await existeEnCatalogoVivo(marca, modelo);
-  if (!enCatalogo) {
+  // Ver nota equivalente en resolverBusqueda(): catálogo vivo y motores en paralelo, para que
+  // un motor/transmisión real no quede invisible solo porque su marca/modelo no está en el
+  // catálogo (que hoy se nutre principalmente de vehículos).
+  const [enCatalogo, { motores, transmisiones }] = await Promise.all([
+    existeEnCatalogoVivo(marca, modelo),
+    consultarMotoresTransmisiones({ marca, modelo, anio }),
+  ]);
+  const totalMotoresTransmisiones = motores.length + transmisiones.length;
+
+  if (!enCatalogo && totalMotoresTransmisiones === 0) {
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza: null, marca, modelo, anio, origen, tieneContacto });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
-  const { resultados, tipoResultado } = await consultarInventarioVehiculo({ marca, modelo, anio });
+  const { resultados, tipoResultado } = enCatalogo
+    ? await consultarInventarioVehiculo({ marca, modelo, anio })
+    : { resultados: [], tipoResultado: 'cualquierAno' };
 
-  if (resultados.length === 0) {
+  if (resultados.length === 0 && totalMotoresTransmisiones === 0) {
     await guardarSinBloquear('busquedas_pendientes', {
       pieza: null, marca, modelo, anio,
       textoOriginal: texto,
@@ -112,15 +138,18 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
 
   await registrarBusqueda({
     texto, estado: 'ok', pieza: null, marca, modelo, anio,
-    tipoResultado, totalResultados: resultados.length, piezaNoEncontrada: false, origen, tieneContacto,
+    tipoResultado, totalResultados: resultados.length + totalMotoresTransmisiones, piezaNoEncontrada: false, origen, tieneContacto,
   });
 
   const partesEncabezado = [marca, modelo, anio].filter(Boolean);
   return NextResponse.json({
     estado: 'resultados', resultados, tipoResultado,
     piezaNoEncontrada: false,
+    resultadosMotores: motores, resultadosTransmisiones: transmisiones,
     marca, modelo, anio, pieza: null,
-    encabezadoVehiculo: `Esto es lo que tenemos disponible para ${partesEncabezado.join(' ')}:`,
+    encabezadoVehiculo: resultados.length > 0
+      ? `Esto es lo que tenemos disponible para ${partesEncabezado.join(' ')}:`
+      : null,
   });
 }
 

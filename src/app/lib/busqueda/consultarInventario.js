@@ -21,6 +21,16 @@ function sinDuplicados(lista) {
   });
 }
 
+function sinDuplicadosMotor(lista) {
+  const vistos = new Set();
+  return lista.filter((r) => {
+    const clave = `${r.yonkeId}_${r.motorId}`;
+    if (vistos.has(clave)) return false;
+    vistos.add(clave);
+    return true;
+  });
+}
+
 // Catálogo VIVO (config/catalogoVehiculos) = modelos con inventario alguna vez registrado.
 // Distinto de CATALOGO_BASE, que es el diccionario amplio usado solo para reconocer texto.
 // modelo=null (búsqueda solo por marca, ej. "nissan 2015"): basta con que la marca tenga
@@ -47,6 +57,75 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
     vehiculoId: vDoc.id, vehiculo, calificacion,
   };
+}
+
+function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
+  const yonkeData = yonkeDoc.data();
+  const { fechaIngreso, ...motor } = mDoc.data();
+  return {
+    yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
+    direccion: yonkeData.direccion,
+    telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
+    metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+    ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+    motorId: mDoc.id, motor, calificacion,
+  };
+}
+
+// Motores y transmisiones sueltos viven en yonkes/{id}/motores, distinguidos por el campo
+// `tipo` ('Motor' | 'Transmisión'). Mismo matching de marca/modelo/año que los vehículos
+// (lib/buscarVehiculosPorAnio.js, subcolección 'motores') para que casen igual. disponible=false
+// se excluye por completo (un motor suelto no tiene sub-piezas — su propio flag ES su
+// disponibilidad, mismo criterio que una pieza no disponible: no se muestra como resultado).
+async function buscarMotores(yonkesDocs, marca, modelo, anio) {
+  const pares = await buscarVehiculosPorAnio(dbServer, yonkesDocs, marca, modelo, anio, 'motores');
+  const encontrados = [];
+  for (const { yonkeDoc, vDoc: mDoc } of pares) {
+    if (mDoc.data().disponible === false) continue;
+    const calificacion = await getRatingParaYonke(yonkeDoc.id);
+    encontrados.push(toResultadoMotor(yonkeDoc, mDoc, calificacion));
+  }
+  return encontrados;
+}
+
+function separarPorTipo(lista) {
+  return {
+    motores: lista.filter((r) => r.motor.tipo === 'Motor'),
+    transmisiones: lista.filter((r) => r.motor.tipo === 'Transmisión'),
+  };
+}
+
+// Mismo pipeline de niveles que consultarInventarioVehiculo (exacto -> cercano ±3 -> cualquier
+// año), pero sobre la subcolección 'motores'. Se llama junto con la búsqueda de vehículos —
+// un motor/transmisión suelto encontrado es un resultado tan válido como una pieza.
+export async function consultarMotoresTransmisiones({ marca, modelo, anio }) {
+  const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
+  const yonkesDocs = yonkesSnap.docs;
+
+  if (anio == null) {
+    const todos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null));
+    ordenarPorPlan(todos);
+    return { ...separarPorTipo(todos), tipoResultadoMotor: 'cualquierAno' };
+  }
+
+  const exactos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, anio));
+  if (exactos.length > 0) {
+    ordenarPorPlan(exactos);
+    return { ...separarPorTipo(exactos), tipoResultadoMotor: 'exacto' };
+  }
+
+  const anosRango = [];
+  for (let d = 1; d <= 3; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
+  const listasCercanas = await Promise.all(anosRango.map((a) => buscarMotores(yonkesDocs, marca, modelo, a)));
+  const cercanos = sinDuplicadosMotor(listasCercanas.flat());
+  if (cercanos.length > 0) {
+    ordenarPorPlan(cercanos);
+    return { ...separarPorTipo(cercanos), tipoResultadoMotor: 'cercano' };
+  }
+
+  const cualquierAno = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null));
+  ordenarPorPlan(cualquierAno);
+  return { ...separarPorTipo(cualquierAno), tipoResultadoMotor: 'cualquierAno' };
 }
 
 // modelo=null: cualquier modelo de esa marca (búsqueda solo por marca, ej. "nissan 2015").
