@@ -31,6 +31,19 @@ function sinDuplicadosMotor(lista) {
   });
 }
 
+// Años cercanos ±3 al año buscado — el rango nunca incluye el año exacto (d va de 1 a 3), así
+// que no hace falta excluirlo aparte para no duplicar. Los 6 años se consultan EN PARALELO
+// (Promise.all), no uno por uno. Compartido por vehículos y motores/transmisiones para no
+// arreglar el mismo bug de "cercanos excluyentes" en dos lugares que luego se desincronizan.
+async function buscarAniosCercanos(buscarUnAnio, anio, dedupe) {
+  const anosRango = [];
+  for (let d = 1; d <= 3; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
+  const listas = await Promise.all(anosRango.map((a) => buscarUnAnio(a)));
+  const cercanos = dedupe(listas.flat());
+  ordenarPorPlan(cercanos);
+  return cercanos;
+}
+
 // Catálogo VIVO (config/catalogoVehiculos) = modelos con inventario alguna vez registrado.
 // Distinto de CATALOGO_BASE, que es el diccionario amplio usado solo para reconocer texto.
 // modelo=null (búsqueda solo por marca, ej. "nissan 2015"): basta con que la marca tenga
@@ -97,9 +110,11 @@ function separarPorTipo(lista) {
   };
 }
 
-// Mismo pipeline de niveles que consultarInventarioVehiculo (exacto -> cercano ±3 -> cualquier
-// año), pero sobre la subcolección 'motores'. Se llama junto con la búsqueda de vehículos —
-// un motor/transmisión suelto encontrado es un resultado tan válido como una pieza.
+// Mismo pipeline que consultarInventarioVehiculo (exacto + cercano ±3, ACUMULATIVOS — ver nota
+// ahí sobre el bug corregido), pero sobre la subcolección 'motores'. Se llama junto con la
+// búsqueda de vehículos — un motor/transmisión suelto encontrado es un resultado tan válido
+// como una pieza. `motoresCercanos`/`transmisionesCercanos` solo vienen poblados cuando SÍ hay
+// exacto (si no hay exacto, los cercanos ya van en `motores`/`transmisiones` como hasta hoy).
 export async function consultarMotoresTransmisiones({ marca, modelo, anio }) {
   const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
   const yonkesDocs = yonkesSnap.docs;
@@ -107,27 +122,27 @@ export async function consultarMotoresTransmisiones({ marca, modelo, anio }) {
   if (anio == null) {
     const todos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null));
     ordenarPorPlan(todos);
-    return { ...separarPorTipo(todos), tipoResultadoMotor: 'cualquierAno' };
+    return { ...separarPorTipo(todos), motoresCercanos: [], transmisionesCercanos: [], tipoResultadoMotor: 'cualquierAno' };
   }
 
   const exactos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, anio));
-  if (exactos.length > 0) {
-    ordenarPorPlan(exactos);
-    return { ...separarPorTipo(exactos), tipoResultadoMotor: 'exacto' };
-  }
+  ordenarPorPlan(exactos);
+  const cercanos = await buscarAniosCercanos((a) => buscarMotores(yonkesDocs, marca, modelo, a), anio, sinDuplicadosMotor);
 
-  const anosRango = [];
-  for (let d = 1; d <= 3; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
-  const listasCercanas = await Promise.all(anosRango.map((a) => buscarMotores(yonkesDocs, marca, modelo, a)));
-  const cercanos = sinDuplicadosMotor(listasCercanas.flat());
+  if (exactos.length > 0) {
+    const { motores, transmisiones } = separarPorTipo(exactos);
+    const { motores: motoresCercanos, transmisiones: transmisionesCercanos } = separarPorTipo(cercanos);
+    return { motores, transmisiones, motoresCercanos, transmisionesCercanos, tipoResultadoMotor: 'exacto' };
+  }
   if (cercanos.length > 0) {
-    ordenarPorPlan(cercanos);
-    return { ...separarPorTipo(cercanos), tipoResultadoMotor: 'cercano' };
+    const { motores, transmisiones } = separarPorTipo(cercanos);
+    return { motores, transmisiones, motoresCercanos: [], transmisionesCercanos: [], tipoResultadoMotor: 'cercano' };
   }
 
   const cualquierAno = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null));
   ordenarPorPlan(cualquierAno);
-  return { ...separarPorTipo(cualquierAno), tipoResultadoMotor: 'cualquierAno' };
+  const { motores, transmisiones } = separarPorTipo(cualquierAno);
+  return { motores, transmisiones, motoresCercanos: [], transmisionesCercanos: [], tipoResultadoMotor: 'cualquierAno' };
 }
 
 // modelo=null: cualquier modelo de esa marca (búsqueda solo por marca, ej. "nissan 2015").
@@ -182,58 +197,59 @@ async function buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza) {
 }
 
 // Paso 3: mismo pipeline de niveles que buscarPiezas/buscarEnAnos/buscarCualquierAno en
-// page.js, pero server-side con dbServer. Devuelve { resultados, tipoResultado, piezaNoEncontrada }.
+// page.js, pero server-side con dbServer. Devuelve { resultados, resultadosCercanos,
+// tipoResultado, piezaNoEncontrada }.
+//
+// FIX: antes, si había coincidencia exacta, se hacía return inmediato y los años cercanos
+// NUNCA se calculaban (bug "excluyente"). Ahora exacto y cercanos se calculan siempre que hay
+// año, y se acumulan: si hay exacto, `resultados` trae el exacto y `resultadosCercanos` trae
+// los ±3 (excluidos del rango, nunca duplican el año exacto) como grupo ADICIONAL. Si NO hay
+// exacto, el comportamiento es igual que antes: los cercanos ocupan `resultados` directamente
+// y `resultadosCercanos` queda vacío (no se muestra una sección de cercanos vacía de exactos).
 export async function consultarInventario({ marca, modelo, anio, pieza }) {
   const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
   const yonkesDocs = yonkesSnap.docs;
 
   // Sin año extraído del texto: buscamos en cualquier año directamente (mejor UX que
   // rechazar la búsqueda solo por faltar el dato), igual separando por disponibilidad de pieza.
+  // No hay "exacto vs cercano" que acumular aquí — no aplica el fix.
   if (anio == null) {
     const { conPieza, soloVehiculo } = await buscarConSplitDePieza(yonkesDocs, marca, modelo, null, pieza);
     if (conPieza.length > 0) {
-      return { resultados: conPieza, tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
+      return { resultados: conPieza, resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
     }
     if (soloVehiculo.length > 0) {
-      return { resultados: soloVehiculo, tipoResultado: 'cualquierAno', piezaNoEncontrada: true };
+      return { resultados: soloVehiculo, resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: true };
     }
-    return { resultados: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
+    return { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
   }
 
-  // Nivel 1: año exacto.
+  // Año exacto: se calcula pero YA NO se hace return inmediato.
   const { conPieza, soloVehiculo } = await buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza);
-  if (conPieza.length > 0) {
-    return { resultados: conPieza, tipoResultado: 'exacto', piezaNoEncontrada: false };
-  }
-  if (soloVehiculo.length > 0) {
-    return { resultados: soloVehiculo, tipoResultado: 'exacto', piezaNoEncontrada: true };
-  }
+  const exactos = conPieza.length > 0 ? conPieza : soloVehiculo;
+  const piezaNoEncontradaExacto = conPieza.length === 0 && soloVehiculo.length > 0;
 
-  // Nivel 2: años cercanos ±3, mismo marca/modelo (sin filtrar por pieza específica).
-  // Los 6 años se consultan EN PARALELO (Promise.all), no uno por uno — page.js hace lo
-  // mismo para su nivel "cercano" (vía buscarVehiculosEnAniosParalelo en
-  // lib/buscarVehiculosPorAnio.js). Si se cambia esta paralelización aquí, replicarlo allá.
-  const anosRango = [];
-  for (let d = 1; d <= 3; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
-  const listasCercanas = await Promise.all(
-    anosRango.map((a) => buscarVehiculos(yonkesDocs, marca, modelo, a))
-  );
-  const cercanos = sinDuplicados(listasCercanas.flat());
+  // Años cercanos ±3, mismo marca/modelo (sin filtrar por pieza específica, igual que antes) —
+  // se calculan SIEMPRE, no como fallback exclusivo.
+  const cercanos = await buscarAniosCercanos((a) => buscarVehiculos(yonkesDocs, marca, modelo, a), anio, sinDuplicados);
+
+  if (exactos.length > 0) {
+    return { resultados: exactos, resultadosCercanos: cercanos, tipoResultado: 'exacto', piezaNoEncontrada: piezaNoEncontradaExacto };
+  }
   if (cercanos.length > 0) {
-    ordenarPorPlan(cercanos);
-    return { resultados: cercanos, tipoResultado: 'cercano', piezaNoEncontrada: false };
+    return { resultados: cercanos, resultadosCercanos: [], tipoResultado: 'cercano', piezaNoEncontrada: false };
   }
 
   // Nivel 3: cualquier año, mismo marca/modelo.
   const cualquierAno = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));
   ordenarPorPlan(cualquierAno);
-  return { resultados: cualquierAno, tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
+  return { resultados: cualquierAno, resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
 }
 
 // Búsqueda de solo vehículo (sin pieza): el usuario quiere ver todo el inventario
-// disponible para esa marca/modelo/año, no una pieza en particular. Mismo pipeline de
-// niveles (exacto -> cercano ±3 -> cualquier año), pero sin separar por disponibilidad
-// de pieza — regresa directamente los vehículos encontrados en el primer nivel con resultados.
+// disponible para esa marca/modelo/año, no una pieza en particular. Mismo pipeline
+// acumulativo que consultarInventario() (ver nota de FIX ahí), sin separar por disponibilidad
+// de pieza — regresa directamente los vehículos encontrados.
 export async function consultarInventarioVehiculo({ marca, modelo, anio }) {
   const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
   const yonkesDocs = yonkesSnap.docs;
@@ -241,29 +257,21 @@ export async function consultarInventarioVehiculo({ marca, modelo, anio }) {
   if (anio == null) {
     const resultados = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));
     ordenarPorPlan(resultados);
-    return { resultados, tipoResultado: 'cualquierAno' };
+    return { resultados, resultadosCercanos: [], tipoResultado: 'cualquierAno' };
   }
 
-  // Nivel 1: año exacto.
   const exactos = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, anio));
+  ordenarPorPlan(exactos);
+  const cercanos = await buscarAniosCercanos((a) => buscarVehiculos(yonkesDocs, marca, modelo, a), anio, sinDuplicados);
+
   if (exactos.length > 0) {
-    ordenarPorPlan(exactos);
-    return { resultados: exactos, tipoResultado: 'exacto' };
+    return { resultados: exactos, resultadosCercanos: cercanos, tipoResultado: 'exacto' };
   }
-
-  // Nivel 2: años cercanos ±3. En paralelo (Promise.all), no uno por uno — ver nota
-  // equivalente en consultarInventario() sobre buscarVehiculosEnAniosParalelo en page.js.
-  const anosRango = [];
-  for (let d = 1; d <= 3; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
-  const listasCercanas = await Promise.all(anosRango.map((a) => buscarVehiculos(yonkesDocs, marca, modelo, a)));
-  const cercanos = sinDuplicados(listasCercanas.flat());
   if (cercanos.length > 0) {
-    ordenarPorPlan(cercanos);
-    return { resultados: cercanos, tipoResultado: 'cercano' };
+    return { resultados: cercanos, resultadosCercanos: [], tipoResultado: 'cercano' };
   }
 
-  // Nivel 3: cualquier año.
   const cualquierAno = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));
   ordenarPorPlan(cualquierAno);
-  return { resultados: cualquierAno, tipoResultado: 'cualquierAno' };
+  return { resultados: cualquierAno, resultadosCercanos: [], tipoResultado: 'cualquierAno' };
 }

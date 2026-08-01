@@ -55,25 +55,26 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
   // o "Actualizar catálogo" en admin que hoy solo escanea vehiculos). Por eso el check de
   // catálogo y la búsqueda de motores corren en PARALELO: solo se declara "no_catalogado" si
   // NINGUNO de los dos encuentra nada — un motor real no debe quedar invisible por esto.
-  const [enCatalogo, { motores, transmisiones }] = await Promise.all([
+  const [enCatalogo, { motores, transmisiones, motoresCercanos, transmisionesCercanos }] = await Promise.all([
     existeEnCatalogoVivo(marca, modelo),
     consultarMotoresTransmisiones({ marca, modelo, anio }),
   ]);
-  const totalMotoresTransmisiones = motores.length + transmisiones.length;
+  const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo, anio, origen, tieneContacto });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
-  const { resultados, tipoResultado, piezaNoEncontrada } = enCatalogo
+  const { resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada } = enCatalogo
     ? await consultarInventario({ marca, modelo, anio, pieza })
-    : { resultados: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
+    : { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
 
-  // "Sin inventario" solo cuando NADA se encontró — un motor/transmisión suelto hallado
-  // cuenta como resultado real (estado 'ok'), igual que una pieza, para no mentir en las
-  // métricas de demanda insatisfecha.
-  if (resultados.length === 0 && totalMotoresTransmisiones === 0) {
+  // "Sin inventario" solo cuando NADA se encontró (ni exacto, ni cercano, ni motores/
+  // transmisiones) — un motor/transmisión o un año cercano hallado cuenta como resultado
+  // real (estado 'ok'), igual que una pieza, para no mentir en las métricas de demanda
+  // insatisfecha.
+  if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
     await guardarSinBloquear('busquedas_pendientes', {
       pieza, marca, modelo, anio,
       textoOriginal: texto,
@@ -89,12 +90,13 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
 
   await registrarBusqueda({
     texto, estado: 'ok', pieza, marca, modelo, anio,
-    tipoResultado, totalResultados: resultados.length + totalMotoresTransmisiones, piezaNoEncontrada, origen, tieneContacto,
+    tipoResultado, totalResultados: resultados.length + resultadosCercanos.length + totalMotoresTransmisiones, piezaNoEncontrada, origen, tieneContacto,
   });
 
   return NextResponse.json({
-    estado: 'resultados', resultados, tipoResultado, piezaNoEncontrada,
-    resultadosMotores: motores, resultadosTransmisiones: transmisiones,
+    estado: 'resultados', resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada,
+    resultadosMotores: motores, resultadosMotoresCercanos: motoresCercanos,
+    resultadosTransmisiones: transmisiones, resultadosTransmisionesCercanos: transmisionesCercanos,
     marca, modelo, anio, pieza,
   });
 }
@@ -108,22 +110,22 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
   // Ver nota equivalente en resolverBusqueda(): catálogo vivo y motores en paralelo, para que
   // un motor/transmisión real no quede invisible solo porque su marca/modelo no está en el
   // catálogo (que hoy se nutre principalmente de vehículos).
-  const [enCatalogo, { motores, transmisiones }] = await Promise.all([
+  const [enCatalogo, { motores, transmisiones, motoresCercanos, transmisionesCercanos }] = await Promise.all([
     existeEnCatalogoVivo(marca, modelo),
     consultarMotoresTransmisiones({ marca, modelo, anio }),
   ]);
-  const totalMotoresTransmisiones = motores.length + transmisiones.length;
+  const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza: null, marca, modelo, anio, origen, tieneContacto });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
-  const { resultados, tipoResultado } = enCatalogo
+  const { resultados, resultadosCercanos, tipoResultado } = enCatalogo
     ? await consultarInventarioVehiculo({ marca, modelo, anio })
-    : { resultados: [], tipoResultado: 'cualquierAno' };
+    : { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno' };
 
-  if (resultados.length === 0 && totalMotoresTransmisiones === 0) {
+  if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
     await guardarSinBloquear('busquedas_pendientes', {
       pieza: null, marca, modelo, anio,
       textoOriginal: texto,
@@ -138,14 +140,15 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
 
   await registrarBusqueda({
     texto, estado: 'ok', pieza: null, marca, modelo, anio,
-    tipoResultado, totalResultados: resultados.length + totalMotoresTransmisiones, piezaNoEncontrada: false, origen, tieneContacto,
+    tipoResultado, totalResultados: resultados.length + resultadosCercanos.length + totalMotoresTransmisiones, piezaNoEncontrada: false, origen, tieneContacto,
   });
 
   const partesEncabezado = [marca, modelo, anio].filter(Boolean);
   return NextResponse.json({
-    estado: 'resultados', resultados, tipoResultado,
+    estado: 'resultados', resultados, resultadosCercanos, tipoResultado,
     piezaNoEncontrada: false,
-    resultadosMotores: motores, resultadosTransmisiones: transmisiones,
+    resultadosMotores: motores, resultadosMotoresCercanos: motoresCercanos,
+    resultadosTransmisiones: transmisiones, resultadosTransmisionesCercanos: transmisionesCercanos,
     marca, modelo, anio, pieza: null,
     encabezadoVehiculo: resultados.length > 0
       ? `Esto es lo que tenemos disponible para ${partesEncabezado.join(' ')}:`

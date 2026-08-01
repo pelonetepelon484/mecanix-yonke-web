@@ -174,6 +174,9 @@ export default function Home() {
   const [encabezadoVehiculo, setEncabezadoVehiculo] = useState(null);
   const [resultadosMotoresLibre, setResultadosMotoresLibre] = useState([]);
   const [resultadosTransmisionesLibre, setResultadosTransmisionesLibre] = useState([]);
+  const [resultadosCercanosLibre, setResultadosCercanosLibre] = useState([]);
+  const [resultadosMotoresCercanosLibre, setResultadosMotoresCercanosLibre] = useState([]);
+  const [resultadosTransmisionesCercanosLibre, setResultadosTransmisionesCercanosLibre] = useState([]);
 
   useEffect(() => {
     async function cargarCatalogo() {
@@ -454,15 +457,22 @@ export default function Home() {
       setPiezaNoEncontrada(Boolean(data.piezaNoEncontrada));
       setResultadosMotoresLibre(data.resultadosMotores || []);
       setResultadosTransmisionesLibre(data.resultadosTransmisiones || []);
+      setResultadosCercanosLibre(data.resultadosCercanos || []);
+      setResultadosMotoresCercanosLibre(data.resultadosMotoresCercanos || []);
+      setResultadosTransmisionesCercanosLibre(data.resultadosTransmisionesCercanos || []);
       setBusquedaHecha(true);
       registrarEvento('busqueda_texto_libre', {
         estado: data.estado,
-        resultados: data.resultados.length + (data.resultadosMotores?.length || 0) + (data.resultadosTransmisiones?.length || 0),
+        resultados: data.resultados.length + (data.resultadosMotores?.length || 0) + (data.resultadosTransmisiones?.length || 0)
+          + (data.resultadosCercanos?.length || 0) + (data.resultadosMotoresCercanos?.length || 0) + (data.resultadosTransmisionesCercanos?.length || 0),
       });
     } else if (data.estado === 'confirmar') {
       setResultados([]);
       setResultadosMotoresLibre([]);
       setResultadosTransmisionesLibre([]);
+      setResultadosCercanosLibre([]);
+      setResultadosMotoresCercanosLibre([]);
+      setResultadosTransmisionesCercanosLibre([]);
       setBusquedaHecha(false);
       setEncabezadoVehiculo(null);
       setMensajeLibre({ tipo: 'confirmar', texto: data.mensaje, sugerencia: data.sugerencia });
@@ -471,6 +481,9 @@ export default function Home() {
       setResultados([]);
       setResultadosMotoresLibre([]);
       setResultadosTransmisionesLibre([]);
+      setResultadosCercanosLibre([]);
+      setResultadosMotoresCercanosLibre([]);
+      setResultadosTransmisionesCercanosLibre([]);
       setBusquedaHecha(false);
       setEncabezadoVehiculo(null);
       setMensajeLibre({ tipo: data.estado, texto: data.mensaje });
@@ -665,6 +678,167 @@ function obtenerEstadoAbierto(horario) {
 
     return `Hola, encontré esta pieza en Mecanix Yonke Virtual: ${pieza}. ¿Sigue disponible?`;
   }
+
+  // Tarjeta de un resultado de vehículo — compartida entre el grupo "exacto" y el grupo
+  // "años cercanos" para no mantener dos copias del mismo bloque. El aviso de compatibilidad
+  // se decide solo por si el año difiere del buscado (nunca por tipoResultado global), así
+  // funciona igual sin importar en qué grupo aparezca la tarjeta.
+  function renderTarjetaVehiculo(r, key) {
+    return (
+      <div key={key} style={resultCardStyle}>
+        {r.verificado && <SelloMarcaAgua />}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+        {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
+          {r.logoUrl && (
+            <img
+              src={r.logoUrl}
+              alt={r.yonkeNombre}
+              style={{ width: '160px', height: '160px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
+            />
+          )}
+          <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+          {r.verificado && <BadgeVerificado />}
+        </div>
+
+        {r.ciudad && (
+          <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: '600', margin: '3px 0 0' }}>
+            📌 {CIUDADES_BC.find(c => c.key === r.ciudad)?.label || r.ciudad}
+          </p>
+        )}
+
+        {r.calificacion.promedio ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+            <span style={{ color: '#E8720C', fontSize: '14px' }}>
+              {'★'.repeat(Math.round(r.calificacion.promedio))}{'☆'.repeat(5 - Math.round(r.calificacion.promedio))}
+            </span>
+            <span style={{ color: '#888', fontSize: '12px' }}>
+              {r.calificacion.promedio} ({r.calificacion.total} {r.calificacion.total === 1 ? 'opinión' : 'opiniones'})
+            </span>
+          </div>
+        ) : (
+          <p style={{ color: '#ccc', fontSize: '12px', marginTop: '4px' }}>Sin calificaciones todavía</p>
+        )}
+        {r.horario && (() => {
+          const estado = obtenerEstadoAbierto(r.horario);
+          if (!estado) return null;
+          return (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              backgroundColor: estado.abierto ? '#E8F5E9' : '#FDECEA',
+              color: estado.abierto ? '#2E7D32' : '#C62828',
+              fontSize: '12px', fontWeight: '700', padding: '4px 10px',
+              borderRadius: '20px', marginTop: '6px', marginBottom: '4px',
+            }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: estado.abierto ? '#2E7D32' : '#C62828', display: 'inline-block' }} />
+              {estado.texto}
+            </div>
+          );
+        })()}
+        <p style={{ color: '#666', fontSize: '14px', margin: '10px 0 4px' }}>📍 {r.direccion}</p>
+        <p style={{ color: '#666', fontSize: '14px', margin: '4px 0' }}>📞 {r.telefono}</p>
+
+        {formatearHorario(r.horario) && (
+          <p style={{ color: '#555', fontSize: '13px', margin: '4px 0' }}>🕐 {formatearHorario(r.horario)}</p>
+        )}
+
+        {/* Resultado de motor/transmisión */}
+        {r.esMotor && (
+          <div style={{ backgroundColor: '#F0F4F8', borderRadius: '10px', padding: '12px', margin: '10px 0' }}>
+            <span style={{ backgroundColor: r.motor.tipo === 'Motor' ? '#E8720C' : '#1A3C5E', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '12px' }}>
+              {r.motor.tipo === 'Motor' ? '🔧 Motor' : '⚙️ Transmisión'}
+            </span>
+            <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: '8px 0 2px' }}>
+              {r.motor.marca} {r.motor.modelo} {r.motor.ano}
+            </p>
+            {r.motor.cilindrada && (
+              <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
+            )}
+          </div>
+        )}
+
+        {/* Resultado de vehículo */}
+        {!r.esMotor && (
+          <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 6px', fontWeight: '600' }}>
+            🚗 {r.vehiculo.marca} {r.vehiculo.modelo} {r.vehiculo.ano}
+            {r.vehiculo.ano !== parseInt(ano) && (
+              <span style={{ fontSize: '11px', color: '#E8720C', fontWeight: 'normal', marginLeft: '6px' }}>
+                (confirma compatibilidad con tu {ano})
+              </span>
+            )}
+          </p>
+        )}
+
+        {r.metodosPago.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', marginBottom: '14px' }}>
+            {r.metodosPago.map((m) => <span key={m} style={pagoTagStyle}>{metodosPagoLabels[m] || m}</span>)}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {r.whatsapp && (
+            <a
+              href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp(r))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={whatsappButtonStyle}
+              onClick={() => registrarEvento('contacto_yonke', {
+                yonke: r.yonkeNombre,
+                yonke_id: r.yonkeId,
+                medio: 'whatsapp',
+                ciudad: r.ciudad || 'sin_ciudad',
+              })}
+            >
+              💬 WhatsApp
+            </a>
+          )}
+          <button onClick={() => abrirModalReserva(r)} className="mecanix-btn-secondary" style={{ flex: 1 }}>
+            Reservar
+          </button>
+        </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Tarjeta de un motor/transmisión suelto — solo del buscador inteligente. Compartida entre
+  // el grupo "exacto" y el de "años cercanos" por la misma razón que renderTarjetaVehiculo.
+  function renderTarjetaMotor(r, key, icono) {
+    return (
+      <div key={key} style={resultCardStyle}>
+        {r.verificado && <SelloMarcaAgua />}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+        {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
+          {r.logoUrl && (
+            <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
+          )}
+          <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+          {r.verificado && <BadgeVerificado />}
+        </div>
+        <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
+          {icono} {r.motor.marca} {r.motor.modelo} {r.motor.ano}
+        </p>
+        {r.motor.cilindrada && (
+          <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
+        )}
+        {r.whatsapp && (
+          <a
+            href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp({ ...r, esMotor: true }))}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ ...whatsappButtonStyle, marginTop: '12px' }}
+            onClick={() => registrarEvento('contacto_yonke', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, medio: 'whatsapp', ciudad: r.ciudad || 'sin_ciudad' })}
+          >
+            💬 WhatsApp
+          </a>
+        )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', padding: '32px 16px', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: '620px', margin: '0 auto' }}>
@@ -888,7 +1062,7 @@ function obtenerEstadoAbierto(horario) {
             </p>
           )}
 
-          <button onClick={() => { setEncabezadoVehiculo(null); setResultadosMotoresLibre([]); setResultadosTransmisionesLibre([]); buscarPiezas(); }} disabled={buscando} className="mecanix-btn-primary">
+          <button onClick={() => { setEncabezadoVehiculo(null); setResultadosMotoresLibre([]); setResultadosTransmisionesLibre([]); setResultadosCercanosLibre([]); setResultadosMotoresCercanosLibre([]); setResultadosTransmisionesCercanosLibre([]); buscarPiezas(); }} disabled={buscando} className="mecanix-btn-primary">
             {buscando ? 'Buscando...' : `🔍 Buscar ${tipoBusqueda === 'motor' ? 'motor' : tipoBusqueda === 'transmision' ? 'transmisión' : 'refacción'}`}
           </button>
         </div>
@@ -973,7 +1147,7 @@ function obtenerEstadoAbierto(horario) {
               {getHeaderText()}
             </h3>
 
-            {resultados.length === 0 && resultadosMotoresLibre.length === 0 && resultadosTransmisionesLibre.length === 0 && (
+            {resultados.length === 0 && resultadosCercanosLibre.length === 0 && resultadosMotoresLibre.length === 0 && resultadosMotoresCercanosLibre.length === 0 && resultadosTransmisionesLibre.length === 0 && resultadosTransmisionesCercanosLibre.length === 0 && (
               <div style={avisoActualizacionStyle}>
                 <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.6' }}>
                   📦 No te desanimes — seguimos actualizando el inventario día con día. Vuelve a intentar más tarde o{' '}
@@ -984,7 +1158,7 @@ function obtenerEstadoAbierto(horario) {
               </div>
             )}
 
-            {(resultadosMotoresLibre.length > 0 || resultadosTransmisionesLibre.length > 0) && resultados.length > 0 && (
+            {(resultadosMotoresLibre.length > 0 || resultadosMotoresCercanosLibre.length > 0 || resultadosTransmisionesLibre.length > 0 || resultadosTransmisionesCercanosLibre.length > 0) && (resultados.length > 0 || resultadosCercanosLibre.length > 0) && (
               <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '4px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Partes
               </p>
@@ -1005,202 +1179,59 @@ function obtenerEstadoAbierto(horario) {
               </p>
             )}
 
-            {resultados.map((r, i) => (
-              <div key={i} style={resultCardStyle}>
-                {r.verificado && <SelloMarcaAgua />}
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+            {/* "Coincidencia exacta" solo se rotula cuando también hay un grupo de cercanos con el
+                que contrastar — si no hay cercanos, resultados ya es el único grupo (comportamiento
+                previo sin cambios). */}
+            {resultados.length > 0 && resultadosCercanosLibre.length > 0 && (
+              <p style={groupHeaderStyle}>✅ Coincidencia exacta</p>
+            )}
+            {resultados.map((r, i) => renderTarjetaVehiculo(r, i))}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
-                  {r.logoUrl && (
-                    <img
-                      src={r.logoUrl}
-                      alt={r.yonkeNombre}
-                      style={{ width: '160px', height: '160px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
-                    />
-                  )}
-                  <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
-                  {r.verificado && <BadgeVerificado />}
-                </div>
-
-                {r.ciudad && (
-                  <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: '600', margin: '3px 0 0' }}>
-                    📌 {CIUDADES_BC.find(c => c.key === r.ciudad)?.label || r.ciudad}
-                  </p>
-                )}
-
-                {r.calificacion.promedio ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                    <span style={{ color: '#E8720C', fontSize: '14px' }}>
-                      {'★'.repeat(Math.round(r.calificacion.promedio))}{'☆'.repeat(5 - Math.round(r.calificacion.promedio))}
-                    </span>
-                    <span style={{ color: '#888', fontSize: '12px' }}>
-                      {r.calificacion.promedio} ({r.calificacion.total} {r.calificacion.total === 1 ? 'opinión' : 'opiniones'})
-                    </span>
-                  </div>
-                ) : (
-                  <p style={{ color: '#ccc', fontSize: '12px', marginTop: '4px' }}>Sin calificaciones todavía</p>
-                )}
-{r.horario && (() => {
-                  const estado = obtenerEstadoAbierto(r.horario);
-                  if (!estado) return null;
-                  return (
-                    <div style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '6px',
-                      backgroundColor: estado.abierto ? '#E8F5E9' : '#FDECEA',
-                      color: estado.abierto ? '#2E7D32' : '#C62828',
-                      fontSize: '12px', fontWeight: '700', padding: '4px 10px',
-                      borderRadius: '20px', marginTop: '6px', marginBottom: '4px',
-                    }}>
-                      <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: estado.abierto ? '#2E7D32' : '#C62828', display: 'inline-block' }} />
-                      {estado.texto}
-                    </div>
-                  );
-                })()}
-                <p style={{ color: '#666', fontSize: '14px', margin: '10px 0 4px' }}>📍 {r.direccion}</p>
-                <p style={{ color: '#666', fontSize: '14px', margin: '4px 0' }}>📞 {r.telefono}</p>
-
-                {formatearHorario(r.horario) && (
-                  <p style={{ color: '#555', fontSize: '13px', margin: '4px 0' }}>🕐 {formatearHorario(r.horario)}</p>
-                )}
-
-                {/* Resultado de motor/transmisión */}
-                {r.esMotor && (
-                  <div style={{ backgroundColor: '#F0F4F8', borderRadius: '10px', padding: '12px', margin: '10px 0' }}>
-                    <span style={{ backgroundColor: r.motor.tipo === 'Motor' ? '#E8720C' : '#1A3C5E', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '12px' }}>
-                      {r.motor.tipo === 'Motor' ? '🔧 Motor' : '⚙️ Transmisión'}
-                    </span>
-                    <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: '8px 0 2px' }}>
-                      {r.motor.marca} {r.motor.modelo} {r.motor.ano}
-                    </p>
-                    {r.motor.cilindrada && (
-                      <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Resultado de vehículo */}
-                {!r.esMotor && (
-                  <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 6px', fontWeight: '600' }}>
-                    🚗 {r.vehiculo.marca} {r.vehiculo.modelo} {r.vehiculo.ano}
-                    {(tipoResultado === 'cercano' || tipoResultado === 'cualquierAno') && r.vehiculo.ano !== parseInt(ano) && (
-                      <span style={{ fontSize: '11px', color: '#E8720C', fontWeight: 'normal', marginLeft: '6px' }}>
-                        (confirma compatibilidad con tu {ano})
-                      </span>
-                    )}
-                  </p>
-                )}
-
-                {r.metodosPago.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', marginBottom: '14px' }}>
-                    {r.metodosPago.map((m) => <span key={m} style={pagoTagStyle}>{metodosPagoLabels[m] || m}</span>)}
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {r.whatsapp && (
-                    <a
-                      href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp(r))}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={whatsappButtonStyle}
-                      onClick={() => registrarEvento('contacto_yonke', {
-                        yonke: r.yonkeNombre,
-                        yonke_id: r.yonkeId,
-                        medio: 'whatsapp',
-                        ciudad: r.ciudad || 'sin_ciudad',
-                      })}
-                    >
-                      💬 WhatsApp
-                    </a>
-                  )}
-                  <button onClick={() => abrirModalReserva(r)} className="mecanix-btn-secondary" style={{ flex: 1 }}>
-                    Reservar
-                  </button>
-                </div>
-                </div>
-              </div>
-            ))}
+            {resultadosCercanosLibre.length > 0 && (
+              <>
+                <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
+                <p style={groupSubtextStyle}>
+                  Estas son alternativas de años próximos a tu búsqueda, no el año exacto — muchas piezas son compatibles entre años cercanos, confirma con el yonke.
+                </p>
+                {resultadosCercanosLibre.map((r, i) => renderTarjetaVehiculo(r, `cercano-${i}`))}
+              </>
+            )}
 
             {/* Motores y transmisiones sueltos — solo del buscador inteligente; el buscador
                 estructurado ya tiene su propia pestaña Motor/Transmisión y no llena estos arreglos. */}
-            {resultadosMotoresLibre.length > 0 && (
+            {(resultadosMotoresLibre.length > 0 || resultadosMotoresCercanosLibre.length > 0) && (
               <>
                 <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '20px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   🔧 Motores
                 </p>
-                {resultadosMotoresLibre.map((r, i) => (
-                  <div key={`motor-${i}`} style={resultCardStyle}>
-                    {r.verificado && <SelloMarcaAgua />}
-                    <div style={{ position: 'relative', zIndex: 1 }}>
-                    {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
-                      {r.logoUrl && (
-                        <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
-                      )}
-                      <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
-                      {r.verificado && <BadgeVerificado />}
-                    </div>
-                    <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
-                      🔧 {r.motor.marca} {r.motor.modelo} {r.motor.ano}
-                    </p>
-                    {r.motor.cilindrada && (
-                      <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
-                    )}
-                    {r.whatsapp && (
-                      <a
-                        href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp({ ...r, esMotor: true }))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ ...whatsappButtonStyle, marginTop: '12px' }}
-                        onClick={() => registrarEvento('contacto_yonke', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, medio: 'whatsapp', ciudad: r.ciudad || 'sin_ciudad' })}
-                      >
-                        💬 WhatsApp
-                      </a>
-                    )}
-                    </div>
-                  </div>
-                ))}
+                {resultadosMotoresLibre.length > 0 && resultadosMotoresCercanosLibre.length > 0 && (
+                  <p style={groupHeaderStyle}>✅ Coincidencia exacta</p>
+                )}
+                {resultadosMotoresLibre.map((r, i) => renderTarjetaMotor(r, `motor-${i}`, '🔧'))}
+                {resultadosMotoresCercanosLibre.length > 0 && (
+                  <>
+                    <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
+                    {resultadosMotoresCercanosLibre.map((r, i) => renderTarjetaMotor(r, `motor-cercano-${i}`, '🔧'))}
+                  </>
+                )}
               </>
             )}
 
-            {resultadosTransmisionesLibre.length > 0 && (
+            {(resultadosTransmisionesLibre.length > 0 || resultadosTransmisionesCercanosLibre.length > 0) && (
               <>
                 <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '20px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   ⚙️ Transmisiones
                 </p>
-                {resultadosTransmisionesLibre.map((r, i) => (
-                  <div key={`transmision-${i}`} style={resultCardStyle}>
-                    {r.verificado && <SelloMarcaAgua />}
-                    <div style={{ position: 'relative', zIndex: 1 }}>
-                    {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
-                      {r.logoUrl && (
-                        <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
-                      )}
-                      <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
-                      {r.verificado && <BadgeVerificado />}
-                    </div>
-                    <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
-                      ⚙️ {r.motor.marca} {r.motor.modelo} {r.motor.ano}
-                    </p>
-                    {r.motor.cilindrada && (
-                      <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
-                    )}
-                    {r.whatsapp && (
-                      <a
-                        href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp({ ...r, esMotor: true }))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ ...whatsappButtonStyle, marginTop: '12px' }}
-                        onClick={() => registrarEvento('contacto_yonke', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, medio: 'whatsapp', ciudad: r.ciudad || 'sin_ciudad' })}
-                      >
-                        💬 WhatsApp
-                      </a>
-                    )}
-                    </div>
-                  </div>
-                ))}
+                {resultadosTransmisionesLibre.length > 0 && resultadosTransmisionesCercanosLibre.length > 0 && (
+                  <p style={groupHeaderStyle}>✅ Coincidencia exacta</p>
+                )}
+                {resultadosTransmisionesLibre.map((r, i) => renderTarjetaMotor(r, `transmision-${i}`, '⚙️'))}
+                {resultadosTransmisionesCercanosLibre.length > 0 && (
+                  <>
+                    <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
+                    {resultadosTransmisionesCercanosLibre.map((r, i) => renderTarjetaMotor(r, `transmision-cercano-${i}`, '⚙️'))}
+                  </>
+                )}
               </>
             )}
           </div>
@@ -1451,6 +1482,8 @@ function obtenerEstadoAbierto(horario) {
 
 const contactLinkStyle = { fontSize: '12px', color: '#1A3C5E', textDecoration: 'none', fontWeight: '600', backgroundColor: '#fff', padding: '7px 14px', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' };
 const resultCardStyle = { backgroundColor: '#fff', borderRadius: '16px', padding: '20px', marginBottom: '14px', boxShadow: '0 4px 16px rgba(26,60,94,0.08)', position: 'relative', overflow: 'hidden' };
+const groupHeaderStyle = { color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '18px 0 4px', textTransform: 'uppercase', letterSpacing: '0.5px' };
+const groupSubtextStyle = { color: '#888', fontSize: '12px', margin: '0 0 12px', lineHeight: '1.5' };
 const premiumBadgeStyle = { position: 'absolute', top: '14px', right: '14px', backgroundColor: '#FAEEDA', color: '#854F0B', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' };
 const pagoTagStyle = { backgroundColor: '#F0F4F8', color: '#1A3C5E', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: '600' };
 const whatsappButtonStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px', borderRadius: '50px', backgroundColor: '#25D366', color: '#fff', fontWeight: '700', fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap' };
