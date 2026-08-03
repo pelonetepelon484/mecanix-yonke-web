@@ -74,12 +74,19 @@ export default function RegistroYonke() {
         fechaRegistro: new Date(),
       });
 
-      // Notificación por WhatsApp
+      // Notificación por WhatsApp — vía endpoint server-side (nunca expone la API key de
+      // CallMeBot en el navegador; ver src/app/lib/notificarAdmin.js).
       try {
-        const mensaje = encodeURIComponent(
-          `🏪 Nuevo yonke registrado en Mecanix!\n\nNombre: ${nombre.trim()}\nCiudad: ${CIUDADES_BC.find(c => c.key === ciudad)?.label}\nTeléfono: ${telefono.trim()}\nCorreo: ${email.trim()}\n\nRevisa Firebase para activarlo.`
-        );
-        await fetch(`https://api.callmebot.com/whatsapp.php?phone=5216611034260&text=${mensaje}&apikey=3852207`);
+        await fetch('/api/notificar-registro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre: nombre.trim(),
+            ciudad: CIUDADES_BC.find(c => c.key === ciudad)?.label || ciudad,
+            telefono: telefono.trim(),
+            email: email.trim(),
+          }),
+        });
       } catch (e) {
         console.log('WhatsApp notification failed', e);
       }

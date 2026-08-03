@@ -7,6 +7,7 @@ import { detectarFueraDeGiro } from '../../lib/busqueda/detectarFueraDeGiro';
 import { registrarBusqueda } from '../../lib/busqueda/registrarBusqueda';
 import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones } from '../../lib/busqueda/consultarInventario';
 import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLimit';
+import { notificarAdmin } from '../../lib/notificarAdmin';
 
 const MENSAJE_NO_CATALOGADO =
   'No identificamos ese modelo todavía — ¿nos confirmas la marca y el año? o cuéntanos qué modelo es y lo agregamos a la plataforma.';
@@ -37,6 +38,15 @@ async function guardarSinBloquear(coleccion, datos) {
       message: error?.message,
     });
   }
+}
+
+// Aviso al WhatsApp del admin cuando un cliente deja su contacto en una búsqueda sin
+// inventario — cierra el ciclo de busquedas_pendientes (antes solo se guardaba, nadie se
+// enteraba). Solo se llama cuando contacto existe; notificarAdmin ya traga sus propios errores.
+async function avisarContactoPendiente({ pieza, marca, modelo, anio, contacto }) {
+  const vehiculo = [marca, modelo, anio].filter(Boolean).join(' ');
+  const mensaje = `🔔 Búsqueda pendiente en Mecanix\n\nBuscaban: ${[pieza, vehiculo].filter(Boolean).join(' ') || '(sin detalle)'}\nContacto del cliente: ${contacto}\n\nRevisa el panel para dar seguimiento.`;
+  await notificarAdmin(mensaje);
 }
 
 // Paso 3 en adelante (búsqueda CON pieza): ya con {pieza, marca, modelo, anio} resueltos
@@ -79,8 +89,9 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
       pieza, marca, modelo, anio,
       textoOriginal: texto,
       fecha: new Date(),
-      ...(contacto ? { contacto } : {}),
+      ...(contacto ? { contacto, atendido: false } : {}),
     });
+    if (contacto) await avisarContactoPendiente({ pieza, marca, modelo, anio, contacto });
     await registrarBusqueda({
       texto, estado: 'sin_inventario', pieza, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto,
@@ -130,7 +141,9 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
       pieza: null, marca, modelo, anio,
       textoOriginal: texto,
       fecha: new Date(),
+      ...(contacto ? { contacto, atendido: false } : {}),
     });
+    if (contacto) await avisarContactoPendiente({ pieza: null, marca, modelo, anio, contacto });
     await registrarBusqueda({
       texto, estado: 'sin_inventario', pieza: null, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto,
