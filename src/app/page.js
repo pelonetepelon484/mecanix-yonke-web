@@ -107,6 +107,29 @@ function BannerRH() {
   );
 }
 
+// Leyenda del sello "Mecanix Verificado" — aparece en la página principal (siempre visible)
+// y también arriba de los resultados de búsqueda; mismo componente en los dos lugares para
+// que no se desincronicen el texto o el estilo.
+function LeyendaVerificados() {
+  return (
+    <a
+      href="/verificados"
+      style={{
+        display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none',
+        backgroundColor: '#EEF2F7', borderRadius: '14px', padding: '14px 18px',
+        marginBottom: '16px', border: '1.5px solid #C5D4E8',
+      }}
+    >
+      <span style={{ fontSize: '20px', flexShrink: 0 }}>🔵</span>
+      <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
+        Busca el sello <strong>Mecanix Verificado</strong> — confirmamos personalmente que
+        esos yonkes son negocios reales.{' '}
+        <span style={{ color: '#E8720C', fontWeight: '700', whiteSpace: 'nowrap' }}>Ver yonkes verificados →</span>
+      </p>
+    </a>
+  );
+}
+
 // Marca de agua del sello "Yonke Verificado": capa de fondo, MUY baja opacidad para que
 // nunca compita con el texto de la tarjeta. Va como primer hijo de una tarjeta con
 // position:'relative' + overflow:'hidden'; el resto del contenido de la tarjeta debe ir en
@@ -938,6 +961,8 @@ function obtenerEstadoAbierto(horario) {
           </div>
         </div>
 
+        <LeyendaVerificados />
+
         {/* Buscador inteligente (texto libre) */}
         <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 8px 32px rgba(26,60,94,0.10)', marginBottom: '12px' }}>
           <h2 style={{ fontSize: '18px', color: '#1A3C5E', marginBottom: '6px', fontWeight: '700', letterSpacing: '-0.3px' }}>
@@ -1146,23 +1171,7 @@ function obtenerEstadoAbierto(horario) {
         )}
 
         {/* Leyenda del sello Mecanix Verificado */}
-        {busquedaHecha && !buscando && resultados.length > 0 && (
-          <a
-            href="/verificados"
-            style={{
-              display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none',
-              backgroundColor: '#EEF2F7', borderRadius: '14px', padding: '14px 18px',
-              marginBottom: '16px', border: '1.5px solid #C5D4E8',
-            }}
-          >
-            <span style={{ fontSize: '20px', flexShrink: 0 }}>🔵</span>
-            <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
-              Busca el sello <strong>Mecanix Verificado</strong> — confirmamos personalmente que
-              esos yonkes son negocios reales.{' '}
-              <span style={{ color: '#E8720C', fontWeight: '700', whiteSpace: 'nowrap' }}>Ver yonkes verificados →</span>
-            </p>
-          </a>
-        )}
+        {busquedaHecha && !buscando && resultados.length > 0 && <LeyendaVerificados />}
 
         {/* Resultados */}
         {busquedaHecha && !buscando && (
