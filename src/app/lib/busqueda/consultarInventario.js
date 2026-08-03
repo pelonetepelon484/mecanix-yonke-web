@@ -65,6 +65,7 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
     verificado: yonkeData.verificado === true,
+    entregaInmediata: yonkeData.entregaInmediata === true,
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
@@ -79,6 +80,7 @@ function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
     verificado: yonkeData.verificado === true,
+    entregaInmediata: yonkeData.entregaInmediata === true,
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,

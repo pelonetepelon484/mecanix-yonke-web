@@ -40,13 +40,36 @@ async function guardarSinBloquear(coleccion, datos) {
   }
 }
 
-// Aviso al WhatsApp del admin cuando un cliente deja su contacto en una búsqueda sin
-// inventario — cierra el ciclo de busquedas_pendientes (antes solo se guardaba, nadie se
+// Aviso al WhatsApp del admin cuando un cliente deja su contacto en una búsqueda que no dio
+// nada útil — cierra el ciclo de busquedas_pendientes (antes solo se guardaba, nadie se
 // enteraba). Solo se llama cuando contacto existe; notificarAdmin ya traga sus propios errores.
-async function avisarContactoPendiente({ pieza, marca, modelo, anio, contacto }) {
+// Cae de vuelta al texto original si no se extrajo nada estructurado (ej. no_interpretada
+// puro), para que el admin nunca reciba un aviso vacío sin poder saber qué buscaba el cliente.
+async function avisarContactoPendiente({ texto, pieza, marca, modelo, anio, estado, contacto }) {
   const vehiculo = [marca, modelo, anio].filter(Boolean).join(' ');
-  const mensaje = `🔔 Búsqueda pendiente en Mecanix\n\nBuscaban: ${[pieza, vehiculo].filter(Boolean).join(' ') || '(sin detalle)'}\nContacto del cliente: ${contacto}\n\nRevisa el panel para dar seguimiento.`;
+  const detalle = [pieza, vehiculo].filter(Boolean).join(' ') || texto || '(sin detalle)';
+  const mensaje = `🔔 Búsqueda pendiente en Mecanix\n\nBuscaban: ${detalle}\nEstado: ${estado}\nContacto del cliente: ${contacto}\n\nRevisa el panel para dar seguimiento.`;
   await notificarAdmin(mensaje);
+}
+
+// Único punto de escritura a busquedas_pendientes + aviso al admin. Se llama en TODO camino
+// de retorno "sin resultado útil" que tenga contacto (sin_inventario, fuera_de_catalogo,
+// no_interpretada, parseo_parcial, fuera_de_giro) — antes esta lógica estaba duplicada en dos
+// ramas (sin_inventario en resolverBusqueda/resolverBusquedaVehiculo) y el resto de las ramas
+// simplemente no guardaba el número, aunque tieneContacto quedara en true. Al centralizarlo
+// acá, una rama nueva que olvide llamarlo no puede volver a perder un contacto en silencio.
+// No hace nada si no hay contacto (nunca escribe un doc vacío ni dispara un aviso de más).
+async function persistirContactoSiExiste(contacto, { texto, pieza = null, marca = null, modelo = null, anio = null, estado }) {
+  if (!contacto) return;
+  await guardarSinBloquear('busquedas_pendientes', {
+    pieza, marca, modelo, anio,
+    textoOriginal: texto,
+    estado,
+    fecha: new Date(),
+    contacto,
+    atendido: false,
+  });
+  await avisarContactoPendiente({ texto, pieza, marca, modelo, anio, estado, contacto });
 }
 
 // Paso 3 en adelante (búsqueda CON pieza): ya con {pieza, marca, modelo, anio} resueltos
@@ -56,6 +79,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
   const tieneContacto = Boolean(contacto);
 
   if (!modelo) {
+    await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo: null, anio, estado: 'fuera_de_catalogo' });
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo: null, anio, origen, tieneContacto });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
@@ -72,6 +96,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
   const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
+    await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: 'fuera_de_catalogo' });
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo, anio, origen, tieneContacto });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
@@ -85,13 +110,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
   // real (estado 'ok'), igual que una pieza, para no mentir en las métricas de demanda
   // insatisfecha.
   if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
-    await guardarSinBloquear('busquedas_pendientes', {
-      pieza, marca, modelo, anio,
-      textoOriginal: texto,
-      fecha: new Date(),
-      ...(contacto ? { contacto, atendido: false } : {}),
-    });
-    if (contacto) await avisarContactoPendiente({ pieza, marca, modelo, anio, contacto });
+    await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: 'sin_inventario' });
     await registrarBusqueda({
       texto, estado: 'sin_inventario', pieza, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto,
@@ -128,6 +147,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
   const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
+    await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: 'fuera_de_catalogo' });
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza: null, marca, modelo, anio, origen, tieneContacto });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
@@ -137,13 +157,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
     : { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno' };
 
   if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
-    await guardarSinBloquear('busquedas_pendientes', {
-      pieza: null, marca, modelo, anio,
-      textoOriginal: texto,
-      fecha: new Date(),
-      ...(contacto ? { contacto, atendido: false } : {}),
-    });
-    if (contacto) await avisarContactoPendiente({ pieza: null, marca, modelo, anio, contacto });
+    await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: 'sin_inventario' });
     await registrarBusqueda({
       texto, estado: 'sin_inventario', pieza: null, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto,
@@ -220,6 +234,7 @@ export async function POST(request) {
   // Capa 0: filtro barato, sin Firestore.
   const { permitido } = filtrarPrevio(texto);
   if (!permitido) {
+    await persistirContactoSiExiste(contacto, { texto, estado: 'no_interpretada' });
     await registrarBusqueda({ texto, estado: 'no_interpretada', origen, tieneContacto });
     return NextResponse.json({ estado: 'rechazado', mensaje: MENSAJE_RECHAZO_CAPA0 });
   }
@@ -232,6 +247,10 @@ export async function POST(request) {
   // cualquier otra rama porque debe poder ganarle tanto a "confirmar" como a "reconocido".
   const { esFueraDeGiro, categoria } = await detectarFueraDeGiro(texto, intencion);
   if (esFueraDeGiro) {
+    await persistirContactoSiExiste(contacto, {
+      texto, pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
+      estado: 'fuera_de_giro',
+    });
     await registrarBusqueda({
       texto, estado: 'fuera_de_giro', subtipo: categoria,
       pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
@@ -244,6 +263,10 @@ export async function POST(request) {
     // Se extrajo una pieza pero ningún dato de vehículo: parseo parcial, distinto de un
     // texto donde Capa 1 no encontró absolutamente nada (no_interpretada).
     const estadoLog = intencion.pieza ? 'parseo_parcial' : 'no_interpretada';
+    await persistirContactoSiExiste(contacto, {
+      texto, pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
+      estado: estadoLog,
+    });
     await registrarBusqueda({ texto, estado: estadoLog, pieza: intencion.pieza, anio: intencion.anio, origen, tieneContacto });
     return NextResponse.json({
       estado: estadoLog,
@@ -272,6 +295,10 @@ export async function POST(request) {
   // "volkswagen atlas 2020" — Atlas no existe en el catálogo): NUNCA hacer fallback
   // silencioso a buscar toda la marca, mostraría vehículos de un modelo distinto al pedido.
   if (intencion.modeloDesconocido) {
+    await persistirContactoSiExiste(contacto, {
+      texto, pieza: null, marca: intencion.marca, modelo: null, anio: intencion.anio,
+      estado: 'fuera_de_catalogo',
+    });
     await registrarBusqueda({
       texto, estado: 'fuera_de_catalogo', pieza: null, marca: intencion.marca, modelo: null,
       anio: intencion.anio, origen, tieneContacto,

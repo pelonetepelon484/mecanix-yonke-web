@@ -250,6 +250,7 @@ export default function Home() {
           yonkeNombre: yonkeData.nombre,
           logoUrl: yonkeData.logoUrl || null,
           verificado: yonkeData.verificado === true,
+          entregaInmediata: yonkeData.entregaInmediata === true,
           direccion: yonkeData.direccion,
           telefono: yonkeData.telefono,
           whatsapp: yonkeData.whatsapp || '',
@@ -280,7 +281,7 @@ export default function Home() {
       const calificacion = await obtenerCalificacion(yonkeDoc.id);
       encontrados.push({
         yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, direccion: yonkeData.direccion,
+        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
         metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
         ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -312,7 +313,7 @@ export default function Home() {
         const calificacion = await obtenerCalificacion(yonkeDoc.id);
         encontrados.push({
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, direccion: yonkeData.direccion,
+          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
           metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
           ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -379,7 +380,7 @@ export default function Home() {
           const calificacion = await obtenerCalificacion(yonkeDoc.id);
           const resultadoBase = {
             yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-            yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, direccion: yonkeData.direccion,
+            yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, direccion: yonkeData.direccion,
             telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
             metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
             ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -679,6 +680,35 @@ function obtenerEstadoAbierto(horario) {
     return `Hola, encontré esta pieza en Mecanix Yonke Virtual: ${pieza}. ¿Sigue disponible?`;
   }
 
+  // "Entrega inmediata": el pedido va a DAVID, no al yonke — por eso arma su propio mensaje
+  // (distinto de construirMensajeWhatsApp, que siempre apunta al yonke) y en paralelo dispara
+  // el aviso server-side por CallMeBot (mismo mecanismo que busquedas_pendientes) para que
+  // David se entere por las dos vías. El número de David en el link de WhatsApp no es
+  // sensible (ya aparece hardcodeado en el CTA de "sin resultados" de esta misma página); lo
+  // que sí debe quedar server-side es la API key de CallMeBot, y esa nunca sale de /api.
+  function pedirEntregaInmediata(r) {
+    const datosVehiculo = r.esMotor ? r.motor : r.vehiculo;
+    const marcaTexto = datosVehiculo?.marca || marca;
+    const modeloTexto = datosVehiculo?.modelo || modelo;
+    const anoTexto = datosVehiculo?.ano || ano;
+    const piezaTexto = r.esMotor
+      ? (r.motor?.tipo || '')
+      : (piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion) || '';
+    const vehiculoTexto = [marcaTexto, modeloTexto, anoTexto].filter(Boolean).join(' ');
+    const detalle = [piezaTexto, vehiculoTexto].filter(Boolean).join(' de ');
+
+    const mensajeCliente = `Hola, quiero entrega inmediata de ${detalle || 'una pieza'} que tiene ${r.yonkeNombre}. Mi taller está en `;
+    window.open(`https://wa.me/526611034260?text=${encodeURIComponent(mensajeCliente)}`, '_blank', 'noopener,noreferrer');
+
+    fetch('/api/pedido-entrega-inmediata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pieza: piezaTexto, marca: marcaTexto, modelo: modeloTexto, anio: anoTexto, yonkeNombre: r.yonkeNombre }),
+    }).catch((e) => console.log('No se pudo enviar el aviso de entrega inmediata', e));
+
+    registrarEvento('pedido_entrega_inmediata', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, ciudad: r.ciudad || 'sin_ciudad' });
+  }
+
   // Tarjeta de un resultado de vehículo — compartida entre el grupo "exacto" y el grupo
   // "años cercanos" para no mantener dos copias del mismo bloque. El aviso de compatibilidad
   // se decide solo por si el año difiere del buscado (nunca por tipoResultado global), así
@@ -701,6 +731,12 @@ function obtenerEstadoAbierto(horario) {
           <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
           {r.verificado && <BadgeVerificado />}
         </div>
+
+        {r.entregaInmediata && (
+          <p style={{ color: '#E8720C', fontSize: '13px', fontWeight: '700', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            ⚡ Entrega inmediata
+          </p>
+        )}
 
         {r.ciudad && (
           <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: '600', margin: '3px 0 0' }}>
@@ -797,6 +833,12 @@ function obtenerEstadoAbierto(horario) {
             Reservar
           </button>
         </div>
+
+        {r.entregaInmediata && (
+          <button onClick={() => pedirEntregaInmediata(r)} style={entregaButtonStyle}>
+            ⚡ Pedir entrega a mi taller
+          </button>
+        )}
         </div>
       </div>
     );
@@ -817,6 +859,11 @@ function obtenerEstadoAbierto(horario) {
           <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
           {r.verificado && <BadgeVerificado />}
         </div>
+        {r.entregaInmediata && (
+          <p style={{ color: '#E8720C', fontSize: '13px', fontWeight: '700', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            ⚡ Entrega inmediata
+          </p>
+        )}
         <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
           {icono} {r.motor.marca} {r.motor.modelo} {r.motor.ano}
         </p>
@@ -833,6 +880,11 @@ function obtenerEstadoAbierto(horario) {
           >
             💬 WhatsApp
           </a>
+        )}
+        {r.entregaInmediata && (
+          <button onClick={() => pedirEntregaInmediata(r)} style={{ ...entregaButtonStyle, marginTop: '8px' }}>
+            ⚡ Pedir entrega a mi taller
+          </button>
         )}
         </div>
       </div>
@@ -1487,6 +1539,7 @@ const groupSubtextStyle = { color: '#888', fontSize: '12px', margin: '0 0 12px',
 const premiumBadgeStyle = { position: 'absolute', top: '14px', right: '14px', backgroundColor: '#FAEEDA', color: '#854F0B', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' };
 const pagoTagStyle = { backgroundColor: '#F0F4F8', color: '#1A3C5E', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: '600' };
 const whatsappButtonStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px', borderRadius: '50px', backgroundColor: '#25D366', color: '#fff', fontWeight: '700', fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap' };
+const entregaButtonStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '12px 16px', borderRadius: '10px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontWeight: '700', fontSize: '13px', marginTop: '8px', cursor: 'pointer', fontFamily: "'Inter', sans-serif" };
 const cancelButtonStyle = { flex: 1, padding: '14px', borderRadius: '50px', border: 'none', backgroundColor: '#F4F5F5', color: '#888', fontWeight: '700', fontSize: '15px', cursor: 'pointer' };
 const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000, backdropFilter: 'blur(4px)' };
 const modalStyle = { backgroundColor: '#fff', borderRadius: '20px', padding: '28px', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' };
