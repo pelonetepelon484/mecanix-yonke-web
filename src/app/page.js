@@ -1363,23 +1363,11 @@ function obtenerEstadoAbierto(horario) {
                   'Registro de ventas y venta manual',
                   'Notificaciones push al recibir una reservación',
                   'Botón de WhatsApp para contactar al cliente que reservó',
-                ].map((item) => (
-                  <li key={item} style={planItemStyle}>
-                    <span style={{ color: '#E8720C', fontWeight: '700', marginRight: '8px' }}>✓</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <p style={{ fontSize: '11px', fontWeight: '700', color: '#E8720C', letterSpacing: '0.5px', margin: '14px 0 8px' }}>
-                PRÓXIMAMENTE EN PREMIUM
-              </p>
-              <ul style={planListaStyle}>
-                {[
                   'Indicador de piezas agotadas en tu inventario',
                   'Control de disponibilidad de piezas desde tu propio panel',
                 ].map((item) => (
-                  <li key={item} style={{ ...planItemStyle, color: '#aaa' }}>
-                    <span style={{ color: '#aaa', fontWeight: '700', marginRight: '8px' }}>+</span>
+                  <li key={item} style={planItemStyle}>
+                    <span style={{ color: '#E8720C', fontWeight: '700', marginRight: '8px' }}>✓</span>
                     {item}
                   </li>
                 ))}
