@@ -709,35 +709,13 @@ function obtenerEstadoAbierto(horario) {
     registrarEvento('pedido_entrega_inmediata', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, ciudad: r.ciudad || 'sin_ciudad' });
   }
 
-  // Tarjeta de un resultado de vehículo — compartida entre el grupo "exacto" y el grupo
-  // "años cercanos" para no mantener dos copias del mismo bloque. El aviso de compatibilidad
-  // se decide solo por si el año difiere del buscado (nunca por tipoResultado global), así
-  // funciona igual sin importar en qué grupo aparezca la tarjeta.
-  function renderTarjetaVehiculo(r, key) {
+  // Bloque de "info del negocio del yonke" — ciudad, calificaciones, abierto/cerrado,
+  // dirección, teléfono y horario en texto. Compartido entre la tarjeta de vehículo/pieza y la
+  // de motor/transmisión para que nunca se vuelvan a desincronizar (antes vivía duplicado solo
+  // en renderTarjetaVehiculo y motores/transmisiones se quedaban sin esta info).
+  function renderInfoNegocio(r) {
     return (
-      <div key={key} style={resultCardStyle}>
-        {r.verificado && <SelloMarcaAgua />}
-        <div style={{ position: 'relative', zIndex: 1 }}>
-        {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
-          {r.logoUrl && (
-            <img
-              src={r.logoUrl}
-              alt={r.yonkeNombre}
-              style={{ width: '160px', height: '160px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
-            />
-          )}
-          <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
-          {r.verificado && <BadgeVerificado />}
-        </div>
-
-        {r.entregaInmediata && (
-          <p style={{ color: '#E8720C', fontSize: '13px', fontWeight: '700', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            ⚡ Entrega inmediata
-          </p>
-        )}
-
+      <>
         {r.ciudad && (
           <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: '600', margin: '3px 0 0' }}>
             📌 {CIUDADES_BC.find(c => c.key === r.ciudad)?.label || r.ciudad}
@@ -778,6 +756,40 @@ function obtenerEstadoAbierto(horario) {
         {formatearHorario(r.horario) && (
           <p style={{ color: '#555', fontSize: '13px', margin: '4px 0' }}>🕐 {formatearHorario(r.horario)}</p>
         )}
+      </>
+    );
+  }
+
+  // Tarjeta de un resultado de vehículo — compartida entre el grupo "exacto" y el grupo
+  // "años cercanos" para no mantener dos copias del mismo bloque. El aviso de compatibilidad
+  // se decide solo por si el año difiere del buscado (nunca por tipoResultado global), así
+  // funciona igual sin importar en qué grupo aparezca la tarjeta.
+  function renderTarjetaVehiculo(r, key) {
+    return (
+      <div key={key} style={resultCardStyle}>
+        {r.verificado && <SelloMarcaAgua />}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+        {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
+          {r.logoUrl && (
+            <img
+              src={r.logoUrl}
+              alt={r.yonkeNombre}
+              style={{ width: '160px', height: '160px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
+            />
+          )}
+          <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
+          {r.verificado && <BadgeVerificado />}
+        </div>
+
+        {r.entregaInmediata && (
+          <p style={{ color: '#E8720C', fontSize: '13px', fontWeight: '700', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            ⚡ Entrega inmediata
+          </p>
+        )}
+
+        {renderInfoNegocio(r)}
 
         {/* Resultado de motor/transmisión */}
         {r.esMotor && (
@@ -864,6 +876,9 @@ function obtenerEstadoAbierto(horario) {
             ⚡ Entrega inmediata
           </p>
         )}
+
+        {renderInfoNegocio(r)}
+
         <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
           {icono} {r.motor.marca} {r.motor.modelo} {r.motor.ano}
         </p>
