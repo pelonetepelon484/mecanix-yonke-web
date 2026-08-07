@@ -1310,6 +1310,50 @@ function obtenerEstadoAbierto(horario) {
 
         {/* Planes de suscripción */}
         <div id="planes" style={{ marginTop: '32px' }}>
+
+          {/* Banner de bienvenida — oferta de una sola vez al registrarse por primera vez
+              (NO permanente, no es un plan). Va arriba de todo para que sea lo primero que
+              vea un yonke nuevo que llega a esta sección. */}
+          <div style={{
+            background: 'linear-gradient(135deg, #1A3C5E 0%, #234b73 100%)',
+            borderRadius: '20px', padding: '28px 24px', marginBottom: '28px',
+            textAlign: 'center', boxShadow: '0 8px 24px rgba(26,60,94,0.25)',
+            border: '2px solid #E8720C',
+          }}>
+            <p style={{ fontSize: '11px', fontWeight: '700', color: '#FFC98C', letterSpacing: '1px', margin: '0 0 8px', textTransform: 'uppercase' }}>
+              Oferta de bienvenida — solo la primera vez
+            </p>
+            <h2 style={{ fontSize: '21px', fontWeight: '700', color: '#fff', margin: '0 0 16px' }}>
+              🎁 Bienvenida para yonkes nuevos
+            </h2>
+            <div style={{ textAlign: 'left', maxWidth: '420px', margin: '0 auto 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+                ✅ Tu primera captura de inventario corre por nuestra cuenta — vamos a tu yonke
+                y cargamos todos tus vehículos <strong style={{ color: '#E8720C' }}>GRATIS</strong>.
+              </p>
+              <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+                ✅ Un mes de Premium <strong style={{ color: '#E8720C' }}>GRATIS</strong> — tu
+                página con tu marca, tu inventario y clientes buscándote.
+              </p>
+            </div>
+            <p style={{ color: '#C5D4E8', fontSize: '12.5px', lineHeight: '1.6', margin: '0 auto 22px', maxWidth: '420px' }}>
+              Después tú decides: te quedas en Premium, pasas a Básico, o contratas Captura a
+              Domicilio para que sigamos actualizando tu inventario por ti. Sin compromiso.
+            </p>
+            <a
+              href="https://wa.me/5216611034260?text=Hola%2C%20quiero%20aprovechar%20la%20bienvenida%20para%20yonkes%20nuevos%20de%20Mecanix%20Yonke%20Virtual%20(primera%20captura%20gratis%20%2B%20mes%20Premium%20gratis)"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={yonkeCtaButtonStyle}
+              onClick={() => registrarEvento('clic_bienvenida_yonke_nuevo', {
+                ubicacion: 'seccion_planes',
+                plan_actual: 'visitante',
+              })}
+            >
+              🎁 Empezar gratis
+            </a>
+          </div>
+
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 8px' }}>
               Planes para tu yonke
