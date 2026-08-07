@@ -1437,6 +1437,43 @@ function obtenerEstadoAbierto(horario) {
             </div>
 
           </div>
+
+          {/* Complemento — NO es un 4º plan, se suma a cualquier plan de arriba (Básico,
+              Premium o Marca Propia). Por eso vive fuera del grid de 3 columnas, con su
+              propio marco punteado que lo distingue visualmente. */}
+          <div style={{
+            marginTop: '24px', backgroundColor: '#fff', borderRadius: '18px', padding: '22px 24px',
+            boxShadow: '0 4px 16px rgba(26,60,94,0.08)', border: '1.5px dashed #E8720C',
+          }}>
+            <p style={{ fontSize: '11px', fontWeight: '700', color: '#E8720C', letterSpacing: '0.5px', margin: '0 0 8px', textTransform: 'uppercase' }}>
+              Complemento — se suma a cualquier plan
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#1A3C5E', margin: 0 }}>
+                🚗 Captura a Domicilio
+              </p>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#E8720C', margin: 0 }}>
+                $800/mes
+              </p>
+            </div>
+            <p style={{ fontSize: '14px', color: '#555', lineHeight: '1.6', margin: '0 0 18px' }}>
+              ¿No tienes tiempo de subir tus carros? Nosotros vamos a tu yonke una vez al mes y
+              cargamos todo tu inventario nuevo por ti. Tú no haces nada.
+            </p>
+            <a
+              href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20complemento%20Captura%20a%20Domicilio%20de%20Mecanix%20Yonke%20Virtual"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mecanix-btn-secondary"
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+              onClick={() => registrarEvento('clic_captura_domicilio', {
+                ubicacion: 'seccion_planes',
+                plan_actual: 'visitante',
+              })}
+            >
+              Contratar / Más información
+            </a>
+          </div>
         </div>
 
       </div>

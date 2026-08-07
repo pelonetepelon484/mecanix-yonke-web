@@ -84,6 +84,7 @@ export default function EditarYonkePage() {
   const [activo, setActivo] = useState(true);
   const [verificado, setVerificado] = useState(false);
   const [entregaInmediata, setEntregaInmediata] = useState(false);
+  const [capturaADomicilio, setCapturaADomicilio] = useState(false);
   const [metodosPago, setMetodosPago] = useState([]);
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
 
@@ -127,6 +128,7 @@ export default function EditarYonkePage() {
         setActivo(data.activo !== false);
         setVerificado(data.verificado === true);
         setEntregaInmediata(data.entregaInmediata === true);
+        setCapturaADomicilio(data.capturaADomicilio === true);
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
       }
@@ -176,6 +178,7 @@ export default function EditarYonkePage() {
         activo,
         verificado,
         entregaInmediata,
+        capturaADomicilio,
         metodosPago,
         horario,
       }, { merge: true });
@@ -331,6 +334,25 @@ export default function EditarYonkePage() {
           <p style={{ fontSize: '12px', color: '#999', marginTop: '4px', marginLeft: '28px' }}>
             Solo yonkes de confianza que ya coordinaste tú directamente. Los talleres podrán
             pedirte que les lleves la pieza — el pedido te llega a ti, no al yonke.
+          </p>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={capturaADomicilio}
+              onChange={(e) => setCapturaADomicilio(e.target.checked)}
+              style={{ width: '18px', height: '18px', accentColor: '#1A3C5E', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>
+              🚗 Captura a domicilio activa
+            </span>
+          </label>
+          <p style={{ fontSize: '12px', color: '#999', marginTop: '4px', marginLeft: '28px' }}>
+            Complemento de $800 MXN/mes — visitas tú el yonke ~1 vez al mes para capturar su
+            inventario nuevo. El control de visitas está en{' '}
+            <a href="/admin/captura-domicilio" style={{ color: '#1A3C5E', fontWeight: '700' }}>
+              Captura a domicilio
+            </a>.
           </p>
         </div>
 

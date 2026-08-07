@@ -354,6 +354,16 @@ export default function AdminPage() {
           >
             📊 Ver búsquedas
           </button>
+          <button
+            onClick={() => router.push('/admin/captura-domicilio')}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            🚗 Captura a domicilio
+          </button>
         </div>
 
         {/* Búsqueda */}
