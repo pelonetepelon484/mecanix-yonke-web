@@ -1337,8 +1337,7 @@ function obtenerEstadoAbierto(horario) {
               </p>
             </div>
             <p style={{ color: '#C5D4E8', fontSize: '12.5px', lineHeight: '1.6', margin: '0 auto 22px', maxWidth: '420px' }}>
-              Después tú decides: te quedas en Premium, pasas a Básico, o contratas Captura a
-              Domicilio para que sigamos actualizando tu inventario por ti. Sin compromiso.
+              Después tú decides: te quedas en Premium, pasas a Básico, o subes a Élite. Sin compromiso.
             </p>
             <a
               href="https://wa.me/5216611034260?text=Hola%2C%20quiero%20aprovechar%20la%20bienvenida%20para%20yonkes%20nuevos%20de%20Mecanix%20Yonke%20Virtual%20(primera%20captura%20gratis%20%2B%20mes%20Premium%20gratis)"
@@ -1365,28 +1364,15 @@ function obtenerEstadoAbierto(horario) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
 
-            {/* Plan Básico */}
+            {/* Básico */}
             <div style={planCardStyle}>
-              <p style={planNombreStyle}>Plan Básico</p>
+              <p style={planNombreStyle}>Básico</p>
               <p style={planPrecioStyle}>Gratis</p>
               <p style={planDescStyle}>
-                Todo lo necesario para que los clientes te encuentren y aparten piezas contigo.
+                Tu yonke aparece en Mecanix y los clientes pueden encontrar tus piezas y
+                contactarte por WhatsApp. Tú subes y actualizas tu inventario. Ideal para
+                empezar sin costo.
               </p>
-              <ul style={planListaStyle}>
-                {[
-                  'Sube y administra tu inventario de vehículos y piezas',
-                  'Tu yonke aparece en los resultados cuando tienes la pieza que buscan',
-                  'Nombre, dirección y teléfono de tu yonke visibles para el cliente',
-                  'Botón de WhatsApp para que el cliente te contacte directo',
-                  'Botón de "Reservar" para apartar piezas',
-                  'Control de reservaciones desde tu panel',
-                ].map((item) => (
-                  <li key={item} style={planItemStyle}>
-                    <span style={{ color: '#1A3C5E', fontWeight: '700', marginRight: '8px' }}>✓</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
               <div style={planNotaAzulStyle}>
                 Sin caducidad: gratis para siempre. Solo dejas la plataforma si tú decides darte de baja.
               </div>
@@ -1399,32 +1385,30 @@ function obtenerEstadoAbierto(horario) {
               </a>
             </div>
 
-            {/* Plan Premium */}
+            {/* Premium — ahora incluye la captura a domicilio (2 visitas al mes); ya no se
+                anuncia como complemento aparte. */}
             <div style={planPremiumCardStyle}>
               <div style={premiumBadgeStyle}>Recomendado</div>
-              <p style={planNombreStyle}>Plan Premium</p>
-              <p style={planPrecioStyle}>$500/mes</p>
-              <p style={planDescStyle}>
-                Para yonkes que quieren vender más y llevar el control completo de su negocio.
-              </p>
+              <p style={planNombreStyle}>Premium</p>
+              <p style={planPrecioStyle}>$1,000/mes</p>
               <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
-                ✓ Todo lo del Plan Básico, más:
+                Todo lo del plan Básico, y además:
               </p>
               <ul style={planListaStyle}>
                 {[
-                  'Tu propio buscador con tu marca: tuyonke.mecanixyonkevirtual.com — tu logo, tus colores, tu nombre',
-                  'Registro de ventas y venta manual',
-                  'Notificaciones push al recibir una reservación',
-                  'Botón de WhatsApp para contactar al cliente que reservó',
-                  'Indicador de piezas agotadas en tu inventario',
-                  'Control de disponibilidad de piezas desde tu propio panel',
+                  'Tu propia página con tu nombre, tu logo y tus colores',
+                  '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido — tú no haces nada',
+                  'Apareces destacado para que más clientes te encuentren',
                 ].map((item) => (
                   <li key={item} style={planItemStyle}>
-                    <span style={{ color: '#E8720C', fontWeight: '700', marginRight: '8px' }}>✓</span>
+                    <span style={{ marginRight: '8px' }}>✅</span>
                     {item}
                   </li>
                 ))}
               </ul>
+              <p style={planDescStyle}>
+                Tú atiende tu negocio, nosotros nos encargamos de tu inventario en internet.
+              </p>
               <div style={planNotaNaranjaStyle}>
                 Incluye periodo de prueba sin costo
               </div>
@@ -1443,80 +1427,43 @@ function obtenerEstadoAbierto(horario) {
               </a>
             </div>
 
-            {/* Plan Marca Propia */}
+            {/* Élite — antes "Marca Propia"; ahora también incluye captura a domicilio. */}
             <div style={planCardStyle}>
-              <p style={planNombreStyle}>Plan Marca Propia</p>
-              <p style={planPrecioStyle}>$900/mes</p>
-              <p style={planDescStyle}>
-                Para el yonke que quiere su propia página web, con su dominio, sin que aparezca nadie más.
-              </p>
+              <p style={planNombreStyle}>Élite</p>
+              <p style={planPrecioStyle}>$1,500/mes</p>
               <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
-                ✓ Todo lo del Plan Premium, más:
+                Todo lo del Premium, y además:
               </p>
               <ul style={planListaStyle}>
                 {[
-                  'Tu propio dominio (tunegocio.com), no un subdominio compartido',
-                  'Nosotros configuramos todo el DNS y el certificado de seguridad',
-                  'Tu dominio siempre es tuyo — nosotros solo rentamos el motor de búsqueda que corre detrás',
+                  'Tu página con tu propio dominio de internet (tu marca al 100%)',
+                  '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido',
+                  'La imagen más profesional para que tu yonke se vea como una gran empresa',
                 ].map((item) => (
                   <li key={item} style={planItemStyle}>
-                    <span style={{ color: '#1A3C5E', fontWeight: '700', marginRight: '8px' }}>✓</span>
+                    <span style={{ marginRight: '8px' }}>✅</span>
                     {item}
                   </li>
                 ))}
               </ul>
+              <p style={planDescStyle}>
+                Para el yonke que quiere destacar como marca líder.
+              </p>
               <a
-                href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Marca%20Propia%20de%20Mecanix%20Yonke%20Virtual"
+                href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20%C3%89lite%20de%20Mecanix%20Yonke%20Virtual"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mecanix-btn-primary"
                 style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
-                onClick={() => registrarEvento('clic_marca_propia', {
+                onClick={() => registrarEvento('clic_elite', {
                   ubicacion: 'seccion_planes',
                   plan_actual: 'visitante',
                 })}
               >
-                Quiero Marca Propia
+                Quiero Élite
               </a>
             </div>
 
-          </div>
-
-          {/* Complemento — NO es un 4º plan, se suma a cualquier plan de arriba (Básico,
-              Premium o Marca Propia). Por eso vive fuera del grid de 3 columnas, con su
-              propio marco punteado que lo distingue visualmente. */}
-          <div style={{
-            marginTop: '24px', backgroundColor: '#fff', borderRadius: '18px', padding: '22px 24px',
-            boxShadow: '0 4px 16px rgba(26,60,94,0.08)', border: '1.5px dashed #E8720C',
-          }}>
-            <p style={{ fontSize: '11px', fontWeight: '700', color: '#E8720C', letterSpacing: '0.5px', margin: '0 0 8px', textTransform: 'uppercase' }}>
-              Complemento — se suma a cualquier plan
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
-              <p style={{ fontSize: '18px', fontWeight: '700', color: '#1A3C5E', margin: 0 }}>
-                🚗 Captura a Domicilio
-              </p>
-              <p style={{ fontSize: '18px', fontWeight: '700', color: '#E8720C', margin: 0 }}>
-                $800/mes
-              </p>
-            </div>
-            <p style={{ fontSize: '14px', color: '#555', lineHeight: '1.6', margin: '0 0 18px' }}>
-              ¿No tienes tiempo de subir tus carros? Nosotros vamos a tu yonke una vez al mes y
-              cargamos todo tu inventario nuevo por ti. Tú no haces nada.
-            </p>
-            <a
-              href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20complemento%20Captura%20a%20Domicilio%20de%20Mecanix%20Yonke%20Virtual"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mecanix-btn-secondary"
-              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
-              onClick={() => registrarEvento('clic_captura_domicilio', {
-                ubicacion: 'seccion_planes',
-                plan_actual: 'visitante',
-              })}
-            >
-              Contratar / Más información
-            </a>
           </div>
         </div>
 
