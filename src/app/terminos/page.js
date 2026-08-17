@@ -13,7 +13,7 @@ export default function Terminos() {
           Términos y Condiciones de Uso
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: julio de 2026
+          Última actualización: agosto de 2026
         </p>
 
         <Seccion titulo="1. Aceptación de los términos">
@@ -33,7 +33,7 @@ export default function Terminos() {
 
         <Seccion titulo="4. Planes de servicio">
           <p style={parrafoStyle}><strong>Plan Básico (anteriormente denominado Plan Freemium):</strong> acceso gratuito que permite publicar inventario y aparecer en el motor de búsqueda público. Mecanix se reserva el derecho de modificar o descontinuar este plan con notificación previa de al menos 30 días naturales a los yonkes registrados.</p>
-          <p style={parrafoStyle}><strong>Plan Premium:</strong> acceso a funciones avanzadas mediante pago periódico acordado entre el yonke y Mecanix. Las condiciones de pago y renovación se establecen en un acuerdo por separado.</p>
+          <p style={parrafoStyle}><strong>Plan Premium y Plan Élite:</strong> acceso a funciones avanzadas mediante pago periódico acordado entre el yonke y Mecanix. Las condiciones de pago y renovación se establecen en un acuerdo por separado.</p>
           <p style={parrafoStyle}>Mecanix Yonke Virtual puede modificar las funciones incluidas en cada plan en cualquier momento, notificando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
         </Seccion>
 
@@ -84,9 +84,12 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="14. Planes y suscripciones">
-          <p style={parrafoStyle}>Mecanix Yonke Virtual ofrece dos planes para yonkes registrados: Plan Básico y Plan Premium.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual ofrece tres planes para yonkes registrados: Plan Básico, Plan Premium y Plan Élite.</p>
           <p style={parrafoStyle}>El <strong>Plan Básico</strong> es gratuito e incluye: carga y administración de inventario, aparición en resultados de búsqueda con nombre, dirección y teléfono del yonke, botón de contacto por WhatsApp, botón de reservación para clientes y control de reservaciones desde el panel.</p>
-          <p style={parrafoStyle}>El <strong>Plan Premium</strong> incluye todo lo del Plan Básico más: registro de ventas y venta manual, notificaciones push al recibir una reservación, y botón de WhatsApp para contactar al cliente que reservó.</p>
+          <p style={parrafoStyle}>El <strong>Plan Premium</strong> incluye todo lo del Plan Básico, más: una página propia del yonke con su nombre, logo y colores; registro de ventas y venta manual, notificaciones push al recibir una reservación, botón de WhatsApp para contactar al cliente que reservó, y dos visitas al mes de nuestro personal para ayudar a capturar el inventario nuevo.</p>
+          <p style={parrafoStyle}>El <strong>Plan Élite</strong> incluye todo lo del Plan Premium, más un dominio de internet propio para el yonke.</p>
+          <p style={parrafoStyle}>Los precios vigentes de cada plan pueden consultarse en la página de planes de la plataforma.</p>
+          <p style={parrafoStyle}>Las visitas de captura de inventario son un servicio de apoyo: el yonke sigue siendo el único responsable de que la información capturada sea correcta y de mantener actualizado su inventario entre visitas.</p>
           <p style={parrafoStyle}>Las funciones anunciadas como "próximamente" son mejoras planeadas sin fecha comprometida; su disponibilidad puede cambiar sin que esto genere obligación alguna para Mecanix Yonke Virtual.</p>
         </Seccion>
 
@@ -96,10 +99,11 @@ export default function Terminos() {
           <p style={parrafoStyle}>Mecanix Yonke Virtual se reserva el derecho de modificar las características de los planes, notificando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
         </Seccion>
 
-        <Seccion titulo="16. Periodo de prueba y pagos del Plan Premium">
-          <p style={parrafoStyle}>El Plan Premium puede incluir un periodo de prueba sin costo, cuya duración se comunica al yonke al activarlo.</p>
+        <Seccion titulo="16. Periodo de prueba, bienvenida y pagos de los planes de pago">
+          <p style={parrafoStyle}>Los planes de pago pueden incluir un periodo de prueba sin costo, cuya duración se comunica al yonke al activarlo.</p>
+          <p style={parrafoStyle}>Los yonkes que se registran por primera vez pueden recibir, como promoción de bienvenida, un mes de Plan Premium sin costo y su primera visita de captura de inventario gratuita; esta promoción aplica una sola vez y sus condiciones vigentes se publican en la página de planes.</p>
           <p style={parrafoStyle}>No existen cobros automáticos: los pagos se acuerdan y confirman directamente entre el yonke y Mecanix Yonke Virtual.</p>
-          <p style={parrafoStyle}>Al terminar el periodo de prueba o de pago sin renovación, la cuenta regresa automáticamente al Plan Básico, sin pérdida del inventario ni de la información del yonke.</p>
+          <p style={parrafoStyle}>Al terminar el periodo de prueba, la promoción de bienvenida, o un periodo de pago sin renovación, la cuenta regresa automáticamente al Plan Básico, sin pérdida del inventario ni de la información del yonke.</p>
           <p style={parrafoStyle}>Los pagos por periodos ya iniciados no son reembolsables.</p>
         </Seccion>
 
@@ -112,6 +116,12 @@ export default function Terminos() {
         <Seccion titulo="18. Buscador Inteligente">
           <p style={parrafoStyle}>El uso del buscador de texto libre es opcional y complementario al buscador estructurado por menús. Al usarlo, aceptas que el texto que ingreses sea almacenado con fines de mejora del servicio y de nuestro catálogo de vehículos.</p>
           <p style={parrafoStyle}>Nos reservamos el derecho de limitar el número de búsquedas por usuario en un periodo determinado, con el fin de garantizar el buen funcionamiento de la plataforma para todos.</p>
+        </Seccion>
+
+        <Seccion titulo="19. Entrega Inmediata">
+          <p style={parrafoStyle}>Algunos yonkes participan en el servicio de Entrega Inmediata, identificado con el distintivo correspondiente en la plataforma. En estos casos, el cliente puede solicitar que Mecanix Yonke Virtual coordine el traslado de una pieza desde el yonke hasta su taller, mediante un servicio de logística operado directamente por Mecanix Yonke Virtual con un costo adicional que se acuerda por separado.</p>
+          <p style={parrafoStyle}>Aun cuando Mecanix Yonke Virtual participe físicamente en la entrega, esto no lo convierte en vendedor de la pieza: el yonke sigue siendo el único responsable de la calidad, condición, legalidad y garantía de la pieza entregada. El cobro de la pieza y de la tarifa de entrega se coordina directamente entre el cliente y Mecanix Yonke Virtual o el yonke, según se acuerde, y no se procesa mediante una pasarela de pagos dentro de la plataforma.</p>
+          <p style={parrafoStyle}>La disponibilidad de este servicio depende de cada yonke participante y puede cancelarse o modificarse en cualquier momento.</p>
         </Seccion>
 
         <div style={{ textAlign: 'center', marginTop: '40px' }}>

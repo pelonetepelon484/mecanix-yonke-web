@@ -13,7 +13,7 @@ export default function Privacidad() {
           Política de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: julio de 2026
+          Última actualización: agosto de 2026
         </p>
 
         <Seccion titulo="1. Introducción">
@@ -25,11 +25,14 @@ export default function Privacidad() {
           <p style={parrafoStyle}><strong>De los yonkes registrados:</strong> nombre del negocio, ciudad, dirección física (escrita manualmente, no mediante GPS), número de teléfono, número de WhatsApp, correo electrónico de acceso, métodos de pago aceptados, horario de atención, e inventario de vehículos y piezas disponibles.</p>
           <p style={parrafoStyle}><strong>Datos de autenticación:</strong> correo electrónico y contraseña (almacenada de forma cifrada por nuestro proveedor de autenticación, Firebase Authentication de Google) para los usuarios con acceso al panel (yonkes y administradores).</p>
           <p style={parrafoStyle}><strong>Registro propio:</strong> los yonkes pueden registrarse directamente en la plataforma a través del formulario público disponible en el sitio web. La información proporcionada durante el registro es revisada por nuestro equipo antes de ser activada públicamente.</p>
+          <p style={parrafoStyle}><strong>Captura de inventario en sitio (planes de pago):</strong> en los planes que incluyen visitas de captura, nuestro personal visita el yonke para registrar su inventario de vehículos directamente en la plataforma. Los datos capturados son los que el propio yonke proporciona durante la visita.</p>
         </Seccion>
 
         <Seccion titulo="3. Planes de servicio">
-          <p style={parrafoStyle}><strong>Plan Básico (anteriormente denominado Plan Freemium, gratuito):</strong> permite a los yonkes registrados publicar su inventario de vehículos y aparecer en el motor de búsqueda público de la plataforma, sin costo alguno.</p>
-          <p style={parrafoStyle}><strong>Plan Premium (de pago):</strong> incluye funciones adicionales como gestión de reservaciones, registro de ventas, notificaciones y otras herramientas de administración del negocio.</p>
+          <p style={parrafoStyle}><strong>Plan Básico (gratuito):</strong> permite a los yonkes registrados publicar su inventario de vehículos y aparecer en el motor de búsqueda público de la plataforma, sin costo alguno.</p>
+          <p style={parrafoStyle}><strong>Plan Premium (de pago):</strong> incluye una página propia con la marca del yonke, gestión de reservaciones, registro de ventas, notificaciones, y dos visitas al mes de nuestro personal para ayudar a capturar el inventario nuevo del yonke.</p>
+          <p style={parrafoStyle}><strong>Plan Élite (de pago):</strong> incluye todo lo del Plan Premium, además de un dominio de internet propio para el yonke.</p>
+          <p style={parrafoStyle}>Los precios vigentes de cada plan pueden consultarse en la página de planes de la plataforma.</p>
           <p style={parrafoStyle}>Mecanix Yonke Virtual se reserva el derecho de modificar las funciones incluidas en cada plan, notificando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
         </Seccion>
 
@@ -75,7 +78,7 @@ export default function Privacidad() {
         </Seccion>
 
         <Seccion titulo="13. Analítica y cookies">
-          El sitio utiliza Google Analytics 4 para medir el uso de la plataforma (búsquedas, reservaciones e interés en servicios) de forma agregada, con el fin de mejorar el servicio.
+          El sitio utiliza Google Analytics 4 para medir el uso de la plataforma (búsquedas, reservaciones e interés en servicios) de forma agregada, con el fin de mejorar el servicio. Esta herramienta puede usar cookies u otras tecnologías similares para reconocer tu navegador. Puedes bloquearlas desde la configuración de tu navegador; esto no impide el uso del sitio.
         </Seccion>
 
         <Seccion titulo="14. Notificaciones">
@@ -83,9 +86,9 @@ export default function Privacidad() {
         </Seccion>
 
         <Seccion titulo="15. Buscador Inteligente">
-          <p style={parrafoStyle}>Cuando utilizas el buscador de texto libre, almacenamos el texto que escribes para identificar la pieza, marca, modelo y año que buscas. Usamos esta información para:</p>
-          <p style={parrafoStyle}>(a) Mostrarte resultados de inventario disponible entre nuestros yonkes afiliados; (b) Mejorar y ampliar nuestro catálogo de vehículos y piezas; (c) Si no encontramos tu pieza y tú decides dejarnos un WhatsApp o correo de forma voluntaria, notificarte cuando esa pieza esté disponible.</p>
-          <p style={parrafoStyle}>Dejar tu WhatsApp o correo es completamente opcional. No compartimos esta información con terceros, salvo lo necesario para conectarte directamente con el yonke que tiene la pieza que buscas.</p>
+          <p style={parrafoStyle}>Cuando utilizas el buscador de texto libre, almacenamos el texto que escribes, junto con la pieza, marca, modelo y año que logramos identificar (o no). También guardamos el resultado de tu búsqueda (si encontramos la pieza, si no había inventario, o si no logramos entender tu búsqueda), para fines internos de calidad y mejora del servicio — esto aplica a todas las búsquedas, no solo a las que dejan un contacto.</p>
+          <p style={parrafoStyle}>Usamos esta información para: (a) mostrarte resultados de inventario disponible entre nuestros yonkes afiliados; (b) mejorar y ampliar nuestro catálogo de vehículos y piezas, y entender qué buscan más los usuarios; (c) si no encontramos tu pieza y tú decides dejarnos tu WhatsApp de forma voluntaria, guardamos ese número junto con lo que buscabas, únicamente para poder avisarte cuando la pieza esté disponible o darte seguimiento.</p>
+          <p style={parrafoStyle}>Dejar tu WhatsApp es completamente opcional. No compartimos esta información con terceros, salvo lo necesario para conectarte con el yonke que tiene la pieza. Puedes solicitar en cualquier momento que eliminemos el WhatsApp que dejaste escribiendo al correo de la sección 11; atenderemos tu solicitud en un plazo máximo de 5 días hábiles.</p>
         </Seccion>
 
         <div style={{ textAlign: 'center', marginTop: '40px' }}>
