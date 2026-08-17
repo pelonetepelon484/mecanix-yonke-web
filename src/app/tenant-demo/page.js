@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
-import { getTenantBySub, getInventarioDeTenant, resolveBranding } from '../lib/getTenant';
+import { notFound, redirect } from 'next/navigation';
+import { getTenantBySub, getInventarioDeTenant, resolveBranding, subdominioEstaActivo } from '../lib/getTenant';
 import TenantPageClient from './TenantPageClient';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +29,12 @@ export default async function TenantDemoPage() {
   if (!demo) notFound();
 
   const { tenant, branding, inventario } = demo;
+
+  // Interruptor manual del admin (ej. plan Premium/Élite vencido): redirect limpio del lado
+  // servidor al sitio principal, antes de armar/renderizar nada del tenant — sin parpadeo.
+  if (!subdominioEstaActivo(tenant)) {
+    redirect('https://mecanixyonkevirtual.com');
+  }
 
   // Solo los campos serializables/públicos que la página necesita — el doc del yonke trae
   // más cosas (premiumHasta, fechaRegistro, etc. son Timestamps y no cruzan a un Client

@@ -51,6 +51,14 @@ export async function getInventarioDeTenant(yonkeId) {
   return { vehiculos, motores };
 }
 
+// Interruptor manual del subdominio (independiente de `activo`, que ya filtra el yonke
+// completo en getTenantBySub). Compatibilidad: los yonkes que ya tenían subdominio antes de
+// este campo no lo traen en Firestore — `undefined !== false` es true, así que se tratan
+// como activos por defecto. Solo se apaga cuando el admin lo pone explícitamente en false.
+export function subdominioEstaActivo(tenant) {
+  return tenant.subdominioActivo !== false;
+}
+
 // Combina el branding del tenant con los defaults campo por campo — nunca todo-o-nada.
 export function resolveBranding(tenant) {
   const b = tenant.branding || {};

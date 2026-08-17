@@ -86,6 +86,7 @@ export default function EditarYonkePage() {
   const [verificado, setVerificado] = useState(false);
   const [entregaInmediata, setEntregaInmediata] = useState(false);
   const [capturaADomicilio, setCapturaADomicilio] = useState(false);
+  const [subdominioActivo, setSubdominioActivo] = useState(true);
   const [metodosPago, setMetodosPago] = useState([]);
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
 
@@ -186,6 +187,9 @@ export default function EditarYonkePage() {
         setVerificado(data.verificado === true);
         setEntregaInmediata(data.entregaInmediata === true);
         setCapturaADomicilio(data.capturaADomicilio === true);
+        // Compatibilidad: si el campo no existe (subdominios que ya funcionaban antes de este
+        // control), se muestra activo por defecto — igual que subdominioEstaActivo() en getTenant.js.
+        setSubdominioActivo(data.subdominioActivo !== false);
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
       }
@@ -236,6 +240,7 @@ export default function EditarYonkePage() {
         verificado,
         entregaInmediata,
         capturaADomicilio,
+        subdominioActivo,
         metodosPago,
         horario,
       }, { merge: true });
@@ -454,6 +459,23 @@ export default function EditarYonkePage() {
             <a href="/admin/captura-domicilio" style={{ color: '#1A3C5E', fontWeight: '700' }}>
               Captura a domicilio
             </a>.
+          </p>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={subdominioActivo}
+              onChange={(e) => setSubdominioActivo(e.target.checked)}
+              style={{ width: '18px', height: '18px', accentColor: '#1A3C5E', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>
+              🌐 Subdominio activo
+            </span>
+          </label>
+          <p style={{ fontSize: '12px', color: '#999', marginTop: '4px', marginLeft: '28px' }}>
+            Solo aplica si este yonke tiene un subdominio configurado (Plan Premium/Élite).
+            Desmárcalo para apagarlo sin borrar su configuración — por ejemplo, si dejó de pagar.
+            Quien entre a su subdominio será redirigido al sitio principal.
           </p>
         </div>
 
