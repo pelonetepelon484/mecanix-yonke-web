@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, getDoc, setDoc, Timestamp, deleteField, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, Timestamp, deleteField, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
+import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
 
 // Mismos textos que "Reenviar recuperación" en la app (UsuariosYonkeScreen.js en
 // mecanix-yonke-virtual2) para que la experiencia sea idéntica en web y app.
@@ -90,16 +91,72 @@ export default function EditarYonkePage() {
 
   const [usuarios, setUsuarios] = useState([]);
   const [reenviandoId, setReenviandoId] = useState(null);
+  const [nuevoEmail, setNuevoEmail] = useState('');
+  const [nuevoPassword, setNuevoPassword] = useState('');
+  const [creandoAcceso, setCreandoAcceso] = useState(false);
+  const [revocandoId, setRevocandoId] = useState(null);
+
+  async function cargarUsuarios() {
+    const ref = collection(db, 'usuarios');
+    const q = query(ref, where('yonkeId', '==', id));
+    const snap = await getDocs(q);
+    setUsuarios(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  }
 
   useEffect(() => {
-    async function cargarUsuarios() {
-      const ref = collection(db, 'usuarios');
-      const q = query(ref, where('yonkeId', '==', id));
-      const snap = await getDocs(q);
-      setUsuarios(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    }
     cargarUsuarios();
   }, [id]);
+
+  async function crearAcceso() {
+    if (!nuevoEmail.trim() || !nuevoPassword) {
+      alert('Llena el correo y la contraseña del nuevo acceso'); return;
+    }
+    if (nuevoPassword.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres'); return;
+    }
+    setCreandoAcceso(true);
+    try {
+      const uid = await crearUsuarioYonkeSinDeslogear(nuevoEmail.trim(), nuevoPassword);
+      await setDoc(doc(db, 'usuarios', uid), {
+        rol: 'yonke',
+        yonkeId: id,
+        email: nuevoEmail.trim(),
+        fechaRegistro: new Date(),
+      });
+      setNuevoEmail('');
+      setNuevoPassword('');
+      await cargarUsuarios();
+      alert('✅ Acceso creado. Ya puede iniciar sesión con ese correo y contraseña.');
+    } catch (error) {
+      console.error(error);
+      if (error.code === 'auth/email-already-in-use') {
+        alert('Ese correo ya tiene una cuenta registrada.');
+      } else if (error.code === 'auth/invalid-email') {
+        alert('El correo no es válido.');
+      } else if (error.code === 'auth/weak-password') {
+        alert('La contraseña es muy débil (mínimo 6 caracteres).');
+      } else {
+        alert('No se pudo crear el acceso. Intenta de nuevo.');
+      }
+    } finally {
+      setCreandoAcceso(false);
+    }
+  }
+
+  async function revocarAcceso(usuario) {
+    if (!confirm(`¿Revocar el acceso de ${usuario.email}?\n\nEsto quita su acceso a la plataforma de inmediato. La cuenta de Firebase Authentication NO se elimina — deberás borrarla aparte en la consola de Firebase si ya no la quieres.`)) return;
+    setRevocandoId(usuario.id);
+    try {
+      await deleteDoc(doc(db, 'usuarios', usuario.id));
+      await cargarUsuarios();
+      alert(`Acceso revocado.\n\nRecuerda eliminar manualmente la cuenta de Firebase Authentication de ${usuario.email} en la consola de Firebase para evitar una cuenta huérfana.`);
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo revocar el acceso. Intenta de nuevo.');
+    } finally {
+      setRevocandoId(null);
+    }
+  }
 
   async function reenviarRecuperacion(usuario) {
     setReenviandoId(usuario.id);
@@ -240,24 +297,68 @@ export default function EditarYonkePage() {
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@ejemplo.com" style={inputStyle} />
         </div>
 
-        {/* Usuarios con acceso */}
-        {usuarios.length > 0 && (
-          <div style={sectionStyle}>
-            <h2 style={sectionTitleStyle}>Usuarios con acceso</h2>
-            {usuarios.map((u) => (
-              <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #F4F5F5' }}>
-                <span style={{ fontSize: '14px', color: '#333' }}>{u.email}</span>
-                <button
-                  onClick={() => reenviarRecuperacion(u)}
-                  disabled={reenviandoId === u.id}
-                  style={{ background: 'none', border: 'none', color: '#1A3C5E', fontWeight: 'bold', fontSize: '13px', cursor: reenviandoId === u.id ? 'wait' : 'pointer' }}
-                >
-                  {reenviandoId === u.id ? 'Enviando...' : 'Reenviar recuperación de contraseña'}
-                </button>
+        {/* Accesos / Usuarios */}
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Accesos / Usuarios</h2>
+
+          {usuarios.length === 0 ? (
+            <p style={{ fontSize: '13px', color: '#999', margin: '0 0 8px' }}>
+              Este yonke todavía no tiene ningún acceso creado.
+            </p>
+          ) : (
+            usuarios.map((u) => (
+              <div key={u.id} style={{ padding: '10px 0', borderBottom: '1px solid #F4F5F5' }}>
+                <span style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>{u.email}</span>
+                <div style={{ display: 'flex', gap: '16px', marginTop: '6px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => reenviarRecuperacion(u)}
+                    disabled={reenviandoId === u.id}
+                    style={{ background: 'none', border: 'none', color: '#1A3C5E', fontWeight: 'bold', fontSize: '13px', cursor: reenviandoId === u.id ? 'wait' : 'pointer', padding: 0 }}
+                  >
+                    {reenviandoId === u.id ? 'Enviando...' : 'Reenviar recuperación'}
+                  </button>
+                  <button
+                    onClick={() => revocarAcceso(u)}
+                    disabled={revocandoId === u.id}
+                    style={{ background: 'none', border: 'none', color: '#C62828', fontWeight: 'bold', fontSize: '13px', cursor: revocandoId === u.id ? 'wait' : 'pointer', padding: 0 }}
+                  >
+                    {revocandoId === u.id ? 'Revocando...' : '🚫 Revocar acceso'}
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+
+          <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '18px 0 8px' }}>
+            Crear nuevo acceso
+          </p>
+          <input
+            type="email"
+            placeholder="correo@ejemplo.com"
+            value={nuevoEmail}
+            onChange={(e) => setNuevoEmail(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            type="password"
+            placeholder="Contraseña (mínimo 6 caracteres)"
+            value={nuevoPassword}
+            onChange={(e) => setNuevoPassword(e.target.value)}
+            style={inputStyle}
+          />
+          <button
+            onClick={crearAcceso}
+            disabled={creandoAcceso}
+            style={{ ...primaryButtonStyle, backgroundColor: '#1A3C5E', marginTop: '4px' }}
+          >
+            {creandoAcceso ? 'Creando...' : '+ Crear acceso'}
+          </button>
+          <p style={{ fontSize: '11px', color: '#999', marginTop: '10px' }}>
+            Al revocar un acceso se quita de inmediato en la plataforma. La cuenta de Firebase
+            Authentication no se elimina automáticamente — bórrala aparte en la consola de
+            Firebase si ya no la quieres.
+          </p>
+        </div>
 
         {/* Plan y estado */}
         <div style={sectionStyle}>

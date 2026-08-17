@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc, getDoc, getDocs, Timestamp, deleteField } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where, doc, updateDoc, setDoc, getDoc, getDocs, deleteDoc, Timestamp, deleteField } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
+import { borrarLogoYonke } from '../lib/subirLogoYonke';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -47,6 +48,13 @@ export default function AdminPage() {
   const [modalPremiumVisible, setModalPremiumVisible] = useState(false);
   const [yonkeParaPremium, setYonkeParaPremium] = useState(null);
   const [fechaPremium, setFechaPremium] = useState('');
+
+  // Borrado completo de yonke — pasoBorrado: null (cerrado) | 'resumen' | 'confirmar' | 'ejecutando' | 'resultado'
+  const [yonkeParaBorrar, setYonkeParaBorrar] = useState(null);
+  const [pasoBorrado, setPasoBorrado] = useState(null);
+  const [resumenBorrado, setResumenBorrado] = useState(null);
+  const [textoConfirmacionBorrado, setTextoConfirmacionBorrado] = useState('');
+  const [resultadoBorrado, setResultadoBorrado] = useState(null);
 
   const regenerarCatalogo = async () => {
     setRegenerandoCatalogo(true);
@@ -231,6 +239,153 @@ export default function AdminPage() {
     }
     setMigrandoBusquedas(false);
   };
+
+  // Borra todos los docs de una subcolección (piezas, motores, etc.). Devuelve cuántos borró.
+  async function borrarSubcoleccionCompleta(refColeccion) {
+    const snap = await getDocs(refColeccion);
+    for (const d of snap.docs) await deleteDoc(d.ref);
+    return snap.size;
+  }
+
+  // Borra todos los docs de una colección de nivel raíz (reservaciones, ventas, etc.) que
+  // pertenezcan a este yonke. Devuelve los docs borrados (no solo el conteo), porque en
+  // "usuarios" necesitamos rescatar los emails antes de borrar cada doc.
+  async function borrarPorYonkeId(nombreColeccion, yonkeId) {
+    const snap = await getDocs(query(collection(db, nombreColeccion), where('yonkeId', '==', yonkeId)));
+    const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    for (const d of snap.docs) await deleteDoc(d.ref);
+    return docs;
+  }
+
+  // Carga los conteos de todo lo que se va a borrar, SIN borrar nada — para mostrarlos en el
+  // primer paso de confirmación. Se vuelve a consultar todo en la ejecución real: son pocos
+  // documentos por yonke, no vale la pena complicar el código para compartir el resultado.
+  async function cargarResumenBorrado(yonke) {
+    const vehiculosSnap = await getDocs(collection(db, 'yonkes', yonke.id, 'vehiculos'));
+    let piezas = 0;
+    for (const vDoc of vehiculosSnap.docs) {
+      const piezasSnap = await getDocs(collection(db, 'yonkes', yonke.id, 'vehiculos', vDoc.id, 'piezas'));
+      piezas += piezasSnap.size;
+    }
+    const [motoresSnap, usuariosSnap, reservacionesSnap, ventasSnap, calificacionesSnap] = await Promise.all([
+      getDocs(collection(db, 'yonkes', yonke.id, 'motores')),
+      getDocs(query(collection(db, 'usuarios'), where('yonkeId', '==', yonke.id))),
+      getDocs(query(collection(db, 'reservaciones'), where('yonkeId', '==', yonke.id))),
+      getDocs(query(collection(db, 'ventas'), where('yonkeId', '==', yonke.id))),
+      getDocs(query(collection(db, 'calificaciones'), where('yonkeId', '==', yonke.id))),
+    ]);
+    return {
+      vehiculos: vehiculosSnap.size,
+      piezas,
+      motores: motoresSnap.size,
+      usuarios: usuariosSnap.size,
+      reservaciones: reservacionesSnap.size,
+      ventas: ventasSnap.size,
+      calificaciones: calificacionesSnap.size,
+    };
+  }
+
+  function abrirBorrado(yonke) {
+    setYonkeParaBorrar(yonke);
+    setResumenBorrado(null);
+    setTextoConfirmacionBorrado('');
+    setResultadoBorrado(null);
+    setPasoBorrado('resumen');
+    cargarResumenBorrado(yonke).then(setResumenBorrado).catch((e) => {
+      console.error(e);
+      alert('No se pudo cargar el resumen del yonke. Intenta de nuevo.');
+      setPasoBorrado(null);
+    });
+  }
+
+  function cerrarBorrado() {
+    setPasoBorrado(null);
+    setYonkeParaBorrar(null);
+    setResumenBorrado(null);
+    setTextoConfirmacionBorrado('');
+    setResultadoBorrado(null);
+  }
+
+  // Ejecuta el borrado en cascada en el ORDEN correcto: piezas antes que vehículos (que las
+  // contienen), motores, usuarios/reservaciones/ventas/calificaciones (todo lo que referencia
+  // al yonke por yonkeId), el logo en Storage, y al final el propio documento del yonke. Cada
+  // paso tiene su propio try/catch — si uno falla, los demás igual se intentan, y al final se
+  // reporta exactamente qué se borró y qué no (nunca deja al admin sin saber el estado).
+  async function ejecutarBorradoCompleto(yonke) {
+    const pasos = [];
+    const emailsAuth = [];
+
+    try {
+      const vehiculosSnap = await getDocs(collection(db, 'yonkes', yonke.id, 'vehiculos'));
+      let totalPiezas = 0;
+      for (const vDoc of vehiculosSnap.docs) {
+        totalPiezas += await borrarSubcoleccionCompleta(collection(db, 'yonkes', yonke.id, 'vehiculos', vDoc.id, 'piezas'));
+        await deleteDoc(vDoc.ref);
+      }
+      pasos.push({ nombre: 'Vehículos y sus piezas', ok: true, detalle: `${vehiculosSnap.size} vehículo(s), ${totalPiezas} pieza(s)` });
+    } catch (e) {
+      console.error(e);
+      pasos.push({ nombre: 'Vehículos y sus piezas', ok: false, detalle: e.message });
+    }
+
+    try {
+      const n = await borrarSubcoleccionCompleta(collection(db, 'yonkes', yonke.id, 'motores'));
+      pasos.push({ nombre: 'Motores/transmisiones', ok: true, detalle: `${n} registro(s)` });
+    } catch (e) {
+      console.error(e);
+      pasos.push({ nombre: 'Motores/transmisiones', ok: false, detalle: e.message });
+    }
+
+    try {
+      const docs = await borrarPorYonkeId('usuarios', yonke.id);
+      docs.forEach((d) => emailsAuth.push(d.email || d.id));
+      pasos.push({ nombre: 'Accesos de usuario (Firestore)', ok: true, detalle: `${docs.length} cuenta(s)` });
+    } catch (e) {
+      console.error(e);
+      pasos.push({ nombre: 'Accesos de usuario (Firestore)', ok: false, detalle: e.message });
+    }
+
+    for (const [col, etiqueta] of [['reservaciones', 'Reservaciones'], ['ventas', 'Ventas'], ['calificaciones', 'Calificaciones']]) {
+      try {
+        const docs = await borrarPorYonkeId(col, yonke.id);
+        pasos.push({ nombre: etiqueta, ok: true, detalle: `${docs.length} documento(s)` });
+      } catch (e) {
+        console.error(e);
+        pasos.push({ nombre: etiqueta, ok: false, detalle: e.message });
+      }
+    }
+
+    try {
+      await borrarLogoYonke(yonke.id);
+      pasos.push({ nombre: 'Logo (Storage)', ok: true, detalle: '' });
+    } catch (e) {
+      console.error(e);
+      pasos.push({ nombre: 'Logo (Storage)', ok: false, detalle: e.message });
+    }
+
+    try {
+      await deleteDoc(doc(db, 'yonkes', yonke.id));
+      pasos.push({ nombre: 'Documento del yonke', ok: true, detalle: '' });
+    } catch (e) {
+      console.error(e);
+      pasos.push({ nombre: 'Documento del yonke', ok: false, detalle: e.message });
+    }
+
+    return { pasos, emailsAuth };
+  }
+
+  const confirmacionBorradoValida = yonkeParaBorrar && (
+    textoConfirmacionBorrado.trim() === yonkeParaBorrar.nombre
+    || textoConfirmacionBorrado.trim() === 'ELIMINAR'
+  );
+
+  async function confirmarBorradoDefinitivo() {
+    if (!confirmacionBorradoValida) return;
+    setPasoBorrado('ejecutando');
+    const resultado = await ejecutarBorradoCompleto(yonkeParaBorrar);
+    setResultadoBorrado(resultado);
+    setPasoBorrado('resultado');
+  }
 
   useEffect(() => {
     const ref = collection(db, 'yonkes');
@@ -462,6 +617,12 @@ export default function AdminPage() {
                   {y.activo ? '🔴 Desactivar' : '🟢 Activar'}
                 </button>
               </div>
+              <button
+                onClick={() => abrirBorrado(y)}
+                style={{ ...actionButtonStyle('#8B0000'), width: '100%', marginTop: '8px' }}
+              >
+                🗑️ Eliminar yonke completo
+              </button>
             </div>
           ))
         )}
@@ -487,6 +648,107 @@ export default function AdminPage() {
               <button onClick={() => setModalPremiumVisible(false)} style={modalCancelarStyle}>Cancelar</button>
               <button onClick={confirmarPremium} style={modalConfirmarStyle}>Confirmar</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {pasoBorrado && (
+        <div style={overlayStyle}>
+          <div style={{ ...modalStyle, maxHeight: '85vh', overflowY: 'auto' }}>
+
+            {pasoBorrado === 'resumen' && (
+              <>
+                <h2 style={{ color: '#8B0000', fontSize: '18px', marginBottom: '4px', fontWeight: '700' }}>
+                  ⚠️ Eliminar "{yonkeParaBorrar?.nombre}"
+                </h2>
+                <p style={{ color: '#666', fontSize: '13px', marginBottom: '16px' }}>
+                  Esto borra TODO lo relacionado a este yonke de forma permanente. No se puede deshacer.
+                </p>
+                {!resumenBorrado ? (
+                  <p style={{ textAlign: 'center', color: '#888', padding: '20px 0' }}>Calculando qué se va a borrar...</p>
+                ) : (
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', fontSize: '14px', color: '#333' }}>
+                    <li style={resumenFilaStyle}>🚗 Vehículos: <strong>{resumenBorrado.vehiculos}</strong></li>
+                    <li style={resumenFilaStyle}>🔩 Piezas: <strong>{resumenBorrado.piezas}</strong></li>
+                    <li style={resumenFilaStyle}>⚙️ Motores/transmisiones: <strong>{resumenBorrado.motores}</strong></li>
+                    <li style={resumenFilaStyle}>👤 Accesos de usuario: <strong>{resumenBorrado.usuarios}</strong></li>
+                    <li style={resumenFilaStyle}>📋 Reservaciones: <strong>{resumenBorrado.reservaciones}</strong></li>
+                    <li style={resumenFilaStyle}>💰 Ventas: <strong>{resumenBorrado.ventas}</strong></li>
+                    <li style={resumenFilaStyle}>⭐ Calificaciones: <strong>{resumenBorrado.calificaciones}</strong></li>
+                    <li style={resumenFilaStyle}>🖼️ Logo (si tiene)</li>
+                  </ul>
+                )}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={cerrarBorrado} style={modalCancelarStyle}>Cancelar</button>
+                  <button
+                    onClick={() => setPasoBorrado('confirmar')}
+                    disabled={!resumenBorrado}
+                    style={{ ...modalConfirmarStyle, backgroundColor: '#8B0000', opacity: resumenBorrado ? 1 : 0.5 }}
+                  >
+                    Continuar
+                  </button>
+                </div>
+              </>
+            )}
+
+            {pasoBorrado === 'confirmar' && (
+              <>
+                <h2 style={{ color: '#8B0000', fontSize: '18px', marginBottom: '4px', fontWeight: '700' }}>
+                  Confirma la eliminación
+                </h2>
+                <p style={{ color: '#666', fontSize: '13px', marginBottom: '16px' }}>
+                  Para evitar borrar el yonke equivocado, escribe el nombre exacto{' '}
+                  <strong>"{yonkeParaBorrar?.nombre}"</strong> o la palabra <strong>ELIMINAR</strong>.
+                </p>
+                <input
+                  type="text"
+                  value={textoConfirmacionBorrado}
+                  onChange={(e) => setTextoConfirmacionBorrado(e.target.value)}
+                  placeholder={yonkeParaBorrar?.nombre}
+                  style={inputStyle}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                  <button onClick={cerrarBorrado} style={modalCancelarStyle}>Cancelar</button>
+                  <button
+                    onClick={confirmarBorradoDefinitivo}
+                    disabled={!confirmacionBorradoValida}
+                    style={{ ...modalConfirmarStyle, backgroundColor: '#8B0000', opacity: confirmacionBorradoValida ? 1 : 0.5, cursor: confirmacionBorradoValida ? 'pointer' : 'not-allowed' }}
+                  >
+                    Eliminar definitivamente
+                  </button>
+                </div>
+              </>
+            )}
+
+            {pasoBorrado === 'ejecutando' && (
+              <p style={{ textAlign: 'center', color: '#888', padding: '30px 0' }}>⏳ Eliminando, no cierres esta ventana...</p>
+            )}
+
+            {pasoBorrado === 'resultado' && resultadoBorrado && (
+              <>
+                <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '12px', fontWeight: '700' }}>
+                  {resultadoBorrado.pasos.every((p) => p.ok) ? '✅ Yonke eliminado' : '⚠️ Eliminación completada con errores'}
+                </h2>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', fontSize: '13px' }}>
+                  {resultadoBorrado.pasos.map((p, i) => (
+                    <li key={i} style={{ ...resumenFilaStyle, color: p.ok ? '#2E7D32' : '#C62828' }}>
+                      {p.ok ? '✅' : '❌'} {p.nombre}{p.detalle ? ` — ${p.detalle}` : ''}
+                    </li>
+                  ))}
+                </ul>
+                {resultadoBorrado.emailsAuth.length > 0 && (
+                  <div style={{ backgroundColor: '#FEF3EC', border: '1.5px dashed #E8720C', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#7A3C0C', marginBottom: '16px' }}>
+                    <strong>Recuerda:</strong> elimina manualmente en la consola de Firebase Authentication el/los usuario(s) de este yonke para evitar cuentas huérfanas:
+                    <ul style={{ margin: '8px 0 0', paddingLeft: '20px' }}>
+                      {resultadoBorrado.emailsAuth.map((email) => <li key={email}>{email}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <button onClick={cerrarBorrado} style={{ ...modalConfirmarStyle, width: '100%' }}>Cerrar</button>
+              </>
+            )}
+
           </div>
         </div>
       )}
@@ -528,4 +790,7 @@ const modalCancelarStyle = {
 const modalConfirmarStyle = {
   flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#E8720C',
   color: '#fff', fontWeight: '700', fontSize: '14px', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+};
+const resumenFilaStyle = {
+  padding: '6px 0', borderBottom: '1px solid #F4F5F5',
 };
