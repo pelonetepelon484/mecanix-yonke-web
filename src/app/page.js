@@ -188,6 +188,12 @@ export default function Home() {
   const [marcaSel, setMarcaSel] = useState('');
   const [modeloSel, setModeloSel] = useState('');
 
+  // Rediseño: pestañas cliente/yonke + acordeón de búsqueda avanzada (colapsado por
+  // defecto para que el buscador inteligente sea el protagonista). Ninguna de las dos
+  // afecta la lógica de búsqueda, solo qué se muestra.
+  const [pestanaActiva, setPestanaActiva] = useState('cliente');
+  const [busquedaAvanzadaAbierta, setBusquedaAvanzadaAbierta] = useState(false);
+
   // Buscador inteligente (texto libre)
   const [textoLibre, setTextoLibre] = useState('');
   const [contactoLibre, setContactoLibre] = useState('');
@@ -920,553 +926,598 @@ function obtenerEstadoAbierto(horario) {
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', padding: '32px 16px', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: '620px', margin: '0 auto' }}>
 
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <img src="/mecanix-logo.webp" alt="Mecanix" style={{ width: '260px', maxWidth: '100%', margin: '0 auto', display: 'block' }} />
+        {/* Header de marca — compartido entre las dos pestañas, no se repite ni desaparece
+            al cambiar de una a otra. */}
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <img src="/mecanix-logo.webp" alt="Mecanix" style={{ width: '220px', maxWidth: '100%', margin: '0 auto', display: 'block' }} />
           <p style={{ fontSize: '13px', color: '#E8720C', letterSpacing: '3px', marginTop: '8px', fontWeight: '700' }}>
             YONKE VIRTUAL
           </p>
-          <p style={{ fontSize: '17px', color: '#1A3C5E', marginTop: '12px', fontWeight: '600', lineHeight: '1.4', maxWidth: '340px', margin: '12px auto 0' }}>
-            Encuentra la pieza exacta para tu auto en minutos
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
-            {[
-              { href: 'https://wa.me/526611034260', label: '💬 WhatsApp', ext: true },
-              { href: 'mailto:powerpctijuana@gmail.com', label: '✉️ Correo', ext: false },
-              { href: '#planes', label: '💳 Planes', ext: false },
-              { href: '/privacidad', label: '🔒 Privacidad', ext: false },
-              { href: '/terminos', label: '📋 Términos', ext: false },
-            ].map(link => (
-              <a key={link.href} href={link.href} target={link.ext ? '_blank' : undefined}
-                rel={link.ext ? 'noopener noreferrer' : undefined} style={contactLinkStyle}>
-                {link.label}
-              </a>
-            ))}
-          </div>
-          <div style={{ marginTop: '14px' }}>
-            <a href="/panel" style={{
-              display: 'inline-block',
-              backgroundColor: '#1A3C5E',
-              color: '#fff',
-              fontWeight: '700',
-              fontSize: '14px',
-              padding: '11px 28px',
-              borderRadius: '24px',
-              textDecoration: 'none',
-              boxShadow: '0 4px 12px rgba(26,60,94,0.3)',
-              letterSpacing: '0.3px',
-            }}>
-              🔑 Acceso yonkes registrados
-            </a>
-          </div>
         </div>
 
-        <LeyendaVerificados />
-
-        {/* Buscador inteligente (texto libre) */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 8px 32px rgba(26,60,94,0.10)', marginBottom: '12px' }}>
-          <h2 style={{ fontSize: '18px', color: '#1A3C5E', marginBottom: '6px', fontWeight: '700', letterSpacing: '-0.3px' }}>
-            ✨ Buscador inteligente
-          </h2>
-          <p style={{ fontSize: '13px', color: '#888', marginBottom: '16px' }}>
-            Descríbelo con tus palabras, ej. "defensa delantera para un tsuru 2010"
-          </p>
-          <input
-            className="mecanix-input"
-            type="text"
-            placeholder="¿Qué pieza necesitas?"
-            value={textoLibre}
-            onChange={(e) => setTextoLibre(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') buscarConTextoLibre(); }}
-          />
-          <input
-            className="mecanix-input"
-            type="text"
-            placeholder="Tu WhatsApp (opcional, para avisarte si no hay stock)"
-            value={contactoLibre}
-            onChange={(e) => setContactoLibre(e.target.value)}
-          />
-          <button onClick={buscarConTextoLibre} disabled={buscandoLibre} className="mecanix-btn-primary">
-            {buscandoLibre ? 'Buscando...' : '✨ Buscar con IA'}
+        {/* Pestañas: cliente vs yonke — lo primero interactivo que ve el usuario, para que
+            quede claro de inmediato si esto es para buscar o para afiliar un negocio. */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+          <button onClick={() => setPestanaActiva('cliente')} style={estiloPestana(pestanaActiva === 'cliente')}>
+            🔍 Busco una pieza
           </button>
+          <button onClick={() => setPestanaActiva('yonke')} style={estiloPestana(pestanaActiva === 'yonke')}>
+            🏪 Tengo un yonke
+          </button>
+        </div>
 
-          {mensajeLibre && (
-            <div style={{
-              marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
-              backgroundColor: mensajeLibre.tipo === 'sin_inventario' ? '#EEF4FA' : '#FFF8E1',
-              border: `1px solid ${mensajeLibre.tipo === 'sin_inventario' ? '#C5D8EC' : '#FFD54F'}`,
-            }}>
-              <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
-                {mensajeLibre.texto}
+        {pestanaActiva === 'cliente' && (
+          <>
+            <p style={{ textAlign: 'center', fontSize: '16px', color: '#1A3C5E', fontWeight: '600', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 20px' }}>
+              Encuentra tu autoparte usada entre los yonkes de Baja California y contáctalos directo.
+            </p>
+
+            {/* Buscador inteligente — EL BUSCADOR GRANDE Y PROTAGONISTA, sin cambios en su lógica. */}
+            <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 8px 32px rgba(26,60,94,0.10)', marginBottom: '12px' }}>
+              <h2 style={{ fontSize: '18px', color: '#1A3C5E', marginBottom: '6px', fontWeight: '700', letterSpacing: '-0.3px' }}>
+                ✨ Buscador inteligente
+              </h2>
+              <p style={{ fontSize: '13px', color: '#888', marginBottom: '16px' }}>
+                Descríbelo con tus palabras, ej. "defensa delantera para un tsuru 2010"
               </p>
-              {mensajeLibre.tipo === 'confirmar' && (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                  <button
-                    onClick={confirmarSugerenciaLibre}
-                    disabled={buscandoLibre}
-                    className="mecanix-btn-primary"
-                    style={{ flex: 1, width: 'auto' }}
-                  >
-                    Sí, buscar así
-                  </button>
-                  <button
-                    onClick={() => setMensajeLibre(null)}
-                    style={{
-                      flex: 1, padding: '13px', borderRadius: '50px', border: '1.5px solid #ddd',
-                      backgroundColor: '#fff', color: '#888', fontWeight: '700', fontSize: '14px', cursor: 'pointer',
-                    }}
-                  >
-                    No, corregir
+              <input
+                className="mecanix-input"
+                type="text"
+                placeholder="¿Qué pieza necesitas?"
+                value={textoLibre}
+                onChange={(e) => setTextoLibre(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') buscarConTextoLibre(); }}
+              />
+              <input
+                className="mecanix-input"
+                type="text"
+                placeholder="Tu WhatsApp (opcional, para avisarte si no hay stock)"
+                value={contactoLibre}
+                onChange={(e) => setContactoLibre(e.target.value)}
+              />
+              <button onClick={buscarConTextoLibre} disabled={buscandoLibre} className="mecanix-btn-primary">
+                {buscandoLibre ? 'Buscando...' : '✨ Buscar con IA'}
+              </button>
+
+              {mensajeLibre && (
+                <div style={{
+                  marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
+                  backgroundColor: mensajeLibre.tipo === 'sin_inventario' ? '#EEF4FA' : '#FFF8E1',
+                  border: `1px solid ${mensajeLibre.tipo === 'sin_inventario' ? '#C5D8EC' : '#FFD54F'}`,
+                }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
+                    {mensajeLibre.texto}
+                  </p>
+                  {mensajeLibre.tipo === 'confirmar' && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                      <button
+                        onClick={confirmarSugerenciaLibre}
+                        disabled={buscandoLibre}
+                        className="mecanix-btn-primary"
+                        style={{ flex: 1, width: 'auto' }}
+                      >
+                        Sí, buscar así
+                      </button>
+                      <button
+                        onClick={() => setMensajeLibre(null)}
+                        style={{
+                          flex: 1, padding: '13px', borderRadius: '50px', border: '1.5px solid #ddd',
+                          backgroundColor: '#fff', color: '#888', fontWeight: '700', fontSize: '14px', cursor: 'pointer',
+                        }}
+                      >
+                        No, corregir
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Búsqueda avanzada — el buscador estructurado de siempre (marca/modelo/año,
+                motor, transmisión), colapsado por defecto para que el inteligente sea el
+                protagonista. Nada de su lógica cambia (buscarPiezas, tipoBusqueda, etc.),
+                solo vive detrás de un acordeón. */}
+            <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '20px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' }}>
+              <button
+                onClick={() => setBusquedaAvanzadaAbierta((v) => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  fontSize: '14px', fontWeight: '700', color: '#1A3C5E', fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                <span>🔧 Búsqueda avanzada (filtros por marca, modelo y año)</span>
+                <span style={{ fontSize: '12px', color: '#888' }}>{busquedaAvanzadaAbierta ? '▲ Ocultar' : '▼ Mostrar'}</span>
+              </button>
+
+              {busquedaAvanzadaAbierta && (
+                <div style={{ marginTop: '20px' }}>
+                  {/* Selector tipo de búsqueda */}
+                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '10px' }}>¿Qué estás buscando?</p>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                    {TIPO_BUSQUEDA.map(t => (
+                      <button
+                        key={t.key}
+                        onClick={() => { setTipoBusqueda(t.key); setResultados([]); setBusquedaHecha(false); }}
+                        style={{
+                          flex: 1, padding: '10px 6px', borderRadius: '10px', border: '2px solid',
+                          borderColor: tipoBusqueda === t.key ? '#1A3C5E' : '#ddd',
+                          backgroundColor: tipoBusqueda === t.key ? '#1A3C5E' : '#F8F9FA',
+                          color: tipoBusqueda === t.key ? '#fff' : '#888',
+                          fontWeight: '700', fontSize: '12px', cursor: 'pointer', textAlign: 'center',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <div style={{ fontSize: '18px', marginBottom: '2px' }}>{t.label.split(' ')[0]}</div>
+                        <div>{t.label.split(' ').slice(1).join(' ')}</div>
+                        <div style={{ fontSize: '10px', fontWeight: '400', marginTop: '2px', opacity: 0.8 }}>{t.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="mecanix-select">
+                    <option value="">🌎 Todas las ciudades</option>
+                    {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  </select>
+
+                  {Object.keys(catalogoVehiculos).length > 0 ? (
+                    <>
+                      <select
+                        className="mecanix-select"
+                        value={marcaSel}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setMarcaSel(v); setModeloSel(''); setModelo('');
+                          setMarca(v === 'OTRA' ? '' : v);
+                        }}
+                      >
+                        <option value="">Marca</option>
+                        {Object.keys(catalogoVehiculos).sort((a, b) => a.localeCompare(b, 'es')).map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                        <option value="OTRA">✏️ Otra marca (escribir)</option>
+                      </select>
+
+                      {marcaSel === 'OTRA' && (
+                        <input className="mecanix-input" type="text" placeholder="Escribe la marca" value={marca} onChange={(e) => setMarca(e.target.value)} />
+                      )}
+
+                      {marcaSel && marcaSel !== 'OTRA' ? (
+                        <select
+                          className="mecanix-select"
+                          value={modeloSel}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setModeloSel(v);
+                            setModelo(v === 'OTRA' ? '' : v);
+                          }}
+                        >
+                          <option value="">Modelo</option>
+                          {[...(catalogoVehiculos[marcaSel] || [])].sort((a, b) => a.localeCompare(b, 'es')).map(mo => (
+                            <option key={mo} value={mo}>{mo}</option>
+                          ))}
+                          <option value="OTRA">✏️ Otro modelo (escribir)</option>
+                        </select>
+                      ) : null}
+
+                      {(marcaSel === 'OTRA' || modeloSel === 'OTRA') && (
+                        <input className="mecanix-input" type="text" placeholder="Escribe el modelo" value={modelo} onChange={(e) => setModelo(e.target.value)} />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <input className="mecanix-input" type="text" placeholder="Marca (ej. Nissan)" value={marca} onChange={(e) => setMarca(e.target.value)} />
+                      <input className="mecanix-input" type="text" placeholder="Modelo (ej. Sentra)" value={modelo} onChange={(e) => setModelo(e.target.value)} />
+                    </>
+                  )}
+                  <input className="mecanix-input" type="number" placeholder="Año (ej. 2015)" value={ano} onChange={(e) => setAno(e.target.value)} />
+
+                  {tipoBusqueda === 'vehiculo' && (
+                    <>
+                      <select
+                        value={piezaSeleccion}
+                        onChange={(e) => { setPiezaSeleccion(e.target.value); if (e.target.value !== 'OTRA') setPiezaBuscada(''); }}
+                        className="mecanix-select"
+                      >
+                        <option value="">🔧 Sin parte específica</option>
+                        {[...PIEZAS_CATALOGO].sort((a, b) => a.localeCompare(b, 'es')).map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                        <option value="OTRA">✏️ Otra pieza (escribir)</option>
+                      </select>
+
+                      {piezaSeleccion === 'OTRA' && (
+                        <>
+                          <input className="mecanix-input" type="text" placeholder="Escribe la pieza que buscas" value={piezaBuscada} onChange={(e) => setPiezaBuscada(e.target.value)} />
+                          <p style={{ fontSize: '12px', color: '#bbb', marginTop: '-6px', marginBottom: '18px' }}>
+                            Te mostraremos los vehículos disponibles — pregunta por tu pieza al reservar
+                          </p>
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {(tipoBusqueda === 'motor' || tipoBusqueda === 'transmision') && (
+                    <p style={{ fontSize: '12px', color: '#bbb', marginTop: '-6px', marginBottom: '18px' }}>
+                      Modelo y año son opcionales — puedes buscar solo por marca
+                    </p>
+                  )}
+
+                  <button onClick={() => { setEncabezadoVehiculo(null); setResultadosMotoresLibre([]); setResultadosTransmisionesLibre([]); setResultadosCercanosLibre([]); setResultadosMotoresCercanosLibre([]); setResultadosTransmisionesCercanosLibre([]); buscarPiezas(); }} disabled={buscando} className="mecanix-btn-primary">
+                    {buscando ? 'Buscando...' : `🔍 Buscar ${tipoBusqueda === 'motor' ? 'motor' : tipoBusqueda === 'transmision' ? 'transmisión' : 'refacción'}`}
                   </button>
                 </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Buscador */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '28px', boxShadow: '0 8px 32px rgba(26,60,94,0.10)', marginBottom: '12px' }}>
-          <h2 style={{ fontSize: '20px', color: '#1A3C5E', marginBottom: '20px', fontWeight: '700', letterSpacing: '-0.3px' }}>
-            🔍 Busca tu pieza
-          </h2>
-
-          {/* Selector tipo de búsqueda */}
-          <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '10px' }}>¿Qué estás buscando?</p>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-            {TIPO_BUSQUEDA.map(t => (
-              <button
-                key={t.key}
-                onClick={() => { setTipoBusqueda(t.key); setResultados([]); setBusquedaHecha(false); }}
-                style={{
-                  flex: 1, padding: '10px 6px', borderRadius: '10px', border: '2px solid',
-                  borderColor: tipoBusqueda === t.key ? '#1A3C5E' : '#ddd',
-                  backgroundColor: tipoBusqueda === t.key ? '#1A3C5E' : '#F8F9FA',
-                  color: tipoBusqueda === t.key ? '#fff' : '#888',
-                  fontWeight: '700', fontSize: '12px', cursor: 'pointer', textAlign: 'center',
-                  transition: 'all 0.2s',
-                }}
-              >
-                <div style={{ fontSize: '18px', marginBottom: '2px' }}>{t.label.split(' ')[0]}</div>
-                <div>{t.label.split(' ').slice(1).join(' ')}</div>
-                <div style={{ fontSize: '10px', fontWeight: '400', marginTop: '2px', opacity: 0.8 }}>{t.desc}</div>
-              </button>
-            ))}
-          </div>
-
-          <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="mecanix-select">
-            <option value="">🌎 Todas las ciudades</option>
-            {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-          </select>
-
-         {Object.keys(catalogoVehiculos).length > 0 ? (
-            <>
-              <select
-                className="mecanix-select"
-                value={marcaSel}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setMarcaSel(v); setModeloSel(''); setModelo('');
-                  setMarca(v === 'OTRA' ? '' : v);
-                }}
-              >
-                <option value="">Marca</option>
-                {Object.keys(catalogoVehiculos).sort((a, b) => a.localeCompare(b, 'es')).map(m => (
-                  <option key={m} value={m}>{m}</option>
+            {/* ¿Cómo funciona? — deja claro que Mecanix conecta, no vende. */}
+            <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' }}>
+              <h3 style={{ fontSize: '14px', color: '#1A3C5E', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textAlign: 'center' }}>
+                ¿CÓMO FUNCIONA?
+              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                {[
+                  { emoji: '🔍', titulo: 'Busca tu pieza', desc: 'Escribe qué necesitas y para qué auto' },
+                  { emoji: '🏪', titulo: 'Te decimos qué yonke la tiene', desc: 'Buscamos entre todos los yonkes afiliados' },
+                  { emoji: '💬', titulo: 'Contáctalo por WhatsApp', desc: 'Tú coordinas directo — Mecanix no vende, conecta' },
+                ].map((paso, i) => (
+                  <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontSize: '28px', marginBottom: '8px' }}>{paso.emoji}</div>
+                    <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 4px' }}>{paso.titulo}</p>
+                    <p style={{ fontSize: '11px', color: '#888', margin: 0, lineHeight: '1.4' }}>{paso.desc}</p>
+                  </div>
                 ))}
-                <option value="OTRA">✏️ Otra marca (escribir)</option>
-              </select>
+              </div>
+            </div>
 
-              {marcaSel === 'OTRA' && (
-                <input className="mecanix-input" type="text" placeholder="Escribe la marca" value={marca} onChange={(e) => setMarca(e.target.value)} />
-              )}
+            <LeyendaVerificados />
 
-              {marcaSel && marcaSel !== 'OTRA' ? (
-                <select
-                  className="mecanix-select"
-                  value={modeloSel}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setModeloSel(v);
-                    setModelo(v === 'OTRA' ? '' : v);
-                  }}
-                >
-                  <option value="">Modelo</option>
-                  {[...(catalogoVehiculos[marcaSel] || [])].sort((a, b) => a.localeCompare(b, 'es')).map(mo => (
-                    <option key={mo} value={mo}>{mo}</option>
-                  ))}
-                  <option value="OTRA">✏️ Otro modelo (escribir)</option>
-                </select>
-              ) : null}
+            {/* Banner publicitario RH Diagnóstico */}
+            {busquedaHecha && !buscando && resultados.length > 0 && (
+              <BannerRH />
+            )}
 
-              {(marcaSel === 'OTRA' || modeloSel === 'OTRA') && (
-                <input className="mecanix-input" type="text" placeholder="Escribe el modelo" value={modelo} onChange={(e) => setModelo(e.target.value)} />
-              )}
-            </>
-          ) : (
-            <>
-              <input className="mecanix-input" type="text" placeholder="Marca (ej. Nissan)" value={marca} onChange={(e) => setMarca(e.target.value)} />
-              <input className="mecanix-input" type="text" placeholder="Modelo (ej. Sentra)" value={modelo} onChange={(e) => setModelo(e.target.value)} />
-            </>
-          )}
-          <input className="mecanix-input" type="number" placeholder="Año (ej. 2015)" value={ano} onChange={(e) => setAno(e.target.value)} />
+            {/* Leyenda del sello Mecanix Verificado, otra vez arriba de los resultados si los hay */}
+            {busquedaHecha && !buscando && resultados.length > 0 && <LeyendaVerificados />}
 
-          {tipoBusqueda === 'vehiculo' && (
-            <>
-              <select
-                value={piezaSeleccion}
-                onChange={(e) => { setPiezaSeleccion(e.target.value); if (e.target.value !== 'OTRA') setPiezaBuscada(''); }}
-                className="mecanix-select"
-              >
-                <option value="">🔧 Sin parte específica</option>
-                {[...PIEZAS_CATALOGO].sort((a, b) => a.localeCompare(b, 'es')).map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-                <option value="OTRA">✏️ Otra pieza (escribir)</option>
-              </select>
+            {/* Resultados */}
+            {busquedaHecha && !buscando && (
 
-              {piezaSeleccion === 'OTRA' && (
-                <>
-                  <input className="mecanix-input" type="text" placeholder="Escribe la pieza que buscas" value={piezaBuscada} onChange={(e) => setPiezaBuscada(e.target.value)} />
-                  <p style={{ fontSize: '12px', color: '#bbb', marginTop: '-6px', marginBottom: '18px' }}>
-                    Te mostraremos los vehículos disponibles — pregunta por tu pieza al reservar
+              <div style={{ marginTop: '20px' }}>
+                {encabezadoVehiculo && (
+                  <p style={{ color: '#1A3C5E', fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>
+                    {encabezadoVehiculo}
                   </p>
-                </>
-              )}
-            </>
-          )}
+                )}
+                <h3 style={{ color: '#1A3C5E', fontSize: '15px', marginBottom: '12px', fontWeight: '600' }}>
+                  {getHeaderText()}
+                </h3>
 
-          {(tipoBusqueda === 'motor' || tipoBusqueda === 'transmision') && (
-            <p style={{ fontSize: '12px', color: '#bbb', marginTop: '-6px', marginBottom: '18px' }}>
-              Modelo y año son opcionales — puedes buscar solo por marca
-            </p>
-          )}
+                {resultados.length === 0 && resultadosCercanosLibre.length === 0 && resultadosMotoresLibre.length === 0 && resultadosMotoresCercanosLibre.length === 0 && resultadosTransmisionesLibre.length === 0 && resultadosTransmisionesCercanosLibre.length === 0 && (
+                  <div style={avisoActualizacionStyle}>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.6' }}>
+                      📦 No te desanimes — seguimos actualizando el inventario día con día. Vuelve a intentar más tarde o{' '}
+                      <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>
+                        escríbenos por WhatsApp
+                      </a>.
+                    </p>
+                  </div>
+                )}
 
-          <button onClick={() => { setEncabezadoVehiculo(null); setResultadosMotoresLibre([]); setResultadosTransmisionesLibre([]); setResultadosCercanosLibre([]); setResultadosMotoresCercanosLibre([]); setResultadosTransmisionesCercanosLibre([]); buscarPiezas(); }} disabled={buscando} className="mecanix-btn-primary">
-            {buscando ? 'Buscando...' : `🔍 Buscar ${tipoBusqueda === 'motor' ? 'motor' : tipoBusqueda === 'transmision' ? 'transmisión' : 'refacción'}`}
-          </button>
-        </div>
+                {(resultadosMotoresLibre.length > 0 || resultadosMotoresCercanosLibre.length > 0 || resultadosTransmisionesLibre.length > 0 || resultadosTransmisionesCercanosLibre.length > 0) && (resultados.length > 0 || resultadosCercanosLibre.length > 0) && (
+                  <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '4px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Partes
+                  </p>
+                )}
 
-        {/* Sección 3 pasos */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' }}>
-          <h3 style={{ fontSize: '14px', color: '#1A3C5E', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textAlign: 'center' }}>
-            ¿CÓMO FUNCIONA?
-          </h3>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-            {[
-              { emoji: '🔍', titulo: 'Busca', desc: 'Ingresa tu vehículo y la pieza que necesitas' },
-              { emoji: '📞', titulo: 'Conecta', desc: 'Contacta al yonke que tiene tu pieza' },
-              { emoji: '🔧', titulo: 'Repara', desc: 'Obtén tu refacción y vuelve al camino' },
-            ].map((paso, i) => (
-              <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>{paso.emoji}</div>
-                <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 4px' }}>{paso.titulo}</p>
-                <p style={{ fontSize: '11px', color: '#888', margin: 0, lineHeight: '1.4' }}>{paso.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-{/* Banner publicitario RH Diagnóstico */}
-        {busquedaHecha && !buscando && resultados.length > 0 && (
-          <BannerRH />
-        )}
+                {bannerTexto && tipoBusqueda === 'vehiculo' && resultados.length > 0 && (
+                  <div style={compatibilidadBannerStyle}>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#7A4F00', fontWeight: 'bold' }}>
+                      ⚠️ Resultados de años {tipoResultado === 'cercano' ? 'similares' : 'distintos'}
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00' }}>{bannerTexto}</p>
+                  </div>
+                )}
 
-        {/* Leyenda del sello Mecanix Verificado */}
-        {busquedaHecha && !buscando && resultados.length > 0 && <LeyendaVerificados />}
+                {piezaNoEncontrada && (
+                  <p style={{ color: '#aaa', fontSize: '13px', marginTop: '-6px', marginBottom: '14px' }}>
+                    Puedes preguntar directamente por tu pieza al reservar — el yonke te confirma si la tiene.
+                  </p>
+                )}
 
-        {/* Resultados */}
-        {busquedaHecha && !buscando && (
-
-          <div style={{ marginTop: '20px' }}>
-            {encabezadoVehiculo && (
-              <p style={{ color: '#1A3C5E', fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>
-                {encabezadoVehiculo}
-              </p>
-            )}
-            <h3 style={{ color: '#1A3C5E', fontSize: '15px', marginBottom: '12px', fontWeight: '600' }}>
-              {getHeaderText()}
-            </h3>
-
-            {resultados.length === 0 && resultadosCercanosLibre.length === 0 && resultadosMotoresLibre.length === 0 && resultadosMotoresCercanosLibre.length === 0 && resultadosTransmisionesLibre.length === 0 && resultadosTransmisionesCercanosLibre.length === 0 && (
-              <div style={avisoActualizacionStyle}>
-                <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.6' }}>
-                  📦 No te desanimes — seguimos actualizando el inventario día con día. Vuelve a intentar más tarde o{' '}
-                  <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>
-                    escríbenos por WhatsApp
-                  </a>.
-                </p>
-              </div>
-            )}
-
-            {(resultadosMotoresLibre.length > 0 || resultadosMotoresCercanosLibre.length > 0 || resultadosTransmisionesLibre.length > 0 || resultadosTransmisionesCercanosLibre.length > 0) && (resultados.length > 0 || resultadosCercanosLibre.length > 0) && (
-              <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '4px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Partes
-              </p>
-            )}
-
-            {bannerTexto && tipoBusqueda === 'vehiculo' && resultados.length > 0 && (
-              <div style={compatibilidadBannerStyle}>
-                <p style={{ margin: 0, fontSize: '13px', color: '#7A4F00', fontWeight: 'bold' }}>
-                  ⚠️ Resultados de años {tipoResultado === 'cercano' ? 'similares' : 'distintos'}
-                </p>
-                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00' }}>{bannerTexto}</p>
-              </div>
-            )}
-
-            {piezaNoEncontrada && (
-              <p style={{ color: '#aaa', fontSize: '13px', marginTop: '-6px', marginBottom: '14px' }}>
-                Puedes preguntar directamente por tu pieza al reservar — el yonke te confirma si la tiene.
-              </p>
-            )}
-
-            {/* "Coincidencia exacta" solo se rotula cuando también hay un grupo de cercanos con el
-                que contrastar — si no hay cercanos, resultados ya es el único grupo (comportamiento
-                previo sin cambios). */}
-            {resultados.length > 0 && resultadosCercanosLibre.length > 0 && (
-              <p style={groupHeaderStyle}>✅ Coincidencia exacta</p>
-            )}
-            {resultados.map((r, i) => renderTarjetaVehiculo(r, i))}
-
-            {resultadosCercanosLibre.length > 0 && (
-              <>
-                <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
-                <p style={groupSubtextStyle}>
-                  Estas son alternativas de años próximos a tu búsqueda, no el año exacto — muchas piezas son compatibles entre años cercanos, confirma con el yonke.
-                </p>
-                {resultadosCercanosLibre.map((r, i) => renderTarjetaVehiculo(r, `cercano-${i}`))}
-              </>
-            )}
-
-            {/* Motores y transmisiones sueltos — solo del buscador inteligente; el buscador
-                estructurado ya tiene su propia pestaña Motor/Transmisión y no llena estos arreglos. */}
-            {(resultadosMotoresLibre.length > 0 || resultadosMotoresCercanosLibre.length > 0) && (
-              <>
-                <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '20px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  🔧 Motores
-                </p>
-                {resultadosMotoresLibre.length > 0 && resultadosMotoresCercanosLibre.length > 0 && (
+                {/* "Coincidencia exacta" solo se rotula cuando también hay un grupo de cercanos con el
+                    que contrastar — si no hay cercanos, resultados ya es el único grupo (comportamiento
+                    previo sin cambios). */}
+                {resultados.length > 0 && resultadosCercanosLibre.length > 0 && (
                   <p style={groupHeaderStyle}>✅ Coincidencia exacta</p>
                 )}
-                {resultadosMotoresLibre.map((r, i) => renderTarjetaMotor(r, `motor-${i}`, '🔧'))}
-                {resultadosMotoresCercanosLibre.length > 0 && (
+                {resultados.map((r, i) => renderTarjetaVehiculo(r, i))}
+
+                {resultadosCercanosLibre.length > 0 && (
                   <>
                     <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
-                    {resultadosMotoresCercanosLibre.map((r, i) => renderTarjetaMotor(r, `motor-cercano-${i}`, '🔧'))}
+                    <p style={groupSubtextStyle}>
+                      Estas son alternativas de años próximos a tu búsqueda, no el año exacto — muchas piezas son compatibles entre años cercanos, confirma con el yonke.
+                    </p>
+                    {resultadosCercanosLibre.map((r, i) => renderTarjetaVehiculo(r, `cercano-${i}`))}
                   </>
                 )}
-              </>
+
+                {/* Motores y transmisiones sueltos — solo del buscador inteligente; el buscador
+                    estructurado ya tiene su propia pestaña Motor/Transmisión y no llena estos arreglos. */}
+                {(resultadosMotoresLibre.length > 0 || resultadosMotoresCercanosLibre.length > 0) && (
+                  <>
+                    <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '20px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      🔧 Motores
+                    </p>
+                    {resultadosMotoresLibre.length > 0 && resultadosMotoresCercanosLibre.length > 0 && (
+                      <p style={groupHeaderStyle}>✅ Coincidencia exacta</p>
+                    )}
+                    {resultadosMotoresLibre.map((r, i) => renderTarjetaMotor(r, `motor-${i}`, '🔧'))}
+                    {resultadosMotoresCercanosLibre.length > 0 && (
+                      <>
+                        <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
+                        {resultadosMotoresCercanosLibre.map((r, i) => renderTarjetaMotor(r, `motor-cercano-${i}`, '🔧'))}
+                      </>
+                    )}
+                  </>
+                )}
+
+                {(resultadosTransmisionesLibre.length > 0 || resultadosTransmisionesCercanosLibre.length > 0) && (
+                  <>
+                    <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '20px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      ⚙️ Transmisiones
+                    </p>
+                    {resultadosTransmisionesLibre.length > 0 && resultadosTransmisionesCercanosLibre.length > 0 && (
+                      <p style={groupHeaderStyle}>✅ Coincidencia exacta</p>
+                    )}
+                    {resultadosTransmisionesLibre.map((r, i) => renderTarjetaMotor(r, `transmision-${i}`, '⚙️'))}
+                    {resultadosTransmisionesCercanosLibre.length > 0 && (
+                      <>
+                        <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
+                        {resultadosTransmisionesCercanosLibre.map((r, i) => renderTarjetaMotor(r, `transmision-cercano-${i}`, '⚙️'))}
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             )}
 
-            {(resultadosTransmisionesLibre.length > 0 || resultadosTransmisionesCercanosLibre.length > 0) && (
-              <>
-                <p style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '700', margin: '20px 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  ⚙️ Transmisiones
-                </p>
-                {resultadosTransmisionesLibre.length > 0 && resultadosTransmisionesCercanosLibre.length > 0 && (
-                  <p style={groupHeaderStyle}>✅ Coincidencia exacta</p>
-                )}
-                {resultadosTransmisionesLibre.map((r, i) => renderTarjetaMotor(r, `transmision-${i}`, '⚙️'))}
-                {resultadosTransmisionesCercanosLibre.length > 0 && (
-                  <>
-                    <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
-                    {resultadosTransmisionesCercanosLibre.map((r, i) => renderTarjetaMotor(r, `transmision-cercano-${i}`, '⚙️'))}
-                  </>
-                )}
-              </>
-            )}
-          </div>
+            <div style={{ textAlign: 'center', marginTop: '32px' }}>
+              <a href="/calificar" style={{ color: '#bbb', fontSize: '13px', textDecoration: 'underline' }}>
+                ¿Ya compraste? Califica tu experiencia
+              </a>
+            </div>
+
+            {/* Sección SEO */}
+            <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginTop: '12px', marginBottom: '12px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#1A3C5E', marginBottom: '12px' }}>
+                Refacciones usadas en Baja California
+              </h2>
+              <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.8', margin: 0 }}>
+                Mecanix Yonke Virtual conecta compradores de <strong>refacciones usadas en Tijuana</strong>, Mexicali, Ensenada, Tecate y Playas de Rosarito con los mejores <strong>yonkes de Baja California</strong>. Encuentra <strong>autopartes usadas</strong> como motores, transmisiones, puertas, faroles, defensas y más piezas de carro a precios accesibles. Busca por marca, modelo y año — tenemos inventario de Nissan, Toyota, Chevrolet, Honda, Ford y muchas marcas más. El <strong>deshuesadero virtual</strong> más completo de Baja California.
+              </p>
+            </div>
+          </>
         )}
 
-        <div style={{ textAlign: 'center', marginTop: '32px' }}>
-          <a href="/calificar" style={{ color: '#bbb', fontSize: '13px', textDecoration: 'underline' }}>
-            ¿Ya compraste? Califica tu experiencia
+        {pestanaActiva === 'yonke' && (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <a href="/panel" style={{
+                display: 'inline-block',
+                backgroundColor: '#1A3C5E',
+                color: '#fff',
+                fontWeight: '700',
+                fontSize: '14px',
+                padding: '11px 28px',
+                borderRadius: '24px',
+                textDecoration: 'none',
+                boxShadow: '0 4px 12px rgba(26,60,94,0.3)',
+                letterSpacing: '0.3px',
+              }}>
+                🔑 Acceso yonkes registrados
+              </a>
+            </div>
+
+            {/* CTA yonkeros */}
+            <div style={yonkeCtaStyle}>
+              <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏪</div>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
+                ¿Administras un yonke?
+              </h3>
+              <p style={{ fontSize: '14px', color: '#555', margin: '0 0 6px', lineHeight: '1.6' }}>
+                Únete a nuestra red y conecta con miles de compradores en Baja California.
+              </p>
+              <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 20px', lineHeight: '1.6' }}>
+                ⚠️ Tu perfil será verificado por nuestro equipo en un plazo de 24 horas antes de aparecer en la plataforma.
+              </p>
+              <a href="/panel/registro" style={yonkeCtaButtonStyle}>
+                🆓 Registra tu yonke gratis
+              </a>
+            </div>
+
+            {/* Planes de suscripción */}
+            <div style={{ marginTop: '32px' }}>
+
+              {/* Banner de bienvenida — oferta de una sola vez al registrarse por primera vez
+                  (NO permanente, no es un plan). Va arriba de todo para que sea lo primero que
+                  vea un yonke nuevo que llega a esta sección. */}
+              <div style={{
+                background: 'linear-gradient(135deg, #1A3C5E 0%, #234b73 100%)',
+                borderRadius: '20px', padding: '28px 24px', marginBottom: '28px',
+                textAlign: 'center', boxShadow: '0 8px 24px rgba(26,60,94,0.25)',
+                border: '2px solid #E8720C',
+              }}>
+                <p style={{ fontSize: '11px', fontWeight: '700', color: '#FFC98C', letterSpacing: '1px', margin: '0 0 8px', textTransform: 'uppercase' }}>
+                  Oferta de bienvenida — solo la primera vez
+                </p>
+                <h2 style={{ fontSize: '21px', fontWeight: '700', color: '#fff', margin: '0 0 16px' }}>
+                  🎁 Bienvenida para yonkes nuevos
+                </h2>
+                <div style={{ textAlign: 'left', maxWidth: '420px', margin: '0 auto 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+                    ✅ Tu primera captura de inventario corre por nuestra cuenta — vamos a tu yonke
+                    y cargamos todos tus vehículos <strong style={{ color: '#E8720C' }}>GRATIS</strong>.
+                  </p>
+                  <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+                    ✅ Un mes de Premium <strong style={{ color: '#E8720C' }}>GRATIS</strong> — tu
+                    página con tu marca, tu inventario y clientes buscándote.
+                  </p>
+                </div>
+                <p style={{ color: '#C5D4E8', fontSize: '12.5px', lineHeight: '1.6', margin: '0 auto 22px', maxWidth: '420px' }}>
+                  Después tú decides: te quedas en Premium, pasas a Básico, o subes a Élite. Sin compromiso.
+                </p>
+                <a
+                  href="https://wa.me/5216611034260?text=Hola%2C%20quiero%20aprovechar%20la%20bienvenida%20para%20yonkes%20nuevos%20de%20Mecanix%20Yonke%20Virtual%20(primera%20captura%20gratis%20%2B%20mes%20Premium%20gratis)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={yonkeCtaButtonStyle}
+                  onClick={() => registrarEvento('clic_bienvenida_yonke_nuevo', {
+                    ubicacion: 'seccion_planes',
+                    plan_actual: 'visitante',
+                  })}
+                >
+                  🎁 Empezar gratis
+                </a>
+              </div>
+
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 8px' }}>
+                  Planes para tu yonke
+                </h2>
+                <p style={{ fontSize: '14px', color: '#666', margin: 0, lineHeight: '1.5' }}>
+                  Pon tu inventario en línea y recibe clientes listos para comprar.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+
+                {/* Básico */}
+                <div style={planCardStyle}>
+                  <p style={planNombreStyle}>Básico</p>
+                  <p style={planPrecioStyle}>Gratis</p>
+                  <p style={planDescStyle}>
+                    Tu yonke aparece en Mecanix y los clientes pueden encontrar tus piezas y
+                    contactarte por WhatsApp. Tú subes y actualizas tu inventario. Ideal para
+                    empezar sin costo.
+                  </p>
+                  <div style={planNotaAzulStyle}>
+                    Sin caducidad: gratis para siempre. Solo dejas la plataforma si tú decides darte de baja.
+                  </div>
+                  <a
+                    href="/panel/registro"
+                    className="mecanix-btn-primary"
+                    style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+                  >
+                    Registra tu yonke gratis
+                  </a>
+                </div>
+
+                {/* Premium — incluye la captura a domicilio (2 visitas al mes) */}
+                <div style={planPremiumCardStyle}>
+                  <div style={premiumBadgeStyle}>Recomendado</div>
+                  <p style={planNombreStyle}>Premium</p>
+                  <p style={planPrecioStyle}>$1,000/mes</p>
+                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
+                    Todo lo del plan Básico, y además:
+                  </p>
+                  <ul style={planListaStyle}>
+                    {[
+                      'Tu propia página con tu nombre, tu logo y tus colores',
+                      '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido — tú no haces nada',
+                      'Apareces destacado para que más clientes te encuentren',
+                    ].map((item) => (
+                      <li key={item} style={planItemStyle}>
+                        <span style={{ marginRight: '8px' }}>✅</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <p style={planDescStyle}>
+                    Tú atiende tu negocio, nosotros nos encargamos de tu inventario en internet.
+                  </p>
+                  <div style={planNotaNaranjaStyle}>
+                    Incluye periodo de prueba sin costo
+                  </div>
+                  <a
+                    href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mecanix-btn-primary"
+                    style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+                    onClick={() => registrarEvento('clic_premium', {
+                      ubicacion: 'seccion_planes',
+                      plan_actual: 'visitante',
+                    })}
+                  >
+                    Quiero Premium
+                  </a>
+                </div>
+
+                {/* Élite — antes "Marca Propia"; ahora también incluye captura a domicilio. */}
+                <div style={planCardStyle}>
+                  <p style={planNombreStyle}>Élite</p>
+                  <p style={planPrecioStyle}>$1,500/mes</p>
+                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
+                    Todo lo del Premium, y además:
+                  </p>
+                  <ul style={planListaStyle}>
+                    {[
+                      'Tu página con tu propio dominio de internet (tu marca al 100%)',
+                      '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido',
+                      'La imagen más profesional para que tu yonke se vea como una gran empresa',
+                    ].map((item) => (
+                      <li key={item} style={planItemStyle}>
+                        <span style={{ marginRight: '8px' }}>✅</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <p style={planDescStyle}>
+                    Para el yonke que quiere destacar como marca líder.
+                  </p>
+                  <a
+                    href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20%C3%89lite%20de%20Mecanix%20Yonke%20Virtual"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mecanix-btn-primary"
+                    style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+                    onClick={() => registrarEvento('clic_elite', {
+                      ubicacion: 'seccion_planes',
+                      plan_actual: 'visitante',
+                    })}
+                  >
+                    Quiero Élite
+                  </a>
+                </div>
+
+              </div>
+            </div>
+          </>
+        )}
+
+      </div>
+
+      {/* Footer — enlaces secundarios, discretos, disponibles en las dos pestañas */}
+      <div style={{ maxWidth: '620px', margin: '32px auto 0', textAlign: 'center', borderTop: '1px solid #ddd', paddingTop: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
+          <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={contactLinkStyle}>
+            💬 WhatsApp
+          </a>
+          <a href="mailto:powerpctijuana@gmail.com" style={contactLinkStyle}>
+            ✉️ Correo
+          </a>
+          <a href="/privacidad" style={contactLinkStyle}>
+            🔒 Privacidad
+          </a>
+          <a href="/terminos" style={contactLinkStyle}>
+            📋 Términos
           </a>
         </div>
-
-        {/* CTA yonkeros */}
-        {/* Sección SEO */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginTop: '12px', marginBottom: '12px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#1A3C5E', marginBottom: '12px' }}>
-            Refacciones usadas en Baja California
-          </h2>
-          <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.8', margin: 0 }}>
-            Mecanix Yonke Virtual conecta compradores de <strong>refacciones usadas en Tijuana</strong>, Mexicali, Ensenada, Tecate y Playas de Rosarito con los mejores <strong>yonkes de Baja California</strong>. Encuentra <strong>autopartes usadas</strong> como motores, transmisiones, puertas, faroles, defensas y más piezas de carro a precios accesibles. Busca por marca, modelo y año — tenemos inventario de Nissan, Toyota, Chevrolet, Honda, Ford y muchas marcas más. El <strong>deshuesadero virtual</strong> más completo de Baja California.
-          </p>
-        </div>
-        <div style={yonkeCtaStyle}>
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏪</div>
-          <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
-            ¿Administras un yonke?
-          </h3>
-          <p style={{ fontSize: '14px', color: '#555', margin: '0 0 6px', lineHeight: '1.6' }}>
-            Únete a nuestra red y conecta con miles de compradores en Baja California.
-          </p>
-          <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 20px', lineHeight: '1.6' }}>
-            ⚠️ Tu perfil será verificado por nuestro equipo en un plazo de 24 horas antes de aparecer en la plataforma.
-          </p>
-          <a href="/panel/registro" style={yonkeCtaButtonStyle}>
-            🆓 Registra tu yonke gratis
-          </a>
-        </div>
-
-        {/* Planes de suscripción */}
-        <div id="planes" style={{ marginTop: '32px' }}>
-
-          {/* Banner de bienvenida — oferta de una sola vez al registrarse por primera vez
-              (NO permanente, no es un plan). Va arriba de todo para que sea lo primero que
-              vea un yonke nuevo que llega a esta sección. */}
-          <div style={{
-            background: 'linear-gradient(135deg, #1A3C5E 0%, #234b73 100%)',
-            borderRadius: '20px', padding: '28px 24px', marginBottom: '28px',
-            textAlign: 'center', boxShadow: '0 8px 24px rgba(26,60,94,0.25)',
-            border: '2px solid #E8720C',
-          }}>
-            <p style={{ fontSize: '11px', fontWeight: '700', color: '#FFC98C', letterSpacing: '1px', margin: '0 0 8px', textTransform: 'uppercase' }}>
-              Oferta de bienvenida — solo la primera vez
-            </p>
-            <h2 style={{ fontSize: '21px', fontWeight: '700', color: '#fff', margin: '0 0 16px' }}>
-              🎁 Bienvenida para yonkes nuevos
-            </h2>
-            <div style={{ textAlign: 'left', maxWidth: '420px', margin: '0 auto 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-                ✅ Tu primera captura de inventario corre por nuestra cuenta — vamos a tu yonke
-                y cargamos todos tus vehículos <strong style={{ color: '#E8720C' }}>GRATIS</strong>.
-              </p>
-              <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-                ✅ Un mes de Premium <strong style={{ color: '#E8720C' }}>GRATIS</strong> — tu
-                página con tu marca, tu inventario y clientes buscándote.
-              </p>
-            </div>
-            <p style={{ color: '#C5D4E8', fontSize: '12.5px', lineHeight: '1.6', margin: '0 auto 22px', maxWidth: '420px' }}>
-              Después tú decides: te quedas en Premium, pasas a Básico, o subes a Élite. Sin compromiso.
-            </p>
-            <a
-              href="https://wa.me/5216611034260?text=Hola%2C%20quiero%20aprovechar%20la%20bienvenida%20para%20yonkes%20nuevos%20de%20Mecanix%20Yonke%20Virtual%20(primera%20captura%20gratis%20%2B%20mes%20Premium%20gratis)"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={yonkeCtaButtonStyle}
-              onClick={() => registrarEvento('clic_bienvenida_yonke_nuevo', {
-                ubicacion: 'seccion_planes',
-                plan_actual: 'visitante',
-              })}
-            >
-              🎁 Empezar gratis
-            </a>
-          </div>
-
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 8px' }}>
-              Planes para tu yonke
-            </h2>
-            <p style={{ fontSize: '14px', color: '#666', margin: 0, lineHeight: '1.5' }}>
-              Pon tu inventario en línea y recibe clientes listos para comprar.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-
-            {/* Básico */}
-            <div style={planCardStyle}>
-              <p style={planNombreStyle}>Básico</p>
-              <p style={planPrecioStyle}>Gratis</p>
-              <p style={planDescStyle}>
-                Tu yonke aparece en Mecanix y los clientes pueden encontrar tus piezas y
-                contactarte por WhatsApp. Tú subes y actualizas tu inventario. Ideal para
-                empezar sin costo.
-              </p>
-              <div style={planNotaAzulStyle}>
-                Sin caducidad: gratis para siempre. Solo dejas la plataforma si tú decides darte de baja.
-              </div>
-              <a
-                href="/panel/registro"
-                className="mecanix-btn-primary"
-                style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
-              >
-                Registra tu yonke gratis
-              </a>
-            </div>
-
-            {/* Premium — ahora incluye la captura a domicilio (2 visitas al mes); ya no se
-                anuncia como complemento aparte. */}
-            <div style={planPremiumCardStyle}>
-              <div style={premiumBadgeStyle}>Recomendado</div>
-              <p style={planNombreStyle}>Premium</p>
-              <p style={planPrecioStyle}>$1,000/mes</p>
-              <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
-                Todo lo del plan Básico, y además:
-              </p>
-              <ul style={planListaStyle}>
-                {[
-                  'Tu propia página con tu nombre, tu logo y tus colores',
-                  '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido — tú no haces nada',
-                  'Apareces destacado para que más clientes te encuentren',
-                ].map((item) => (
-                  <li key={item} style={planItemStyle}>
-                    <span style={{ marginRight: '8px' }}>✅</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <p style={planDescStyle}>
-                Tú atiende tu negocio, nosotros nos encargamos de tu inventario en internet.
-              </p>
-              <div style={planNotaNaranjaStyle}>
-                Incluye periodo de prueba sin costo
-              </div>
-              <a
-                href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mecanix-btn-primary"
-                style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
-                onClick={() => registrarEvento('clic_premium', {
-                  ubicacion: 'seccion_planes',
-                  plan_actual: 'visitante',
-                })}
-              >
-                Quiero Premium
-              </a>
-            </div>
-
-            {/* Élite — antes "Marca Propia"; ahora también incluye captura a domicilio. */}
-            <div style={planCardStyle}>
-              <p style={planNombreStyle}>Élite</p>
-              <p style={planPrecioStyle}>$1,500/mes</p>
-              <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
-                Todo lo del Premium, y además:
-              </p>
-              <ul style={planListaStyle}>
-                {[
-                  'Tu página con tu propio dominio de internet (tu marca al 100%)',
-                  '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido',
-                  'La imagen más profesional para que tu yonke se vea como una gran empresa',
-                ].map((item) => (
-                  <li key={item} style={planItemStyle}>
-                    <span style={{ marginRight: '8px' }}>✅</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <p style={planDescStyle}>
-                Para el yonke que quiere destacar como marca líder.
-              </p>
-              <a
-                href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20%C3%89lite%20de%20Mecanix%20Yonke%20Virtual"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mecanix-btn-primary"
-                style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
-                onClick={() => registrarEvento('clic_elite', {
-                  ubicacion: 'seccion_planes',
-                  plan_actual: 'visitante',
-                })}
-              >
-                Quiero Élite
-              </a>
-            </div>
-
-          </div>
-        </div>
-
+        <p style={{ color: '#bbb', fontSize: '12px', margin: 0 }}>
+          Mecanix • Tecnología al servicio del mecánico
+        </p>
       </div>
 
       {false && yonkesConLogo.length > 0 && (
@@ -1533,6 +1584,17 @@ function obtenerEstadoAbierto(horario) {
       )}
     </main>
   );
+}
+
+function estiloPestana(activa) {
+  return {
+    flex: 1, padding: '14px 12px', borderRadius: '14px', border: '2px solid',
+    borderColor: activa ? '#1A3C5E' : '#ddd',
+    backgroundColor: activa ? '#1A3C5E' : '#fff',
+    color: activa ? '#fff' : '#888',
+    fontWeight: '700', fontSize: '15px', cursor: 'pointer', textAlign: 'center',
+    transition: 'all 0.2s', fontFamily: "'Inter', sans-serif",
+  };
 }
 
 const contactLinkStyle = { fontSize: '12px', color: '#1A3C5E', textDecoration: 'none', fontWeight: '600', backgroundColor: '#fff', padding: '7px 14px', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' };
