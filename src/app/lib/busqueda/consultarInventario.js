@@ -31,13 +31,13 @@ function sinDuplicadosMotor(lista) {
   });
 }
 
-// Años cercanos ±3 al año buscado — el rango nunca incluye el año exacto (d va de 1 a 3), así
-// que no hace falta excluirlo aparte para no duplicar. Los 6 años se consultan EN PARALELO
+// Años cercanos ±4 al año buscado — el rango nunca incluye el año exacto (d va de 1 a 4), así
+// que no hace falta excluirlo aparte para no duplicar. Los 8 años se consultan EN PARALELO
 // (Promise.all), no uno por uno. Compartido por vehículos y motores/transmisiones para no
 // arreglar el mismo bug de "cercanos excluyentes" en dos lugares que luego se desincronizan.
 async function buscarAniosCercanos(buscarUnAnio, anio, dedupe) {
   const anosRango = [];
-  for (let d = 1; d <= 3; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
+  for (let d = 1; d <= 4; d++) { anosRango.push(anio - d); anosRango.push(anio + d); }
   const listas = await Promise.all(anosRango.map((a) => buscarUnAnio(a)));
   const cercanos = dedupe(listas.flat());
   ordenarPorPlan(cercanos);
@@ -112,7 +112,7 @@ function separarPorTipo(lista) {
   };
 }
 
-// Mismo pipeline que consultarInventarioVehiculo (exacto + cercano ±3, ACUMULATIVOS — ver nota
+// Mismo pipeline que consultarInventarioVehiculo (exacto + cercano ±4, ACUMULATIVOS — ver nota
 // ahí sobre el bug corregido), pero sobre la subcolección 'motores'. Se llama junto con la
 // búsqueda de vehículos — un motor/transmisión suelto encontrado es un resultado tan válido
 // como una pieza. `motoresCercanos`/`transmisionesCercanos` solo vienen poblados cuando SÍ hay
@@ -205,7 +205,7 @@ async function buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza) {
 // FIX: antes, si había coincidencia exacta, se hacía return inmediato y los años cercanos
 // NUNCA se calculaban (bug "excluyente"). Ahora exacto y cercanos se calculan siempre que hay
 // año, y se acumulan: si hay exacto, `resultados` trae el exacto y `resultadosCercanos` trae
-// los ±3 (excluidos del rango, nunca duplican el año exacto) como grupo ADICIONAL. Si NO hay
+// los ±4 (excluidos del rango, nunca duplican el año exacto) como grupo ADICIONAL. Si NO hay
 // exacto, el comportamiento es igual que antes: los cercanos ocupan `resultados` directamente
 // y `resultadosCercanos` queda vacío (no se muestra una sección de cercanos vacía de exactos).
 export async function consultarInventario({ marca, modelo, anio, pieza }) {
@@ -231,7 +231,7 @@ export async function consultarInventario({ marca, modelo, anio, pieza }) {
   const exactos = conPieza.length > 0 ? conPieza : soloVehiculo;
   const piezaNoEncontradaExacto = conPieza.length === 0 && soloVehiculo.length > 0;
 
-  // Años cercanos ±3, mismo marca/modelo (sin filtrar por pieza específica, igual que antes) —
+  // Años cercanos ±4, mismo marca/modelo (sin filtrar por pieza específica, igual que antes) —
   // se calculan SIEMPRE, no como fallback exclusivo.
   const cercanos = await buscarAniosCercanos((a) => buscarVehiculos(yonkesDocs, marca, modelo, a), anio, sinDuplicados);
 

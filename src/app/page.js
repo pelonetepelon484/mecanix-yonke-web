@@ -294,7 +294,8 @@ export default function Home() {
   }
 
   // Los años se consultan EN PARALELO (Promise.all), no uno por uno — antes esto disparaba
-  // un round-trip secuencial por cada (yonke, año), ~9.7s para ±3 años con 14 yonkes. La
+  // un round-trip secuencial por cada (yonke, año), ~9.7s para 6 años cercanos con 14 yonkes
+  // (benchmark original con el rango de ±3 años de entonces). La
   // consulta+matching en sí vive en lib/buscarVehiculosPorAnio.js (compartido con
   // lib/busqueda/consultarInventario.js, el buscador inteligente) — si cambia cómo se
   // compara marca/modelo, cambia para los dos. El orden final no cambia: se reordena a
@@ -442,7 +443,7 @@ export default function Home() {
       }
       if (resultadosFinales.length === 0) {
         const anosRango = [];
-        for (let d = 1; d <= 3; d++) { anosRango.push(parseInt(ano) - d); anosRango.push(parseInt(ano) + d); }
+        for (let d = 1; d <= 4; d++) { anosRango.push(parseInt(ano) - d); anosRango.push(parseInt(ano) + d); }
         const cercanos = await buscarEnAnos(yonkesFiltrados, marca, modelo, anosRango);
         ordenar(cercanos);
         if (cercanos.length > 0) { resultadosFinales = cercanos; setTipoResultado('cercano'); }
@@ -1235,7 +1236,7 @@ function obtenerEstadoAbierto(horario) {
 
                 {resultadosCercanosLibre.length > 0 && (
                   <>
-                    <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
+                    <p style={groupHeaderStyle}>🔄 Años cercanos (±4)</p>
                     <p style={groupSubtextStyle}>
                       Estas son alternativas de años próximos a tu búsqueda, no el año exacto — muchas piezas son compatibles entre años cercanos, confirma con el yonke.
                     </p>
@@ -1256,7 +1257,7 @@ function obtenerEstadoAbierto(horario) {
                     {resultadosMotoresLibre.map((r, i) => renderTarjetaMotor(r, `motor-${i}`, '🔧'))}
                     {resultadosMotoresCercanosLibre.length > 0 && (
                       <>
-                        <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
+                        <p style={groupHeaderStyle}>🔄 Años cercanos (±4)</p>
                         {resultadosMotoresCercanosLibre.map((r, i) => renderTarjetaMotor(r, `motor-cercano-${i}`, '🔧'))}
                       </>
                     )}
@@ -1274,7 +1275,7 @@ function obtenerEstadoAbierto(horario) {
                     {resultadosTransmisionesLibre.map((r, i) => renderTarjetaMotor(r, `transmision-${i}`, '⚙️'))}
                     {resultadosTransmisionesCercanosLibre.length > 0 && (
                       <>
-                        <p style={groupHeaderStyle}>🔄 Años cercanos (±3)</p>
+                        <p style={groupHeaderStyle}>🔄 Años cercanos (±4)</p>
                         {resultadosTransmisionesCercanosLibre.map((r, i) => renderTarjetaMotor(r, `transmision-cercano-${i}`, '⚙️'))}
                       </>
                     )}

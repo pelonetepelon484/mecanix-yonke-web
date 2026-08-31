@@ -40,7 +40,8 @@ export async function buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, mod
 
 // Consulta varios años EN PARALELO (Promise.all) en vez de uno por uno — este era
 // exactamente el cuello de botella del buscador manual (84 round-trips secuenciales para
-// ±3 años con 14 yonkes: ~9.7s: en paralelo por año, mismo número de lecturas, ~1.8s).
+// 6 años cercanos con 14 yonkes, con el rango de ±3 de entonces: ~9.7s; en paralelo por
+// año, mismo número de lecturas, ~1.8s).
 //
 // Reordena el resultado a "yonke primero, año después" (el mismo orden que producía el
 // loop secuencial original) aunque las consultas se disparan en paralelo por año — así el

@@ -15,6 +15,15 @@ const ALIAS_MARCA = {
   'land rover': 'Land Rover', 'landrover': 'Land Rover', 'mini': 'Mini', 'smart': 'Smart',
 };
 
+// Modelos de RAM que NO existen como "Ram <numero>" bajo Dodge en el catálogo (1500 y 2500 sí
+// se venden bajo ambas marcas según el año, así que esos se dejan intactos — ver el uso más
+// abajo en extraerMarcaModelo). Calculado una sola vez a partir de CATALOGO_BASE, no hardcodeado,
+// para que si el catálogo cambia esto se recalcule solo.
+const MODELOS_RAM_EXCLUSIVOS = (CATALOGO_BASE['RAM'] || []).filter((modelo) => {
+  const comoModeloDodge = `ram ${modelo}`.toLowerCase();
+  return !(CATALOGO_BASE['Dodge'] || []).some((m) => m.toLowerCase() === comoModeloDodge);
+});
+
 const PIEZAS_CATALOGO = [
   'Faro delantero izquierdo', 'Faro delantero derecho', 'Calavera trasera izquierda', 'Calavera trasera derecha',
   'Cofre', 'Cajuela', 'Parachoques delantero', 'Parachoques trasero', 'Espejo izquierdo', 'Espejo derecho',
@@ -179,6 +188,20 @@ function extraerMarcaModelo(textoNormalizado, anio) {
       }
     }
     if (modeloEncontrado) break;
+  }
+
+  // "chrysler ram 700" / "dodge ram 700": el alias genérico de Chrysler/Dodge (paso 1) se
+  // dispara ANTES de llegar a "ram" en el texto (el orden de ALIAS_MARCA los pone primero),
+  // así que marcaEncontrada queda mal aunque el modelo sí se detecte bien como "700" de RAM.
+  // Se corrige SOLO cuando el modelo encontrado es EXCLUSIVO de RAM (700, 4000, ProMaster) —
+  // "Ram 1500"/"Ram 2500" siguen resolviendo a Dodge exactamente como antes, porque son
+  // modelos reales de Dodge que sí existen así en el inventario (confirmado contra Firestore:
+  // 7+ yonkes tienen marca="Dodge" con esos modelos, y forzar RAM ahí los habría roto).
+  if ((marcaEncontrada === 'Chrysler' || marcaEncontrada === 'Dodge')
+      && marcaDelModelo === 'RAM'
+      && MODELOS_RAM_EXCLUSIVOS.includes(modeloEncontrado)
+      && /\bram\b/.test(textoNormalizado)) {
+    marcaEncontrada = 'RAM';
   }
 
   let marca = marcaEncontrada || marcaDelModelo || null;
