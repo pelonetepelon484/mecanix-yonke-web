@@ -239,8 +239,10 @@ export async function POST(request) {
     return NextResponse.json({ estado: 'rechazado', mensaje: MENSAJE_RECHAZO_CAPA0 });
   }
 
-  // Capa 1: extracción de intención (reglas + catálogo de 38 marcas, con fuzzy matching).
-  const intencion = extraerIntencion(texto);
+  // Capa 1: extracción de intención (reglas + catálogo combinado estático+vivo, con fuzzy
+  // matching). Async porque el catálogo vivo se lee de Firestore (con caché de 10 min —
+  // ver catalogoCombinado.js), no bloquea el resto del flujo más de lo que ya hacía.
+  const intencion = await extraerIntencion(texto);
 
   // Fuera de giro: texto pasó Capa 0 pero no es una búsqueda real de autopartes (otro
   // oficio/servicio, solo saludo, o venta de vehículo completo). Se evalúa antes que

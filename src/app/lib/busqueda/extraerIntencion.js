@@ -1,4 +1,5 @@
 import { CATALOGO_BASE } from '../catalogoBase';
+import { obtenerCatalogoCombinado } from './catalogoCombinado';
 
 // Alias comunes de marcas — mismo espíritu que el mapa MARCAS de admin/page.js (migrarInventario).
 const ALIAS_MARCA = {
@@ -151,7 +152,14 @@ function contieneSecuenciaTokens(tokensTexto, tokensModelo) {
   return false;
 }
 
-function extraerMarcaModelo(textoNormalizado, anio) {
+async function extraerMarcaModelo(textoNormalizado, anio) {
+  // Catálogo combinado (CATALOGO_BASE + catálogo vivo de Firestore, con caché de 10 min) —
+  // así el matching exacto y difuso de abajo reconoce también modelos que solo existen en el
+  // inventario real y nunca se agregaron a mano al catálogo estático (ej. RAM 700, Chrysler
+  // 200, Pontiac 6000). MODELOS_RAM_EXCLUSIVOS y ALIAS_MARCA siguen usando el estático puro
+  // (ver más abajo y arriba del archivo) — no dependen de esto.
+  const catalogo = await obtenerCatalogoCombinado();
+
   // El año ya fue extraído por separado — se excluye de las palabras candidatas a difuso
   // para que un token como "2008" nunca se compare contra modelos numéricos cortos
   // (ej. Peugeot "3008"), que es justo el tipo de colisión que el umbral difuso no filtra.
@@ -175,10 +183,10 @@ function extraerMarcaModelo(textoNormalizado, anio) {
   let marcaDelModelo = null;
   const tokensTexto = textoNormalizado.split(/\s+/).filter(Boolean).map(limpiarToken);
   const marcasAProbar = marcaEncontrada
-    ? [marcaEncontrada, ...Object.keys(CATALOGO_BASE).filter((m) => m !== marcaEncontrada)]
-    : Object.keys(CATALOGO_BASE);
+    ? [marcaEncontrada, ...Object.keys(catalogo).filter((m) => m !== marcaEncontrada)]
+    : Object.keys(catalogo);
   for (const marca of marcasAProbar) {
-    const modelos = CATALOGO_BASE[marca] || [];
+    const modelos = catalogo[marca] || [];
     for (const modelo of modelos) {
       const tokensModelo = normalizar(modelo).split(/\s+/).filter(Boolean);
       if (contieneSecuenciaTokens(tokensTexto, tokensModelo)) {
@@ -223,11 +231,11 @@ function extraerMarcaModelo(textoNormalizado, anio) {
   // 4. Difuso: si el exacto no encontró modelo, busca contra los modelos de la marca ya
   // resuelta (si la hay) para mayor precisión, o contra todo el catálogo si no.
   if (!modelo) {
-    const marcasABuscar = marca ? [marca] : Object.keys(CATALOGO_BASE);
+    const marcasABuscar = marca ? [marca] : Object.keys(catalogo);
     for (const palabra of palabras) {
       let encontrado = null;
       for (const m of marcasABuscar) {
-        const candidato = mejorCandidatoDifuso(palabra, CATALOGO_BASE[m] || []);
+        const candidato = mejorCandidatoDifuso(palabra, catalogo[m] || []);
         if (candidato) { encontrado = { marca: m, modelo: candidato }; break; }
       }
       if (encontrado) {
@@ -341,10 +349,10 @@ function extraerPieza(textoNormalizado) {
 // de texto libre en español. requiereConfirmacion es true si marca o modelo se resolvieron
 // por coincidencia difusa (typo) en vez de exacta — en ese caso, quien llama debe pedir
 // confirmación al usuario antes de consultar Firestore, no ejecutar la búsqueda directo.
-export function extraerIntencion(textoOriginal) {
+export async function extraerIntencion(textoOriginal) {
   const textoNormalizado = normalizar(textoOriginal);
   const anio = extraerAnio(textoNormalizado);
-  const { marca, modelo, difuso } = extraerMarcaModelo(textoNormalizado, anio);
+  const { marca, modelo, difuso } = await extraerMarcaModelo(textoNormalizado, anio);
   const pieza = extraerPieza(textoNormalizado);
 
   const reconocido = Boolean(pieza && (marca || modelo));
