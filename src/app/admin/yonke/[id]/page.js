@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, deleteDoc, Timestamp, deleteField, collection, que
 import { db } from '../../../lib/firebase';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
 import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
+import { ESTADO_DEFAULT, cargarEstados } from '../../../lib/estados';
 
 // Mismos textos que "Reenviar recuperación" en la app (UsuariosYonkeScreen.js en
 // mecanix-yonke-virtual2) para que la experiencia sea idéntica en web y app.
@@ -76,7 +77,10 @@ export default function EditarYonkePage() {
 
   const [nombre, setNombre] = useState('');
   const [direccion, setDireccion] = useState('');
+  const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
+  const [estado, setEstado] = useState(ESTADO_DEFAULT);
   const [ciudad, setCiudad] = useState('tijuana');
+  const [ciudadLibre, setCiudadLibre] = useState('');
   const [telefono, setTelefono] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
@@ -167,6 +171,10 @@ export default function EditarYonkePage() {
   }
 
   useEffect(() => {
+    cargarEstados().then(setEstados);
+  }, []);
+
+  useEffect(() => {
     async function cargarYonke() {
       const ref = doc(db, 'yonkes', id);
       const snap = await getDoc(ref);
@@ -174,7 +182,15 @@ export default function EditarYonkePage() {
         const data = snap.data();
         setNombre(data.nombre || '');
         setDireccion(data.direccion || '');
-        setCiudad(data.ciudad || 'tijuana');
+        // Compatibilidad: yonkes de antes de este cambio no tienen `estado` — se asume Baja
+        // California, igual que estadoDeYonke() en todo el resto del proyecto.
+        const estadoDoc = data.estado || ESTADO_DEFAULT;
+        setEstado(estadoDoc);
+        if (estadoDoc === ESTADO_DEFAULT) {
+          setCiudad(data.ciudad || 'tijuana');
+        } else {
+          setCiudadLibre(data.ciudad || '');
+        }
         setTelefono(data.telefono || '');
         setWhatsapp(data.whatsapp || '');
         setEmail(data.email || '');
@@ -219,16 +235,20 @@ export default function EditarYonkePage() {
     }));
   }
 
+  const esBC = estado === ESTADO_DEFAULT;
+
   async function guardar() {
-    if (!nombre || !direccion || !telefono) {
-      alert('Llena nombre, dirección y teléfono'); return;
+    const ciudadFinal = esBC ? ciudad : ciudadLibre.trim();
+    if (!nombre || !direccion || !ciudadFinal || !telefono) {
+      alert('Llena nombre, ciudad, dirección y teléfono'); return;
     }
     setGuardando(true);
     try {
       await setDoc(doc(db, 'yonkes', id), {
         nombre: nombre.trim(),
         direccion: direccion.trim(),
-        ciudad,
+        estado,
+        ciudad: ciudadFinal,
         telefono: telefono.trim(),
         whatsapp: whatsapp.trim() || telefono.trim(),
         email: email.trim(),
@@ -284,10 +304,19 @@ export default function EditarYonkePage() {
           <p style={labelStyle}>Nombre *</p>
           <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del yonke" style={inputStyle} />
 
-          <p style={labelStyle}>Ciudad *</p>
-          <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} style={inputStyle}>
-            {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+          <p style={labelStyle}>Estado *</p>
+          <select value={estado} onChange={(e) => setEstado(e.target.value)} style={inputStyle}>
+            {estados.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
           </select>
+
+          <p style={labelStyle}>Ciudad *</p>
+          {esBC ? (
+            <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} style={inputStyle}>
+              {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+          ) : (
+            <input type="text" value={ciudadLibre} onChange={(e) => setCiudadLibre(e.target.value)} placeholder="Ej. Guadalajara" style={inputStyle} />
+          )}
 
           <p style={labelStyle}>Dirección *</p>
           <input type="text" value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Dirección completa" style={inputStyle} />

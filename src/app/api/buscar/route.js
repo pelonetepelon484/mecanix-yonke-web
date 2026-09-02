@@ -7,7 +7,20 @@ import { detectarFueraDeGiro } from '../../lib/busqueda/detectarFueraDeGiro';
 import { registrarBusqueda } from '../../lib/busqueda/registrarBusqueda';
 import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones } from '../../lib/busqueda/consultarInventario';
 import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLimit';
+import { obtenerEstadosCombinado } from '../../lib/busqueda/estadosServer';
 import { notificarAdmin } from '../../lib/notificarAdmin';
+
+// Nota de nombres: en este archivo `estado` (minúscula, sin más calificación) siempre significa
+// el ESTADO DE LA BÚSQUEDA ('ok', 'sin_inventario', 'fuera_de_catalogo', etc. — ver
+// registrarBusqueda/persistirContactoSiExiste), un patrón ya establecido antes del sistema de
+// estados geográficos. Para no confundir los dos conceptos, el filtro geográfico nuevo se llama
+// `estadoFiltro` en todo este archivo (viaja como `estado` solo al cruzar a consultarInventario.js,
+// donde ese nombre no tiene ninguna otra acepción).
+async function mensajeSinYonkesEnEstado(estadoFiltro) {
+  const estados = await obtenerEstadosCombinado();
+  const nombre = estados.find((e) => e.id === estadoFiltro)?.nombre || estadoFiltro;
+  return `Aún no tenemos yonkes registrados en ${nombre} — muy pronto estaremos ahí. Prueba buscando en "Todos los estados".`;
+}
 
 const MENSAJE_NO_CATALOGADO =
   'No identificamos ese modelo todavía — ¿nos confirmas la marca y el año? o cuéntanos qué modelo es y lo agregamos a la plataforma.';
@@ -75,7 +88,7 @@ async function persistirContactoSiExiste(contacto, { texto, pieza = null, marca 
 // Paso 3 en adelante (búsqueda CON pieza): ya con {pieza, marca, modelo, anio} resueltos
 // (extracción exacta o confirmación de sugerencia difusa), valida contra el catálogo vivo
 // y consulta inventario filtrado por esa pieza.
-async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto, origen) {
+async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto, origen, estadoFiltro) {
   const tieneContacto = Boolean(contacto);
 
   if (!modelo) {
@@ -89,10 +102,19 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
   // o "Actualizar catálogo" en admin que hoy solo escanea vehiculos). Por eso el check de
   // catálogo y la búsqueda de motores corren en PARALELO: solo se declara "no_catalogado" si
   // NINGUNO de los dos encuentra nada — un motor real no debe quedar invisible por esto.
-  const [enCatalogo, { motores, transmisiones, motoresCercanos, transmisionesCercanos }] = await Promise.all([
+  const [enCatalogo, resultadoMotores] = await Promise.all([
     existeEnCatalogoVivo(marca, modelo),
-    consultarMotoresTransmisiones({ marca, modelo, anio }),
+    consultarMotoresTransmisiones({ marca, modelo, anio, estado: estadoFiltro }),
   ]);
+
+  // El estado elegido no tiene NINGÚN yonke (distinto de "tiene yonkes pero nada coincide") —
+  // se resuelve antes que "no_catalogado" para no decirle a un cliente que el modelo no existe
+  // cuando en realidad es que su estado todavía no tiene yonkes registrados.
+  if (resultadoMotores.sinYonkesEnEstado) {
+    return NextResponse.json({ estado: 'sin_yonkes_estado', mensaje: await mensajeSinYonkesEnEstado(estadoFiltro) });
+  }
+
+  const { motores, transmisiones, motoresCercanos, transmisionesCercanos } = resultadoMotores;
   const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
@@ -102,7 +124,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
   }
 
   const { resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada } = enCatalogo
-    ? await consultarInventario({ marca, modelo, anio, pieza })
+    ? await consultarInventario({ marca, modelo, anio, pieza, estado: estadoFiltro })
     : { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
 
   // "Sin inventario" solo cuando NADA se encontró (ni exacto, ni cercano, ni motores/
@@ -134,16 +156,22 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
 // Búsqueda de solo vehículo (sin pieza): el usuario probablemente quiere explorar todo
 // el inventario disponible de ese vehículo, no un error. Mismo catálogo vivo, pero
 // consultarInventarioVehiculo no filtra/separa por pieza.
-async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto, origen) {
+async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto, origen, estadoFiltro) {
   const tieneContacto = Boolean(contacto);
 
   // Ver nota equivalente en resolverBusqueda(): catálogo vivo y motores en paralelo, para que
   // un motor/transmisión real no quede invisible solo porque su marca/modelo no está en el
   // catálogo (que hoy se nutre principalmente de vehículos).
-  const [enCatalogo, { motores, transmisiones, motoresCercanos, transmisionesCercanos }] = await Promise.all([
+  const [enCatalogo, resultadoMotores] = await Promise.all([
     existeEnCatalogoVivo(marca, modelo),
-    consultarMotoresTransmisiones({ marca, modelo, anio }),
+    consultarMotoresTransmisiones({ marca, modelo, anio, estado: estadoFiltro }),
   ]);
+
+  if (resultadoMotores.sinYonkesEnEstado) {
+    return NextResponse.json({ estado: 'sin_yonkes_estado', mensaje: await mensajeSinYonkesEnEstado(estadoFiltro) });
+  }
+
+  const { motores, transmisiones, motoresCercanos, transmisionesCercanos } = resultadoMotores;
   const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
@@ -153,7 +181,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
   }
 
   const { resultados, resultadosCercanos, tipoResultado } = enCatalogo
-    ? await consultarInventarioVehiculo({ marca, modelo, anio })
+    ? await consultarInventarioVehiculo({ marca, modelo, anio, estado: estadoFiltro })
     : { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno' };
 
   if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
@@ -196,6 +224,10 @@ export async function POST(request) {
   const confirmado = body?.confirmado;
   // 'whatsapp' queda reservado para cuando exista el webhook correspondiente; hoy siempre 'web'.
   const origen = body?.origen === 'whatsapp' ? 'whatsapp' : 'web';
+  // Filtro geográfico opcional del buscador (Fase 3 del sistema de estados). Default 'todos'
+  // para que un cliente que nunca toca el selector obtenga EXACTAMENTE el comportamiento de
+  // hoy — cero filtro geográfico, igual que antes de que este parámetro existiera.
+  const estadoFiltro = typeof body?.estado === 'string' && body.estado ? body.estado : 'todos';
 
   // Rate limit: se aplica siempre (flujo normal o confirmación), antes de tocar Firestore
   // para la búsqueda en sí. Si el propio chequeo falla (ej. reglas de Firestore aún no
@@ -225,8 +257,8 @@ export async function POST(request) {
       anio: typeof confirmado.anio === 'number' ? confirmado.anio : null,
     };
     return datos.pieza
-      ? resolverBusqueda(datos, texto, contacto, origen)
-      : resolverBusquedaVehiculo(datos, texto, contacto, origen);
+      ? resolverBusqueda(datos, texto, contacto, origen, estadoFiltro)
+      : resolverBusquedaVehiculo(datos, texto, contacto, origen, estadoFiltro);
   }
 
   const tieneContacto = Boolean(contacto);
@@ -290,7 +322,7 @@ export async function POST(request) {
   }
 
   if (intencion.reconocido) {
-    return resolverBusqueda(intencion, texto, contacto, origen);
+    return resolverBusqueda(intencion, texto, contacto, origen, estadoFiltro);
   }
 
   // Marca reconocida pero el "modelo" mencionado no coincide con ninguno conocido (ej.
@@ -310,5 +342,5 @@ export async function POST(request) {
 
   // Vehículo reconocido pero sin pieza (y sin ningún modelo mencionado): explorar todo
   // el inventario disponible de la marca.
-  return resolverBusquedaVehiculo(intencion, texto, contacto, origen);
+  return resolverBusquedaVehiculo(intencion, texto, contacto, origen, estadoFiltro);
 }

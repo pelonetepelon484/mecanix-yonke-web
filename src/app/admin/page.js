@@ -6,6 +6,7 @@ import { collection, onSnapshot, query, orderBy, where, doc, updateDoc, setDoc, 
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import { borrarLogoYonke } from '../lib/subirLogoYonke';
+import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from '../lib/estados';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -42,6 +43,8 @@ export default function AdminPage() {
   const [yonkes, setYonkes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
+  const [estadosDisponibles, setEstadosDisponibles] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
+  const [estadoFiltro, setEstadoFiltro] = useState('todos');
   const [regenerandoCatalogo, setRegenerandoCatalogo] = useState(false);
   const [migrando, setMigrando] = useState(false);
   const [migrandoBusquedas, setMigrandoBusquedas] = useState(false);
@@ -398,6 +401,10 @@ export default function AdminPage() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    cargarEstados().then(setEstadosDisponibles);
+  }, []);
+
   async function toggleActivo(yonke) {
     await updateDoc(doc(db, 'yonkes', yonke.id), { activo: !yonke.activo });
   }
@@ -438,8 +445,9 @@ export default function AdminPage() {
   }
 
   const yonkesFiltrados = yonkes.filter(y =>
-    y.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    y.ciudad?.toLowerCase().includes(busqueda.toLowerCase())
+    (y.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      y.ciudad?.toLowerCase().includes(busqueda.toLowerCase())) &&
+    (estadoFiltro === 'todos' || estadoDeYonke(y) === estadoFiltro)
   );
 
   return (
@@ -519,7 +527,30 @@ export default function AdminPage() {
           >
             🚗 Captura a domicilio
           </button>
+          <button
+            onClick={() => router.push('/admin/estados')}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            🗺️ Estados
+          </button>
         </div>
+
+        {/* Filtro por estado geográfico — ausente en el yonke cuenta como Baja California,
+            ver estadoDeYonke() en lib/estados.js */}
+        <select
+          value={estadoFiltro}
+          onChange={(e) => setEstadoFiltro(e.target.value)}
+          style={{ ...inputStyle, cursor: 'pointer' }}
+        >
+          <option value="todos">Todos los estados</option>
+          {estadosDisponibles.map((e) => (
+            <option key={e.id} value={e.id}>{e.nombre}</option>
+          ))}
+        </select>
 
         {/* Búsqueda */}
         <input

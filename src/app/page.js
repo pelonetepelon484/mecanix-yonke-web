@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { buscarVehiculosEnAniosParalelo } from './lib/buscarVehiculosPorAnio';
+import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from './lib/estados';
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', nombre, params);
@@ -194,6 +195,28 @@ export default function Home() {
   const [pestanaActiva, setPestanaActiva] = useState('cliente');
   const [busquedaAvanzadaAbierta, setBusquedaAvanzadaAbierta] = useState(false);
 
+  // Sistema de estados: lista de estados (para los selectores de planes/búsqueda) y estado
+  // elegido en la pestaña "Tengo un yonke" (visitante sin cuenta todavía, así que no hay un
+  // yonke.estado que leer — se pregunta aparte, default Baja California para verse igual que
+  // hoy hasta que alguien lo cambie).
+  const [estadosDisponibles, setEstadosDisponibles] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California', tieneVisitas: true }]);
+  const [estadoPlanes, setEstadoPlanes] = useState(ESTADO_DEFAULT);
+  const [estadoBusqueda, setEstadoBusqueda] = useState('todos');
+  const [sinYonkesEnEstadoManual, setSinYonkesEnEstadoManual] = useState(false);
+
+  useEffect(() => {
+    cargarEstados().then(setEstadosDisponibles);
+  }, []);
+
+  // El dropdown de Ciudad solo existe para Baja California (ver render) — si el estado elegido
+  // deja de ser BC/todos, se limpia cualquier ciudad ya seleccionada para que no quede un
+  // filtro invisible aplicándose sobre un estado que ya no muestra ese control.
+  useEffect(() => {
+    if (estadoBusqueda !== 'todos' && estadoBusqueda !== ESTADO_DEFAULT) {
+      setCiudad('');
+    }
+  }, [estadoBusqueda]);
+
   // Buscador inteligente (texto libre)
   const [textoLibre, setTextoLibre] = useState('');
   const [contactoLibre, setContactoLibre] = useState('');
@@ -243,12 +266,23 @@ export default function Home() {
     cargarLogos();
   }, []);
 
-  function filtrarPorCiudad(yonkesSnap) {
-    if (!ciudad) return yonkesSnap.docs;
-    return yonkesSnap.docs.filter(d => {
-      const c = d.data().ciudad || '';
-      return c.toLowerCase() === ciudad.toLowerCase();
-    });
+  // Busqueda avanzada usa el MISMO selector de estado que el buscador inteligente (arriba de
+  // ambos) — filtra primero por estado (ausente = Baja California, ver lib/estados.js) y luego
+  // por ciudad (BC únicamente; para otros estados no hay dropdown de ciudad, ver render). Con
+  // estado 'todos' (default) el comportamiento es idéntico a como funcionaba antes de esto.
+  function filtrarPorEstadoYCiudad(yonkesSnap) {
+    let docs = yonkesSnap.docs;
+    if (estadoBusqueda && estadoBusqueda !== 'todos') {
+      docs = docs.filter(d => estadoDeYonke(d.data()) === estadoBusqueda);
+    }
+    const sinYonkesEnEseEstado = estadoBusqueda !== 'todos' && docs.length === 0;
+    if (ciudad) {
+      docs = docs.filter(d => {
+        const c = d.data().ciudad || '';
+        return c.toLowerCase() === ciudad.toLowerCase();
+      });
+    }
+    return { docs, sinYonkesEnEseEstado };
   }
 
   async function buscarMotoresOTransmisiones(yonkesDocs) {
@@ -363,7 +397,13 @@ export default function Home() {
     setBuscando(true); setBusquedaHecha(true); setPiezaNoEncontrada(false); setTipoResultado('exacto');
     try {
       const yonkesSnap = await getDocs(collection(db, 'yonkes'));
-      const yonkesFiltrados = filtrarPorCiudad(yonkesSnap);
+      const { docs: yonkesFiltrados, sinYonkesEnEseEstado } = filtrarPorEstadoYCiudad(yonkesSnap);
+      setSinYonkesEnEstadoManual(sinYonkesEnEseEstado);
+      if (sinYonkesEnEseEstado) {
+        setResultados([]);
+        setBuscando(false);
+        return;
+      }
 
       // Búsqueda de motor o transmisión
       if (tipoBusqueda === 'motor' || tipoBusqueda === 'transmision') {
@@ -529,7 +569,7 @@ export default function Home() {
       const res = await fetch('/api/buscar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim() }),
+        body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim(), estado: estadoBusqueda }),
       });
       const data = await res.json();
       aplicarRespuestaBusquedaLibre(data);
@@ -549,7 +589,7 @@ export default function Home() {
       const res = await fetch('/api/buscar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim(), confirmado: sugerencia }),
+        body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim(), confirmado: sugerencia, estado: estadoBusqueda }),
       });
       const data = await res.json();
       aplicarRespuestaBusquedaLibre(data);
@@ -614,6 +654,10 @@ export default function Home() {
   };
 
   function getHeaderText() {
+    if (sinYonkesEnEstadoManual) {
+      const nombreEstado = estadosDisponibles.find(e => e.id === estadoBusqueda)?.nombre || estadoBusqueda;
+      return `Aún no tenemos yonkes registrados en ${nombreEstado} — muy pronto estaremos ahí.`;
+    }
     const ciudadLabel = ciudad ? CIUDADES_BC.find(c => c.key === ciudad)?.label : null;
     const sufijoCiudad = ciudadLabel ? ` en ${ciudadLabel}` : '';
     if (resultados.length === 0) {
@@ -950,8 +994,27 @@ function obtenerEstadoAbierto(horario) {
         {pestanaActiva === 'cliente' && (
           <>
             <p style={{ textAlign: 'center', fontSize: '16px', color: '#1A3C5E', fontWeight: '600', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 20px' }}>
-              Encuentra tu autoparte usada entre los yonkes de Baja California y contáctalos directo.
+              Encuentra tu autoparte usada entre nuestros yonkes registrados y contáctalos directo.
             </p>
+
+            {/* Selector de estado — aplica tanto al buscador inteligente como al avanzado (mismo
+                valor, una sola vez arriba de los dos). Default "todos" = comportamiento de
+                siempre, sin ningún filtro geográfico. */}
+            <div style={{ maxWidth: '320px', margin: '0 auto 16px' }}>
+              <select
+                value={estadoBusqueda}
+                onChange={(e) => setEstadoBusqueda(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd',
+                  fontSize: '14px', backgroundColor: '#fff', color: '#333', cursor: 'pointer',
+                }}
+              >
+                <option value="todos">Todos los estados</option>
+                {estadosDisponibles.map((e) => (
+                  <option key={e.id} value={e.id}>{e.nombre}</option>
+                ))}
+              </select>
+            </div>
 
             {/* Buscador inteligente — EL BUSCADOR GRANDE Y PROTAGONISTA, sin cambios en su lógica. */}
             <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 8px 32px rgba(26,60,94,0.10)', marginBottom: '12px' }}>
@@ -983,8 +1046,8 @@ function obtenerEstadoAbierto(horario) {
               {mensajeLibre && (
                 <div style={{
                   marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
-                  backgroundColor: mensajeLibre.tipo === 'sin_inventario' ? '#EEF4FA' : '#FFF8E1',
-                  border: `1px solid ${mensajeLibre.tipo === 'sin_inventario' ? '#C5D8EC' : '#FFD54F'}`,
+                  backgroundColor: ['sin_inventario', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) ? '#EEF4FA' : '#FFF8E1',
+                  border: `1px solid ${['sin_inventario', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) ? '#C5D8EC' : '#FFD54F'}`,
                 }}>
                   <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
                     {mensajeLibre.texto}
@@ -1056,10 +1119,14 @@ function obtenerEstadoAbierto(horario) {
                     ))}
                   </div>
 
-                  <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="mecanix-select">
-                    <option value="">🌎 Todas las ciudades</option>
-                    {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-                  </select>
+                  {/* Ciudad solo existe como catálogo para Baja California — para otro estado
+                      específico no hay filtro de ciudad que ofrecer todavía. */}
+                  {(estadoBusqueda === 'todos' || estadoBusqueda === ESTADO_DEFAULT) && (
+                    <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="mecanix-select">
+                      <option value="">🌎 Todas las ciudades</option>
+                      {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                    </select>
+                  )}
 
                   {Object.keys(catalogoVehiculos).length > 0 ? (
                     <>
@@ -1328,7 +1395,7 @@ function obtenerEstadoAbierto(horario) {
                 ¿Administras un yonke?
               </h3>
               <p style={{ fontSize: '14px', color: '#555', margin: '0 0 6px', lineHeight: '1.6' }}>
-                Únete a nuestra red y conecta con miles de compradores en Baja California.
+                Únete a nuestra red y conecta con miles de compradores.
               </p>
               <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 20px', lineHeight: '1.6' }}>
                 ⚠️ Tu perfil será verificado por nuestro equipo en un plazo de 24 horas antes de aparecer en la plataforma.
@@ -1392,6 +1459,36 @@ function obtenerEstadoAbierto(horario) {
                 </p>
               </div>
 
+              <div style={{ maxWidth: '320px', margin: '0 auto 24px' }}>
+                <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px', textAlign: 'center' }}>
+                  ¿En qué estado está tu yonke?
+                </p>
+                <select
+                  value={estadoPlanes}
+                  onChange={(e) => setEstadoPlanes(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd',
+                    fontSize: '14px', backgroundColor: '#fff', color: '#333', cursor: 'pointer',
+                  }}
+                >
+                  {estadosDisponibles.map((e) => (
+                    <option key={e.id} value={e.id}>{e.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {(() => {
+                const estadoElegido = estadosDisponibles.find((e) => e.id === estadoPlanes);
+                const tieneVisitas = estadoElegido ? Boolean(estadoElegido.tieneVisitas) : true;
+                const precioPremium = tieneVisitas ? '$1,000/mes' : '$700/mes';
+                const precioElite = tieneVisitas ? '$1,500/mes' : '$1,000/mes';
+                const itemVisitasPremium = tieneVisitas
+                  ? '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido — tú no haces nada'
+                  : 'Tú subes y actualizas tu propio inventario, cuando tú quieras';
+                const itemVisitasElite = tieneVisitas
+                  ? '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido'
+                  : 'Tú subes y actualizas tu propio inventario, cuando tú quieras';
+                return (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
 
                 {/* Básico */}
@@ -1419,14 +1516,14 @@ function obtenerEstadoAbierto(horario) {
                 <div style={planPremiumCardStyle}>
                   <div style={premiumBadgeStyle}>Recomendado</div>
                   <p style={planNombreStyle}>Premium</p>
-                  <p style={planPrecioStyle}>$1,000/mes</p>
+                  <p style={planPrecioStyle}>{precioPremium}</p>
                   <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
                     Todo lo del plan Básico, y además:
                   </p>
                   <ul style={planListaStyle}>
                     {[
                       'Tu propia página con tu nombre, tu logo y tus colores',
-                      '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido — tú no haces nada',
+                      itemVisitasPremium,
                       'Apareces destacado para que más clientes te encuentren',
                     ].map((item) => (
                       <li key={item} style={planItemStyle}>
@@ -1459,14 +1556,14 @@ function obtenerEstadoAbierto(horario) {
                 {/* Élite — antes "Marca Propia"; ahora también incluye captura a domicilio. */}
                 <div style={planCardStyle}>
                   <p style={planNombreStyle}>Élite</p>
-                  <p style={planPrecioStyle}>$1,500/mes</p>
+                  <p style={planPrecioStyle}>{precioElite}</p>
                   <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
                     Todo lo del Premium, y además:
                   </p>
                   <ul style={planListaStyle}>
                     {[
                       'Tu página con tu propio dominio de internet (tu marca al 100%)',
-                      '2 veces al mes vamos a tu yonke a agregar lo nuevo que hayas recibido',
+                      itemVisitasElite,
                       'La imagen más profesional para que tu yonke se vea como una gran empresa',
                     ].map((item) => (
                       <li key={item} style={planItemStyle}>
@@ -1494,6 +1591,8 @@ function obtenerEstadoAbierto(horario) {
                 </div>
 
               </div>
+                );
+              })()}
             </div>
           </>
         )}

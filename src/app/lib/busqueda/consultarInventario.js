@@ -2,6 +2,20 @@ import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { dbServer } from '../firebase-server';
 import { getRatingParaYonke } from '../yonkesServerData';
 import { buscarVehiculosPorAnio } from '../buscarVehiculosPorAnio';
+import { estadoDeYonke } from './estadosServer';
+
+// Filtro de estado, opcional y aditivo: sin `estado` (o 'todos') se devuelven TODOS los yonkes,
+// idéntico al comportamiento de siempre — ningún llamador existente cambia de resultado. Con un
+// estado específico, se filtra por estadoDeYonke() (ausente = Baja California, ver lib/estados.js)
+// y se marca `sinYonkesEnEstado` cuando ese estado no tiene NINGÚN yonke — distinto de "tiene
+// yonkes pero ninguno con esta pieza/vehículo", que sigue el pipeline normal de niveles.
+function filtrarPorEstado(yonkesDocsTodos, estado) {
+  if (!estado || estado === 'todos') {
+    return { yonkesDocs: yonkesDocsTodos, sinYonkesEnEstado: false };
+  }
+  const yonkesDocs = yonkesDocsTodos.filter((d) => estadoDeYonke(d.data()) === estado);
+  return { yonkesDocs, sinYonkesEnEstado: yonkesDocs.length === 0 };
+}
 
 function ordenarPorPlan(lista) {
   return lista.sort((a, b) => {
@@ -117,9 +131,12 @@ function separarPorTipo(lista) {
 // búsqueda de vehículos — un motor/transmisión suelto encontrado es un resultado tan válido
 // como una pieza. `motoresCercanos`/`transmisionesCercanos` solo vienen poblados cuando SÍ hay
 // exacto (si no hay exacto, los cercanos ya van en `motores`/`transmisiones` como hasta hoy).
-export async function consultarMotoresTransmisiones({ marca, modelo, anio }) {
+export async function consultarMotoresTransmisiones({ marca, modelo, anio, estado }) {
   const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
-  const yonkesDocs = yonkesSnap.docs;
+  const { yonkesDocs, sinYonkesEnEstado } = filtrarPorEstado(yonkesSnap.docs, estado);
+  if (sinYonkesEnEstado) {
+    return { motores: [], transmisiones: [], motoresCercanos: [], transmisionesCercanos: [], tipoResultadoMotor: 'cualquierAno', sinYonkesEnEstado: true };
+  }
 
   if (anio == null) {
     const todos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null));
@@ -208,9 +225,12 @@ async function buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza) {
 // los ±4 (excluidos del rango, nunca duplican el año exacto) como grupo ADICIONAL. Si NO hay
 // exacto, el comportamiento es igual que antes: los cercanos ocupan `resultados` directamente
 // y `resultadosCercanos` queda vacío (no se muestra una sección de cercanos vacía de exactos).
-export async function consultarInventario({ marca, modelo, anio, pieza }) {
+export async function consultarInventario({ marca, modelo, anio, pieza, estado }) {
   const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
-  const yonkesDocs = yonkesSnap.docs;
+  const { yonkesDocs, sinYonkesEnEstado } = filtrarPorEstado(yonkesSnap.docs, estado);
+  if (sinYonkesEnEstado) {
+    return { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false, sinYonkesEnEstado: true };
+  }
 
   // Sin año extraído del texto: buscamos en cualquier año directamente (mejor UX que
   // rechazar la búsqueda solo por faltar el dato), igual separando por disponibilidad de pieza.
@@ -252,9 +272,12 @@ export async function consultarInventario({ marca, modelo, anio, pieza }) {
 // disponible para esa marca/modelo/año, no una pieza en particular. Mismo pipeline
 // acumulativo que consultarInventario() (ver nota de FIX ahí), sin separar por disponibilidad
 // de pieza — regresa directamente los vehículos encontrados.
-export async function consultarInventarioVehiculo({ marca, modelo, anio }) {
+export async function consultarInventarioVehiculo({ marca, modelo, anio, estado }) {
   const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
-  const yonkesDocs = yonkesSnap.docs;
+  const { yonkesDocs, sinYonkesEnEstado } = filtrarPorEstado(yonkesSnap.docs, estado);
+  if (sinYonkesEnEstado) {
+    return { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', sinYonkesEnEstado: true };
+  }
 
   if (anio == null) {
     const resultados = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));

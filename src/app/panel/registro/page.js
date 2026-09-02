@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
+import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -20,7 +21,10 @@ export default function RegistroYonke() {
 
   const [nombre, setNombre] = useState('');
   const [direccion, setDireccion] = useState('');
+  const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
+  const [estado, setEstado] = useState(ESTADO_DEFAULT);
   const [ciudad, setCiudad] = useState('tijuana');
+  const [ciudadLibre, setCiudadLibre] = useState('');
   const [telefono, setTelefono] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
@@ -30,10 +34,19 @@ export default function RegistroYonke() {
   const [error, setError] = useState('');
   const [exitoso, setExitoso] = useState(false);
 
+  // Baja California mantiene el selector de CIUDADES_BC de siempre; cualquier otro estado no
+  // tiene todavía un catálogo de ciudades, así que se captura como texto libre.
+  const esBC = estado === ESTADO_DEFAULT;
+
+  useEffect(() => {
+    cargarEstados().then(setEstados);
+  }, []);
+
   async function handleRegistro() {
     setError('');
 
-    if (!nombre || !direccion || !ciudad || !telefono || !email || !password || !confirmarPassword) {
+    const ciudadFinal = esBC ? ciudad : ciudadLibre.trim();
+    if (!nombre || !direccion || !ciudadFinal || !telefono || !email || !password || !confirmarPassword) {
       setError('Llena todos los campos obligatorios');
       return;
     }
@@ -56,7 +69,8 @@ export default function RegistroYonke() {
       const yonkeRef = await addDoc(collection(db, 'yonkes'), {
         nombre: nombre.trim(),
         direccion: direccion.trim(),
-        ciudad,
+        estado,
+        ciudad: ciudadFinal,
         telefono: telefono.trim(),
         whatsapp: whatsapp.trim() || telefono.trim(),
         email: email.trim(),
@@ -82,7 +96,7 @@ export default function RegistroYonke() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             nombre: nombre.trim(),
-            ciudad: CIUDADES_BC.find(c => c.key === ciudad)?.label || ciudad,
+            ciudad: esBC ? (CIUDADES_BC.find(c => c.key === ciudad)?.label || ciudad) : ciudadFinal,
             telefono: telefono.trim(),
             email: email.trim(),
           }),
@@ -168,16 +182,37 @@ export default function RegistroYonke() {
             style={inputStyle}
           />
 
-          <p style={labelStyle}>Ciudad *</p>
+          <p style={labelStyle}>Estado *</p>
           <select
-            value={ciudad}
-            onChange={(e) => setCiudad(e.target.value)}
+            value={estado}
+            onChange={(e) => setEstado(e.target.value)}
             style={selectStyle}
           >
-            {CIUDADES_BC.map(c => (
-              <option key={c.key} value={c.key}>{c.label}</option>
+            {estados.map(e => (
+              <option key={e.id} value={e.id}>{e.nombre}</option>
             ))}
           </select>
+
+          <p style={labelStyle}>Ciudad *</p>
+          {esBC ? (
+            <select
+              value={ciudad}
+              onChange={(e) => setCiudad(e.target.value)}
+              style={selectStyle}
+            >
+              {CIUDADES_BC.map(c => (
+                <option key={c.key} value={c.key}>{c.label}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              placeholder="Ej. Guadalajara"
+              value={ciudadLibre}
+              onChange={(e) => setCiudadLibre(e.target.value)}
+              style={inputStyle}
+            />
+          )}
 
           <p style={labelStyle}>Dirección *</p>
           <input
