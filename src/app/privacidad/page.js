@@ -13,27 +13,28 @@ export default function Privacidad() {
           Política de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: agosto de 2026
+          Última actualización: septiembre de 2026
         </p>
 
         <Seccion titulo="1. Introducción">
-          Mecanix Yonke Virtual ("la Plataforma", "nosotros") es un servicio operado en Tijuana, Baja California, México, que conecta a clientes que buscan autopartes usadas con yonkes (deshuesaderos) registrados. Esta Política de Privacidad explica qué información recopilamos, cómo la usamos y cómo la protegemos al utilizar nuestra aplicación móvil y nuestro sitio web.
+          Mecanix Yonke Virtual ("la Plataforma", "nosotros") es un servicio con sede en Tijuana, Baja California, México, que conecta a clientes que buscan autopartes usadas con yonkes (deshuesaderos) registrados en los estados de México donde tengamos cobertura. Esta Política de Privacidad explica qué información recopilamos, cómo la usamos y cómo la protegemos al utilizar nuestra aplicación móvil y nuestro sitio web.
         </Seccion>
 
         <Seccion titulo="2. Información que recopilamos">
           <p style={parrafoStyle}><strong>De los clientes que buscan piezas:</strong> nombre, número de teléfono, y la pieza y vehículo que solicitan al momento de hacer una reservación. No requerimos crear una cuenta para buscar o reservar piezas.</p>
-          <p style={parrafoStyle}><strong>De los yonkes registrados:</strong> nombre del negocio, ciudad, dirección física (escrita manualmente, no mediante GPS), número de teléfono, número de WhatsApp, correo electrónico de acceso, métodos de pago aceptados, horario de atención, e inventario de vehículos y piezas disponibles.</p>
+          <p style={parrafoStyle}><strong>De los yonkes registrados:</strong> nombre del negocio, estado y ciudad, dirección física (escrita manualmente, no mediante GPS), número de teléfono, número de WhatsApp, correo electrónico de acceso, métodos de pago aceptados, horario de atención, e inventario de vehículos y piezas disponibles.</p>
           <p style={parrafoStyle}><strong>Datos de autenticación:</strong> correo electrónico y contraseña (almacenada de forma cifrada por nuestro proveedor de autenticación, Firebase Authentication de Google) para los usuarios con acceso al panel (yonkes y administradores).</p>
           <p style={parrafoStyle}><strong>Registro propio:</strong> los yonkes pueden registrarse directamente en la plataforma a través del formulario público disponible en el sitio web. La información proporcionada durante el registro es revisada por nuestro equipo antes de ser activada públicamente.</p>
-          <p style={parrafoStyle}><strong>Captura de inventario en sitio (planes de pago):</strong> en los planes que incluyen visitas de captura, nuestro personal visita el yonke para registrar su inventario de vehículos directamente en la plataforma. Los datos capturados son los que el propio yonke proporciona durante la visita.</p>
+          <p style={parrafoStyle}><strong>Captura de inventario en sitio (servicio opcional):</strong> en los estados donde Mecanix ofrece el servicio de visitas de captura como complemento opcional, nuestro personal puede visitar el yonke para registrar su inventario de vehículos directamente en la plataforma. Los datos capturados son los que el propio yonke proporciona durante la visita.</p>
         </Seccion>
 
         <Seccion titulo="3. Planes de servicio">
           <p style={parrafoStyle}><strong>Plan Básico (gratuito):</strong> permite a los yonkes registrados publicar su inventario de vehículos y aparecer en el motor de búsqueda público de la plataforma, sin costo alguno.</p>
-          <p style={parrafoStyle}><strong>Plan Premium (de pago):</strong> incluye una página propia con la marca del yonke, gestión de reservaciones, registro de ventas, notificaciones, y dos visitas al mes de nuestro personal para ayudar a capturar el inventario nuevo del yonke.</p>
+          <p style={parrafoStyle}><strong>Plan Premium (de pago):</strong> incluye una página propia con la marca del yonke, gestión de reservaciones, registro de ventas y notificaciones. El yonke sube y actualiza su propio inventario.</p>
           <p style={parrafoStyle}><strong>Plan Élite (de pago):</strong> incluye todo lo del Plan Premium, además de un dominio de internet propio para el yonke.</p>
+          <p style={parrafoStyle}><strong>Servicio de visitas de captura (complemento opcional):</strong> en los estados donde Mecanix cuenta con este servicio, el yonke puede contratarlo como complemento a su Plan Premium o Élite para que nuestro personal visite el negocio y ayude a capturar el inventario nuevo. Este servicio no está incluido por defecto en ningún plan, está sujeto a disponibilidad según el estado, y Mecanix puede activarlo o desactivarlo por estado según su capacidad operativa.</p>
           <p style={parrafoStyle}>Los precios vigentes de cada plan pueden consultarse en la página de planes de la plataforma.</p>
-          <p style={parrafoStyle}>Mecanix Yonke Virtual se reserva el derecho de modificar las funciones incluidas en cada plan, notificando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual se reserva el derecho de modificar las funciones incluidas en cada plan, así como la disponibilidad del servicio de visitas por estado, notificando a los yonkes registrados con al menos 30 días naturales de anticipación cuando aplique.</p>
         </Seccion>
 
         <Seccion titulo="4. Cómo usamos tu información">

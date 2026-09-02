@@ -13,7 +13,7 @@ export default function Terminos() {
           Términos y Condiciones de Uso
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: agosto de 2026
+          Última actualización: septiembre de 2026
         </p>
 
         <Seccion titulo="1. Aceptación de los términos">
@@ -21,7 +21,7 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="2. Descripción del servicio">
-          <p style={parrafoStyle}>Mecanix Yonke Virtual es una plataforma digital que actúa como intermediario entre clientes que buscan autopartes usadas y yonkes (deshuesaderos) registrados en Baja California, México.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual es una plataforma digital, con sede en Tijuana, Baja California, México, que actúa como intermediario entre clientes que buscan autopartes usadas y yonkes (deshuesaderos) registrados en los estados de México donde la plataforma tenga cobertura. La cobertura geográfica actual puede consultarse directamente en la plataforma.</p>
           <p style={parrafoStyle}>Mecanix Yonke Virtual <strong>no es vendedor</strong> de autopartes. No compramos, almacenamos ni enviamos piezas. Las transacciones se realizan directamente entre el cliente y el yonke, y Mecanix no es parte de dicha transacción.</p>
         </Seccion>
 
@@ -84,12 +84,13 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="14. Planes y suscripciones">
-          <p style={parrafoStyle}>Mecanix Yonke Virtual ofrece tres planes para yonkes registrados: Plan Básico, Plan Premium y Plan Élite.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual ofrece tres planes para yonkes registrados: Plan Básico, Plan Premium y Plan Élite. Estos planes son los mismos en todos los estados donde opera la plataforma.</p>
           <p style={parrafoStyle}>El <strong>Plan Básico</strong> es gratuito e incluye: carga y administración de inventario, aparición en resultados de búsqueda con nombre, dirección y teléfono del yonke, botón de contacto por WhatsApp, botón de reservación para clientes y control de reservaciones desde el panel.</p>
-          <p style={parrafoStyle}>El <strong>Plan Premium</strong> incluye todo lo del Plan Básico, más: una página propia del yonke con su nombre, logo y colores; registro de ventas y venta manual, notificaciones push al recibir una reservación, botón de WhatsApp para contactar al cliente que reservó, y dos visitas al mes de nuestro personal para ayudar a capturar el inventario nuevo.</p>
+          <p style={parrafoStyle}>El <strong>Plan Premium</strong> incluye todo lo del Plan Básico, más: una página propia del yonke con su nombre, logo y colores; registro de ventas y venta manual, notificaciones push al recibir una reservación, y botón de WhatsApp para contactar al cliente que reservó. El yonke es responsable de subir y actualizar su propio inventario.</p>
           <p style={parrafoStyle}>El <strong>Plan Élite</strong> incluye todo lo del Plan Premium, más un dominio de internet propio para el yonke.</p>
-          <p style={parrafoStyle}>Los precios vigentes de cada plan pueden consultarse en la página de planes de la plataforma.</p>
-          <p style={parrafoStyle}>Las visitas de captura de inventario son un servicio de apoyo: el yonke sigue siendo el único responsable de que la información capturada sea correcta y de mantener actualizado su inventario entre visitas.</p>
+          <p style={parrafoStyle}><strong>Servicio de visitas de captura (complemento opcional, sujeto a disponibilidad por estado):</strong> en los estados donde Mecanix cuenta con este servicio activo, el yonke con Plan Premium o Élite puede contratar como complemento que nuestro personal visite su negocio periódicamente para ayudar a capturar el inventario nuevo. Este servicio NO está incluido por defecto en ningún plan y su disponibilidad depende del estado donde esté registrado el yonke; Mecanix puede activar o desactivar este servicio por estado según su capacidad operativa, sin que esto afecte el resto de las funciones del plan contratado.</p>
+          <p style={parrafoStyle}>Los precios vigentes de cada plan y del servicio de visitas de captura pueden consultarse en la página de planes de la plataforma.</p>
+          <p style={parrafoStyle}>Cuando el servicio de visitas de captura esté contratado, el yonke sigue siendo el único responsable de que la información capturada sea correcta y de mantener actualizado su inventario entre visitas.</p>
           <p style={parrafoStyle}>Las funciones anunciadas como "próximamente" son mejoras planeadas sin fecha comprometida; su disponibilidad puede cambiar sin que esto genere obligación alguna para Mecanix Yonke Virtual.</p>
         </Seccion>
 
@@ -101,7 +102,7 @@ export default function Terminos() {
 
         <Seccion titulo="16. Periodo de prueba, bienvenida y pagos de los planes de pago">
           <p style={parrafoStyle}>Los planes de pago pueden incluir un periodo de prueba sin costo, cuya duración se comunica al yonke al activarlo.</p>
-          <p style={parrafoStyle}>Los yonkes que se registran por primera vez pueden recibir, como promoción de bienvenida, un mes de Plan Premium sin costo y su primera visita de captura de inventario gratuita; esta promoción aplica una sola vez y sus condiciones vigentes se publican en la página de planes.</p>
+          <p style={parrafoStyle}>Los yonkes que se registran por primera vez pueden recibir, como promoción de bienvenida, un mes de Plan Premium sin costo; en los estados donde el servicio de visitas de captura esté disponible, la promoción también puede incluir la primera visita de captura de inventario gratuita. Esta promoción aplica una sola vez y sus condiciones vigentes, incluyendo qué incluye según el estado, se publican en la página de planes.</p>
           <p style={parrafoStyle}>No existen cobros automáticos: los pagos se acuerdan y confirman directamente entre el yonke y Mecanix Yonke Virtual.</p>
           <p style={parrafoStyle}>Al terminar el periodo de prueba, la promoción de bienvenida, o un periodo de pago sin renovación, la cuenta regresa automáticamente al Plan Básico, sin pérdida del inventario ni de la información del yonke.</p>
           <p style={parrafoStyle}>Los pagos por periodos ya iniciados no son reembolsables.</p>
