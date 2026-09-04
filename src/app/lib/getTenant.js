@@ -64,7 +64,9 @@ export function resolveBranding(tenant) {
   const b = tenant.branding || {};
   return {
     nombre: b.nombreComercial || tenant.nombre || 'Yonke Demo',
-    logoUrl: b.logoUrl || DEFAULT_BRANDING.logoUrl,
+    // El logo puede vivir en branding.logoUrl (registro) o en logoUrl de nivel superior
+    // (panel/perfil, que solo escribe ahí) — se revisan ambos antes de caer al default.
+    logoUrl: b.logoUrl || tenant.logoUrl || DEFAULT_BRANDING.logoUrl,
     colorPrimario: b.colorPrimario || DEFAULT_BRANDING.colorPrimario,
     colorAcento: b.colorAcento || DEFAULT_BRANDING.colorAcento,
     colorFondo: b.colorFondo || DEFAULT_BRANDING.colorFondo,

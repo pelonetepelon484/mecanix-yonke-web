@@ -99,7 +99,9 @@ export default function PerfilPanel() {
     setSubiendoLogo(true);
     try {
       const url = await subirLogoYonke(yonkeId, file);
-      await setDoc(doc(db, 'yonkes', yonkeId), { logoUrl: url }, { merge: true });
+      // Se guarda en ambos campos (igual que panel/registro) para que la página del
+      // subdominio, que lee branding.logoUrl, no se quede con una versión vieja.
+      await setDoc(doc(db, 'yonkes', yonkeId), { logoUrl: url, 'branding.logoUrl': url }, { merge: true });
       setLogoUrl(url);
     } catch (error) {
       console.error(error);
@@ -114,7 +116,7 @@ export default function PerfilPanel() {
     setSubiendoLogo(true);
     try {
       await borrarLogoYonke(yonkeId);
-      await setDoc(doc(db, 'yonkes', yonkeId), { logoUrl: deleteField() }, { merge: true });
+      await setDoc(doc(db, 'yonkes', yonkeId), { logoUrl: deleteField(), 'branding.logoUrl': deleteField() }, { merge: true });
       setLogoUrl(null);
     } catch (error) {
       console.error(error);
