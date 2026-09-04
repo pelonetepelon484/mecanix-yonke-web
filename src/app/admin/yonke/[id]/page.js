@@ -7,6 +7,7 @@ import { db } from '../../../lib/firebase';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
 import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../lib/estados';
+import { generarSubdominioUnico } from '../../../lib/generarSubdominio';
 
 // Mismos textos que "Reenviar recuperación" en la app (UsuariosYonkeScreen.js en
 // mecanix-yonke-virtual2) para que la experiencia sea idéntica en web y app.
@@ -91,6 +92,8 @@ export default function EditarYonkePage() {
   const [entregaInmediata, setEntregaInmediata] = useState(false);
   const [capturaADomicilio, setCapturaADomicilio] = useState(false);
   const [subdominioActivo, setSubdominioActivo] = useState(true);
+  const [subdominio, setSubdominio] = useState('');
+  const [generandoSubdominio, setGenerandoSubdominio] = useState(false);
   const [metodosPago, setMetodosPago] = useState([]);
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
 
@@ -206,6 +209,7 @@ export default function EditarYonkePage() {
         // Compatibilidad: si el campo no existe (subdominios que ya funcionaban antes de este
         // control), se muestra activo por defecto — igual que subdominioEstaActivo() en getTenant.js.
         setSubdominioActivo(data.subdominioActivo !== false);
+        setSubdominio(data.subdominio || '');
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
       }
@@ -236,6 +240,25 @@ export default function EditarYonkePage() {
   }
 
   const esBC = estado === ESTADO_DEFAULT;
+
+  // Genera y guarda el subdominio de un yonke que se registró antes de que esto existiera
+  // (o manualmente sin uno) — misma función que usa el registro nuevo, así que el resultado y
+  // la verificación de colisión son idénticos en ambos caminos.
+  async function generarSubdominioAdmin() {
+    setGenerandoSubdominio(true);
+    try {
+      const ciudadFinal = esBC ? ciudad : ciudadLibre;
+      const nuevo = await generarSubdominioUnico(nombre, ciudadFinal, id);
+      await setDoc(doc(db, 'yonkes', id), { subdominio: nuevo, subdominioActivo: true }, { merge: true });
+      setSubdominio(nuevo);
+      setSubdominioActivo(true);
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo generar el subdominio, intenta de nuevo.');
+    } finally {
+      setGenerandoSubdominio(false);
+    }
+  }
 
   async function guardar() {
     const ciudadFinal = esBC ? ciudad : ciudadLibre.trim();
@@ -489,6 +512,28 @@ export default function EditarYonkePage() {
               Captura a domicilio
             </a>.
           </p>
+
+          <div style={{ marginTop: '16px' }}>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>Subdominio</p>
+            {subdominio ? (
+              <p style={{ fontSize: '14px', fontWeight: '700', color: '#1A3C5E', margin: 0 }}>
+                {subdominio}.mecanixyonkevirtual.com
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={generarSubdominioAdmin}
+                disabled={generandoSubdominio}
+                style={{
+                  padding: '8px 14px', borderRadius: '8px', border: 'none',
+                  backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
+                  fontSize: '13px', cursor: generandoSubdominio ? 'wait' : 'pointer',
+                }}
+              >
+                {generandoSubdominio ? 'Generando...' : '🌐 Generar subdominio automático'}
+              </button>
+            )}
+          </div>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
             <input

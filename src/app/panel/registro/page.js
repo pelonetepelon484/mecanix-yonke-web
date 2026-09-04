@@ -6,6 +6,9 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
+import { generarSubdominioUnico } from '../../lib/generarSubdominio';
+import { subirLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
+import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -33,6 +36,9 @@ export default function RegistroYonke() {
   const [registrando, setRegistrando] = useState(false);
   const [error, setError] = useState('');
   const [exitoso, setExitoso] = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [temaElegido, setTemaElegido] = useState(TEMA_DEFAULT_ID);
 
   // Baja California mantiene el selector de CIUDADES_BC de siempre; cualquier otro estado no
   // tiene todavía un catálogo de ciudades, así que se captura como texto libre.
@@ -41,6 +47,16 @@ export default function RegistroYonke() {
   useEffect(() => {
     cargarEstados().then(setEstados);
   }, []);
+
+  function manejarSeleccionLogo(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite volver a elegir el mismo archivo si se corrige algo
+    if (!file) return;
+    const errorValidacion = validarArchivoLogo(file);
+    if (errorValidacion) { alert(errorValidacion); return; }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  }
 
   async function handleRegistro() {
     setError('');
@@ -87,6 +103,36 @@ export default function RegistroYonke() {
         email: email.trim(),
         fechaRegistro: new Date(),
       });
+
+      // 4. Subdominio automático + logo (opcional) + tema de color — nunca deben tumbar el
+      // registro si algo falla aquí: la cuenta, el yonke y el acceso ya existen sin importar
+      // el resultado de este bloque (mismo estado que un yonke registrado manualmente hoy).
+      try {
+        const subdominio = await generarSubdominioUnico(nombre.trim(), ciudadFinal, yonkeRef.id);
+        const tema = TEMAS_COLOR.find((t) => t.id === temaElegido) || TEMAS_COLOR.find((t) => t.id === TEMA_DEFAULT_ID);
+
+        let logoUrl = null;
+        if (logoFile) {
+          try {
+            logoUrl = await subirLogoYonke(yonkeRef.id, logoFile);
+          } catch (logoError) {
+            console.error('No se pudo subir el logo durante el registro', logoError);
+          }
+        }
+
+        await setDoc(doc(db, 'yonkes', yonkeRef.id), {
+          subdominio,
+          subdominioActivo: true, // nace activo, por el mes de Premium gratis de bienvenida
+          branding: {
+            colorPrimario: tema.colorPrimario,
+            colorAcento: tema.colorAcento,
+            ...(logoUrl ? { logoUrl } : {}),
+          },
+          ...(logoUrl ? { logoUrl } : {}), // mismo logo también en el campo que usan las búsquedas
+        }, { merge: true });
+      } catch (brandingError) {
+        console.error('No se pudo generar el subdominio/branding automático', brandingError);
+      }
 
       // Notificación por WhatsApp — vía endpoint server-side (nunca expone la API key de
       // CallMeBot en el navegador; ver src/app/lib/notificarAdmin.js).
@@ -243,6 +289,60 @@ export default function RegistroYonke() {
         </div>
 
         <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Logo de tu negocio (opcional)</h2>
+          <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
+            Aparece en tus resultados de búsqueda y en tu página. Si no lo tienes a la mano,
+            puedes subirlo después desde tu panel.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={logoPreviewBoxStyle}>
+              {logoPreview ? (
+                <img src={logoPreview} alt="Logo elegido" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              ) : (
+                <span style={{ fontSize: '11px', color: '#bbb', textAlign: 'center' }}>Sin logo</span>
+              )}
+            </div>
+            <label style={{ ...selectStyle, flex: 1, textAlign: 'center', cursor: 'pointer', margin: 0 }}>
+              {logoFile ? 'Cambiar logo' : 'Subir logo'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={manejarSeleccionLogo}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
+        </div>
+
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Estilo de tu página</h2>
+          <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
+            Elige los colores de tu página — puedes cambiarlo después.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '10px' }}>
+            {TEMAS_COLOR.map((tema) => (
+              <button
+                key={tema.id}
+                type="button"
+                onClick={() => setTemaElegido(tema.id)}
+                style={{
+                  border: temaElegido === tema.id ? '2px solid #1A3C5E' : '2px solid transparent',
+                  borderRadius: '10px', padding: '6px', cursor: 'pointer',
+                  backgroundColor: temaElegido === tema.id ? '#EEF2F7' : '#fff',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                }}
+              >
+                <div style={{ display: 'flex', width: '100%', height: '28px', borderRadius: '6px', overflow: 'hidden' }}>
+                  <div style={{ flex: 1, backgroundColor: tema.colorPrimario }} />
+                  <div style={{ flex: 1, backgroundColor: tema.colorAcento }} />
+                </div>
+                <span style={{ fontSize: '11px', color: '#555', fontWeight: '600', textAlign: 'center' }}>{tema.nombre}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Acceso a tu panel</h2>
 
           <p style={labelStyle}>Correo electrónico *</p>
@@ -330,4 +430,9 @@ const freemiumBannerStyle = {
 const errorStyle = {
   backgroundColor: '#FEF0EC', border: '1px solid #F5C6B8', borderRadius: '8px',
   padding: '12px', marginBottom: '12px',
+};
+const logoPreviewBoxStyle = {
+  width: '64px', height: '64px', borderRadius: '10px', border: '1px solid #eee',
+  backgroundColor: '#F4F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  flexShrink: 0, overflow: 'hidden',
 };
