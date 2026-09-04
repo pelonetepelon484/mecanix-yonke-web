@@ -8,6 +8,7 @@ import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
+import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 
 const METODOS_PAGO = [
   { key: 'efectivo', label: 'Efectivo' },
@@ -52,6 +53,8 @@ export default function PerfilPanel() {
   const [guardando, setGuardando] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
   const [subiendoLogo, setSubiendoLogo] = useState(false);
+  const [temaElegido, setTemaElegido] = useState(TEMA_DEFAULT_ID);
+  const [guardandoTema, setGuardandoTema] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -73,6 +76,12 @@ export default function PerfilPanel() {
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
         setLogoUrl(data.logoUrl || null);
+        // Marca el tema que coincida con los colores actuales; si no tiene branding o tiene
+        // colores personalizados que no calzan con ningún tema, se muestra Azul Mecanix
+        // resaltado SOLO como default visual — no se guarda nada hasta que el yonke elija.
+        const b = data.branding || {};
+        const temaActual = TEMAS_COLOR.find((t) => t.colorPrimario === b.colorPrimario && t.colorAcento === b.colorAcento);
+        setTemaElegido(temaActual ? temaActual.id : TEMA_DEFAULT_ID);
       }
       setLoadingPerfil(false);
     }
@@ -112,6 +121,27 @@ export default function PerfilPanel() {
       alert('No se pudo quitar el logo. Intenta de nuevo.');
     } finally {
       setSubiendoLogo(false);
+    }
+  }
+
+  // Guardado inmediato al elegir un tema (igual que el logo) — así nunca se sobreescriben
+  // colores personalizados como efecto secundario de guardar otra sección del perfil con el
+  // botón de abajo; solo se escribe cuando el yonke de verdad da clic en un tema.
+  async function elegirTema(temaId) {
+    const tema = TEMAS_COLOR.find((t) => t.id === temaId);
+    if (!tema) return;
+    setGuardandoTema(true);
+    try {
+      await setDoc(doc(db, 'yonkes', yonkeId), {
+        'branding.colorPrimario': tema.colorPrimario,
+        'branding.colorAcento': tema.colorAcento,
+      }, { merge: true });
+      setTemaElegido(temaId);
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo guardar el tema de color. Intenta de nuevo.');
+    } finally {
+      setGuardandoTema(false);
     }
   }
 
@@ -222,6 +252,37 @@ export default function PerfilPanel() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Color de tu página */}
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Color de tu página</h2>
+          <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
+            Así se ven los colores de tu página con subdominio propio. Se guarda al instante al elegir.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '10px' }}>
+            {TEMAS_COLOR.map((tema) => (
+              <button
+                key={tema.id}
+                type="button"
+                onClick={() => elegirTema(tema.id)}
+                disabled={guardandoTema}
+                style={{
+                  border: temaElegido === tema.id ? '2px solid #1A3C5E' : '2px solid transparent',
+                  borderRadius: '10px', padding: '6px', cursor: guardandoTema ? 'wait' : 'pointer',
+                  backgroundColor: temaElegido === tema.id ? '#EEF2F7' : '#fff',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                  opacity: guardandoTema ? 0.6 : 1,
+                }}
+              >
+                <div style={{ display: 'flex', width: '100%', height: '28px', borderRadius: '6px', overflow: 'hidden' }}>
+                  <div style={{ flex: 1, backgroundColor: tema.colorPrimario }} />
+                  <div style={{ flex: 1, backgroundColor: tema.colorAcento }} />
+                </div>
+                <span style={{ fontSize: '11px', color: '#555', fontWeight: '600', textAlign: 'center' }}>{tema.nombre}</span>
+              </button>
+            ))}
           </div>
         </div>
 
