@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, setDoc, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
@@ -101,7 +101,10 @@ export default function PerfilPanel() {
       const url = await subirLogoYonke(yonkeId, file);
       // Se guarda en ambos campos (igual que panel/registro) para que la página del
       // subdominio, que lee branding.logoUrl, no se quede con una versión vieja.
-      await setDoc(doc(db, 'yonkes', yonkeId), { logoUrl: url, 'branding.logoUrl': url }, { merge: true });
+      // updateDoc (no setDoc+merge) es obligatorio aquí: solo updateDoc interpreta
+      // 'branding.logoUrl' como ruta anidada — con setDoc+merge crea un campo LITERAL
+      // llamado "branding.logoUrl" (con el punto en el nombre) en vez de anidarlo.
+      await updateDoc(doc(db, 'yonkes', yonkeId), { logoUrl: url, 'branding.logoUrl': url });
       setLogoUrl(url);
     } catch (error) {
       console.error(error);
@@ -116,7 +119,7 @@ export default function PerfilPanel() {
     setSubiendoLogo(true);
     try {
       await borrarLogoYonke(yonkeId);
-      await setDoc(doc(db, 'yonkes', yonkeId), { logoUrl: deleteField(), 'branding.logoUrl': deleteField() }, { merge: true });
+      await updateDoc(doc(db, 'yonkes', yonkeId), { logoUrl: deleteField(), 'branding.logoUrl': deleteField() });
       setLogoUrl(null);
     } catch (error) {
       console.error(error);
@@ -134,10 +137,14 @@ export default function PerfilPanel() {
     if (!tema) return;
     setGuardandoTema(true);
     try {
-      await setDoc(doc(db, 'yonkes', yonkeId), {
+      // updateDoc (no setDoc+merge): con setDoc+merge, una key con punto como
+      // 'branding.colorPrimario' se guarda LITERAL (el nombre del campo lleva el punto),
+      // no anidada — por eso resolveBranding() nunca encontraba tenant.branding.colorPrimario
+      // y siempre caía al azul default. updateDoc sí interpreta el punto como ruta anidada.
+      await updateDoc(doc(db, 'yonkes', yonkeId), {
         'branding.colorPrimario': tema.colorPrimario,
         'branding.colorAcento': tema.colorAcento,
-      }, { merge: true });
+      });
       setTemaElegido(temaId);
     } catch (error) {
       console.error(error);
