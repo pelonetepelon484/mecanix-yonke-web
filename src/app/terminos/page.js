@@ -79,7 +79,7 @@ export default function Terminos() {
         <Seccion titulo="13. Contacto">
           Para cualquier pregunta relacionada con estos Términos y Condiciones puedes contactarnos en:
           <p style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '8px' }}>
-            powerpctijuana@gmail.com
+            contacto@mecanixyonkevirtual.com
           </p>
         </Seccion>
 

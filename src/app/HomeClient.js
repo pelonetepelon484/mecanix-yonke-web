@@ -162,6 +162,52 @@ function BadgeVerificado() {
   );
 }
 
+// Aviso de compra segura — versión completa, en la pestaña "Busco una pieza" debajo de
+// "¿cómo funciona?" (nunca encima del buscador, que sigue siendo el protagonista). El mensaje
+// completo con consejos extra vive en /compra-segura; este banner es el mismo texto resumido
+// a los puntos clave para que se lea rápido sin estorbar.
+function AvisoCompraSegura() {
+  return (
+    <div style={{
+      backgroundColor: '#FFF4E5', border: '2px solid #E8720C', borderRadius: '20px',
+      padding: '20px 24px', marginBottom: '12px',
+    }}>
+      <p style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '700', color: '#7A4F00' }}>
+        ⚠️ Compra segura — Importante
+      </p>
+      <ul style={{ margin: 0, padding: '0 0 0 20px', fontSize: '13px', color: '#5C3D00', lineHeight: '1.7' }}>
+        <li>Mecanix es un buscador gratuito. <strong>Nunca</strong> te pedimos dinero ni cobramos por las piezas.</li>
+        <li>Paga tu pieza directamente al yonke, en persona, cuando la tengas frente a ti. Nunca pagues por adelantado.</li>
+        <li>Desconfía de cualquiera que te pida un depósito o &quot;apartado&quot; a nombre de Mecanix. Nosotros nunca hacemos eso.</li>
+        <li>Revisa la pieza antes de pagar y confirma que sea la correcta para tu vehículo.</li>
+      </ul>
+      <a href="/compra-segura" style={{ display: 'inline-block', marginTop: '12px', color: '#1A3C5E', fontSize: '12px', fontWeight: '700', textDecoration: 'underline' }}>
+        Ver consejos de compra segura →
+      </a>
+    </div>
+  );
+}
+
+// Versión corta del mismo aviso — junto a los resultados, justo antes de que el cliente
+// contacte al yonke (el momento de mayor riesgo de fraude). Mismo componente que arriba,
+// resumido a una sola línea para no estorbar la lista de resultados.
+function AvisoCompraSeguraCorto() {
+  return (
+    <div style={{
+      backgroundColor: '#FFF4E5', border: '1.5px solid #E8720C', borderRadius: '12px',
+      padding: '10px 14px', marginBottom: '16px', display: 'flex', alignItems: 'center',
+      gap: '8px', flexWrap: 'wrap',
+    }}>
+      <p style={{ margin: 0, fontSize: '12px', color: '#7A4F00', fontWeight: '600', lineHeight: '1.5', flex: 1, minWidth: '200px' }}>
+        ⚠️ Paga solo en persona en el yonke, nunca por adelantado. Mecanix nunca pide dinero.
+      </p>
+      <a href="/compra-segura" style={{ fontSize: '11px', color: '#1A3C5E', fontWeight: '700', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+        Ver consejos →
+      </a>
+    </div>
+  );
+}
+
 // textoSeoEstados llega ya armado desde page.js (Server Component) — lee la colección
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
@@ -1264,6 +1310,8 @@ function obtenerEstadoAbierto(horario) {
               </div>
             </div>
 
+            <AvisoCompraSegura />
+
             <LeyendaVerificados />
 
             {/* Banner publicitario RH Diagnóstico */}
@@ -1273,6 +1321,10 @@ function obtenerEstadoAbierto(horario) {
 
             {/* Leyenda del sello Mecanix Verificado, otra vez arriba de los resultados si los hay */}
             {busquedaHecha && !buscando && resultados.length > 0 && <LeyendaVerificados />}
+
+            {/* Recordatorio breve de compra segura, justo antes de la lista de resultados —
+                el momento en que el cliente está por contactar al yonke. */}
+            {busquedaHecha && !buscando && resultados.length > 0 && <AvisoCompraSeguraCorto />}
 
             {/* Resultados */}
             {busquedaHecha && !buscando && (
@@ -1673,8 +1725,14 @@ function obtenerEstadoAbierto(horario) {
           <a href="https://wa.me/526611034260" target="_blank" rel="noopener noreferrer" style={contactLinkStyle}>
             💬 WhatsApp
           </a>
-          <a href="mailto:powerpctijuana@gmail.com" style={contactLinkStyle}>
+          <a href="mailto:contacto@mecanixyonkevirtual.com" style={contactLinkStyle}>
             ✉️ Correo
+          </a>
+          <a href="/nosotros" style={contactLinkStyle}>
+            👋 Nuestra Historia
+          </a>
+          <a href="/compra-segura" style={contactLinkStyle}>
+            🛡️ Compra segura
           </a>
           <a href="/privacidad" style={contactLinkStyle}>
             🔒 Privacidad

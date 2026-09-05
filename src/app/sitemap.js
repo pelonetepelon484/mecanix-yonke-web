@@ -39,6 +39,18 @@ export default function sitemap() {
       priority: 0.6,
     },
     {
+      url: 'https://mecanixyonkevirtual.com/nosotros',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: 'https://mecanixyonkevirtual.com/compra-segura',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
       url: 'https://mecanixyonkevirtual.com/privacidad',
       lastModified: new Date(),
       changeFrequency: 'yearly',

@@ -69,7 +69,7 @@ export default function Privacidad() {
         <Seccion titulo="11. Contacto">
           Si tienes preguntas sobre esta Política de Privacidad o sobre el manejo de tu información, puedes escribirnos a:
           <p style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '8px' }}>
-            powerpctijuana@gmail.com
+            contacto@mecanixyonkevirtual.com
           </p>
         </Seccion>
 
