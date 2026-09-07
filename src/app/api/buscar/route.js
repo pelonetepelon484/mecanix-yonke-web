@@ -102,11 +102,15 @@ async function persistirContactoSiExiste(contacto, { texto, pieza = null, marca 
 // Paso 3 en adelante (búsqueda CON pieza): ya con {pieza, marca, modelo, anio} resueltos
 // (extracción exacta o confirmación de sugerencia difusa), valida contra el catálogo vivo
 // y consulta inventario filtrado por esa pieza.
-async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto, origen, estadoFiltro, geo) {
+async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
   const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad };
 
-  if (!modelo) {
+  // Un motor/transmisión buscado por cilindrada ("motor chevrolet 3.6", o "motor 3.6" sin
+  // marca) no necesita modelo de vehículo — se identifica por su propio tamaño. Para el resto
+  // de las piezas (necesitan saber a qué modelo de auto pertenecen) el gate de siempre aplica.
+  const esBusquedaMotorPorCilindrada = cilindrada != null && (pieza === 'Motor' || pieza === 'Transmisión');
+  if (!modelo && !esBusquedaMotorPorCilindrada) {
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo: null, anio, estado: 'fuera_de_catalogo' });
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo: null, anio, origen, tieneContacto, ...datosGeo });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
@@ -117,9 +121,15 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
   // o "Actualizar catálogo" en admin que hoy solo escanea vehiculos). Por eso el check de
   // catálogo y la búsqueda de motores corren en PARALELO: solo se declara "no_catalogado" si
   // NINGUNO de los dos encuentra nada — un motor real no debe quedar invisible por esto.
+  //
+  // Búsqueda por cilindrada: se fuerza enCatalogo=false (sin consultar) para que
+  // consultarInventario() (piezas "Motor"/"Transmisión" listadas dentro de un vehículo
+  // específico) NUNCA se ejecute aquí — esa colección no tiene cilindrada y mezclaría motores
+  // de cualquier tamaño en los resultados. El único inventario que sí filtra por cilindrada es
+  // el de motores/transmisiones sueltos (consultarMotoresTransmisiones, abajo).
   const [enCatalogo, resultadoMotores] = await Promise.all([
-    existeEnCatalogoVivo(marca, modelo),
-    consultarMotoresTransmisiones({ marca, modelo, anio, estado: estadoFiltro }),
+    esBusquedaMotorPorCilindrada ? Promise.resolve(false) : existeEnCatalogoVivo(marca, modelo),
+    consultarMotoresTransmisiones({ marca, modelo, anio, cilindrada, estado: estadoFiltro }),
   ]);
 
   // El estado elegido no tiene NINGÚN yonke (distinto de "tiene yonkes pero nada coincide") —
@@ -280,6 +290,7 @@ export async function POST(request) {
       marca: confirmado.marca || null,
       modelo: confirmado.modelo || null,
       anio: typeof confirmado.anio === 'number' ? confirmado.anio : null,
+      cilindrada: typeof confirmado.cilindrada === 'number' ? confirmado.cilindrada : null,
     };
     return datos.pieza
       ? resolverBusqueda(datos, texto, contacto, origen, estadoFiltro, geo)
@@ -339,12 +350,13 @@ export async function POST(request) {
   // Marca/modelo resuelto por coincidencia difusa (typo): pedir confirmación antes de
   // consultar Firestore, en vez de corregir en silencio. Aplica igual con o sin pieza.
   if (intencion.requiereConfirmacion) {
-    const partes = [intencion.marca, intencion.modelo, intencion.anio].filter(Boolean);
+    const partes = [intencion.marca, intencion.modelo, intencion.anio, intencion.cilindrada].filter(Boolean);
     return NextResponse.json({
       estado: 'confirmar',
       mensaje: `¿Quisiste decir ${partes.join(' ')}?`,
       sugerencia: {
         pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
+        cilindrada: intencion.cilindrada,
       },
     });
   }

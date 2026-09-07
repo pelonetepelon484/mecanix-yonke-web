@@ -6,6 +6,9 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 // compara marca/modelo) aplica a los dos con solo editar aquí.
 //
 // modelo=null: cualquier modelo de esa marca (búsqueda solo por marca, ej. "nissan 2015").
+// marca=null: cualquier marca (usado solo por la búsqueda de motores/transmisiones por
+// cilindrada sin marca, ej. "motor 3.6" — el buscador de vehículos siempre resuelve una marca
+// antes de llegar aquí, así que este caso nunca lo afecta).
 // anio=null: cualquier año (usado por el nivel "cualquier año").
 // subcoleccion: 'vehiculos' (default) o 'motores' — mismo matching de marca/modelo/año sirve
 // para buscar motores/transmisiones sueltos (consultarInventario.js), sin duplicar la
@@ -27,7 +30,7 @@ export async function buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, mod
     // índices compuestos marca+modelo+ano).
     const coincidentes = snap.docs.filter((vDoc) => {
       const data = vDoc.data();
-      const marcaOk = data.marca?.toLowerCase() === marca.trim().toLowerCase();
+      const marcaOk = marca == null || data.marca?.toLowerCase() === marca.trim().toLowerCase();
       const modeloOk = modelo == null || data.modelo?.toLowerCase() === modelo.trim().toLowerCase();
       return marcaOk && modeloOk;
     });

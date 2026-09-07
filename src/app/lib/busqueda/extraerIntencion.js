@@ -1,5 +1,6 @@
 import { CATALOGO_BASE } from '../catalogoBase';
 import { obtenerCatalogoCombinado } from './catalogoCombinado';
+import { extraerCilindradaDeTexto } from './cilindrada';
 
 // Alias comunes de marcas — mismo espíritu que el mapa MARCAS de admin/page.js (migrarInventario).
 const ALIAS_MARCA = {
@@ -345,17 +346,28 @@ function extraerPieza(textoNormalizado) {
   return mejor;
 }
 
-// Capa 1 (reglas): extrae { pieza, marca, modelo, anio, reconocido, requiereConfirmacion }
-// de texto libre en español. requiereConfirmacion es true si marca o modelo se resolvieron
-// por coincidencia difusa (typo) en vez de exacta — en ese caso, quien llama debe pedir
-// confirmación al usuario antes de consultar Firestore, no ejecutar la búsqueda directo.
+// Piezas para las que tiene sentido buscar por cilindrada sola (sin marca/modelo de vehículo):
+// un motor o transmisión suelto se identifica por su propio tamaño, no por el auto al que
+// perteneció. El resto de las piezas (defensa, puerta, etc.) siguen exigiendo marca o modelo.
+const PIEZAS_CON_CILINDRADA = new Set(['Motor', 'Transmisión']);
+
+// Capa 1 (reglas): extrae { pieza, marca, modelo, anio, cilindrada, reconocido,
+// requiereConfirmacion } de texto libre en español. requiereConfirmacion es true si marca o
+// modelo se resolvieron por coincidencia difusa (typo) en vez de exacta — en ese caso, quien
+// llama debe pedir confirmación al usuario antes de consultar Firestore, no ejecutar la
+// búsqueda directo.
 export async function extraerIntencion(textoOriginal) {
   const textoNormalizado = normalizar(textoOriginal);
   const anio = extraerAnio(textoNormalizado);
+  const cilindrada = extraerCilindradaDeTexto(textoNormalizado);
   const { marca, modelo, difuso } = await extraerMarcaModelo(textoNormalizado, anio);
   const pieza = extraerPieza(textoNormalizado);
 
-  const reconocido = Boolean(pieza && (marca || modelo));
+  // "motor 3.6" (sin marca/modelo) también cuenta como reconocido cuando la pieza es un
+  // motor/transmisión y sí se extrajo cilindrada — un motor suelto de cierto tamaño es una
+  // búsqueda válida sin necesidad de saber a qué marca/modelo de auto pertenecía.
+  const esBusquedaPorCilindrada = Boolean(cilindrada != null && pieza && PIEZAS_CON_CILINDRADA.has(pieza));
+  const reconocido = Boolean(pieza && (marca || modelo || esBusquedaPorCilindrada));
   // Vehículo reconocido aunque falte la pieza (ej. "honda civic 2000"): el usuario
   // probablemente quiere explorar todo el inventario disponible de ese vehículo, no un
   // error. Distinto de "reconocido", que sigue exigiendo pieza para la búsqueda filtrada.
@@ -367,7 +379,7 @@ export async function extraerIntencion(textoOriginal) {
   const modeloDesconocido = detectarModeloDesconocido(textoNormalizado, { marca, modelo, anio, pieza });
 
   return {
-    pieza, marca, modelo, anio, reconocido, vehiculoReconocido, modeloDesconocido,
+    pieza, marca, modelo, anio, cilindrada, reconocido, vehiculoReconocido, modeloDesconocido,
     requiereConfirmacion: (reconocido || vehiculoReconocido) && difuso,
   };
 }

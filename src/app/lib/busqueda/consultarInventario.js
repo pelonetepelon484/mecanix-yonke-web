@@ -3,6 +3,7 @@ import { dbServer } from '../firebase-server';
 import { getRatingParaYonke } from '../yonkesServerData';
 import { buscarVehiculosPorAnio } from '../buscarVehiculosPorAnio';
 import { estadoDeYonke } from './estadosServer';
+import { cilindradaCoincide } from './cilindrada';
 
 // Filtro de estado, opcional y aditivo: sin `estado` (o 'todos') se devuelven TODOS los yonkes,
 // idéntico al comportamiento de siempre — ningún llamador existente cambia de resultado. Con un
@@ -108,11 +109,16 @@ function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
 // (lib/buscarVehiculosPorAnio.js, subcolección 'motores') para que casen igual. disponible=false
 // se excluye por completo (un motor suelto no tiene sub-piezas — su propio flag ES su
 // disponibilidad, mismo criterio que una pieza no disponible: no se muestra como resultado).
-async function buscarMotores(yonkesDocs, marca, modelo, anio) {
+// cilindrada (opcional): filtro adicional client-side sobre los docs ya traídos por
+// marca/modelo/año — no agrega lecturas a Firestore. marca puede ser null aquí (a diferencia
+// de la búsqueda de vehículos) para soportar "motor 3.6" sin marca, ver buscarVehiculosPorAnio.
+async function buscarMotores(yonkesDocs, marca, modelo, anio, cilindrada) {
   const pares = await buscarVehiculosPorAnio(dbServer, yonkesDocs, marca, modelo, anio, 'motores');
   const encontrados = [];
   for (const { yonkeDoc, vDoc: mDoc } of pares) {
-    if (mDoc.data().disponible === false) continue;
+    const data = mDoc.data();
+    if (data.disponible === false) continue;
+    if (cilindrada != null && !cilindradaCoincide(data.cilindrada, cilindrada)) continue;
     const calificacion = await getRatingParaYonke(yonkeDoc.id);
     encontrados.push(toResultadoMotor(yonkeDoc, mDoc, calificacion));
   }
@@ -131,7 +137,7 @@ function separarPorTipo(lista) {
 // búsqueda de vehículos — un motor/transmisión suelto encontrado es un resultado tan válido
 // como una pieza. `motoresCercanos`/`transmisionesCercanos` solo vienen poblados cuando SÍ hay
 // exacto (si no hay exacto, los cercanos ya van en `motores`/`transmisiones` como hasta hoy).
-export async function consultarMotoresTransmisiones({ marca, modelo, anio, estado }) {
+export async function consultarMotoresTransmisiones({ marca, modelo, anio, cilindrada = null, estado }) {
   const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
   const { yonkesDocs, sinYonkesEnEstado } = filtrarPorEstado(yonkesSnap.docs, estado);
   if (sinYonkesEnEstado) {
@@ -139,14 +145,14 @@ export async function consultarMotoresTransmisiones({ marca, modelo, anio, estad
   }
 
   if (anio == null) {
-    const todos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null));
+    const todos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null, cilindrada));
     ordenarPorPlan(todos);
     return { ...separarPorTipo(todos), motoresCercanos: [], transmisionesCercanos: [], tipoResultadoMotor: 'cualquierAno' };
   }
 
-  const exactos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, anio));
+  const exactos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, anio, cilindrada));
   ordenarPorPlan(exactos);
-  const cercanos = await buscarAniosCercanos((a) => buscarMotores(yonkesDocs, marca, modelo, a), anio, sinDuplicadosMotor);
+  const cercanos = await buscarAniosCercanos((a) => buscarMotores(yonkesDocs, marca, modelo, a, cilindrada), anio, sinDuplicadosMotor);
 
   if (exactos.length > 0) {
     const { motores, transmisiones } = separarPorTipo(exactos);
@@ -158,7 +164,7 @@ export async function consultarMotoresTransmisiones({ marca, modelo, anio, estad
     return { motores, transmisiones, motoresCercanos: [], transmisionesCercanos: [], tipoResultadoMotor: 'cercano' };
   }
 
-  const cualquierAno = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null));
+  const cualquierAno = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null, cilindrada));
   ordenarPorPlan(cualquierAno);
   const { motores, transmisiones } = separarPorTipo(cualquierAno);
   return { motores, transmisiones, motoresCercanos: [], transmisionesCercanos: [], tipoResultadoMotor: 'cualquierAno' };
