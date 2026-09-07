@@ -14,10 +14,17 @@ const ESTADOS_VALIDOS = new Set([
 // antiguos busquedas_no_interpretadas/modelos_no_reconocidos (solo-fallos). Mismo patrón que
 // registrarEnCatalogo (SelectorMarcaModelo.js): awaited por el caller, pero el error se traga
 // y se loguea aquí adentro — nunca se propaga, nunca bloquea la respuesta al usuario.
+//
+// estadoGeografico/ciudad/yonkeIds: campos del "Mapa de búsquedas" (spec sección 1) — a propósito
+// NO se llama `estado` como el geográfico, porque `estado` ya significa "estado de la búsqueda"
+// en todo este archivo/route.js (ver nota en route.js sobre no confundir ambos conceptos).
+// conResultado se deriva aquí mismo de `estado` ('ok' = sí hubo resultado) para que el dashboard
+// del mapa no tenga que conocer el enum completo de estados de búsqueda.
 export async function registrarBusqueda({
   texto, estado, pieza = null, marca = null, modelo = null, anio = null,
   tipoResultado = null, totalResultados = 0, piezaNoEncontrada = null,
   subtipo = null, origen = 'web', tieneContacto = false,
+  estadoGeografico = null, ciudad = null, yonkeIds = [],
 }) {
   if (!ESTADOS_VALIDOS.has(estado)) {
     console.error(`[registrarBusqueda] estado inválido, no se guarda: "${estado}"`);
@@ -38,6 +45,9 @@ export async function registrarBusqueda({
     textoOriginal, estado, pieza, marca, modelo, anio,
     tipoResultado, numResultados, piezaNoEncontrada,
     subtipo, origen, tieneContacto: Boolean(tieneContacto),
+    estadoGeografico, ciudad,
+    yonkeIds: Array.isArray(yonkeIds) ? yonkeIds : [],
+    conResultado: estado === 'ok',
     fecha: Timestamp.now(),
   };
 

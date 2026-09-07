@@ -5,6 +5,7 @@ import { filtrarPrevio, MENSAJE_RECHAZO_CAPA0 } from '../../lib/busqueda/filtroP
 import { extraerIntencion } from '../../lib/busqueda/extraerIntencion';
 import { detectarFueraDeGiro } from '../../lib/busqueda/detectarFueraDeGiro';
 import { registrarBusqueda } from '../../lib/busqueda/registrarBusqueda';
+import { resolverGeoIp } from '../../lib/busqueda/geolocalizarIp';
 import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones } from '../../lib/busqueda/consultarInventario';
 import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLimit';
 import { obtenerEstadosCombinado } from '../../lib/busqueda/estadosServer';
@@ -37,6 +38,19 @@ function obtenerIp(request) {
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) return forwarded.split(',')[0].trim();
   return request.headers.get('x-real-ip') || 'unknown';
+}
+
+// yonkeIds para el "Mapa de búsquedas" (spec sección 1): qué yonkes sí tenían la pieza/vehículo
+// buscado. Cada resultado (pieza, motor/transmisión, exacto o cercano) trae su propio yonkeId
+// — ver toResultado/toResultadoMotor en consultarInventario.js.
+function recolectarYonkeIds(...listas) {
+  const ids = new Set();
+  for (const lista of listas) {
+    for (const item of lista) {
+      if (item?.yonkeId) ids.add(item.yonkeId);
+    }
+  }
+  return [...ids];
 }
 
 // Escrituras de analítica/seguimiento: nunca deben tumbar la respuesta al usuario.
@@ -88,12 +102,13 @@ async function persistirContactoSiExiste(contacto, { texto, pieza = null, marca 
 // Paso 3 en adelante (búsqueda CON pieza): ya con {pieza, marca, modelo, anio} resueltos
 // (extracción exacta o confirmación de sugerencia difusa), valida contra el catálogo vivo
 // y consulta inventario filtrado por esa pieza.
-async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto, origen, estadoFiltro) {
+async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
+  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad };
 
   if (!modelo) {
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo: null, anio, estado: 'fuera_de_catalogo' });
-    await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo: null, anio, origen, tieneContacto });
+    await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo: null, anio, origen, tieneContacto, ...datosGeo });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
@@ -119,7 +134,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: 'fuera_de_catalogo' });
-    await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo, anio, origen, tieneContacto });
+    await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo, anio, origen, tieneContacto, ...datosGeo });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
@@ -135,14 +150,16 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: 'sin_inventario' });
     await registrarBusqueda({
       texto, estado: 'sin_inventario', pieza, marca, modelo, anio,
-      tipoResultado, totalResultados: 0, origen, tieneContacto,
+      tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo,
     });
     return NextResponse.json({ estado: 'sin_inventario', mensaje: MENSAJE_SIN_INVENTARIO });
   }
 
+  const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
   await registrarBusqueda({
     texto, estado: 'ok', pieza, marca, modelo, anio,
     tipoResultado, totalResultados: resultados.length + resultadosCercanos.length + totalMotoresTransmisiones, piezaNoEncontrada, origen, tieneContacto,
+    ...datosGeo, yonkeIds,
   });
 
   return NextResponse.json({
@@ -156,8 +173,9 @@ async function resolverBusqueda({ pieza, marca, modelo, anio }, texto, contacto,
 // Búsqueda de solo vehículo (sin pieza): el usuario probablemente quiere explorar todo
 // el inventario disponible de ese vehículo, no un error. Mismo catálogo vivo, pero
 // consultarInventarioVehiculo no filtra/separa por pieza.
-async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto, origen, estadoFiltro) {
+async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
+  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad };
 
   // Ver nota equivalente en resolverBusqueda(): catálogo vivo y motores en paralelo, para que
   // un motor/transmisión real no quede invisible solo porque su marca/modelo no está en el
@@ -176,7 +194,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
     await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: 'fuera_de_catalogo' });
-    await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza: null, marca, modelo, anio, origen, tieneContacto });
+    await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza: null, marca, modelo, anio, origen, tieneContacto, ...datosGeo });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
@@ -188,14 +206,16 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
     await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: 'sin_inventario' });
     await registrarBusqueda({
       texto, estado: 'sin_inventario', pieza: null, marca, modelo, anio,
-      tipoResultado, totalResultados: 0, origen, tieneContacto,
+      tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo,
     });
     return NextResponse.json({ estado: 'sin_inventario', mensaje: MENSAJE_VEHICULO_SIN_INVENTARIO });
   }
 
+  const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
   await registrarBusqueda({
     texto, estado: 'ok', pieza: null, marca, modelo, anio,
     tipoResultado, totalResultados: resultados.length + resultadosCercanos.length + totalMotoresTransmisiones, piezaNoEncontrada: false, origen, tieneContacto,
+    ...datosGeo, yonkeIds,
   });
 
   const partesEncabezado = [marca, modelo, anio].filter(Boolean);
@@ -247,6 +267,11 @@ export async function POST(request) {
     return NextResponse.json({ estado: 'rate_limited', mensaje: MENSAJE_RATE_LIMIT });
   }
 
+  // Geolocalización por IP para el "Mapa de búsquedas" (spec sección 1-2) — nunca lanza, cae a
+  // {estado: 'desconocido', ciudad: null} si falla o no resuelve. Se calcula una sola vez por
+  // request y se pasa a resolverBusqueda/resolverBusquedaVehiculo, igual que estadoFiltro.
+  const geo = await resolverGeoIp(ip);
+
   // Modo confirmación: el usuario ya aceptó una sugerencia difusa ("¿Quisiste decir...?").
   // Se salta Capa 0/Capa 1 por completo y se va directo al catálogo/inventario.
   if (confirmado && (typeof confirmado.marca === 'string' || typeof confirmado.modelo === 'string')) {
@@ -257,8 +282,8 @@ export async function POST(request) {
       anio: typeof confirmado.anio === 'number' ? confirmado.anio : null,
     };
     return datos.pieza
-      ? resolverBusqueda(datos, texto, contacto, origen, estadoFiltro)
-      : resolverBusquedaVehiculo(datos, texto, contacto, origen, estadoFiltro);
+      ? resolverBusqueda(datos, texto, contacto, origen, estadoFiltro, geo)
+      : resolverBusquedaVehiculo(datos, texto, contacto, origen, estadoFiltro, geo);
   }
 
   const tieneContacto = Boolean(contacto);
@@ -267,7 +292,7 @@ export async function POST(request) {
   const { permitido } = filtrarPrevio(texto);
   if (!permitido) {
     await persistirContactoSiExiste(contacto, { texto, estado: 'no_interpretada' });
-    await registrarBusqueda({ texto, estado: 'no_interpretada', origen, tieneContacto });
+    await registrarBusqueda({ texto, estado: 'no_interpretada', origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad });
     return NextResponse.json({ estado: 'rechazado', mensaje: MENSAJE_RECHAZO_CAPA0 });
   }
 
@@ -288,7 +313,7 @@ export async function POST(request) {
     await registrarBusqueda({
       texto, estado: 'fuera_de_giro', subtipo: categoria,
       pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
-      origen, tieneContacto,
+      origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad,
     });
     return NextResponse.json({ estado: 'fuera_de_giro', mensaje: MENSAJE_FUERA_DE_GIRO });
   }
@@ -301,7 +326,10 @@ export async function POST(request) {
       texto, pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
       estado: estadoLog,
     });
-    await registrarBusqueda({ texto, estado: estadoLog, pieza: intencion.pieza, anio: intencion.anio, origen, tieneContacto });
+    await registrarBusqueda({
+      texto, estado: estadoLog, pieza: intencion.pieza, anio: intencion.anio, origen, tieneContacto,
+      estadoGeografico: geo.estado, ciudad: geo.ciudad,
+    });
     return NextResponse.json({
       estado: estadoLog,
       mensaje: estadoLog === 'parseo_parcial' ? MENSAJE_PARSEO_PARCIAL : MENSAJE_RECHAZO_CAPA0,
@@ -322,7 +350,7 @@ export async function POST(request) {
   }
 
   if (intencion.reconocido) {
-    return resolverBusqueda(intencion, texto, contacto, origen, estadoFiltro);
+    return resolverBusqueda(intencion, texto, contacto, origen, estadoFiltro, geo);
   }
 
   // Marca reconocida pero el "modelo" mencionado no coincide con ninguno conocido (ej.
@@ -335,12 +363,12 @@ export async function POST(request) {
     });
     await registrarBusqueda({
       texto, estado: 'fuera_de_catalogo', pieza: null, marca: intencion.marca, modelo: null,
-      anio: intencion.anio, origen, tieneContacto,
+      anio: intencion.anio, origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad,
     });
     return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
   // Vehículo reconocido pero sin pieza (y sin ningún modelo mencionado): explorar todo
   // el inventario disponible de la marca.
-  return resolverBusquedaVehiculo(intencion, texto, contacto, origen, estadoFiltro);
+  return resolverBusquedaVehiculo(intencion, texto, contacto, origen, estadoFiltro, geo);
 }

@@ -123,11 +123,19 @@ export default function AdminBusquedasPage() {
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', fontFamily: "'Inter', sans-serif", paddingBottom: '40px' }}>
       <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <button onClick={() => router.push('/admin')} style={{ background: 'none', border: 'none', color: '#E8720C', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>
-            ← Volver
+        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <button onClick={() => router.push('/admin')} style={{ background: 'none', border: 'none', color: '#E8720C', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>
+              ← Volver
+            </button>
+            <h1 style={{ color: '#fff', fontSize: '18px', margin: '4px 0 0', fontWeight: '700' }}>Búsquedas del Buscador Inteligente</h1>
+          </div>
+          <button
+            onClick={() => router.push('/admin/busquedas/mapa')}
+            style={{ backgroundColor: '#E8720C', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '13px', fontWeight: '700', padding: '8px 14px', cursor: 'pointer' }}
+          >
+            🗺️ Mapa
           </button>
-          <h1 style={{ color: '#fff', fontSize: '18px', margin: '4px 0 0', fontWeight: '700' }}>Búsquedas del Buscador Inteligente</h1>
         </div>
       </div>
 
