@@ -46,8 +46,6 @@ export default function AdminPage() {
   const [estadosDisponibles, setEstadosDisponibles] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [estadoFiltro, setEstadoFiltro] = useState('todos');
   const [regenerandoCatalogo, setRegenerandoCatalogo] = useState(false);
-  const [migrando, setMigrando] = useState(false);
-  const [migrandoBusquedas, setMigrandoBusquedas] = useState(false);
   const [modalPremiumVisible, setModalPremiumVisible] = useState(false);
   const [yonkeParaPremium, setYonkeParaPremium] = useState(null);
   const [fechaPremium, setFechaPremium] = useState('');
@@ -92,155 +90,6 @@ export default function AdminPage() {
       alert(`❌ Error: ${e.code || ''} ${e.message}`);
     }
     setRegenerandoCatalogo(false);
-  };
-
-  const migrarInventario = async () => {
-    if (!confirm('Esto corregirá marcas y modelos de TODOS los vehículos. ¿Continuar?')) return;
-    setMigrando(true);
-    try {
-      const MARCAS = {
-        'ford': 'Ford', 'chevrolet': 'Chevrolet', 'honda': 'Honda', 'toyota': 'Toyota',
-        'jeep': 'Jeep', 'volkswagen': 'Volkswagen', 'volkaswagen': 'Volkswagen',
-        'nissan': 'Nissan', 'mitsubishi': 'Mitsubishi', 'mitsubushi': 'Mitsubishi',
-        'gmc': 'GMC', 'chrysler': 'Chrysler', 'dodge': 'Dodge', 'scion': 'Scion',
-        'hyundai': 'Hyundai', 'mazda': 'Mazda', 'saturn': 'Saturn', 'cadillac': 'Cadillac',
-        'kia': 'Kia', 'land rover': 'Land Rover', 'mini': 'Mini', 'buick': 'Buick',
-        'ram': 'RAM', 'acura': 'Acura', 'geo': 'Geo', 'bmw': 'BMW', 'suzuki': 'Suzuki',
-        'isuzu': 'Isuzu', 'mercury': 'Mercury', 'mercedes benz': 'Mercedes-Benz',
-        'mercedes-benz': 'Mercedes-Benz', 'lincoln': 'Lincoln', 'audi': 'Audi',
-        'lexus': 'Lexus', 'ponriac': 'Pontiac', 'pontiac': 'Pontiac', 'volvo': 'Volvo',
-      };
-      const MODELOS = {
-        'Chevrolet|1500': 'Silverado 1500', 'Toyota|wagon': 'Corolla Wagon',
-        'Lexus|cs300': 'GS300', 'RAM|aventure': '700',
-        'Ford|f150': 'F-150', 'Ford|f350': 'F-350', 'Ford|fusión': 'Fusion',
-        'Ford|explorer sportrac': 'Explorer', 'Ford|explorer sport trac': 'Explorer',
-        'Ford|explorer sport': 'Explorer', 'Ford|explorer xlt': 'Explorer',
-        'Ford|explorer eddie bauer': 'Explorer', 'Ford|crown victoria': 'Crown Victoria',
-        'Chevrolet|s10': 'S10', 'Chevrolet|hhr': 'HHR', 'Chevrolet|equinox ltz': 'Equinox',
-        'Chevrolet|malibu maxx': 'Malibu', 'Chevrolet|cobalt lt': 'Cobalt',
-        'Chevrolet|pop': 'Chevy Pop', 'Chevrolet|chevy pop': 'Chevy Pop',
-        'Chevrolet|chevy van': 'Chevy Van',
-        'Toyota|rav 4': 'RAV4', 'Toyota|rav4': 'RAV4', 'Toyota|t100': 'T100',
-        'Honda|crv': 'CR-V', 'Nissan|np300': 'NP300',
-        'Kia|río': 'Rio', 'Kia|óptima': 'Optima',
-        'Mazda|3': '3', 'Mazda|5': '5', 'Mazda|6': '6',
-        'Mazda|cx9': 'CX-9', 'Mazda|cx7': 'CX-7', 'Mazda|protege 5': 'Protege',
-        'Mazda|protegé': 'Protege',
-        'Hyundai|santa fe': 'Santa Fe', 'Hyundai|h100': 'H100', 'Hyundai|i10': 'i10',
-        'Chrysler|pt cruiser': 'PT Cruiser', 'Chrysler|town country': 'Town & Country',
-        'Jeep|cherokee latitud': 'Cherokee', 'Volkswagen|gti': 'Golf',
-        'Mercedes-Benz|ml350': 'ML350', 'Mercedes-Benz|ml320': 'ML320', 'Mercedes-Benz|c230': 'C230',
-        'Lincoln|mkx': 'MKX',
-        'GMC|acadia denali': 'Acadia', 'GMC|jimmy': 'Jimmy',
-        'Acura|mdx': 'MDX', 'Acura|tl': 'TL',
-        'Scion|xb': 'xB', 'Scion|tc': 'tC',
-        'Mercury|mountainer': 'Mountaineer', 'Isuzu|ascend': 'Ascender',
-        'Land Rover|lr3': 'LR3',
-        'BMW|x5': 'X5', 'BMW|325i': '325i', 'BMW|328i': '328i', 'BMW|323i': '323i', 'BMW|750i': '750i',
-      };
-      const REUBICAR = {
-        'Chevrolet|acadia': { marca: 'GMC', modelo: 'Acadia' },
-        'Chevrolet|yukon': { marca: 'GMC', modelo: 'Yukon' },
-      };
-      const REVISAR = new Set(['Dodge|ram']);
-      const titulo = (s) => s.trim().toLowerCase().split(' ')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-
-      let cambios = 0;
-      const yonkesSnap = await getDocs(collection(db, 'yonkes'));
-      for (const yonkeDoc of yonkesSnap.docs) {
-        const vehSnap = await getDocs(collection(db, 'yonkes', yonkeDoc.id, 'vehiculos'));
-        for (const v of vehSnap.docs) {
-          const d = v.data();
-          const marcaOrig = (d.marca || '').trim();
-          const modeloOrig = (d.modelo || '').trim();
-          let marcaNueva = MARCAS[marcaOrig.toLowerCase()] || titulo(marcaOrig);
-          const clave = `${marcaNueva}|${modeloOrig.toLowerCase()}`;
-          if (REVISAR.has(clave)) continue;
-          let modeloNuevo;
-          if (REUBICAR[clave]) {
-            marcaNueva = REUBICAR[clave].marca;
-            modeloNuevo = REUBICAR[clave].modelo;
-          } else {
-            modeloNuevo = MODELOS[clave] || titulo(modeloOrig);
-          }
-          if (marcaNueva === marcaOrig && modeloNuevo === modeloOrig) continue;
-          await updateDoc(doc(db, 'yonkes', yonkeDoc.id, 'vehiculos', v.id), {
-            marca: marcaNueva, modelo: modeloNuevo,
-          });
-          cambios++;
-        }
-      }
-      alert(`✅ Migración aplicada: ${cambios} vehículos corregidos. Ahora dale a "Actualizar catálogo".`);
-    } catch (e) {
-      console.error(e);
-      alert(`❌ Error: ${e.code || ''} ${e.message}`);
-    }
-    setMigrando(false);
-  };
-
-  // Migración one-time de las colecciones viejas de solo-fallos (busquedas_no_interpretadas,
-  // modelos_no_reconocidos) hacia la nueva colección unificada "busquedas". Debe correr desde
-  // aquí (sesión admin autenticada), NUNCA desde la consola del navegador: Firestore cachea
-  // escrituras offline y resuelve las promesas como exitosas aunque el servidor las rechace.
-  const migrarBusquedas = async () => {
-    try {
-      const marcador = await getDoc(doc(db, 'config', 'migracionBusquedas'));
-      if (marcador.exists() && marcador.data().ejecutada) {
-        const fecha = marcador.data().fecha?.toDate ? marcador.data().fecha.toDate() : null;
-        const aviso = `Esta migración ya se ejecutó${fecha ? ` el ${formatearFechaCorta(fecha)}` : ''} (${marcador.data().totalMigrados || 0} docs). ¿Ejecutar de nuevo de todas formas?`;
-        if (!confirm(aviso)) return;
-      } else if (!confirm('Esto migrará los documentos antiguos de busquedas_no_interpretadas y modelos_no_reconocidos hacia la colección "busquedas". ¿Continuar?')) {
-        return;
-      }
-      setMigrandoBusquedas(true);
-
-      let cambios = 0;
-
-      // Nombres de campo EXACTOS exigidos por la regla de Firestore: textoOriginal
-      // (string, 1-299 chars), estado (enum), numResultados (int >= 0, nunca null), origen.
-      const noInterpretadasSnap = await getDocs(collection(db, 'busquedas_no_interpretadas'));
-      for (const d of noInterpretadasSnap.docs) {
-        const data = d.data();
-        const textoOriginal = (data.textoOriginal || '').trim().slice(0, 299) || '(sin texto)';
-        await setDoc(doc(db, 'busquedas', `migrado_busquedas_no_interpretadas_${d.id}`), {
-          textoOriginal, estado: 'no_interpretada',
-          pieza: null, marca: null, modelo: null, anio: null,
-          tipoResultado: null, numResultados: 0, piezaNoEncontrada: null,
-          subtipo: null, origen: 'web', tieneContacto: false,
-          fecha: data.fecha || Timestamp.now(),
-          migrado: true, migradoDesde: 'busquedas_no_interpretadas',
-        });
-        cambios++;
-      }
-
-      const modelosNoReconocidosSnap = await getDocs(collection(db, 'modelos_no_reconocidos'));
-      for (const d of modelosNoReconocidosSnap.docs) {
-        const data = d.data();
-        const textoOriginal = (data.textoOriginal || '').trim().slice(0, 299) || '(sin texto)';
-        await setDoc(doc(db, 'busquedas', `migrado_modelos_no_reconocidos_${d.id}`), {
-          textoOriginal, estado: 'fuera_de_catalogo',
-          pieza: data.piezaExtraida || null, marca: data.marcaExtraida || null,
-          modelo: data.modeloExtraido || null, anio: data.anioExtraido || null,
-          tipoResultado: null, numResultados: 0, piezaNoEncontrada: null,
-          subtipo: null, origen: 'web', tieneContacto: false,
-          fecha: data.fecha || Timestamp.now(),
-          migrado: true, migradoDesde: 'modelos_no_reconocidos',
-        });
-        cambios++;
-      }
-
-      await setDoc(doc(db, 'config', 'migracionBusquedas'), {
-        ejecutada: true, fecha: new Date(), totalMigrados: cambios,
-      });
-
-      alert(`✅ Migración completa: ${noInterpretadasSnap.size} docs de busquedas_no_interpretadas + ${modelosNoReconocidosSnap.size} docs de modelos_no_reconocidos → ${cambios} docs en "busquedas".`);
-    } catch (e) {
-      console.error(e);
-      alert(`❌ Error: ${e.code || ''} ${e.message}`);
-    }
-    setMigrandoBusquedas(false);
   };
 
   // Borra todos los docs de una subcolección (piezas, motores, etc.). Devuelve cuántos borró.
@@ -484,30 +333,6 @@ export default function AdminPage() {
             {regenerandoCatalogo ? '⏳ Actualizando...' : '🔄 Actualizar catálogo'}
           </button>
           <button
-            onClick={migrarInventario}
-            disabled={migrando}
-            style={{
-              padding: '8px 16px', borderRadius: '8px', border: 'none',
-              backgroundColor: '#E8720C', color: '#fff', fontWeight: '600',
-              fontSize: '13px', cursor: migrando ? 'wait' : 'pointer',
-              opacity: migrando ? 0.6 : 1,
-            }}
-          >
-            {migrando ? '⏳ Migrando...' : '🔧 Migrar inventario (1 vez)'}
-          </button>
-          <button
-            onClick={migrarBusquedas}
-            disabled={migrandoBusquedas}
-            style={{
-              padding: '8px 16px', borderRadius: '8px', border: 'none',
-              backgroundColor: '#E8720C', color: '#fff', fontWeight: '600',
-              fontSize: '13px', cursor: migrandoBusquedas ? 'wait' : 'pointer',
-              opacity: migrandoBusquedas ? 0.6 : 1,
-            }}
-          >
-            {migrandoBusquedas ? '⏳ Migrando...' : '🗂️ Migrar logs de búsqueda (1 vez)'}
-          </button>
-          <button
             onClick={() => router.push('/admin/busquedas')}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: 'none',
@@ -690,7 +515,7 @@ export default function AdminPage() {
             {pasoBorrado === 'resumen' && (
               <>
                 <h2 style={{ color: '#8B0000', fontSize: '18px', marginBottom: '4px', fontWeight: '700' }}>
-                  ⚠️ Eliminar "{yonkeParaBorrar?.nombre}"
+                  ⚠️ Eliminar &quot;{yonkeParaBorrar?.nombre}&quot;
                 </h2>
                 <p style={{ color: '#666', fontSize: '13px', marginBottom: '16px' }}>
                   Esto borra TODO lo relacionado a este yonke de forma permanente. No se puede deshacer.
@@ -729,7 +554,7 @@ export default function AdminPage() {
                 </h2>
                 <p style={{ color: '#666', fontSize: '13px', marginBottom: '16px' }}>
                   Para evitar borrar el yonke equivocado, escribe el nombre exacto{' '}
-                  <strong>"{yonkeParaBorrar?.nombre}"</strong> o la palabra <strong>ELIMINAR</strong>.
+                  <strong>&quot;{yonkeParaBorrar?.nombre}&quot;</strong> o la palabra <strong>ELIMINAR</strong>.
                 </p>
                 <input
                   type="text"

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -20,23 +21,34 @@ export default function NuevoYonkePage() {
   const [guardando, setGuardando] = useState(false);
   const [nombre, setNombre] = useState('');
   const [direccion, setDireccion] = useState('');
+  const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
+  const [estado, setEstado] = useState(ESTADO_DEFAULT);
   const [ciudad, setCiudad] = useState('tijuana');
+  const [ciudadLibre, setCiudadLibre] = useState('');
   const [telefono, setTelefono] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
   const [plan, setPlan] = useState('freemium');
   const [activo, setActivo] = useState(true);
 
+  useEffect(() => {
+    cargarEstados().then(setEstados);
+  }, []);
+
+  const esBC = estado === ESTADO_DEFAULT;
+
   async function guardar() {
-    if (!nombre || !direccion || !telefono) {
-      alert('Llena nombre, dirección y teléfono'); return;
+    const ciudadFinal = esBC ? ciudad : ciudadLibre.trim();
+    if (!nombre || !direccion || !ciudadFinal || !telefono) {
+      alert('Llena nombre, estado, ciudad, dirección y teléfono'); return;
     }
     setGuardando(true);
     try {
       await addDoc(collection(db, 'yonkes'), {
         nombre: nombre.trim(),
         direccion: direccion.trim(),
-        ciudad,
+        estado,
+        ciudad: ciudadFinal,
         telefono: telefono.trim(),
         whatsapp: whatsapp.trim() || telefono.trim(),
         email: email.trim(),
@@ -74,10 +86,19 @@ export default function NuevoYonkePage() {
           <p style={labelStyle}>Nombre *</p>
           <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del yonke" style={inputStyle} />
 
-          <p style={labelStyle}>Ciudad *</p>
-          <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} style={inputStyle}>
-            {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+          <p style={labelStyle}>Estado *</p>
+          <select value={estado} onChange={(e) => setEstado(e.target.value)} style={inputStyle}>
+            {estados.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
           </select>
+
+          <p style={labelStyle}>Ciudad *</p>
+          {esBC ? (
+            <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} style={inputStyle}>
+              {CIUDADES_BC.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+          ) : (
+            <input type="text" value={ciudadLibre} onChange={(e) => setCiudadLibre(e.target.value)} placeholder="Ej. Guadalajara" style={inputStyle} />
+          )}
 
           <p style={labelStyle}>Dirección *</p>
           <input type="text" value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Dirección completa" style={inputStyle} />
