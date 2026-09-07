@@ -282,9 +282,13 @@ export async function POST(request) {
   // request y se pasa a resolverBusqueda/resolverBusquedaVehiculo, igual que estadoFiltro.
   const geo = await resolverGeoIp(ip);
 
-  // Modo confirmación: el usuario ya aceptó una sugerencia difusa ("¿Quisiste decir...?").
-  // Se salta Capa 0/Capa 1 por completo y se va directo al catálogo/inventario.
-  if (confirmado && (typeof confirmado.marca === 'string' || typeof confirmado.modelo === 'string')) {
+  // Modo confirmación: el usuario ya aceptó una sugerencia difusa ("¿Quisiste decir...?") o una
+  // aclaración de cilindrada ("¿Buscas el motor 3.6 de Chevrolet?"). Se salta Capa 0/Capa 1 por
+  // completo y se va directo al catálogo/inventario. La aclaración de cilindrada sin marca
+  // ("3.6" solo) no trae marca ni modelo como string (ambos null), por eso también cuenta como
+  // confirmación cuando cilindrada es un número — si no, este `if` no dispararía y el texto
+  // original ("3.6") se volvería a parsear desde cero, repitiendo la misma pregunta sin fin.
+  if (confirmado && (typeof confirmado.marca === 'string' || typeof confirmado.modelo === 'string' || typeof confirmado.cilindrada === 'number')) {
     const datos = {
       pieza: typeof confirmado.pieza === 'string' ? confirmado.pieza : null,
       marca: confirmado.marca || null,
@@ -327,6 +331,23 @@ export async function POST(request) {
       origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad,
     });
     return NextResponse.json({ estado: 'fuera_de_giro', mensaje: MENSAJE_FUERA_DE_GIRO });
+  }
+
+  // Cilindrada ambigua ("chevrolet 3.6", o "3.6" solo): nunca dijo "motor"/"transmisión" ni
+  // resolvió un modelo real de vehículo, así que en vez de "no encontrado" se OFRECE la
+  // aclaración — un decimal así casi siempre es cilindrada, pero no se asume, se pregunta.
+  // Va ANTES que "reconocido/vehiculoReconocido", "requiereConfirmacion" y "modeloDesconocido"
+  // porque intencion.sugerenciaCilindrada solo existe cuando pieza es null (ver
+  // extraerIntencion.js), así que nunca le quita una búsqueda ya resuelta a esas ramas — pero
+  // sí les gana el turno a un typo de marca ("chevrolt 3.6") o a un "modelo desconocido"
+  // ("chevrolet 3.6" sin más) que de otro modo tratarían la cilindrada como palabra sin
+  // explicar y responderían con el mensaje genérico de "no identificamos el modelo".
+  if (intencion.sugerenciaCilindrada) {
+    const { marca: marcaSug, anio: anioSug, cilindrada: cilindradaSug } = intencion.sugerenciaCilindrada;
+    const mensaje = marcaSug
+      ? `¿Buscas el motor ${cilindradaSug} de ${marcaSug}${anioSug ? ` ${anioSug}` : ''}?`
+      : `¿Buscas un motor o transmisión de ${cilindradaSug} litros?`;
+    return NextResponse.json({ estado: 'confirmar', mensaje, sugerencia: intencion.sugerenciaCilindrada });
   }
 
   if (!intencion.reconocido && !intencion.vehiculoReconocido) {

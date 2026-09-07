@@ -1,4 +1,5 @@
 import { CATALOGO_BASE } from '../catalogoBase';
+import { extraerCilindradaDeTexto } from './cilindrada';
 
 const PIEZA_PALABRAS_CLAVE = [
   'faro', 'calavera', 'cofre', 'cajuela', 'defensa', 'parachoques', 'espejo', 'puerta',
@@ -47,11 +48,17 @@ export function filtrarPrevio(textoOriginal) {
     return { permitido: false };
   }
 
-  if (soloEmojisOSimbolos(texto)) {
+  const normalizado = normalizar(texto);
+  // Un decimal tipo cilindrada ("3.6", "5.3") es señal suficiente por sí sola, aunque venga sin
+  // ninguna letra (ej. "3.6" solo) — se calcula ANTES de soloEmojisOSimbolos (que de otro modo
+  // rechazaría "3.6" por no tener letras latinas) para que Capa 1 (extraerIntencion) sí llegue a
+  // ofrecer la aclaración de cilindrada. Regex pura, sin Firestore — mismo costo que el resto.
+  const tieneCilindrada = extraerCilindradaDeTexto(normalizado) != null;
+
+  if (soloEmojisOSimbolos(texto) && !tieneCilindrada) {
     return { permitido: false };
   }
 
-  const normalizado = normalizar(texto);
   const palabras = normalizado.split(/\s+/).filter(Boolean);
 
   if (palabras.some((p) => PALABRAS_BLOQUEADAS.includes(p))) {
@@ -66,7 +73,7 @@ export function filtrarPrevio(textoOriginal) {
     || MODELOS_NORMALIZADOS.some((m) => normalizado.includes(m));
   const tienePiezaClave = PIEZA_PALABRAS_CLAVE.some((p) => palabras.includes(normalizar(p)));
 
-  if (!tieneMarcaOModelo && !tienePiezaClave) {
+  if (!tieneMarcaOModelo && !tienePiezaClave && !tieneCilindrada) {
     return { permitido: false };
   }
 

@@ -368,6 +368,20 @@ export async function extraerIntencion(textoOriginal) {
   // búsqueda válida sin necesidad de saber a qué marca/modelo de auto pertenecía.
   const esBusquedaPorCilindrada = Boolean(cilindrada != null && pieza && PIEZAS_CON_CILINDRADA.has(pieza));
   const reconocido = Boolean(pieza && (marca || modelo || esBusquedaPorCilindrada));
+
+  // Cilindrada mencionada pero AMBIGUA: hay un decimal tipo cilindrada (ej. "chevrolet 3.6",
+  // "3.6" solo) pero el usuario nunca dijo "motor"/"transmisión" (pieza null) ni resolvió un
+  // modelo de vehículo real (que ganaría como búsqueda normal — ver el `!modelo` de abajo).
+  // Distinto de esBusquedaPorCilindrada: ahí la pieza YA es Motor/Transmisión (inequívoco, se
+  // busca directo); aquí NUNCA se asume — se arma una sugerencia para que quien llama (route.js)
+  // OFREZCA la aclaración ("¿Buscas el motor 3.6 de Chevrolet?") en vez de decidir por el
+  // cliente, reusando el mismo mecanismo de confirmación que ya existe para typos.
+  // pieza:'Motor' en la sugerencia es arbitrario entre Motor/Transmisión — consultarMotoresTransmisiones
+  // (a la que llega tras confirmar) busca ambos tipos sin distinguir por este campo, solo lo
+  // usa el gate de resolverBusqueda para saltarse el requisito de modelo.
+  const sugerenciaCilindrada = (cilindrada != null && !pieza && !modelo)
+    ? { pieza: 'Motor', marca: marca || null, modelo: null, anio: anio || null, cilindrada }
+    : null;
   // Vehículo reconocido aunque falte la pieza (ej. "honda civic 2000"): el usuario
   // probablemente quiere explorar todo el inventario disponible de ese vehículo, no un
   // error. Distinto de "reconocido", que sigue exigiendo pieza para la búsqueda filtrada.
@@ -380,6 +394,7 @@ export async function extraerIntencion(textoOriginal) {
 
   return {
     pieza, marca, modelo, anio, cilindrada, reconocido, vehiculoReconocido, modeloDesconocido,
+    sugerenciaCilindrada,
     requiereConfirmacion: (reconocido || vehiculoReconocido) && difuso,
   };
 }
