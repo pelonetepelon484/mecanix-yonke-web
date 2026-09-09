@@ -1,6 +1,7 @@
 import { CATALOGO_BASE } from '../catalogoBase';
 import { obtenerCatalogoCombinado } from './catalogoCombinado';
 import { extraerCilindradaDeTexto } from './cilindrada';
+import { tieneSenialExplicitaNumeroDeParte, tieneNumeroSospechoso } from './numeroDeParte';
 
 // Alias comunes de marcas — mismo espíritu que el mapa MARCAS de admin/page.js (migrarInventario).
 const ALIAS_MARCA = {
@@ -36,7 +37,7 @@ const PIEZAS_CATALOGO = [
   'Amortiguador trasero izquierdo', 'Compresor A/C', 'Alternador', 'Computadora de motor',
   'Computadora de transmisión', 'Caja de fusibles', 'Cremallera', 'Bomba de dirección', 'Barra estabilizadora',
   'Múltiple de admisión', 'Múltiple de escape', 'Garganta', 'Filtro de aire', 'Manguera de aire', 'Sensor MAF',
-  'Flecha delantera izquierda', 'Flecha delantera derecha', 'Motor', 'Transmisión',
+  'Flecha delantera izquierda', 'Flecha delantera derecha', 'Motor', 'Transmisión', 'Pistón',
 ];
 
 // Las llaves siempre se comparan contra palabras ya normalizadas (sin acentos, minúsculas),
@@ -48,6 +49,7 @@ const SINONIMOS_PALABRA = {
   'espejos': 'espejo', 'puertas': 'puerta', 'faros': 'faro', 'calaveras': 'calavera',
   'amortiguadores': 'amortiguador', 'resorte': 'resortes',
   'rin': 'rines', 'llanta': 'rines', 'llantas': 'rines',
+  'pistones': 'piston',
   'transmision': 'transmision', 'caja': 'transmision', 'clutch': 'transmision', 'embrague': 'transmision',
   'izquierda': 'izquierdo', 'derecha': 'derecho',
   'delantera': 'delantero', 'adelante': 'delantero', 'frontal': 'delantero',
@@ -392,9 +394,20 @@ export async function extraerIntencion(textoOriginal) {
   // la marca cuando esto es true — mostraría vehículos de un modelo distinto al pedido.
   const modeloDesconocido = detectarModeloDesconocido(textoNormalizado, { marca, modelo, anio, pieza });
 
+  // Número de parte / SKU: Mecanix no busca por eso (el inventario se organiza por
+  // vehículo/motor). Dos señales, de más a menos confiable — ver numeroDeParte.js:
+  // - explícita: el cliente mismo dice "sku"/"código"/"clave" cerca de un número. Vale sola,
+  //   sin importar qué más se haya reconocido.
+  // - sospechosa (por descarte): solo tiene sentido cuando SÍ hay una pieza reconocida (ej.
+  //   "pistón 609 std") — un número suelto sin ninguna pieza es demasiado ambiguo para asumir
+  //   nada. Quien llama (route.js) decide EN QUÉ ramas usarla; nunca reemplaza un intento real
+  //   de búsqueda, solo se consulta cuando esa búsqueda ya no tiene a dónde más ir.
+  const numeroDeParteExplicito = tieneSenialExplicitaNumeroDeParte(textoNormalizado);
+  const numeroDeParteSospechoso = Boolean(pieza) && tieneNumeroSospechoso(textoNormalizado, { anio, modelo });
+
   return {
     pieza, marca, modelo, anio, cilindrada, reconocido, vehiculoReconocido, modeloDesconocido,
-    sugerenciaCilindrada,
+    sugerenciaCilindrada, numeroDeParteExplicito, numeroDeParteSospechoso,
     requiereConfirmacion: (reconocido || vehiculoReconocido) && difuso,
   };
 }

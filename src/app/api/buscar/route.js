@@ -8,6 +8,7 @@ import { registrarBusqueda } from '../../lib/busqueda/registrarBusqueda';
 import { resolverGeoIp } from '../../lib/busqueda/geolocalizarIp';
 import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones } from '../../lib/busqueda/consultarInventario';
 import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLimit';
+import { MENSAJE_NUMERO_DE_PARTE } from '../../lib/busqueda/numeroDeParte';
 import { obtenerEstadosCombinado } from '../../lib/busqueda/estadosServer';
 import { notificarAdmin } from '../../lib/notificarAdmin';
 
@@ -102,9 +103,21 @@ async function persistirContactoSiExiste(contacto, { texto, pieza = null, marca 
 // Paso 3 en adelante (búsqueda CON pieza): ya con {pieza, marca, modelo, anio} resueltos
 // (extracción exacta o confirmación de sugerencia difusa), valida contra el catálogo vivo
 // y consulta inventario filtrado por esa pieza.
-async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null }, texto, contacto, origen, estadoFiltro, geo) {
+async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null, numeroDeParteExplicito = false, numeroDeParteSospechoso = false }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
   const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad };
+  // Señal explícita de SKU/número de parte ("sku 609", "código 609"): 100% segura, así que
+  // sustituye el mensaje de "no encontrado" en CUALQUIER punto de esta función donde de otro
+  // modo se respondería con no_catalogado/sin_inventario — nunca antes de intentar la búsqueda
+  // normal (todos los usos de esto están DESPUÉS del intento real de búsqueda/query).
+  // La señal por descarte (numeroDeParteSospechoso) solo se suma cuando `modelo` YA está
+  // resuelto (incluirSospechoso=true) — si no hay modelo, el número sospechoso podría ser en
+  // realidad un modelo real sin catalogar todavía (ej. "720"), y ahí es más seguro el mensaje
+  // normal de "no identificamos el modelo" que asumir un SKU.
+  const estadoYMensajeNoEncontrado = (estadoNormal, mensajeNormal, incluirSospechoso = false) =>
+    (numeroDeParteExplicito || (incluirSospechoso && numeroDeParteSospechoso))
+      ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
+      : { estado: estadoNormal, mensaje: mensajeNormal };
 
   // Un motor/transmisión buscado por cilindrada ("motor chevrolet 3.6", o "motor 3.6" sin
   // marca) no necesita modelo de vehículo — se identifica por su propio tamaño. Para el resto
@@ -113,7 +126,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null 
   if (!modelo && !esBusquedaMotorPorCilindrada) {
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo: null, anio, estado: 'fuera_de_catalogo' });
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo: null, anio, origen, tieneContacto, ...datosGeo });
-    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
+    return NextResponse.json(estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO));
   }
 
   // El catálogo vivo (config/catalogoVehiculos) se nutre principalmente de vehículos — un
@@ -145,7 +158,10 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: 'fuera_de_catalogo' });
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo, anio, origen, tieneContacto, ...datosGeo });
-    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
+    // incluirSospechoso=true: para llegar aquí `modelo` ya está resuelto o la búsqueda es por
+    // cilindrada (no necesita modelo) — en ningún caso el número sospechoso puede ser en
+    // realidad el modelo, a diferencia del gate de arriba.
+    return NextResponse.json(estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO, true));
   }
 
   const { resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada } = enCatalogo
@@ -157,12 +173,19 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null 
   // real (estado 'ok'), igual que una pieza, para no mentir en las métricas de demanda
   // insatisfecha.
   if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
-    await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: 'sin_inventario' });
+    // Aquí SÍ se acepta también la señal por descarte (numeroDeParteSospechoso, ej. "pistón
+    // jetta 2015 609"): la búsqueda normal ya corrió completa (marca+modelo+año) y no encontró
+    // nada, así que un número suelto que sobra ya no puede ser un modelo real sin catalogar —
+    // eso se habría resuelto arriba. Es justo el "último recurso" que pide la tarea.
+    const esNumeroDeParte = numeroDeParteExplicito || numeroDeParteSospechoso;
+    await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: esNumeroDeParte ? 'numero_de_parte' : 'sin_inventario' });
     await registrarBusqueda({
-      texto, estado: 'sin_inventario', pieza, marca, modelo, anio,
+      texto, estado: esNumeroDeParte ? 'numero_de_parte' : 'sin_inventario', pieza, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo,
     });
-    return NextResponse.json({ estado: 'sin_inventario', mensaje: MENSAJE_SIN_INVENTARIO });
+    return NextResponse.json(esNumeroDeParte
+      ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
+      : { estado: 'sin_inventario', mensaje: MENSAJE_SIN_INVENTARIO });
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
@@ -183,9 +206,14 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null 
 // Búsqueda de solo vehículo (sin pieza): el usuario probablemente quiere explorar todo
 // el inventario disponible de ese vehículo, no un error. Mismo catálogo vivo, pero
 // consultarInventarioVehiculo no filtra/separa por pieza.
-async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto, origen, estadoFiltro, geo) {
+async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExplicito = false }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
   const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad };
+  // Sin pieza (contrato de esta función), la señal por descarte nunca aplica aquí — solo la
+  // explícita ("sku 609 nissan"), que es igual de confiable con o sin pieza mencionada.
+  const estadoYMensajeNoEncontrado = (estadoNormal, mensajeNormal) => numeroDeParteExplicito
+    ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
+    : { estado: estadoNormal, mensaje: mensajeNormal };
 
   // Ver nota equivalente en resolverBusqueda(): catálogo vivo y motores en paralelo, para que
   // un motor/transmisión real no quede invisible solo porque su marca/modelo no está en el
@@ -205,7 +233,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
     await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: 'fuera_de_catalogo' });
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza: null, marca, modelo, anio, origen, tieneContacto, ...datosGeo });
-    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
+    return NextResponse.json(estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO));
   }
 
   const { resultados, resultadosCercanos, tipoResultado } = enCatalogo
@@ -213,12 +241,12 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio }, texto, contacto
     : { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno' };
 
   if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
-    await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: 'sin_inventario' });
+    await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: numeroDeParteExplicito ? 'numero_de_parte' : 'sin_inventario' });
     await registrarBusqueda({
-      texto, estado: 'sin_inventario', pieza: null, marca, modelo, anio,
+      texto, estado: numeroDeParteExplicito ? 'numero_de_parte' : 'sin_inventario', pieza: null, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo,
     });
-    return NextResponse.json({ estado: 'sin_inventario', mensaje: MENSAJE_VEHICULO_SIN_INVENTARIO });
+    return NextResponse.json(estadoYMensajeNoEncontrado('sin_inventario', MENSAJE_VEHICULO_SIN_INVENTARIO));
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
@@ -351,6 +379,23 @@ export async function POST(request) {
   }
 
   if (!intencion.reconocido && !intencion.vehiculoReconocido) {
+    // Número de parte / SKU sin ninguna marca/modelo mencionado (ej. "pistón 609 std", "sku
+    // 609"): sin esto caería en "parseo_parcial" genérico. Ni marca ni modelo están presentes
+    // (vehiculoReconocido es false), así que no hay ninguna búsqueda real que este mensaje le
+    // esté quitando el turno — nunca hubo a dónde ir sin esa información.
+    const esNumeroDeParte = intencion.numeroDeParteExplicito || intencion.numeroDeParteSospechoso;
+    if (esNumeroDeParte) {
+      await persistirContactoSiExiste(contacto, {
+        texto, pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
+        estado: 'numero_de_parte',
+      });
+      await registrarBusqueda({
+        texto, estado: 'numero_de_parte', pieza: intencion.pieza, anio: intencion.anio, origen, tieneContacto,
+        estadoGeografico: geo.estado, ciudad: geo.ciudad,
+      });
+      return NextResponse.json({ estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE });
+    }
+
     // Se extrajo una pieza pero ningún dato de vehículo: parseo parcial, distinto de un
     // texto donde Capa 1 no encontró absolutamente nada (no_interpretada).
     const estadoLog = intencion.pieza ? 'parseo_parcial' : 'no_interpretada';
@@ -390,15 +435,22 @@ export async function POST(request) {
   // "volkswagen atlas 2020" — Atlas no existe en el catálogo): NUNCA hacer fallback
   // silencioso a buscar toda la marca, mostraría vehículos de un modelo distinto al pedido.
   if (intencion.modeloDesconocido) {
+    // Solo la señal EXPLÍCITA gana aquí ("chevrolet sku 609") — la señal por descarte no
+    // aplica en esta rama a propósito: la palabra sin explicar bien podría ser un modelo real
+    // que simplemente no está catalogado todavía (ej. "720"), y el mensaje de "no
+    // identificamos el modelo" ya invita a aclararlo, que es más seguro que asumir un SKU.
+    const esNumeroDeParte = intencion.numeroDeParteExplicito;
     await persistirContactoSiExiste(contacto, {
       texto, pieza: null, marca: intencion.marca, modelo: null, anio: intencion.anio,
-      estado: 'fuera_de_catalogo',
+      estado: esNumeroDeParte ? 'numero_de_parte' : 'fuera_de_catalogo',
     });
     await registrarBusqueda({
-      texto, estado: 'fuera_de_catalogo', pieza: null, marca: intencion.marca, modelo: null,
+      texto, estado: esNumeroDeParte ? 'numero_de_parte' : 'fuera_de_catalogo', pieza: null, marca: intencion.marca, modelo: null,
       anio: intencion.anio, origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad,
     });
-    return NextResponse.json({ estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
+    return NextResponse.json(esNumeroDeParte
+      ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
+      : { estado: 'no_catalogado', mensaje: MENSAJE_NO_CATALOGADO });
   }
 
   // Vehículo reconocido pero sin pieza (y sin ningún modelo mencionado): explorar todo

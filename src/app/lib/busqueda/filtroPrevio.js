@@ -1,5 +1,6 @@
 import { CATALOGO_BASE } from '../catalogoBase';
 import { extraerCilindradaDeTexto } from './cilindrada';
+import { tieneSenialExplicitaNumeroDeParte } from './numeroDeParte';
 
 const PIEZA_PALABRAS_CLAVE = [
   'faro', 'calavera', 'cofre', 'cajuela', 'defensa', 'parachoques', 'espejo', 'puerta',
@@ -11,6 +12,7 @@ const PIEZA_PALABRAS_CLAVE = [
   'motor', 'transmision', 'transmisión', 'caja', 'vidrio', 'ventana', 'salpicadera',
   'toldo', 'techo', 'volante', 'radiador', 'bomba', 'clutch', 'embrague', 'catalizador',
   'mofle', 'escobilla', 'escobillas', 'bisagra', 'manija', 'chapa', 'moldura', 'defensas',
+  'piston', 'pistones',
 ];
 
 const PATRONES_BASURA = [
@@ -54,6 +56,10 @@ export function filtrarPrevio(textoOriginal) {
   // rechazaría "3.6" por no tener letras latinas) para que Capa 1 (extraerIntencion) sí llegue a
   // ofrecer la aclaración de cilindrada. Regex pura, sin Firestore — mismo costo que el resto.
   const tieneCilindrada = extraerCilindradaDeTexto(normalizado) != null;
+  // Mismo motivo que tieneCilindrada arriba: "sku 609" no tiene marca/modelo/pieza conocida,
+  // así que sin este bypass se rechazaría aquí y Capa 1 nunca llegaría a mostrar el mensaje de
+  // número de parte.
+  const tieneSenialNumeroDeParte = tieneSenialExplicitaNumeroDeParte(normalizado);
 
   if (soloEmojisOSimbolos(texto) && !tieneCilindrada) {
     return { permitido: false };
@@ -73,7 +79,7 @@ export function filtrarPrevio(textoOriginal) {
     || MODELOS_NORMALIZADOS.some((m) => normalizado.includes(m));
   const tienePiezaClave = PIEZA_PALABRAS_CLAVE.some((p) => palabras.includes(normalizar(p)));
 
-  if (!tieneMarcaOModelo && !tienePiezaClave && !tieneCilindrada) {
+  if (!tieneMarcaOModelo && !tienePiezaClave && !tieneCilindrada && !tieneSenialNumeroDeParte) {
     return { permitido: false };
   }
 
