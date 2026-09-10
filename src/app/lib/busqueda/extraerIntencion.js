@@ -2,6 +2,7 @@ import { CATALOGO_BASE } from '../catalogoBase';
 import { obtenerCatalogoCombinado } from './catalogoCombinado';
 import { extraerCilindradaDeTexto } from './cilindrada';
 import { tieneSenialExplicitaNumeroDeParte, tieneNumeroSospechoso } from './numeroDeParte';
+import { PIEZAS_CATALOGO } from '../piezasCatalogo';
 
 // Alias comunes de marcas — mismo espíritu que el mapa MARCAS de admin/page.js (migrarInventario).
 const ALIAS_MARCA = {
@@ -26,19 +27,6 @@ const MODELOS_RAM_EXCLUSIVOS = (CATALOGO_BASE['RAM'] || []).filter((modelo) => {
   const comoModeloDodge = `ram ${modelo}`.toLowerCase();
   return !(CATALOGO_BASE['Dodge'] || []).some((m) => m.toLowerCase() === comoModeloDodge);
 });
-
-const PIEZAS_CATALOGO = [
-  'Faro delantero izquierdo', 'Faro delantero derecho', 'Calavera trasera izquierda', 'Calavera trasera derecha',
-  'Cofre', 'Cajuela', 'Parachoques delantero', 'Parachoques trasero', 'Espejo izquierdo', 'Espejo derecho',
-  'Puerta delantera izquierda', 'Puerta delantera derecha', 'Puerta trasera izquierda', 'Puerta trasera derecha',
-  'Parabrisas', 'Rines', 'Tablero', 'Asientos', 'Orquilla derecha', 'Orquilla izquierda',
-  'Disco de freno delantero', 'Disco de freno trasero', 'Prensa de freno', 'Amortiguador delantero izquierdo',
-  'Amortiguador delantero derecho', 'Resortes delanteros', 'Resortes traseros', 'Amortiguador trasero derecho',
-  'Amortiguador trasero izquierdo', 'Compresor A/C', 'Alternador', 'Computadora de motor',
-  'Computadora de transmisión', 'Caja de fusibles', 'Cremallera', 'Bomba de dirección', 'Barra estabilizadora',
-  'Múltiple de admisión', 'Múltiple de escape', 'Garganta', 'Filtro de aire', 'Manguera de aire', 'Sensor MAF',
-  'Flecha delantera izquierda', 'Flecha delantera derecha', 'Motor', 'Transmisión', 'Pistón',
-];
 
 // Las llaves siempre se comparan contra palabras ya normalizadas (sin acentos, minúsculas),
 // así que tanto llaves como valores deben estar en esa misma forma normalizada.

@@ -1,8 +1,15 @@
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { dbServer } from '../firebase-server';
 
+// IMPORTANTE: este Set debe coincidir con el enum de `estado` en la regla de seguridad de
+// Firestore para /busquedas/{docId} (esa regla vive en la consola de Firebase, no en este
+// repo). Agregar un valor aquí sin agregarlo también allá hace que addDoc() falle en silencio
+// (permission-denied, atrapado abajo) — el buscador sigue funcionando para el cliente, pero esa
+// búsqueda no queda registrada para el dashboard. 'numero_de_parte' y 'marca_muy_general' son
+// nuevos: confirmar con David que la regla ya los incluye.
 const ESTADOS_VALIDOS = new Set([
   'no_interpretada', 'fuera_de_giro', 'parseo_parcial', 'fuera_de_catalogo', 'sin_inventario', 'ok',
+  'numero_de_parte', 'marca_muy_general',
 ]);
 
 // Nombres de campo EXACTOS exigidos por la regla de Firestore (match /busquedas/{docId}):

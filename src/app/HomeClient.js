@@ -5,6 +5,7 @@ import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase
 import { db } from './lib/firebase';
 import { buscarVehiculosEnAniosParalelo } from './lib/buscarVehiculosPorAnio';
 import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from './lib/estados';
+import { PIEZAS_CATALOGO } from './lib/piezasCatalogo';
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', nombre, params);
@@ -18,19 +19,6 @@ const CIUDADES_BC = [
   { key: 'tecate', label: 'Tecate' },
   { key: 'rosarito', label: 'Playas de Rosarito' },
   { key: 'sanquintin', label: 'San Quintín' },
-];
-
-const PIEZAS_CATALOGO = [
-  'Faro delantero izquierdo', 'Faro delantero derecho', 'Calavera trasera izquierda', 'Calavera trasera derecha',
-  'Cofre', 'Cajuela', 'Parachoques delantero', 'Parachoques trasero', 'Espejo izquierdo', 'Espejo derecho',
-  'Puerta delantera izquierda', 'Puerta delantera derecha', 'Puerta trasera izquierda', 'Puerta trasera derecha',
-  'Parabrisas', 'Rines', 'Tablero', 'Asientos', 'Orquilla derecha', 'Orquilla izquierda',
-  'Disco de freno delantero', 'Disco de freno trasero', 'Prensa de freno', 'Amortiguador delantero izquierdo',
-  'Amortiguador delantero derecho', 'Resortes delanteros', 'Resortes traseros', 'Amortiguador trasero derecho',
-  'Amortiguador trasero izquierdo', 'Compresor A/C', 'Alternador', 'Computadora de motor',
-  'Computadora de transmisión', 'Caja de fusibles', 'Cremallera', 'Bomba de dirección', 'Barra estabilizadora',
-  'Múltiple de admisión', 'Múltiple de escape', 'Garganta', 'Filtro de aire', 'Manguera de aire', 'Sensor MAF',
-  'Flecha delantera izquierda', 'Flecha delantera derecha', 'Motor', 'Transmisión',
 ];
 
 const TIPO_BUSQUEDA = [

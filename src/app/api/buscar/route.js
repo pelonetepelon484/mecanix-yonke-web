@@ -35,6 +35,21 @@ const MENSAJE_FUERA_DE_GIRO =
 const MENSAJE_PARSEO_PARCIAL =
   'Detectamos qué pieza buscas, pero no la marca/modelo del vehículo — cuéntanos eso también. Ej: "defensa delantera para tsuru 2010"';
 
+// Modelo de ejemplo por marca para el mensaje de "búsqueda muy general" (ver
+// mensajeMarcaMuyGeneral) — solo para armar un ejemplo más cercano a lo que buscó el cliente;
+// si la marca no está aquí, se usa un ejemplo genérico (Chevrolet Aveo). No afecta el matching
+// del buscador en absoluto, es puro texto de ayuda.
+const MODELO_EJEMPLO_POR_MARCA = {
+  Chevrolet: 'Cruze', Nissan: 'Sentra', Toyota: 'Corolla', Ford: 'Fiesta', Honda: 'Civic',
+  Volkswagen: 'Jetta', Hyundai: 'Accent', Mazda: '3', Dodge: 'Journey', Jeep: 'Patriot',
+  Chrysler: '200', RAM: '1500', Kia: 'Rio', Mitsubishi: 'Lancer', GMC: 'Sierra',
+};
+
+function mensajeMarcaMuyGeneral(marca) {
+  const modelo = MODELO_EJEMPLO_POR_MARCA[marca] || 'Aveo';
+  return `Tu búsqueda es muy general. Escribe también qué pieza y de qué modelo buscas. Por ejemplo: "alternador ${marca} ${modelo} 2015" o "defensa ${marca} ${modelo}".`;
+}
+
 function obtenerIp(request) {
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) return forwarded.split(',')[0].trim();
@@ -130,19 +145,23 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
   }
 
   // El catálogo vivo (config/catalogoVehiculos) se nutre principalmente de vehículos — un
-  // motor/transmisión suelto puede existir sin que su marca/modelo esté ahí (registros viejos,
-  // o "Actualizar catálogo" en admin que hoy solo escanea vehiculos). Por eso el check de
-  // catálogo y la búsqueda de motores corren en PARALELO: solo se declara "no_catalogado" si
-  // NINGUNO de los dos encuentra nada — un motor real no debe quedar invisible por esto.
+  // motor/transmisión suelto, o una PIEZA suelta, puede existir sin que su marca/modelo esté
+  // ahí (registros viejos, o marca/modelo que nunca se registró como vehículo completo). Por
+  // eso el check de catálogo, motores y consultarInventario() (que ahora también busca piezas
+  // sueltas, ver ese archivo) corren SIEMPRE en PARALELO: solo se declara "no_catalogado" si
+  // NINGUNO de los tres encuentra nada — ni un motor ni una pieza suelta reales deben quedar
+  // invisibles por esto.
   //
-  // Búsqueda por cilindrada: se fuerza enCatalogo=false (sin consultar) para que
-  // consultarInventario() (piezas "Motor"/"Transmisión" listadas dentro de un vehículo
-  // específico) NUNCA se ejecute aquí — esa colección no tiene cilindrada y mezclaría motores
-  // de cualquier tamaño en los resultados. El único inventario que sí filtra por cilindrada es
-  // el de motores/transmisiones sueltos (consultarMotoresTransmisiones, abajo).
-  const [enCatalogo, resultadoMotores] = await Promise.all([
+  // Búsqueda por cilindrada: se fuerza enCatalogo=false Y se salta consultarInventario() por
+  // completo — esa colección no tiene cilindrada y mezclaría motores de cualquier tamaño en
+  // los resultados. El único inventario que sí filtra por cilindrada es el de
+  // motores/transmisiones sueltos (consultarMotoresTransmisiones, abajo).
+  const [enCatalogo, resultadoMotores, resultadoInventario] = await Promise.all([
     esBusquedaMotorPorCilindrada ? Promise.resolve(false) : existeEnCatalogoVivo(marca, modelo),
     consultarMotoresTransmisiones({ marca, modelo, anio, cilindrada, estado: estadoFiltro }),
+    esBusquedaMotorPorCilindrada
+      ? Promise.resolve({ resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false })
+      : consultarInventario({ marca, modelo, anio, pieza, estado: estadoFiltro }),
   ]);
 
   // El estado elegido no tiene NINGÚN yonke (distinto de "tiene yonkes pero nada coincide") —
@@ -154,8 +173,9 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
 
   const { motores, transmisiones, motoresCercanos, transmisionesCercanos } = resultadoMotores;
   const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
+  const { resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada } = resultadoInventario;
 
-  if (!enCatalogo && totalMotoresTransmisiones === 0) {
+  if (!enCatalogo && totalMotoresTransmisiones === 0 && resultados.length === 0 && resultadosCercanos.length === 0) {
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: 'fuera_de_catalogo' });
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo, anio, origen, tieneContacto, ...datosGeo });
     // incluirSospechoso=true: para llegar aquí `modelo` ya está resuelto o la búsqueda es por
@@ -163,10 +183,6 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     // realidad el modelo, a diferencia del gate de arriba.
     return NextResponse.json(estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO, true));
   }
-
-  const { resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada } = enCatalogo
-    ? await consultarInventario({ marca, modelo, anio, pieza, estado: estadoFiltro })
-    : { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
 
   // "Sin inventario" solo cuando NADA se encontró (ni exacto, ni cercano, ni motores/
   // transmisiones) — un motor/transmisión o un año cercano hallado cuenta como resultado
@@ -209,11 +225,33 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
 async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExplicito = false }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
   const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad };
+  // Marca sola, sin modelo NI año (ej. "chevrolet" a secas): no hay nada más con qué acotar la
+  // búsqueda. Solo se OFRECE la ayuda si de verdad no hay ningún resultado que mostrar (ver los
+  // dos usos de estadoYMensajeNoEncontrado abajo) — si la marca sí tiene inventario disponible,
+  // la navegación por marca sigue funcionando exactamente igual que hoy (ver el return final).
+  // pieza siempre es null aquí (contrato de esta función) y cilindrada nunca llega a esta rama
+  // (intencion.sugerenciaCilindrada la intercepta antes en route.js), así que marca+modelo+año
+  // son las únicas señales relevantes que hay que revisar.
+  const esMarcaMuyGeneral = !modelo && anio == null;
   // Sin pieza (contrato de esta función), la señal por descarte nunca aplica aquí — solo la
-  // explícita ("sku 609 nissan"), que es igual de confiable con o sin pieza mencionada.
-  const estadoYMensajeNoEncontrado = (estadoNormal, mensajeNormal) => numeroDeParteExplicito
-    ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
-    : { estado: estadoNormal, mensaje: mensajeNormal };
+  // explícita ("sku 609 nissan"), que es igual de confiable con o sin pieza mencionada. La señal
+  // explícita de número de parte siempre gana sobre "marca muy general" — es más específica.
+  const estadoYMensajeNoEncontrado = (estadoNormal, mensajeNormal) => {
+    if (numeroDeParteExplicito) return { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE };
+    if (esMarcaMuyGeneral) return { estado: 'marca_muy_general', mensaje: mensajeMarcaMuyGeneral(marca) };
+    return { estado: estadoNormal, mensaje: mensajeNormal };
+  };
+  // Mismas prioridades que arriba, pero para el `estado` que se GUARDA en analítica (distinto
+  // del que ve el cliente en algunos casos — ej. el cliente ve "no_catalogado" pero se guarda
+  // "fuera_de_catalogo", distinción que ya existía antes de este cambio). Antes, el primer gate
+  // de abajo ni siquiera aplicaba la anulación de número de parte al guardar (quedaba registrado
+  // como "fuera_de_catalogo" aunque el cliente viera el mensaje de número de parte) — se
+  // corrige de paso, ya que se toca esta misma función.
+  const estadoParaAnalitica = (estadoNormalAnalitica) => {
+    if (numeroDeParteExplicito) return 'numero_de_parte';
+    if (esMarcaMuyGeneral) return 'marca_muy_general';
+    return estadoNormalAnalitica;
+  };
 
   // Ver nota equivalente en resolverBusqueda(): catálogo vivo y motores en paralelo, para que
   // un motor/transmisión real no quede invisible solo porque su marca/modelo no está en el
@@ -231,8 +269,9 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
   const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
 
   if (!enCatalogo && totalMotoresTransmisiones === 0) {
-    await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: 'fuera_de_catalogo' });
-    await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza: null, marca, modelo, anio, origen, tieneContacto, ...datosGeo });
+    const estadoLog = estadoParaAnalitica('fuera_de_catalogo');
+    await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: estadoLog });
+    await registrarBusqueda({ texto, estado: estadoLog, pieza: null, marca, modelo, anio, origen, tieneContacto, ...datosGeo });
     return NextResponse.json(estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO));
   }
 
@@ -241,9 +280,10 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
     : { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno' };
 
   if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
-    await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: numeroDeParteExplicito ? 'numero_de_parte' : 'sin_inventario' });
+    const estadoLog = estadoParaAnalitica('sin_inventario');
+    await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: estadoLog });
     await registrarBusqueda({
-      texto, estado: numeroDeParteExplicito ? 'numero_de_parte' : 'sin_inventario', pieza: null, marca, modelo, anio,
+      texto, estado: estadoLog, pieza: null, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo,
     });
     return NextResponse.json(estadoYMensajeNoEncontrado('sin_inventario', MENSAJE_VEHICULO_SIN_INVENTARIO));

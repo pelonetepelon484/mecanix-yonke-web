@@ -12,24 +12,12 @@ import BottomNav from '../BottomNav';
 import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarcaModelo';
 import SelectorOpciones from '../../lib/SelectorOpciones';
 import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../lib/opcionesVehiculo';
-
-const PIEZAS_COMUNES = [
-  'Faro delantero izquierdo', 'Faro delantero derecho', 'Calavera trasera izquierda', 'Calavera trasera derecha',
-  'Cofre', 'Cajuela', 'Parachoques delantero', 'Parachoques trasero', 'Espejo izquierdo', 'Espejo derecho',
-  'Puerta delantera izquierda', 'Puerta delantera derecha', 'Puerta trasera izquierda', 'Puerta trasera derecha',
-  'Parabrisas', 'Rines', 'Tablero', 'Asientos', 'Orquilla derecha', 'Orquilla izquierda',
-  'Disco de freno delantero', 'Disco de freno trasero', 'Prensa de freno', 'Amortiguador delantero izquierdo',
-  'Amortiguador delantero derecho', 'Resortes delanteros', 'Resortes traseros', 'Amortiguador trasero derecho',
-  'Amortiguador trasero izquierdo', 'Compresor A/C', 'Alternador', 'Computadora de motor',
-  'Computadora de transmisión', 'Caja de fusibles', 'Cremallera', 'Bomba de dirección', 'Barra estabilizadora',
-  'Múltiple de admisión', 'Múltiple de escape', 'Garganta', 'Filtro de aire', 'Manguera de aire', 'Sensor MAF',
-  'Flecha delantera izquierda', 'Flecha delantera derecha', 'Motor', 'Transmisión',
-];
+import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../lib/piezasCatalogo';
 
 async function crearPiezasComunes(vehiculoRef) {
   const batch = writeBatch(db);
   const piezasRef = collection(vehiculoRef, 'piezas');
-  PIEZAS_COMUNES.forEach((nombre) => {
+  PIEZAS_CATALOGO.forEach((nombre) => {
     const piezaDocRef = doc(piezasRef);
     batch.set(piezaDocRef, { nombre, disponible: true });
   });
@@ -42,8 +30,10 @@ export default function InventarioPanel() {
 
   const [vehiculos, setVehiculos] = useState([]);
   const [motores, setMotores] = useState([]);
+  const [piezasSueltas, setPiezasSueltas] = useState([]);
   const [loadingVehiculos, setLoadingVehiculos] = useState(true);
   const [loadingMotores, setLoadingMotores] = useState(true);
+  const [loadingPiezasSueltas, setLoadingPiezasSueltas] = useState(true);
 
   // Modal vehículo
   const [modalVisible, setModalVisible] = useState(false);
@@ -69,6 +59,17 @@ export default function InventarioPanel() {
   const [motorCilindrada, setMotorCilindrada] = useState('');
   const [motorDisponible, setMotorDisponible] = useState(true);
   const [guardandoMotor, setGuardandoMotor] = useState(false);
+
+  // Modal pieza suelta — pieza sin vehículo registrado (yonkes/{id}/piezasSueltas). Motor y
+  // Transmisión no aparecen en PIEZAS_CATALOGO_SUELTAS porque ya tienen su propio flujo arriba.
+  const [piezaSueltaModalVisible, setPiezaSueltaModalVisible] = useState(false);
+  const [piezaSueltaEditando, setPiezaSueltaEditando] = useState(null);
+  const [piezaSueltaNombre, setPiezaSueltaNombre] = useState(PIEZAS_CATALOGO_SUELTAS[0]);
+  const [piezaSueltaMarca, setPiezaSueltaMarca] = useState('');
+  const [piezaSueltaModelo, setPiezaSueltaModelo] = useState('');
+  const [piezaSueltaAno, setPiezaSueltaAno] = useState('');
+  const [piezaSueltaDisponible, setPiezaSueltaDisponible] = useState(true);
+  const [guardandoPiezaSuelta, setGuardandoPiezaSuelta] = useState(false);
 
   // Modal piezas
   const [piezasModalVisible, setPiezasModalVisible] = useState(false);
@@ -107,6 +108,18 @@ export default function InventarioPanel() {
     return unsubscribe;
   }, [yonkeId]);
 
+  useEffect(() => {
+    if (!yonkeId) return;
+    const ref = collection(db, 'yonkes', yonkeId, 'piezasSueltas');
+    const q = query(ref, orderBy('fechaIngreso', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const lista = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setPiezasSueltas(lista);
+      setLoadingPiezasSueltas(false);
+    });
+    return unsubscribe;
+  }, [yonkeId]);
+
   function abrirModalAgregar() {
     setVehiculoEditando(null);
     setMarca(''); setModelo(''); setAno('');
@@ -140,6 +153,23 @@ export default function InventarioPanel() {
     setMotorTransmision(motor.transmision || OTRO_NO_ESPECIFICADO);
     setMotorCilindrada(motor.cilindrada || ''); setMotorDisponible(motor.disponible !== false);
     setMotorModalVisible(true);
+  }
+
+  function abrirModalPiezaSuelta() {
+    setPiezaSueltaEditando(null);
+    setPiezaSueltaNombre(PIEZAS_CATALOGO_SUELTAS[0]);
+    setPiezaSueltaMarca(''); setPiezaSueltaModelo(''); setPiezaSueltaAno('');
+    setPiezaSueltaDisponible(true);
+    setPiezaSueltaModalVisible(true);
+  }
+
+  function abrirModalEditarPiezaSuelta(piezaSuelta) {
+    setPiezaSueltaEditando(piezaSuelta);
+    setPiezaSueltaNombre(piezaSuelta.pieza || PIEZAS_CATALOGO_SUELTAS[0]);
+    setPiezaSueltaMarca(piezaSuelta.marca || ''); setPiezaSueltaModelo(piezaSuelta.modelo || '');
+    setPiezaSueltaAno(String(piezaSuelta.ano || ''));
+    setPiezaSueltaDisponible(piezaSuelta.disponible !== false);
+    setPiezaSueltaModalVisible(true);
   }
 
   async function guardarVehiculo() {
@@ -201,6 +231,31 @@ export default function InventarioPanel() {
     } finally { setGuardandoMotor(false); }
   }
 
+  async function guardarPiezaSuelta() {
+    if (!piezaSueltaNombre || !piezaSueltaMarca || !piezaSueltaModelo || !piezaSueltaAno) {
+      alert('Llena la pieza, marca, modelo y año'); return;
+    }
+    setGuardandoPiezaSuelta(true);
+    try {
+      if (piezaSueltaEditando) {
+        const ref = doc(db, 'yonkes', yonkeId, 'piezasSueltas', piezaSueltaEditando.id);
+        await updateDoc(ref, {
+          pieza: piezaSueltaNombre, marca: piezaSueltaMarca.trim(), modelo: piezaSueltaModelo.trim(),
+          ano: parseInt(piezaSueltaAno), disponible: piezaSueltaDisponible,
+        });
+      } else {
+        await addDoc(collection(db, 'yonkes', yonkeId, 'piezasSueltas'), {
+          pieza: piezaSueltaNombre, marca: piezaSueltaMarca.trim(), modelo: piezaSueltaModelo.trim(),
+          ano: parseInt(piezaSueltaAno), disponible: true, fechaIngreso: new Date(),
+        });
+      }
+      await registrarEnCatalogo(piezaSueltaMarca.trim(), piezaSueltaModelo.trim());
+      setPiezaSueltaModalVisible(false); setPiezaSueltaEditando(null);
+    } catch (error) {
+      console.error(error); alert('No se pudo guardar');
+    } finally { setGuardandoPiezaSuelta(false); }
+  }
+
   async function eliminarVehiculo(vehiculoId) {
     if (!confirm('¿Seguro que quieres quitarlo del inventario?')) return;
     await deleteDoc(doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoId));
@@ -211,9 +266,19 @@ export default function InventarioPanel() {
     await deleteDoc(doc(db, 'yonkes', yonkeId, 'motores', motorId));
   }
 
+  async function eliminarPiezaSuelta(piezaSueltaId) {
+    if (!confirm('¿Seguro que quieres eliminarla?')) return;
+    await deleteDoc(doc(db, 'yonkes', yonkeId, 'piezasSueltas', piezaSueltaId));
+  }
+
   async function toggleDisponibilidadMotor(motor) {
     const motorRef = doc(db, 'yonkes', yonkeId, 'motores', motor.id);
     await updateDoc(motorRef, { disponible: !motor.disponible });
+  }
+
+  async function toggleDisponibilidadPiezaSuelta(piezaSuelta) {
+    const ref = doc(db, 'yonkes', yonkeId, 'piezasSueltas', piezaSuelta.id);
+    await updateDoc(ref, { disponible: !piezaSuelta.disponible });
   }
 
   function abrirPiezas(vehiculo) {
@@ -250,7 +315,7 @@ export default function InventarioPanel() {
     );
   }
 
-  const totalItems = vehiculos.length + motores.length;
+  const totalItems = vehiculos.length + motores.length + piezasSueltas.length;
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
@@ -260,7 +325,7 @@ export default function InventarioPanel() {
             <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Inventario</h1>
             {!loadingVehiculos && (
               <p style={{ color: '#cdd9e4', fontSize: '13px', margin: '4px 0 0' }}>
-                {vehiculos.length} {vehiculos.length === 1 ? 'vehículo' : 'vehículos'} · {motores.filter(m => m.tipo === 'Motor').length} motores · {motores.filter(m => m.tipo === 'Transmisión').length} transmisiones
+                {vehiculos.length} {vehiculos.length === 1 ? 'vehículo' : 'vehículos'} · {motores.filter(m => m.tipo === 'Motor').length} motores · {motores.filter(m => m.tipo === 'Transmisión').length} transmisiones · {piezasSueltas.length} piezas sueltas
               </p>
             )}
           </div>
@@ -271,12 +336,15 @@ export default function InventarioPanel() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-          <button onClick={abrirModalAgregar} style={{ ...addButtonStyle, flex: 1 }}>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <button onClick={abrirModalAgregar} style={{ ...addButtonStyle, flex: 1, minWidth: '140px' }}>
             🚗 Agregar vehículo
           </button>
-          <button onClick={abrirModalMotor} style={{ ...addButtonStyle, flex: 1, backgroundColor: '#1A3C5E' }}>
+          <button onClick={abrirModalMotor} style={{ ...addButtonStyle, flex: 1, minWidth: '140px', backgroundColor: '#1A3C5E' }}>
             🔧 Motor / Transmisión
+          </button>
+          <button onClick={abrirModalPiezaSuelta} style={{ ...addButtonStyle, flex: 1, minWidth: '140px', backgroundColor: '#555' }}>
+            🔩 Pieza suelta
           </button>
         </div>
 
@@ -357,7 +425,45 @@ export default function InventarioPanel() {
           </>
         )}
 
-        {!loadingVehiculos && !loadingMotores && totalItems === 0 && (
+        {/* Piezas sueltas — piezas individuales sin registrar el vehículo completo (ej. "solo
+            el cofre de un Jetta 2010"). Mismo patrón de tarjeta y acciones que Motores. */}
+        {!loadingPiezasSueltas && piezasSueltas.length > 0 && (
+          <>
+            <p style={{ ...seccionTituloStyle, marginTop: '20px' }}>🔩 Piezas sueltas ({piezasSueltas.length})</p>
+            {piezasSueltas.map((p) => (
+              <div key={p.id} style={{ ...vehiculoCardStyle, opacity: p.disponible === false ? 0.6 : 1 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ backgroundColor: '#555', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '12px' }}>
+                      🔩 {p.pieza}
+                    </span>
+                    {p.disponible === false && (
+                      <span style={{ backgroundColor: '#F4F5F5', color: '#888', fontSize: '11px', padding: '3px 8px', borderRadius: '12px' }}>
+                        No disponible
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px', margin: '6px 0 0' }}>
+                    {p.marca} {p.modelo} {p.ano}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+                  <button onClick={() => abrirModalEditarPiezaSuelta(p)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    Editar
+                  </button>
+                  <button onClick={() => toggleDisponibilidadPiezaSuelta(p)} style={{ background: 'none', border: 'none', color: '#888', fontSize: '12px', cursor: 'pointer' }}>
+                    {p.disponible === false ? 'Activar' : 'Desactivar'}
+                  </button>
+                  <button onClick={() => eliminarPiezaSuelta(p.id)} style={{ background: 'none', border: 'none', color: '#D85A30', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {!loadingVehiculos && !loadingMotores && !loadingPiezasSueltas && totalItems === 0 && (
           <p style={{ textAlign: 'center', color: '#888', marginTop: '32px' }}>Aún no has agregado nada al inventario</p>
         )}
       </div>
@@ -440,6 +546,45 @@ export default function InventarioPanel() {
               <button onClick={() => setMotorModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
               <button onClick={guardarMotor} disabled={guardandoMotor} style={buttonStyle}>
                 {guardandoMotor ? 'Guardando...' : (motorEditando ? 'Guardar cambios' : 'Guardar')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pieza suelta */}
+      {piezaSueltaModalVisible && (
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '16px' }}>
+              {piezaSueltaEditando ? 'Editar pieza suelta' : 'Agregar pieza suelta'}
+            </h2>
+            <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px' }}>¿Qué pieza es?</p>
+            <select
+              value={piezaSueltaNombre}
+              onChange={(e) => setPiezaSueltaNombre(e.target.value)}
+              style={inputStyle}
+            >
+              {[...PIEZAS_CATALOGO_SUELTAS].sort((a, b) => a.localeCompare(b, 'es')).map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+            <SelectorMarcaModelo
+              marca={piezaSueltaMarca} modelo={piezaSueltaModelo}
+              onMarca={setPiezaSueltaMarca} onModelo={setPiezaSueltaModelo}
+              inputStyle={inputStyle}
+            />
+            <input type="number" placeholder="Año (ej. 2015)" value={piezaSueltaAno} onChange={(e) => setPiezaSueltaAno(e.target.value)} style={inputStyle} />
+            {piezaSueltaEditando && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                <input type="checkbox" checked={piezaSueltaDisponible} onChange={(e) => setPiezaSueltaDisponible(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                <span style={{ fontSize: '14px', color: '#333' }}>Disponible</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <button onClick={() => setPiezaSueltaModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
+              <button onClick={guardarPiezaSuelta} disabled={guardandoPiezaSuelta} style={buttonStyle}>
+                {guardandoPiezaSuelta ? 'Guardando...' : (piezaSueltaEditando ? 'Guardar cambios' : 'Guardar')}
               </button>
             </div>
           </div>

@@ -89,6 +89,27 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
   };
 }
 
+// Pieza suelta (yonkes/{id}/piezasSueltas): igual que un motor suelto, pero para cualquier otra
+// pieza (cofre, alternador, faro...) sin registrar el vehículo completo. El shape de salida es
+// IDÉNTICO al de toResultado() (pieza dentro de un vehículo real) — mismo r.vehiculo.{marca,
+// modelo,ano}, mismo r.vehiculoId — a propósito, para que el cliente nunca note la diferencia:
+// renderTarjetaVehiculo, el botón de WhatsApp, "Reservar" y "Pedir entrega" en HomeClient.js
+// funcionan sin ningún cambio, porque solo leen esos mismos campos genéricos.
+function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
+  const yonkeData = yonkeDoc.data();
+  const { marca, modelo, ano } = pDoc.data();
+  return {
+    yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
+    verificado: yonkeData.verificado === true,
+    entregaInmediata: yonkeData.entregaInmediata === true,
+    direccion: yonkeData.direccion,
+    telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
+    metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+    ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+    vehiculoId: pDoc.id, vehiculo: { marca, modelo, ano }, calificacion,
+  };
+}
+
 function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
   const yonkeData = yonkeDoc.data();
   const { fechaIngreso, ...motor } = mDoc.data();
@@ -197,6 +218,51 @@ function piezaCoincide(piezaBuscada, nombreInventario) {
   return palabrasBuscada.length > 0 && palabrasBuscada.every((p) => palabrasInventario.has(p));
 }
 
+// Mismo matching de marca/modelo/año que motores (subcolección 'piezasSueltas'), filtrando por
+// nombre de pieza con el mismo piezaCoincide (subconjunto de palabras) que usan las piezas
+// dentro de un vehículo — así "Parachoques" encuentra tanto "Parachoques delantero" suelto como
+// dentro de un vehículo, igual. disponible=false se excluye por completo, igual que un motor.
+async function buscarPiezasSueltas(yonkesDocs, marca, modelo, anio, pieza) {
+  try {
+    const pares = await buscarVehiculosPorAnio(dbServer, yonkesDocs, marca, modelo, anio, 'piezasSueltas');
+    const encontrados = [];
+    for (const { yonkeDoc, vDoc: pDoc } of pares) {
+      const data = pDoc.data();
+      if (data.disponible === false) continue;
+      if (!piezaCoincide(pieza, data.pieza)) continue;
+      const calificacion = await getRatingParaYonke(yonkeDoc.id);
+      encontrados.push(toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion));
+    }
+    return encontrados;
+  } catch (error) {
+    // piezasSueltas es una subcolección nueva — si las reglas de seguridad de Firestore
+    // todavía no le dan permiso de lectura (o falla por cualquier otro motivo puntual), esto
+    // NUNCA debe tumbar la búsqueda completa de piezas dentro de vehículo, que es independiente.
+    // Se degrada a "no hay piezas sueltas" en vez de propagar el error — mismo espíritu que
+    // "guardarSinBloquear" en route.js para analítica.
+    console.error('[consultarInventario] No se pudo leer piezasSueltas (revisar reglas de Firestore)', {
+      code: error?.code, message: error?.message,
+    });
+    return [];
+  }
+}
+
+function claveVehiculo(r) {
+  return `${r.yonkeId}_${(r.vehiculo?.marca || '').toLowerCase()}_${(r.vehiculo?.modelo || '').toLowerCase()}_${r.vehiculo?.ano}`;
+}
+
+// Quita de `piezasSueltas` las que ya están cubiertas por un resultado real de vehículo (mismo
+// yonke+marca+modelo+año) — cubre el caso raro de que un yonke registre la MISMA pieza dos
+// veces (una vez dentro del vehículo, otra como suelta); gana la del vehículo real. A propósito
+// NUNCA colapsa vehículo-contra-vehículo: un mismo yonke puede tener dos vehículos reales
+// distintos con la misma marca/modelo/año (ej. dos Cruze 2011 de dos carros distintos) y ambos
+// deben seguir apareciendo — sinDuplicados (por vehiculoId) ya los distingue correctamente.
+function sinPiezasSueltasRedundantes(piezasSueltas, resultadosVehiculo) {
+  if (piezasSueltas.length === 0) return piezasSueltas;
+  const clavesVehiculo = new Set(resultadosVehiculo.map(claveVehiculo));
+  return piezasSueltas.filter((r) => !clavesVehiculo.has(claveVehiculo(r)));
+}
+
 async function tienePiezaDisponible(yonkeId, vehiculoId, pieza) {
   const piezasRef = collection(dbServer, 'yonkes', yonkeId, 'vehiculos', vehiculoId, 'piezas');
   const snap = await getDocs(piezasRef);
@@ -231,6 +297,13 @@ async function buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza) {
 // los ±4 (excluidos del rango, nunca duplican el año exacto) como grupo ADICIONAL. Si NO hay
 // exacto, el comportamiento es igual que antes: los cercanos ocupan `resultados` directamente
 // y `resultadosCercanos` queda vacío (no se muestra una sección de cercanos vacía de exactos).
+// Piezas sueltas (yonkes/{id}/piezasSueltas) se mezclan AQUÍ ADENTRO, no en route.js — así el
+// exacto/cercano/cualquierAno final ya considera ambas fuentes (pieza-en-vehículo + suelta)
+// antes de decidir tipoResultado/piezaNoEncontrada, y el mensaje que ve el cliente ("X yonkes
+// tienen este vehículo" / "no encontramos el año exacto pero...") sale correcto sin importar de
+// dónde vino cada resultado. Se ejecuta SIEMPRE (ya no depende de enCatalogo en route.js) para
+// que una pieza suelta de una marca/modelo nunca antes registrado como vehículo completo no
+// quede invisible — mismo motivo por el que motores/transmisiones sueltos ya corren siempre.
 export async function consultarInventario({ marca, modelo, anio, pieza, estado }) {
   const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
   const { yonkesDocs, sinYonkesEnEstado } = filtrarPorEstado(yonkesSnap.docs, estado);
@@ -242,9 +315,15 @@ export async function consultarInventario({ marca, modelo, anio, pieza, estado }
   // rechazar la búsqueda solo por faltar el dato), igual separando por disponibilidad de pieza.
   // No hay "exacto vs cercano" que acumular aquí — no aplica el fix.
   if (anio == null) {
-    const { conPieza, soloVehiculo } = await buscarConSplitDePieza(yonkesDocs, marca, modelo, null, pieza);
-    if (conPieza.length > 0) {
-      return { resultados: conPieza, resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
+    const [{ conPieza, soloVehiculo }, piezasSueltasRaw] = await Promise.all([
+      buscarConSplitDePieza(yonkesDocs, marca, modelo, null, pieza),
+      buscarPiezasSueltas(yonkesDocs, marca, modelo, null, pieza),
+    ]);
+    const piezasSueltas = sinPiezasSueltasRedundantes(piezasSueltasRaw, conPieza);
+    const confirmados = sinDuplicados([...conPieza, ...piezasSueltas]);
+    ordenarPorPlan(confirmados);
+    if (confirmados.length > 0) {
+      return { resultados: confirmados, resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
     }
     if (soloVehiculo.length > 0) {
       return { resultados: soloVehiculo, resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: true };
@@ -252,14 +331,27 @@ export async function consultarInventario({ marca, modelo, anio, pieza, estado }
     return { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
   }
 
-  // Año exacto: se calcula pero YA NO se hace return inmediato.
-  const { conPieza, soloVehiculo } = await buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza);
-  const exactos = conPieza.length > 0 ? conPieza : soloVehiculo;
-  const piezaNoEncontradaExacto = conPieza.length === 0 && soloVehiculo.length > 0;
+  // Año exacto: se calcula pero YA NO se hace return inmediato. Las 4 búsquedas (vehículo
+  // exacto, pieza suelta exacta, vehículo cercano, pieza suelta cercana) corren EN PARALELO.
+  const [{ conPieza, soloVehiculo }, piezasSueltasExactasRaw, cercanosVehiculo, piezasSueltasCercanasRaw] = await Promise.all([
+    buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza),
+    buscarPiezasSueltas(yonkesDocs, marca, modelo, anio, pieza),
+    buscarAniosCercanos((a) => buscarVehiculos(yonkesDocs, marca, modelo, a), anio, sinDuplicados),
+    buscarAniosCercanos((a) => buscarPiezasSueltas(yonkesDocs, marca, modelo, a, pieza), anio, sinDuplicados),
+  ]);
 
-  // Años cercanos ±4, mismo marca/modelo (sin filtrar por pieza específica, igual que antes) —
-  // se calculan SIEMPRE, no como fallback exclusivo.
-  const cercanos = await buscarAniosCercanos((a) => buscarVehiculos(yonkesDocs, marca, modelo, a), anio, sinDuplicados);
+  const piezasSueltasExactas = sinPiezasSueltasRedundantes(piezasSueltasExactasRaw, conPieza);
+  const confirmadosExacto = sinDuplicados([...conPieza, ...piezasSueltasExactas]);
+  ordenarPorPlan(confirmadosExacto);
+  const exactos = confirmadosExacto.length > 0 ? confirmadosExacto : soloVehiculo;
+  const piezaNoEncontradaExacto = confirmadosExacto.length === 0 && soloVehiculo.length > 0;
+
+  // Años cercanos ±4, mismo marca/modelo (sin filtrar por pieza específica en el lado vehículo,
+  // igual que antes) combinados con las piezas sueltas cercanas (esas SÍ están confirmadas,
+  // pero se mezclan igual porque este grupo ya se muestra como "aproximado" en el frontend).
+  const piezasSueltasCercanas = sinPiezasSueltasRedundantes(piezasSueltasCercanasRaw, cercanosVehiculo);
+  const cercanos = sinDuplicados([...cercanosVehiculo, ...piezasSueltasCercanas]);
+  ordenarPorPlan(cercanos);
 
   if (exactos.length > 0) {
     return { resultados: exactos, resultadosCercanos: cercanos, tipoResultado: 'exacto', piezaNoEncontrada: piezaNoEncontradaExacto };
@@ -269,7 +361,12 @@ export async function consultarInventario({ marca, modelo, anio, pieza, estado }
   }
 
   // Nivel 3: cualquier año, mismo marca/modelo.
-  const cualquierAno = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));
+  const [cualquierAnoVehiculo, piezasSueltasCualquierAnoRaw] = await Promise.all([
+    buscarVehiculos(yonkesDocs, marca, modelo, null),
+    buscarPiezasSueltas(yonkesDocs, marca, modelo, null, pieza),
+  ]);
+  const piezasSueltasCualquierAno = sinPiezasSueltasRedundantes(piezasSueltasCualquierAnoRaw, cualquierAnoVehiculo);
+  const cualquierAno = sinDuplicados([...cualquierAnoVehiculo, ...piezasSueltasCualquierAno]);
   ordenarPorPlan(cualquierAno);
   return { resultados: cualquierAno, resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false };
 }
