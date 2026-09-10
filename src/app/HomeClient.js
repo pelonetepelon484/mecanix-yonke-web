@@ -250,9 +250,6 @@ export default function HomeClient({ textoSeoEstados }) {
   // hoy hasta que alguien lo cambie).
   const [estadosDisponibles, setEstadosDisponibles] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California', tieneVisitas: true }]);
   const [estadoPlanes, setEstadoPlanes] = useState(ESTADO_DEFAULT);
-  // Extra opcional de visitas: opt-in del visitante, solo tiene efecto (y solo se muestra) en
-  // estados con tieneVisitas=true — el plan base ($700/$1,000) es igual en todos los estados.
-  const [visitasAgregadas, setVisitasAgregadas] = useState(false);
   const [estadoBusqueda, setEstadoBusqueda] = useState('todos');
   const [sinYonkesEnEstadoManual, setSinYonkesEnEstadoManual] = useState(false);
 
@@ -734,24 +731,11 @@ export default function HomeClient({ textoSeoEstados }) {
   const bannerTexto = getBannerCompatibilidad();
 
   // Único cálculo de "¿este estado tiene visitas?" para la pestaña "Tengo un yonke" — lo usan
-  // juntos el banner de bienvenida y las tarjetas de planes, para que reaccionen al mismo
-  // selector sin desincronizarse (mismo patrón que estadoDeYonke()). Ausente/aún sin cargar =
-  // Baja California = con visitas, igual que en todo el resto del sistema de estados.
+  // juntos el banner de bienvenida y el servicio de captura a domicilio, para que reaccionen al
+  // mismo selector sin desincronizarse (mismo patrón que estadoDeYonke()). Ausente/aún sin
+  // cargar = Baja California = con visitas, igual que en todo el resto del sistema de estados.
   const estadoPlanesElegido = estadosDisponibles.find((e) => e.id === estadoPlanes);
   const tieneVisitasPlanes = estadoPlanesElegido ? Boolean(estadoPlanesElegido.tieneVisitas) : true;
-  // El extra de visitas solo puede estar activo si el estado lo ofrece — si el visitante lo
-  // había marcado y cambia a un estado sin visitas, se apaga solo (ver efecto abajo) para que
-  // nunca quede "encendido" un extra que ya no existe en ese estado.
-  const visitasActivas = tieneVisitasPlanes && visitasAgregadas;
-
-  // Si el estado elegido deja de tener visitas (o el visitante lo cambia antes de que carguen
-  // los estados), se apaga el toggle del extra — evita que quede marcado un extra que ya no
-  // aplica en ese estado.
-  useEffect(() => {
-    if (!tieneVisitasPlanes && visitasAgregadas) {
-      setVisitasAgregadas(false);
-    }
-  }, [tieneVisitasPlanes, visitasAgregadas]);
   const DIAS_ORDEN = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
   const DIAS_LABELS = { lunes:'Lun', martes:'Mar', miercoles:'Mié', jueves:'Jue', viernes:'Vie', sabado:'Sáb', domingo:'Dom' };
 
@@ -1489,12 +1473,15 @@ function obtenerEstadoAbierto(horario) {
               </a>
             </div>
 
-            {/* Planes de suscripción */}
+            {/* Modelo actual: plataforma gratuita + servicio de captura a domicilio pagado por
+                visita. Premium/Élite (tarjetas, precios, campo `plan`, premiumHasta, subdominios,
+                branding) siguen intactos en el código para el resto del sistema — esto solo deja
+                de ANUNCIARLOS aquí. Ver también src/app/panel/registro/page.js. */}
             <div style={{ marginTop: '32px' }}>
 
               {/* Banner de bienvenida — oferta de una sola vez al registrarse por primera vez
-                  (NO permanente, no es un plan). Va arriba de todo para que sea lo primero que
-                  vea un yonke nuevo que llega a esta sección. */}
+                  (NO permanente). Va arriba de todo para que sea lo primero que vea un yonke
+                  nuevo que llega a esta sección. */}
               <div style={{
                 background: 'linear-gradient(135deg, #1A3C5E 0%, #234b73 100%)',
                 borderRadius: '20px', padding: '28px 24px', marginBottom: '28px',
@@ -1515,15 +1502,12 @@ function obtenerEstadoAbierto(horario) {
                     </p>
                   )}
                   <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-                    ✅ Un mes de Premium <strong style={{ color: '#E8720C' }}>GRATIS</strong> — tu
-                    página con tu marca, tu inventario y clientes buscándote.
+                    ✅ Tu yonke queda visible en Mecanix <strong style={{ color: '#E8720C' }}>GRATIS, para siempre</strong> —
+                    sin mensualidades.
                   </p>
                 </div>
-                <p style={{ color: '#C5D4E8', fontSize: '12.5px', lineHeight: '1.6', margin: '0 auto 22px', maxWidth: '420px' }}>
-                  Después tú decides: te quedas en Premium, pasas a Básico, o subes a Élite. Sin compromiso.
-                </p>
                 <a
-                  href={`https://wa.me/5216611034260?text=Hola%2C%20quiero%20aprovechar%20la%20bienvenida%20para%20yonkes%20nuevos%20de%20Mecanix%20Yonke%20Virtual%20(${tieneVisitasPlanes ? 'primera%20captura%20gratis%20%2B%20mes%20Premium%20gratis' : 'mes%20Premium%20gratis'})`}
+                  href={`https://wa.me/5216611034260?text=Hola%2C%20quiero%20aprovechar%20la%20bienvenida%20para%20yonkes%20nuevos%20de%20Mecanix%20Yonke%20Virtual%20(${tieneVisitasPlanes ? 'primera%20captura%20gratis' : 'registro%20gratis'})`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={yonkeCtaButtonStyle}
@@ -1538,7 +1522,7 @@ function obtenerEstadoAbierto(horario) {
 
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 8px' }}>
-                  Planes para tu yonke
+                  Así funciona para tu yonke
                 </h2>
                 <p style={{ fontSize: '14px', color: '#666', margin: 0, lineHeight: '1.5' }}>
                   Pon tu inventario en línea y recibe clientes listos para comprar.
@@ -1563,23 +1547,21 @@ function obtenerEstadoAbierto(horario) {
                 </select>
               </div>
 
-              {(() => {
-                // Plan base: mismo precio en TODOS los estados. visitasActivas (arriba, junto a
-                // tieneVisitasPlanes) es el único lugar que decide si se suma el extra.
-                const precioPremium = visitasActivas ? '$1,000/mes' : '$700/mes';
-                const precioElite = visitasActivas ? '$1,500/mes' : '$1,000/mes';
-                return (
-              <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: tieneVisitasPlanes ? 'repeat(auto-fit, minmax(260px, 1fr))' : '1fr',
+                gap: '16px',
+                maxWidth: tieneVisitasPlanes ? undefined : '360px',
+                margin: tieneVisitasPlanes ? undefined : '0 auto',
+              }}>
 
-                {/* Básico */}
+                {/* Plan Gratuito — única oferta pública hoy. */}
                 <div style={planCardStyle}>
-                  <p style={planNombreStyle}>Básico</p>
+                  <p style={planNombreStyle}>Plan Gratuito</p>
                   <p style={planPrecioStyle}>Gratis</p>
                   <p style={planDescStyle}>
-                    Tu yonke aparece en Mecanix y los clientes pueden encontrar tus piezas y
-                    contactarte por WhatsApp. Tú subes y actualizas tu inventario. Ideal para
-                    empezar sin costo.
+                    Tu yonke aparece en el buscador de Mecanix, subes tu inventario, y los
+                    clientes te encuentran y te contactan directo por WhatsApp. Sin costo.
                   </p>
                   <div style={planNotaAzulStyle}>
                     Sin caducidad: gratis para siempre. Solo dejas la plataforma si tú decides darte de baja.
@@ -1593,126 +1575,38 @@ function obtenerEstadoAbierto(horario) {
                   </a>
                 </div>
 
-                {/* Premium — incluye la captura a domicilio (2 visitas al mes) */}
-                <div style={planPremiumCardStyle}>
-                  <div style={premiumBadgeStyle}>Recomendado</div>
-                  <p style={planNombreStyle}>Premium</p>
-                  <p style={planPrecioStyle}>{precioPremium}</p>
-                  {visitasActivas && (
-                    <p style={{ fontSize: '12px', color: '#2E7D32', fontWeight: '700', margin: '-8px 0 10px' }}>
-                      ✅ Incluye el servicio de visitas de captura
+                {/* Servicio de captura a domicilio — PAGO POR VISITA (no mensualidad, no
+                    suscripción), solo en estados con tieneVisitas=true. */}
+                {tieneVisitasPlanes && (
+                  <div style={{ ...planCardStyle, border: '2px dashed #E8720C', backgroundColor: '#FFF8F0' }}>
+                    <p style={planNombreStyle}>Captura a domicilio</p>
+                    <p style={planPrecioStyle}>
+                      $300 <span style={{ fontSize: '13px', fontWeight: '600', color: '#666' }}>/ visita</span>
                     </p>
-                  )}
-                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
-                    Todo lo del plan Básico, y además:
-                  </p>
-                  <ul style={planListaStyle}>
-                    {[
-                      'Tu propia página con tu nombre, tu logo y tus colores',
-                      'Tú subes y actualizas tu propio inventario, cuando tú quieras',
-                      'Apareces destacado para que más clientes te encuentren',
-                    ].map((item) => (
-                      <li key={item} style={planItemStyle}>
-                        <span style={{ marginRight: '8px' }}>✅</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <p style={planDescStyle}>
-                    Tú atiende tu negocio, nosotros nos encargamos de tu inventario en internet.
-                  </p>
-                  <div style={planNotaNaranjaStyle}>
-                    Incluye periodo de prueba sin costo
+                    <p style={planDescStyle}>
+                      ¿No tienes tiempo de subir tu inventario? Nosotros vamos a tu yonke y lo
+                      capturamos por ti. Lo pides cuando lo necesites — sin mensualidad, sin
+                      compromiso.
+                    </p>
+                    <div style={planNotaAzulStyle}>
+                      Disponible en {estadoPlanesElegido?.nombre || 'Baja California'}.
+                    </div>
+                    <a
+                      href="https://wa.me/5216611034260?text=Hola%2C%20quiero%20agendar%20el%20servicio%20de%20captura%20a%20domicilio%20de%20Mecanix%20Yonke%20Virtual"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mecanix-btn-primary"
+                      style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+                      onClick={() => registrarEvento('clic_servicio_visitas', {
+                        ubicacion: 'seccion_planes',
+                        plan_actual: 'visitante',
+                      })}
+                    >
+                      Quiero agendar una visita
+                    </a>
                   </div>
-                  <a
-                    href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mecanix-btn-primary"
-                    style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
-                    onClick={() => registrarEvento('clic_premium', {
-                      ubicacion: 'seccion_planes',
-                      plan_actual: 'visitante',
-                    })}
-                  >
-                    Quiero Premium
-                  </a>
-                </div>
-
-                {/* Élite — antes "Marca Propia"; ahora también incluye captura a domicilio. */}
-                <div style={planCardStyle}>
-                  <p style={planNombreStyle}>Élite</p>
-                  <p style={planPrecioStyle}>{precioElite}</p>
-                  {visitasActivas && (
-                    <p style={{ fontSize: '12px', color: '#2E7D32', fontWeight: '700', margin: '-8px 0 10px' }}>
-                      ✅ Incluye el servicio de visitas de captura
-                    </p>
-                  )}
-                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
-                    Todo lo del Premium, y además:
-                  </p>
-                  <ul style={planListaStyle}>
-                    {[
-                      'Tu página con tu propio dominio de internet (tu marca al 100%)',
-                      'La imagen más profesional para que tu yonke se vea como una gran empresa',
-                    ].map((item) => (
-                      <li key={item} style={planItemStyle}>
-                        <span style={{ marginRight: '8px' }}>✅</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <p style={planDescStyle}>
-                    Para el yonke que quiere destacar como marca líder.
-                  </p>
-                  <a
-                    href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20%C3%89lite%20de%20Mecanix%20Yonke%20Virtual"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mecanix-btn-primary"
-                    style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
-                    onClick={() => registrarEvento('clic_elite', {
-                      ubicacion: 'seccion_planes',
-                      plan_actual: 'visitante',
-                    })}
-                  >
-                    Quiero Élite
-                  </a>
-                </div>
-
+                )}
               </div>
-
-              {/* Extra opcional de visitas — SOLO en estados con tieneVisitas=true. El plan
-                  base de arriba ya se mostró a su precio fijo; esto se suma encima, nunca es
-                  un plan aparte. */}
-              {tieneVisitasPlanes && (
-                <div style={{
-                  marginTop: '20px', backgroundColor: '#FFF8F0', border: '2px dashed #E8720C',
-                  borderRadius: '16px', padding: '20px 24px',
-                }}>
-                  <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: '0 0 8px' }}>
-                    🚗 Extra opcional: servicio de visitas de captura
-                  </p>
-                  <p style={{ fontSize: '13px', color: '#555', margin: '0 0 14px', lineHeight: '1.5' }}>
-                    ¿Quieres que nosotros subamos tu inventario por ti? Agrega el servicio de
-                    visitas: vamos a tu yonke 2 veces al mes a capturar lo nuevo — tú no haces nada.
-                  </p>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={visitasAgregadas}
-                      onChange={(e) => setVisitasAgregadas(e.target.checked)}
-                      style={{ width: '20px', height: '20px', accentColor: '#E8720C', cursor: 'pointer', flexShrink: 0 }}
-                    />
-                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#1A3C5E' }}>
-                      Agregar servicio de visitas — Premium queda en $1,000/mes, Élite en $1,500/mes
-                    </span>
-                  </label>
-                </div>
-              )}
-              </>
-                );
-              })()}
             </div>
           </>
         )}
