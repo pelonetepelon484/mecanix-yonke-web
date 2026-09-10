@@ -13,7 +13,7 @@ export default function Privacidad() {
           Política de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: septiembre de 2026
+          Última actualización: 9 de septiembre de 2026
         </p>
 
         <Seccion titulo="1. Introducción">
@@ -25,16 +25,14 @@ export default function Privacidad() {
           <p style={parrafoStyle}><strong>De los yonkes registrados:</strong> nombre del negocio, estado y ciudad, dirección física (escrita manualmente, no mediante GPS), número de teléfono, número de WhatsApp, correo electrónico de acceso, métodos de pago aceptados, horario de atención, e inventario de vehículos y piezas disponibles.</p>
           <p style={parrafoStyle}><strong>Datos de autenticación:</strong> correo electrónico y contraseña (almacenada de forma cifrada por nuestro proveedor de autenticación, Firebase Authentication de Google) para los usuarios con acceso al panel (yonkes y administradores).</p>
           <p style={parrafoStyle}><strong>Registro propio:</strong> los yonkes pueden registrarse directamente en la plataforma a través del formulario público disponible en el sitio web. La información proporcionada durante el registro es revisada por nuestro equipo antes de ser activada públicamente.</p>
-          <p style={parrafoStyle}><strong>Captura de inventario en sitio (servicio opcional):</strong> en los estados donde Mecanix ofrece el servicio de visitas de captura como complemento opcional, nuestro personal puede visitar el yonke para registrar su inventario de vehículos directamente en la plataforma. Los datos capturados son los que el propio yonke proporciona durante la visita.</p>
+          <p style={parrafoStyle}><strong>Captura de inventario a domicilio (servicio opcional, con costo por visita):</strong> en los estados donde Mecanix ofrece este servicio, el yonke puede solicitar que nuestro personal visite el negocio para registrar su inventario de vehículos directamente en la plataforma. Los datos capturados son los que el propio yonke proporciona durante la visita.</p>
         </Seccion>
 
         <Seccion titulo="3. Planes de servicio">
-          <p style={parrafoStyle}><strong>Plan Básico (gratuito):</strong> permite a los yonkes registrados publicar su inventario de vehículos y aparecer en el motor de búsqueda público de la plataforma, sin costo alguno.</p>
-          <p style={parrafoStyle}><strong>Plan Premium (de pago):</strong> incluye una página propia con la marca del yonke, gestión de reservaciones, registro de ventas y notificaciones. El yonke sube y actualiza su propio inventario.</p>
-          <p style={parrafoStyle}><strong>Plan Élite (de pago):</strong> incluye todo lo del Plan Premium, además de un dominio de internet propio para el yonke.</p>
-          <p style={parrafoStyle}><strong>Servicio de visitas de captura (complemento opcional):</strong> en los estados donde Mecanix cuenta con este servicio, el yonke puede contratarlo como complemento a su Plan Premium o Élite para que nuestro personal visite el negocio y ayude a capturar el inventario nuevo. Este servicio no está incluido por defecto en ningún plan, está sujeto a disponibilidad según el estado, y Mecanix puede activarlo o desactivarlo por estado según su capacidad operativa.</p>
-          <p style={parrafoStyle}>Los precios vigentes de cada plan pueden consultarse en la página de planes de la plataforma.</p>
-          <p style={parrafoStyle}>Mecanix Yonke Virtual se reserva el derecho de modificar las funciones incluidas en cada plan, así como la disponibilidad del servicio de visitas por estado, notificando a los yonkes registrados con al menos 30 días naturales de anticipación cuando aplique.</p>
+          <p style={parrafoStyle}><strong>Plan Gratuito:</strong> permite a los yonkes registrados publicar su inventario de vehículos, aparecer en el motor de búsqueda público de la plataforma y recibir contacto directo de clientes por WhatsApp, sin costo alguno.</p>
+          <p style={parrafoStyle}><strong>Servicio de captura a domicilio (opcional, con costo por visita):</strong> en los estados donde Mecanix cuenta con este servicio, el yonke puede solicitarlo cuando lo necesite para que nuestro personal visite el negocio y ayude a capturar su inventario. Es un servicio de pago por visita — no es una mensualidad ni una suscripción: se contrata y se paga cada vez que el yonke lo solicita. Su disponibilidad depende del estado donde esté registrado el yonke, y Mecanix puede activarlo o desactivarlo por estado según su capacidad operativa.</p>
+          <p style={parrafoStyle}>La tarifa vigente del servicio de captura a domicilio puede consultarse en la plataforma.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual se reserva el derecho de modificar las funciones del Plan Gratuito, así como la disponibilidad del servicio de captura a domicilio por estado, notificando a los yonkes registrados con al menos 30 días naturales de anticipación cuando aplique.</p>
         </Seccion>
 
         <Seccion titulo="4. Cómo usamos tu información">
@@ -55,7 +53,7 @@ export default function Privacidad() {
         </Seccion>
 
         <Seccion titulo="8. Tus derechos">
-          Puedes solicitar la corrección o eliminación de tu información personal (incluyendo el cierre de una cuenta de yonke) escribiendo directamente al correo de contacto que aparece al final de este documento. Los yonkes registrados en el Plan Básico pueden solicitar la baja de su perfil en cualquier momento; Mecanix Yonke Virtual cuenta con un plazo máximo de 5 días hábiles para procesarla, conforme a los Términos y Condiciones.
+          Puedes solicitar la corrección o eliminación de tu información personal (incluyendo el cierre de una cuenta de yonke) escribiendo directamente al correo de contacto que aparece al final de este documento. Los yonkes registrados pueden solicitar la baja de su perfil en cualquier momento; Mecanix Yonke Virtual cuenta con un plazo máximo de 5 días hábiles para procesarla, conforme a los Términos y Condiciones.
         </Seccion>
 
         <Seccion titulo="9. Menores de edad">
@@ -83,7 +81,7 @@ export default function Privacidad() {
         </Seccion>
 
         <Seccion titulo="14. Notificaciones">
-          Las notificaciones push del Plan Premium requieren el consentimiento del yonke en su dispositivo y pueden desactivarse en cualquier momento desde la configuración del mismo.
+          Actualmente usamos WhatsApp y/o correo electrónico para enviarte avisos relacionados con tu registro, tus reservaciones o el servicio de captura a domicilio. Si en el futuro habilitamos notificaciones push, actualizaremos esta política e indicaremos cómo activarlas o desactivarlas.
         </Seccion>
 
         <Seccion titulo="15. Buscador Inteligente">

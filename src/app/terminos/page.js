@@ -13,7 +13,7 @@ export default function Terminos() {
           Términos y Condiciones de Uso
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: septiembre de 2026
+          Última actualización: 9 de septiembre de 2026
         </p>
 
         <Seccion titulo="1. Aceptación de los términos">
@@ -32,9 +32,8 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="4. Planes de servicio">
-          <p style={parrafoStyle}><strong>Plan Básico (anteriormente denominado Plan Freemium):</strong> acceso gratuito que permite publicar inventario y aparecer en el motor de búsqueda público. Mecanix se reserva el derecho de modificar o descontinuar este plan con notificación previa de al menos 30 días naturales a los yonkes registrados.</p>
-          <p style={parrafoStyle}><strong>Plan Premium y Plan Élite:</strong> acceso a funciones avanzadas mediante pago periódico acordado entre el yonke y Mecanix. Las condiciones de pago y renovación se establecen en un acuerdo por separado.</p>
-          <p style={parrafoStyle}>Mecanix Yonke Virtual puede modificar las funciones incluidas en cada plan en cualquier momento, notificando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
+          <p style={parrafoStyle}><strong>Plan Gratuito:</strong> acceso gratuito que permite publicar inventario y aparecer en el motor de búsqueda público, sin costo ni mensualidad. Mecanix se reserva el derecho de modificar este plan con notificación previa de al menos 30 días naturales a los yonkes registrados.</p>
+          <p style={parrafoStyle}><strong>Servicio de captura a domicilio:</strong> servicio opcional de pago por visita (no es una suscripción ni un cobro periódico), sujeto a disponibilidad según el estado donde esté registrado el yonke. Las condiciones se detallan en la sección 14.</p>
         </Seccion>
 
         <Seccion titulo="5. Responsabilidades del yonke">
@@ -69,7 +68,7 @@ export default function Terminos() {
 
         <Seccion titulo="11. Modificaciones a los términos">
           <p style={parrafoStyle}>Mecanix Yonke Virtual puede modificar estos Términos y Condiciones en cualquier momento. Los cambios serán publicados en esta página con la fecha de actualización. El uso continuado de la plataforma después de dichos cambios implica la aceptación de los nuevos términos.</p>
-          <p style={parrafoStyle}>Los cambios que afecten las características, condiciones o precios de los planes de suscripción se notificarán con al menos 30 días naturales de anticipación, conforme a la sección 15.</p>
+          <p style={parrafoStyle}>Los cambios que afecten las características del Plan Gratuito o la disponibilidad y tarifa del servicio de captura a domicilio se notificarán con al menos 30 días naturales de anticipación, conforme a las secciones 14 y 15.</p>
         </Seccion>
 
         <Seccion titulo="12. Ley aplicable">
@@ -83,29 +82,25 @@ export default function Terminos() {
           </p>
         </Seccion>
 
-        <Seccion titulo="14. Planes y suscripciones">
-          <p style={parrafoStyle}>Mecanix Yonke Virtual ofrece tres planes para yonkes registrados: Plan Básico, Plan Premium y Plan Élite. Estos planes son los mismos en todos los estados donde opera la plataforma.</p>
-          <p style={parrafoStyle}>El <strong>Plan Básico</strong> es gratuito e incluye: carga y administración de inventario, aparición en resultados de búsqueda con nombre, dirección y teléfono del yonke, botón de contacto por WhatsApp, botón de reservación para clientes y control de reservaciones desde el panel.</p>
-          <p style={parrafoStyle}>El <strong>Plan Premium</strong> incluye todo lo del Plan Básico, más: una página propia del yonke con su nombre, logo y colores; registro de ventas y venta manual, notificaciones push al recibir una reservación, y botón de WhatsApp para contactar al cliente que reservó. El yonke es responsable de subir y actualizar su propio inventario.</p>
-          <p style={parrafoStyle}>El <strong>Plan Élite</strong> incluye todo lo del Plan Premium, más un dominio de internet propio para el yonke.</p>
-          <p style={parrafoStyle}><strong>Servicio de visitas de captura (complemento opcional, sujeto a disponibilidad por estado):</strong> en los estados donde Mecanix cuenta con este servicio activo, el yonke con Plan Premium o Élite puede contratar como complemento que nuestro personal visite su negocio periódicamente para ayudar a capturar el inventario nuevo. Este servicio NO está incluido por defecto en ningún plan y su disponibilidad depende del estado donde esté registrado el yonke; Mecanix puede activar o desactivar este servicio por estado según su capacidad operativa, sin que esto afecte el resto de las funciones del plan contratado.</p>
-          <p style={parrafoStyle}>Los precios vigentes de cada plan y del servicio de visitas de captura pueden consultarse en la página de planes de la plataforma.</p>
-          <p style={parrafoStyle}>Cuando el servicio de visitas de captura esté contratado, el yonke sigue siendo el único responsable de que la información capturada sea correcta y de mantener actualizado su inventario entre visitas.</p>
+        <Seccion titulo="14. Plan Gratuito y servicio de captura a domicilio">
+          <p style={parrafoStyle}>Mecanix Yonke Virtual ofrece un Plan Gratuito para todos los yonkes registrados, igual en todos los estados donde opera la plataforma.</p>
+          <p style={parrafoStyle}>El <strong>Plan Gratuito</strong> incluye: carga y administración de inventario, aparición en resultados de búsqueda con nombre, dirección y teléfono del yonke, botón de contacto por WhatsApp, botón de reservación para clientes y control de reservaciones desde el panel. El yonke es responsable de subir y actualizar su propio inventario.</p>
+          <p style={parrafoStyle}><strong>Servicio de captura a domicilio (opcional, sujeto a disponibilidad por estado):</strong> en los estados donde Mecanix cuenta con este servicio activo, el yonke puede solicitarlo cuando lo necesite para que nuestro personal visite su negocio y ayude a capturar su inventario. Es un servicio de pago por visita: se contrata y se paga cada vez que el yonke lo solicita, sin mensualidad ni suscripción asociada. Su disponibilidad depende del estado donde esté registrado el yonke; Mecanix puede activar o desactivar este servicio por estado según su capacidad operativa.</p>
+          <p style={parrafoStyle}>La tarifa vigente del servicio de captura a domicilio puede consultarse en la plataforma.</p>
+          <p style={parrafoStyle}>Cuando el servicio de captura a domicilio sea solicitado, el yonke sigue siendo el único responsable de que la información capturada sea correcta y de mantener actualizado su inventario después de la visita.</p>
           <p style={parrafoStyle}>Las funciones anunciadas como "próximamente" son mejoras planeadas sin fecha comprometida; su disponibilidad puede cambiar sin que esto genere obligación alguna para Mecanix Yonke Virtual.</p>
         </Seccion>
 
-        <Seccion titulo="15. Vigencia del Plan Básico">
-          <p style={parrafoStyle}>El Plan Básico no tiene fecha de caducidad y permanece sin costo por tiempo indefinido.</p>
+        <Seccion titulo="15. Vigencia del Plan Gratuito">
+          <p style={parrafoStyle}>El Plan Gratuito no tiene fecha de caducidad y permanece sin costo por tiempo indefinido.</p>
           <p style={parrafoStyle}>El yonke solo deja la plataforma si solicita su baja voluntaria.</p>
-          <p style={parrafoStyle}>Mecanix Yonke Virtual se reserva el derecho de modificar las características de los planes, notificando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual se reserva el derecho de modificar las características del Plan Gratuito, notificando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
         </Seccion>
 
-        <Seccion titulo="16. Periodo de prueba, bienvenida y pagos de los planes de pago">
-          <p style={parrafoStyle}>Los planes de pago pueden incluir un periodo de prueba sin costo, cuya duración se comunica al yonke al activarlo.</p>
-          <p style={parrafoStyle}>Los yonkes que se registran por primera vez pueden recibir, como promoción de bienvenida, un mes de Plan Premium sin costo; en los estados donde el servicio de visitas de captura esté disponible, la promoción también puede incluir la primera visita de captura de inventario gratuita. Esta promoción aplica una sola vez y sus condiciones vigentes, incluyendo qué incluye según el estado, se publican en la página de planes.</p>
-          <p style={parrafoStyle}>No existen cobros automáticos: los pagos se acuerdan y confirman directamente entre el yonke y Mecanix Yonke Virtual.</p>
-          <p style={parrafoStyle}>Al terminar el periodo de prueba, la promoción de bienvenida, o un periodo de pago sin renovación, la cuenta regresa automáticamente al Plan Básico, sin pérdida del inventario ni de la información del yonke.</p>
-          <p style={parrafoStyle}>Los pagos por periodos ya iniciados no son reembolsables.</p>
+        <Seccion titulo="16. Bienvenida y pago del servicio de captura a domicilio">
+          <p style={parrafoStyle}>Los yonkes que se registran por primera vez pueden recibir, como promoción de bienvenida, la primera visita de captura de inventario sin costo, en los estados donde el servicio de captura a domicilio esté disponible. Esta promoción aplica una sola vez y sus condiciones vigentes se publican en la plataforma.</p>
+          <p style={parrafoStyle}>Fuera de esa promoción de bienvenida, el servicio de captura a domicilio se paga por visita, cada vez que el yonke lo solicita. No existen cobros automáticos ni recurrentes: cada visita se acuerda y se paga directamente entre el yonke y Mecanix Yonke Virtual.</p>
+          <p style={parrafoStyle}>Si el yonke necesita cancelar o reagendar una visita ya acordada, debe avisar a Mecanix Yonke Virtual con anticipación razonable; no se realiza ningún cobro por visitas que no se lleven a cabo.</p>
         </Seccion>
 
         <Seccion titulo="17. Baja de la plataforma">
