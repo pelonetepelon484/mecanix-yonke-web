@@ -211,6 +211,19 @@ export default function HomeClient({ textoSeoEstados }) {
   const [piezaNoEncontrada, setPiezaNoEncontrada] = useState(false);
   const [tipoResultado, setTipoResultado] = useState('exacto');
 
+  // Reseña de la PLATAFORMA (Mecanix como buscador) — distinta de "calificaciones" (reseñas de
+  // yonkes, ligadas a una venta). Anónima, sin moderación previa a guardarse (aprobada=false
+  // por defecto, ver enviarResenaPlataforma), invitación discreta y descartable.
+  const [resenaPlataformaAbierta, setResenaPlataformaAbierta] = useState(false);
+  const [resenaPlataformaEnviada, setResenaPlataformaEnviada] = useState(false);
+  const [resenaPlataformaOcultada, setResenaPlataformaOcultada] = useState(false);
+  const [resenaEstrellas, setResenaEstrellas] = useState(0);
+  const [resenaFacilidad, setResenaFacilidad] = useState(null);
+  const [resenaRecomendaria, setResenaRecomendaria] = useState(null);
+  const [resenaComentario, setResenaComentario] = useState('');
+  const [enviandoResenaPlataforma, setEnviandoResenaPlataforma] = useState(false);
+  const [resenasAprobadas, setResenasAprobadas] = useState([]);
+
   const [modalVisible, setModalVisible] = useState(false);
   const [yonkeSeleccionado, setYonkeSeleccionado] = useState(null);
   const [piezaSolicitada, setPiezaSolicitada] = useState('');
@@ -275,6 +288,57 @@ export default function HomeClient({ textoSeoEstados }) {
     }
     cargarCatalogo();
   }, []);
+
+  // Si este navegador ya envió una reseña de la plataforma antes, no se vuelve a invitar —
+  // check en useEffect (no en el useState inicial) para no depender de localStorage durante
+  // el render de servidor y evitar un mismatch de hidratación.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('mecanixResenaPlataformaEnviada') === '1') {
+        setResenaPlataformaEnviada(true);
+      }
+    } catch { /* localStorage no disponible (modo privado, etc.) — se sigue invitando, sin problema */ }
+  }, []);
+
+  // Reseñas de la plataforma ya APROBADAS por el admin, para la sección pública "Lo que opinan
+  // de Mecanix". Solo se pide una vez al cargar la página (no realtime, no hace falta) y se
+  // ordena/recorta en el cliente para no depender de un índice compuesto en Firestore
+  // (where + orderBy en campos distintos exige uno; ordenar aquí lo evita).
+  useEffect(() => {
+    async function cargarResenasAprobadas() {
+      try {
+        const q = query(collection(db, 'resenasPlataforma'), where('aprobada', '==', true));
+        const snap = await getDocs(q);
+        const lista = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.fecha?.seconds || 0) - (a.fecha?.seconds || 0))
+          .slice(0, 9);
+        setResenasAprobadas(lista);
+      } catch (e) { console.error('No se pudieron cargar las reseñas de la plataforma', e); }
+    }
+    cargarResenasAprobadas();
+  }, []);
+
+  async function enviarResenaPlataforma() {
+    if (resenaEstrellas === 0) { alert('Selecciona cuántas estrellas quieres dar'); return; }
+    setEnviandoResenaPlataforma(true);
+    try {
+      await addDoc(collection(db, 'resenasPlataforma'), {
+        estrellas: resenaEstrellas,
+        facilidad: resenaFacilidad,
+        recomendaria: resenaRecomendaria,
+        comentario: resenaComentario.trim(),
+        fecha: new Date(),
+        aprobada: false,
+        respuestaAdmin: '',
+      });
+      setResenaPlataformaEnviada(true);
+      try { localStorage.setItem('mecanixResenaPlataformaEnviada', '1'); } catch { /* modo privado, etc. */ }
+      registrarEvento('resena_plataforma_enviada', { estrellas: resenaEstrellas });
+    } catch (error) {
+      console.error(error); alert('Hubo un error al enviar tu opinión');
+    } finally { setEnviandoResenaPlataforma(false); }
+  }
 
   async function obtenerCalificacion(yonkeId) {
     try {
@@ -1407,6 +1471,66 @@ function obtenerEstadoAbierto(horario) {
               </a>
             </div>
 
+            {/* Invitación discreta a opinar sobre MECANIX como buscador (distinto de calificar
+                al yonke arriba) — solo aparece tras un intento de búsqueda (busquedaHecha cubre
+                el buscador estructurado, mensajeLibre cubre el inteligente incluso cuando no
+                hubo resultados, porque aquí se evalúa la experiencia de buscar, no si había
+                inventario). Fácil de ignorar: un renglón con una ×, nunca un modal. */}
+            {(busquedaHecha || mensajeLibre) && !resenaPlataformaOcultada && (
+              <div style={{ maxWidth: '480px', margin: '16px auto 0', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '14px', padding: '14px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                {resenaPlataformaEnviada ? (
+                  <p style={{ margin: 0, fontSize: '13px', color: '#2E7D32', textAlign: 'center' }}>
+                    🙌 ¡Gracias por tu opinión! Nos ayuda a mejorar Mecanix.
+                  </p>
+                ) : !resenaPlataformaAbierta ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <button onClick={() => setResenaPlataformaAbierta(true)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                      ⭐ ¿Nos ayudas a mejorar? Califica tu experiencia con Mecanix
+                    </button>
+                    <button onClick={() => setResenaPlataformaOcultada(true)} aria-label="Cerrar" style={{ background: 'none', border: 'none', color: '#bbb', fontSize: '18px', cursor: 'pointer', padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: '700', color: '#1A3C5E' }}>
+                      ¿Cómo calificas a Mecanix como buscador de autopartes?
+                    </p>
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <span key={n} onClick={() => setResenaEstrellas(n)} style={{ fontSize: '26px', cursor: 'pointer', color: n <= resenaEstrellas ? '#E8720C' : '#ddd' }}>★</span>
+                      ))}
+                    </div>
+                    <p style={{ margin: '0 0 6px', fontSize: '12.5px', color: '#555' }}>¿Fue fácil de usar?</p>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                      <button onClick={() => setResenaFacilidad(true)} style={resenaFacilidad === true ? chipActiveStyle : chipStyle}>Sí</button>
+                      <button onClick={() => setResenaFacilidad(false)} style={resenaFacilidad === false ? chipActiveStyle : chipStyle}>No</button>
+                    </div>
+                    <p style={{ margin: '0 0 6px', fontSize: '12.5px', color: '#555' }}>¿Recomendarías Mecanix?</p>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                      <button onClick={() => setResenaRecomendaria(true)} style={resenaRecomendaria === true ? chipActiveStyle : chipStyle}>Sí</button>
+                      <button onClick={() => setResenaRecomendaria(false)} style={resenaRecomendaria === false ? chipActiveStyle : chipStyle}>No</button>
+                    </div>
+                    <textarea
+                      value={resenaComentario}
+                      onChange={(e) => setResenaComentario(e.target.value)}
+                      placeholder="Comentario (opcional)"
+                      rows={2}
+                      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', marginBottom: '10px', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+                    />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => setResenaPlataformaOcultada(true)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#F4F5F5', color: '#888', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
+                        Ahora no
+                      </button>
+                      <button onClick={enviarResenaPlataforma} disabled={enviandoResenaPlataforma} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
+                        {enviandoResenaPlataforma ? 'Enviando...' : 'Enviar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Sección SEO — mensaje de marca amplio (México) + cobertura dinámica de estados,
                 armada server-side en page.js a partir de la colección `estados` para que quede
                 en el HTML inicial (Google la ve sin depender de JS del cliente). */}
@@ -1601,6 +1725,38 @@ function obtenerEstadoAbierto(horario) {
 
       </div>
 
+      {/* "Lo que opinan de Mecanix" — solo reseñas APROBADAS por el admin (ver /admin/resenas),
+          nunca las pendientes. Disponible en las dos pestañas, igual que el Footer. Sin datos
+          personales del cliente que opinó (la colección resenasPlataforma no los guarda). */}
+      {resenasAprobadas.length > 0 && (
+        <div style={{ maxWidth: '900px', margin: '40px auto 0', padding: '0 16px' }}>
+          <h2 style={{ textAlign: 'center', fontSize: '18px', fontWeight: '700', color: '#1A3C5E', marginBottom: '20px' }}>
+            Lo que opinan de Mecanix
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+            {resenasAprobadas.map((r) => (
+              <div key={r.id} style={{ backgroundColor: '#fff', borderRadius: '14px', padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                <span style={{ color: '#E8720C', fontSize: '15px' }}>
+                  {'★'.repeat(r.estrellas || 0)}{'☆'.repeat(5 - (r.estrellas || 0))}
+                </span>
+                {r.comentario && (
+                  <p style={{ color: '#444', fontSize: '13px', lineHeight: '1.5', margin: '8px 0 0' }}>
+                    “{r.comentario}”
+                  </p>
+                )}
+                {r.respuestaAdmin && (
+                  <div style={{ backgroundColor: '#F4F5F5', borderRadius: '8px', padding: '8px 10px', marginTop: '10px' }}>
+                    <p style={{ color: '#1A3C5E', fontSize: '12px', margin: 0, lineHeight: '1.5' }}>
+                      <strong>Respuesta de Mecanix:</strong> {r.respuestaAdmin}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Footer — enlaces secundarios, discretos, disponibles en las dos pestañas */}
       <div style={{ maxWidth: '620px', margin: '32px auto 0', textAlign: 'center', borderTop: '1px solid #ddd', paddingTop: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
@@ -1711,6 +1867,8 @@ const groupHeaderStyle = { color: '#1A3C5E', fontSize: '13px', fontWeight: '700'
 const groupSubtextStyle = { color: '#888', fontSize: '12px', margin: '0 0 12px', lineHeight: '1.5' };
 const premiumBadgeStyle = { position: 'absolute', top: '14px', right: '14px', backgroundColor: '#FAEEDA', color: '#854F0B', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' };
 const pagoTagStyle = { backgroundColor: '#F0F4F8', color: '#1A3C5E', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: '600' };
+const chipStyle = { flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#F4F5F5', color: '#888', fontWeight: '600', cursor: 'pointer', fontSize: '13px' };
+const chipActiveStyle = { ...chipStyle, backgroundColor: '#1A3C5E', borderColor: '#1A3C5E', color: '#fff' };
 const whatsappButtonStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px', borderRadius: '50px', backgroundColor: '#25D366', color: '#fff', fontWeight: '700', fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap' };
 const entregaButtonStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '12px 16px', borderRadius: '10px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontWeight: '700', fontSize: '13px', marginTop: '8px', cursor: 'pointer', fontFamily: "'Inter', sans-serif" };
 const cancelButtonStyle = { flex: 1, padding: '14px', borderRadius: '50px', border: 'none', backgroundColor: '#F4F5F5', color: '#888', fontWeight: '700', fontSize: '15px', cursor: 'pointer' };

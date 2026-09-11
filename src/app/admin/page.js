@@ -362,6 +362,16 @@ export default function AdminPage() {
           >
             🗺️ Estados
           </button>
+          <button
+            onClick={() => router.push('/admin/resenas')}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            ⭐ Reseñas de Mecanix
+          </button>
         </div>
 
         {/* Filtro por estado geográfico — ausente en el yonke cuenta como Baja California,
