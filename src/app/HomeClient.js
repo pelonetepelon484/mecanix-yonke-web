@@ -1326,6 +1326,70 @@ function obtenerEstadoAbierto(horario) {
               )}
             </div>
 
+            {/* Invitación discreta a opinar sobre MECANIX como buscador (distinto de calificar
+                al yonke, más abajo) — solo aparece tras un intento de búsqueda (busquedaHecha
+                cubre el buscador estructurado, mensajeLibre cubre el inteligente incluso cuando
+                no hubo resultados, porque aquí se evalúa la experiencia de buscar, no si había
+                inventario). A PROPÓSITO va aquí, justo debajo del buscador, y NO después de la
+                lista de resultados: una búsqueda con varios resultados (ej. "Saturn Vue 2008"
+                trae 3 exactos + 6 años cercanos = 9 tarjetas) hacía que quedara al fondo de un
+                scroll larguísimo — el código SÍ renderizaba, pero nadie llegaba a verlo. Fácil
+                de ignorar: un renglón con una ×, nunca un modal. */}
+            {(busquedaHecha || mensajeLibre) && !resenaPlataformaOcultada && (
+              <div style={{ maxWidth: '480px', margin: '0 auto 12px', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '14px', padding: '14px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                {resenaPlataformaEnviada ? (
+                  <p style={{ margin: 0, fontSize: '13px', color: '#2E7D32', textAlign: 'center' }}>
+                    🙌 ¡Gracias por tu opinión! Nos ayuda a mejorar Mecanix.
+                  </p>
+                ) : !resenaPlataformaAbierta ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <button onClick={() => setResenaPlataformaAbierta(true)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                      ⭐ ¿Nos ayudas a mejorar? Califica tu experiencia con Mecanix
+                    </button>
+                    <button onClick={() => setResenaPlataformaOcultada(true)} aria-label="Cerrar" style={{ background: 'none', border: 'none', color: '#bbb', fontSize: '18px', cursor: 'pointer', padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: '700', color: '#1A3C5E' }}>
+                      ¿Cómo calificas a Mecanix como buscador de autopartes?
+                    </p>
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <span key={n} onClick={() => setResenaEstrellas(n)} style={{ fontSize: '26px', cursor: 'pointer', color: n <= resenaEstrellas ? '#E8720C' : '#ddd' }}>★</span>
+                      ))}
+                    </div>
+                    <p style={{ margin: '0 0 6px', fontSize: '12.5px', color: '#555' }}>¿Fue fácil de usar?</p>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                      <button onClick={() => setResenaFacilidad(true)} style={resenaFacilidad === true ? chipActiveStyle : chipStyle}>Sí</button>
+                      <button onClick={() => setResenaFacilidad(false)} style={resenaFacilidad === false ? chipActiveStyle : chipStyle}>No</button>
+                    </div>
+                    <p style={{ margin: '0 0 6px', fontSize: '12.5px', color: '#555' }}>¿Recomendarías Mecanix?</p>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                      <button onClick={() => setResenaRecomendaria(true)} style={resenaRecomendaria === true ? chipActiveStyle : chipStyle}>Sí</button>
+                      <button onClick={() => setResenaRecomendaria(false)} style={resenaRecomendaria === false ? chipActiveStyle : chipStyle}>No</button>
+                    </div>
+                    <textarea
+                      value={resenaComentario}
+                      onChange={(e) => setResenaComentario(e.target.value)}
+                      placeholder="Comentario (opcional)"
+                      rows={2}
+                      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', marginBottom: '10px', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+                    />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => setResenaPlataformaOcultada(true)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#F4F5F5', color: '#888', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
+                        Ahora no
+                      </button>
+                      <button onClick={enviarResenaPlataforma} disabled={enviandoResenaPlataforma} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
+                        {enviandoResenaPlataforma ? 'Enviando...' : 'Enviar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ¿Cómo funciona? — deja claro que Mecanix conecta, no vende. */}
             <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' }}>
               <h3 style={{ fontSize: '14px', color: '#1A3C5E', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textAlign: 'center' }}>
@@ -1470,66 +1534,6 @@ function obtenerEstadoAbierto(horario) {
                 ¿Ya compraste? Califica tu experiencia
               </a>
             </div>
-
-            {/* Invitación discreta a opinar sobre MECANIX como buscador (distinto de calificar
-                al yonke arriba) — solo aparece tras un intento de búsqueda (busquedaHecha cubre
-                el buscador estructurado, mensajeLibre cubre el inteligente incluso cuando no
-                hubo resultados, porque aquí se evalúa la experiencia de buscar, no si había
-                inventario). Fácil de ignorar: un renglón con una ×, nunca un modal. */}
-            {(busquedaHecha || mensajeLibre) && !resenaPlataformaOcultada && (
-              <div style={{ maxWidth: '480px', margin: '16px auto 0', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '14px', padding: '14px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                {resenaPlataformaEnviada ? (
-                  <p style={{ margin: 0, fontSize: '13px', color: '#2E7D32', textAlign: 'center' }}>
-                    🙌 ¡Gracias por tu opinión! Nos ayuda a mejorar Mecanix.
-                  </p>
-                ) : !resenaPlataformaAbierta ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                    <button onClick={() => setResenaPlataformaAbierta(true)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
-                      ⭐ ¿Nos ayudas a mejorar? Califica tu experiencia con Mecanix
-                    </button>
-                    <button onClick={() => setResenaPlataformaOcultada(true)} aria-label="Cerrar" style={{ background: 'none', border: 'none', color: '#bbb', fontSize: '18px', cursor: 'pointer', padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>
-                      ×
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: '700', color: '#1A3C5E' }}>
-                      ¿Cómo calificas a Mecanix como buscador de autopartes?
-                    </p>
-                    <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <span key={n} onClick={() => setResenaEstrellas(n)} style={{ fontSize: '26px', cursor: 'pointer', color: n <= resenaEstrellas ? '#E8720C' : '#ddd' }}>★</span>
-                      ))}
-                    </div>
-                    <p style={{ margin: '0 0 6px', fontSize: '12.5px', color: '#555' }}>¿Fue fácil de usar?</p>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                      <button onClick={() => setResenaFacilidad(true)} style={resenaFacilidad === true ? chipActiveStyle : chipStyle}>Sí</button>
-                      <button onClick={() => setResenaFacilidad(false)} style={resenaFacilidad === false ? chipActiveStyle : chipStyle}>No</button>
-                    </div>
-                    <p style={{ margin: '0 0 6px', fontSize: '12.5px', color: '#555' }}>¿Recomendarías Mecanix?</p>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                      <button onClick={() => setResenaRecomendaria(true)} style={resenaRecomendaria === true ? chipActiveStyle : chipStyle}>Sí</button>
-                      <button onClick={() => setResenaRecomendaria(false)} style={resenaRecomendaria === false ? chipActiveStyle : chipStyle}>No</button>
-                    </div>
-                    <textarea
-                      value={resenaComentario}
-                      onChange={(e) => setResenaComentario(e.target.value)}
-                      placeholder="Comentario (opcional)"
-                      rows={2}
-                      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', marginBottom: '10px', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
-                    />
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => setResenaPlataformaOcultada(true)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#F4F5F5', color: '#888', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>
-                        Ahora no
-                      </button>
-                      <button onClick={enviarResenaPlataforma} disabled={enviandoResenaPlataforma} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
-                        {enviandoResenaPlataforma ? 'Enviando...' : 'Enviar'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Sección SEO — mensaje de marca amplio (México) + cobertura dinámica de estados,
                 armada server-side en page.js a partir de la colección `estados` para que quede
