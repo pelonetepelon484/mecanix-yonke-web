@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, getDoc, setDoc, deleteDoc, Timestamp, deleteField, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp, deleteField, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
 import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../lib/estados';
 import { generarSubdominioUnico } from '../../../lib/generarSubdominio';
+import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../../lib/subirLogoYonke';
 
 // Mismos textos que "Reenviar recuperación" en la app (UsuariosYonkeScreen.js en
 // mecanix-yonke-virtual2) para que la experiencia sea idéntica en web y app.
@@ -96,6 +97,9 @@ export default function EditarYonkePage() {
   const [generandoSubdominio, setGenerandoSubdominio] = useState(false);
   const [metodosPago, setMetodosPago] = useState([]);
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
+
+  const [logoUrl, setLogoUrl] = useState(null);
+  const [subiendoLogo, setSubiendoLogo] = useState(false);
 
   const [usuarios, setUsuarios] = useState([]);
   const [reenviandoId, setReenviandoId] = useState(null);
@@ -212,6 +216,7 @@ export default function EditarYonkePage() {
         setSubdominio(data.subdominio || '');
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
+        setLogoUrl(data.logoUrl || null);
       }
       setLoading(false);
     }
@@ -257,6 +262,50 @@ export default function EditarYonkePage() {
       alert('No se pudo generar el subdominio, intenta de nuevo.');
     } finally {
       setGenerandoSubdominio(false);
+    }
+  }
+
+  // Mismo mecanismo que panel/perfil.js (subirLogoYonke.js: valida, redimensiona a 400x400 vía
+  // canvas, sube a Storage en logos/{id}.png, siempre sobrescribe). Guardado inmediato al elegir
+  // archivo, no dentro de guardar() — igual que perfil, para no mezclarlo con el resto del form.
+  async function manejarSeleccionLogoAdmin(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const errorValidacion = validarArchivoLogo(file);
+    if (errorValidacion) { alert(errorValidacion); return; }
+
+    setSubiendoLogo(true);
+    try {
+      const url = await subirLogoYonke(id, file);
+      // updateDoc (NO setDoc+merge) es obligatorio: solo updateDoc interpreta 'branding.logoUrl'
+      // como ruta anidada — con setDoc+merge se guardaría un campo LITERAL "branding.logoUrl"
+      // (con el punto en el nombre) en vez de anidarlo dentro de branding. Mismo bug ya corregido
+      // en panel/perfil.js — no repetirlo aquí. Se guarda en ambos campos para que el buscador
+      // (logoUrl) y la página de subdominio (branding.logoUrl) queden consistentes.
+      await updateDoc(doc(db, 'yonkes', id), { logoUrl: url, 'branding.logoUrl': url });
+      setLogoUrl(url);
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo subir el logo. Intenta de nuevo.');
+    } finally {
+      setSubiendoLogo(false);
+    }
+  }
+
+  async function quitarLogoAdmin() {
+    if (!confirm('¿Quitar el logo actual de este yonke? Volverá a mostrarse solo el nombre.')) return;
+    setSubiendoLogo(true);
+    try {
+      await borrarLogoYonke(id);
+      await updateDoc(doc(db, 'yonkes', id), { logoUrl: deleteField(), 'branding.logoUrl': deleteField() });
+      setLogoUrl(null);
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo quitar el logo. Intenta de nuevo.');
+    } finally {
+      setSubiendoLogo(false);
     }
   }
 
@@ -352,6 +401,46 @@ export default function EditarYonkePage() {
 
           <p style={labelStyle}>Correo electrónico</p>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@ejemplo.com" style={inputStyle} />
+        </div>
+
+        {/* Logo del yonke — mismo mecanismo que panel/perfil.js (subirLogoYonke.js), útil
+            cuando el equipo captura a domicilio o el yonke no sabe subirlo él mismo. */}
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Logo del yonke</h2>
+          <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
+            Aparece junto a su nombre en resultados de búsqueda y en su página con subdominio propio. PNG, JPEG o WEBP, máximo 2MB.
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={logoPreviewBoxStyle}>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo actual" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              ) : (
+                <span style={{ fontSize: '11px', color: '#bbb', textAlign: 'center' }}>Sin logo</span>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ ...primaryButtonStyle, backgroundColor: '#1A3C5E', display: 'block', textAlign: 'center', padding: '12px', fontSize: '14px', opacity: subiendoLogo ? 0.6 : 1, cursor: subiendoLogo ? 'wait' : 'pointer', marginBottom: logoUrl ? '8px' : 0 }}>
+                {subiendoLogo ? 'Procesando...' : (logoUrl ? 'Reemplazar logo' : 'Subir logo')}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={manejarSeleccionLogoAdmin}
+                  disabled={subiendoLogo}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {logoUrl && (
+                <button
+                  onClick={quitarLogoAdmin}
+                  disabled={subiendoLogo}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#C62828', fontWeight: 'bold', fontSize: '13px', cursor: subiendoLogo ? 'wait' : 'pointer' }}
+                >
+                  Quitar logo
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Accesos / Usuarios */}
@@ -617,3 +706,4 @@ const sectionTitleStyle = { fontSize: '16px', fontWeight: '700', color: '#1A3C5E
 const labelStyle = { fontSize: '13px', color: '#666', marginBottom: '6px', marginTop: '12px' };
 const inputStyle = { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '15px', backgroundColor: '#F8F9FA', color: '#333', boxSizing: 'border-box', marginBottom: '4px', fontFamily: "'Inter', sans-serif" };
 const primaryButtonStyle = { width: '100%', padding: '16px', borderRadius: '10px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontWeight: '700', fontSize: '16px', cursor: 'pointer', fontFamily: "'Inter', sans-serif" };
+const logoPreviewBoxStyle = { width: '80px', height: '80px', borderRadius: '10px', border: '1.5px dashed #ddd', backgroundColor: '#F8F9FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' };

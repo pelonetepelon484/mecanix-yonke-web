@@ -1390,29 +1390,41 @@ function obtenerEstadoAbierto(horario) {
               </div>
             )}
 
-            {/* ¿Cómo funciona? — deja claro que Mecanix conecta, no vende. */}
-            <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' }}>
-              <h3 style={{ fontSize: '14px', color: '#1A3C5E', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textAlign: 'center' }}>
-                ¿CÓMO FUNCIONA?
-              </h3>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-                {[
-                  { emoji: '🔍', titulo: 'Busca tu pieza', desc: 'Escribe qué necesitas y para qué auto' },
-                  { emoji: '🏪', titulo: 'Te decimos qué yonke la tiene', desc: 'Buscamos entre todos los yonkes afiliados' },
-                  { emoji: '💬', titulo: 'Contáctalo por WhatsApp', desc: 'Tú coordinas directo — Mecanix no vende, conecta' },
-                ].map((paso, i) => (
-                  <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-                    <div style={{ fontSize: '28px', marginBottom: '8px' }}>{paso.emoji}</div>
-                    <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 4px' }}>{paso.titulo}</p>
-                    <p style={{ fontSize: '11px', color: '#888', margin: 0, lineHeight: '1.4' }}>{paso.desc}</p>
+            {/* ¿Cómo funciona? / Compra segura (completo) / primera Leyenda de verificados —
+                SOLO antes de la primera búsqueda. Es contenido de bienvenida para quien todavía
+                no ha buscado nada; una vez que sí buscó, dejarlo aquí metía ~1500px de contenido
+                estático entre el botón de buscar y los resultados reales (¿CÓMO FUNCIONA? +
+                Compra segura + esta Leyenda + el banner + OTRA Leyenda + el aviso corto, todo
+                ANTES de llegar a los resultados) — el usuario veía la misma pantalla de siempre
+                justo después de buscar y creía que no había pasado nada / que no funcionaba.
+                Las versiones cortas de abajo (BannerRH, LeyendaVerificados de nuevo,
+                AvisoCompraSeguraCorto) siguen mostrándose junto a los resultados, sin cambio. */}
+            {!busquedaHecha && !mensajeLibre && (
+              <>
+                <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' }}>
+                  <h3 style={{ fontSize: '14px', color: '#1A3C5E', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textAlign: 'center' }}>
+                    ¿CÓMO FUNCIONA?
+                  </h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                    {[
+                      { emoji: '🔍', titulo: 'Busca tu pieza', desc: 'Escribe qué necesitas y para qué auto' },
+                      { emoji: '🏪', titulo: 'Te decimos qué yonke la tiene', desc: 'Buscamos entre todos los yonkes afiliados' },
+                      { emoji: '💬', titulo: 'Contáctalo por WhatsApp', desc: 'Tú coordinas directo — Mecanix no vende, conecta' },
+                    ].map((paso, i) => (
+                      <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ fontSize: '28px', marginBottom: '8px' }}>{paso.emoji}</div>
+                        <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 4px' }}>{paso.titulo}</p>
+                        <p style={{ fontSize: '11px', color: '#888', margin: 0, lineHeight: '1.4' }}>{paso.desc}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <AvisoCompraSegura />
+                <AvisoCompraSegura />
 
-            <LeyendaVerificados />
+                <LeyendaVerificados />
+              </>
+            )}
 
             {/* Banner publicitario RH Diagnóstico */}
             {busquedaHecha && !buscando && resultados.length > 0 && (
