@@ -987,6 +987,16 @@ function obtenerEstadoAbierto(horario) {
           </p>
         )}
 
+        {/* Pieza encontrada por la cilindrada del vehículo (no por marca/modelo exacto de la
+            pieza) — ej. "arranque 3.6": el cliente debe saber que el match vino del tamaño de
+            motor de este vehículo, no de una búsqueda normal. Ver coincidePorCilindrada en
+            consultarInventario.js (lib/busqueda). */}
+        {!r.esMotor && r.coincidePorCilindrada && (
+          <span style={{ display: 'inline-block', backgroundColor: '#FFF3E0', color: '#E8720C', fontSize: '11px', fontWeight: 'bold', padding: '3px 9px', borderRadius: '12px', margin: '0 0 8px' }}>
+            🔧 Coincide por cilindrada {r.vehiculo.cilindrada}
+          </span>
+        )}
+
         {r.metodosPago.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', marginBottom: '14px' }}>
             {r.metodosPago.map((m) => <span key={m} style={pagoTagStyle}>{metodosPagoLabels[m] || m}</span>)}

@@ -297,11 +297,30 @@ const PIEZAS_INFO = PIEZAS_CATALOGO.map((nombre) => {
   return { nombre, palabras, base };
 });
 
-function extraerPieza(textoNormalizado) {
-  const palabras = textoNormalizado.split(/\s+/).filter(Boolean)
-    .map((p) => SINONIMOS_PALABRA[p] || p);
-  const set = new Set(palabras);
+// Primera palabra de la "base" de cada pieza -> lista de nombres que empiezan así (ej. 'compresor'
+// -> ['Compresor A/C']). Sirve para el paso 3 de buscarPiezaPorPalabras: nombres compuestos con
+// una palabra técnica de relleno que el cliente normalmente no menciona ("Compresor A/C" ->
+// "compresor", sin escribir "a/c"). Si DOS o más piezas comparten la misma palabra inicial (ej.
+// "Computadora de motor" / "Computadora de transmisión"), esa palabra queda con length>1 y el
+// paso 3 la ignora a propósito — adivinar cuál de las dos sería un error, se sigue exigiendo el
+// nombre completo como hasta ahora.
+const PRIMERA_PALABRA_BASE = new Map();
+for (const { nombre, base } of PIEZAS_INFO) {
+  if (base.length === 0) continue;
+  const primera = base[0];
+  if (!PRIMERA_PALABRA_BASE.has(primera)) PRIMERA_PALABRA_BASE.set(primera, []);
+  PRIMERA_PALABRA_BASE.get(primera).push(nombre);
+}
 
+// Vocabulario plano de TODAS las palabras que aparecen en algún nombre de pieza (ya normalizadas,
+// sin acentos) — usado solo para tolerar typos (ver extraerPieza), igual espíritu que
+// ALIAS_MARCA/catalogo para el fuzzy de marca/modelo de arriba.
+const VOCABULARIO_PIEZAS = [...new Set(PIEZAS_INFO.flatMap(({ palabras }) => palabras))];
+
+// Núcleo de matching exacto (sin typos) sobre un set de palabras ya resuelto — separado de
+// extraerPieza() para poder reintentarlo una segunda vez con palabras corregidas por typo sin
+// duplicar esta lógica (ver el paso 2 de extraerPieza).
+function buscarPiezaPorPalabras(set) {
   // 1. Match exacto: todas las palabras del nombre canónico (incluye lado si lo tiene).
   let mejor = null;
   let mejorPuntaje = 0;
@@ -333,13 +352,45 @@ function extraerPieza(textoNormalizado) {
   if (mejorBase) {
     return mejorBase.charAt(0).toUpperCase() + mejorBase.slice(1);
   }
-  return mejor;
+
+  // 3. Palabra inicial única (ver PRIMERA_PALABRA_BASE): cubre nombres compuestos con una palabra
+  // de relleno que el cliente casi nunca dice (ej. "compresor honda" -> "Compresor A/C", sin
+  // necesidad de escribir "a/c"). Solo se resuelve cuando esa palabra inicial pertenece a UNA
+  // sola pieza del catálogo — si hay ambigüedad (ej. "computadora"), esto no dispara y se sigue
+  // exigiendo el nombre completo, igual que antes.
+  for (const palabra of set) {
+    const candidatos = PRIMERA_PALABRA_BASE.get(palabra);
+    if (candidatos && candidatos.length === 1) {
+      return candidatos[0];
+    }
+  }
+  return null;
 }
 
-// Piezas para las que tiene sentido buscar por cilindrada sola (sin marca/modelo de vehículo):
-// un motor o transmisión suelto se identifica por su propio tamaño, no por el auto al que
-// perteneció. El resto de las piezas (defensa, puerta, etc.) siguen exigiendo marca o modelo.
-const PIEZAS_CON_CILINDRADA = new Set(['Motor', 'Transmisión']);
+function extraerPieza(textoNormalizado) {
+  const palabras = textoNormalizado.split(/\s+/).filter(Boolean)
+    .map((p) => SINONIMOS_PALABRA[p] || p);
+
+  const exacto = buscarPiezaPorPalabras(new Set(palabras));
+  if (exacto) return exacto;
+
+  // Typo tolerance (ej. "tansmision" -> "transmision", "alterndor" -> "alternador"): solo se
+  // intenta cuando el match exacto de arriba no encontró NADA, y solo corrige palabras que ya
+  // no son válidas por sí mismas — así nunca se toca una búsqueda que ya funciona. Mismo
+  // mecanismo (distanciaLevenshtein + umbralMaximo + exclusión de palabras genéricas) que ya
+  // usa el fuzzy de marca/modelo arriba en este archivo, aplicado ahora al vocabulario de piezas.
+  const vocabularioSet = new Set(VOCABULARIO_PIEZAS);
+  const corregidas = palabras.map((p) => (
+    vocabularioSet.has(p) ? p : (mejorCandidatoDifuso(p, VOCABULARIO_PIEZAS) || p)
+  ));
+  return buscarPiezaPorPalabras(new Set(corregidas));
+}
+
+// Piezas para las que "cilindrada sola" significa un motor/transmisión SUELTO (identificado por
+// su propio tamaño, sin auto asociado) — distinto de cualquier otra pieza (arranque, alternador,
+// etc.), que si trae cilindrada se busca por el motor del VEHÍCULO al que pertenece (ver
+// esBusquedaPiezaPorCilindrada abajo y consultarInventario.js, que cruza contra vehiculo.cilindrada).
+const PIEZAS_MOTOR_SUELTO = new Set(['Motor', 'Transmisión']);
 
 // Capa 1 (reglas): extrae { pieza, marca, modelo, anio, cilindrada, reconocido,
 // requiereConfirmacion } de texto libre en español. requiereConfirmacion es true si marca o
@@ -356,14 +407,21 @@ export async function extraerIntencion(textoOriginal) {
   // "motor 3.6" (sin marca/modelo) también cuenta como reconocido cuando la pieza es un
   // motor/transmisión y sí se extrajo cilindrada — un motor suelto de cierto tamaño es una
   // búsqueda válida sin necesidad de saber a qué marca/modelo de auto pertenecía.
-  const esBusquedaPorCilindrada = Boolean(cilindrada != null && pieza && PIEZAS_CON_CILINDRADA.has(pieza));
-  const reconocido = Boolean(pieza && (marca || modelo || esBusquedaPorCilindrada));
+  const esBusquedaMotorPorCilindrada = Boolean(cilindrada != null && pieza && PIEZAS_MOTOR_SUELTO.has(pieza));
+  // "arranque 3.6" o "arranque 3.6 chevrolet" (con o sin marca, nunca necesita modelo): cualquier
+  // otra pieza también puede buscarse solo por la cilindrada del motor del VEHÍCULO al que
+  // pertenece — a diferencia de esBusquedaMotorPorCilindrada, esto NO identifica un motor suelto,
+  // solo evita exigir marca/modelo cuando ya hay cilindrada (route.js/consultarInventario.js
+  // hacen el cruce real contra vehiculo.cilindrada).
+  const esBusquedaPiezaPorCilindrada = Boolean(cilindrada != null && pieza && !esBusquedaMotorPorCilindrada);
+  const reconocido = Boolean(pieza && (marca || modelo || esBusquedaMotorPorCilindrada || esBusquedaPiezaPorCilindrada));
 
   // Cilindrada mencionada pero AMBIGUA: hay un decimal tipo cilindrada (ej. "chevrolet 3.6",
   // "3.6" solo) pero el usuario nunca dijo "motor"/"transmisión" (pieza null) ni resolvió un
   // modelo de vehículo real (que ganaría como búsqueda normal — ver el `!modelo` de abajo).
-  // Distinto de esBusquedaPorCilindrada: ahí la pieza YA es Motor/Transmisión (inequívoco, se
-  // busca directo); aquí NUNCA se asume — se arma una sugerencia para que quien llama (route.js)
+  // Distinto de esBusquedaMotorPorCilindrada/esBusquedaPiezaPorCilindrada: ahí YA hay una pieza
+  // reconocida (inequívoco, se busca directo); aquí NUNCA se asume — se arma una sugerencia para
+  // que quien llama (route.js)
   // OFREZCA la aclaración ("¿Buscas el motor 3.6 de Chevrolet?") en vez de decidir por el
   // cliente, reusando el mismo mecanismo de confirmación que ya existe para typos.
   // pieza:'Motor' en la sugerencia es arbitrario entre Motor/Transmisión — consultarMotoresTransmisiones

@@ -135,10 +135,20 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
       : { estado: estadoNormal, mensaje: mensajeNormal };
 
   // Un motor/transmisión buscado por cilindrada ("motor chevrolet 3.6", o "motor 3.6" sin
-  // marca) no necesita modelo de vehículo — se identifica por su propio tamaño. Para el resto
-  // de las piezas (necesitan saber a qué modelo de auto pertenecen) el gate de siempre aplica.
+  // marca) no necesita modelo de vehículo — se identifica por su propio tamaño. Cualquier OTRA
+  // pieza con cilindrada ("arranque 3.6", "arranque 3.6 chevrolet") tampoco lo necesita — se
+  // busca por la cilindrada del vehículo al que pertenece (consultarInventario.js hace el cruce
+  // contra vehiculo.cilindrada).
   const esBusquedaMotorPorCilindrada = cilindrada != null && (pieza === 'Motor' || pieza === 'Transmisión');
-  if (!modelo && !esBusquedaMotorPorCilindrada) {
+  const esBusquedaPiezaPorCilindrada = cilindrada != null && !esBusquedaMotorPorCilindrada;
+  // FIX: "pieza + marca sin modelo" (ej. "alternador nissan", "transmision chevrolet") es una
+  // búsqueda válida por sí sola — se busca esa pieza en TODOS los modelos/años de esa marca
+  // (consultarInventario/existeEnCatalogoVivo ya soportan modelo=null nativamente, ver esos
+  // archivos). Antes este gate exigía `modelo` sin excepción salvo cilindrada, así que
+  // "alternador nissan" caía aquí y respondía "no identificamos ese modelo" aunque la marca y la
+  // pieza sí se hubieran reconocido bien — 0 resultados con inventario real disponible. El único
+  // caso que de verdad no tiene con qué buscar es sin modelo, SIN marca y sin cilindrada.
+  if (!modelo && !marca && !esBusquedaMotorPorCilindrada && !esBusquedaPiezaPorCilindrada) {
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo: null, anio, estado: 'fuera_de_catalogo' });
     await registrarBusqueda({ texto, estado: 'fuera_de_catalogo', pieza, marca, modelo: null, anio, origen, tieneContacto, ...datosGeo });
     return NextResponse.json(estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO));
@@ -152,16 +162,18 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
   // NINGUNO de los tres encuentra nada — ni un motor ni una pieza suelta reales deben quedar
   // invisibles por esto.
   //
-  // Búsqueda por cilindrada: se fuerza enCatalogo=false Y se salta consultarInventario() por
-  // completo — esa colección no tiene cilindrada y mezclaría motores de cualquier tamaño en
-  // los resultados. El único inventario que sí filtra por cilindrada es el de
-  // motores/transmisiones sueltos (consultarMotoresTransmisiones, abajo).
+  // Búsqueda de motor/transmisión SUELTO por cilindrada: se fuerza enCatalogo=false Y se salta
+  // consultarInventario() por completo — esa colección no tiene motores/transmisiones sueltos, y
+  // el inventario que sí los filtra por cilindrada es consultarMotoresTransmisiones (abajo). Para
+  // cualquier OTRA pieza con cilindrada, en cambio, consultarInventario() SÍ corre — ahí es donde
+  // se filtra por la cilindrada del vehículo padre (cilindrada se le pasa igual que a
+  // consultarMotoresTransmisiones, sin cambiar nada cuando es null).
   const [enCatalogo, resultadoMotores, resultadoInventario] = await Promise.all([
     esBusquedaMotorPorCilindrada ? Promise.resolve(false) : existeEnCatalogoVivo(marca, modelo),
     consultarMotoresTransmisiones({ marca, modelo, anio, cilindrada, estado: estadoFiltro }),
     esBusquedaMotorPorCilindrada
       ? Promise.resolve({ resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false })
-      : consultarInventario({ marca, modelo, anio, pieza, estado: estadoFiltro }),
+      : consultarInventario({ marca, modelo, anio, pieza, cilindrada, estado: estadoFiltro }),
   ]);
 
   // El estado elegido no tiene NINGÚN yonke (distinto de "tiene yonkes pero nada coincide") —
@@ -215,7 +227,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     estado: 'resultados', resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada,
     resultadosMotores: motores, resultadosMotoresCercanos: motoresCercanos,
     resultadosTransmisiones: transmisiones, resultadosTransmisionesCercanos: transmisionesCercanos,
-    marca, modelo, anio, pieza,
+    marca, modelo, anio, pieza, cilindrada,
   });
 }
 

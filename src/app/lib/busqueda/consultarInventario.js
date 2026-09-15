@@ -135,15 +135,19 @@ function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
 // de la búsqueda de vehículos) para soportar "motor 3.6" sin marca, ver buscarVehiculosPorAnio.
 async function buscarMotores(yonkesDocs, marca, modelo, anio, cilindrada) {
   const pares = await buscarVehiculosPorAnio(dbServer, yonkesDocs, marca, modelo, anio, 'motores');
-  const encontrados = [];
-  for (const { yonkeDoc, vDoc: mDoc } of pares) {
+  const candidatos = pares.filter(({ vDoc: mDoc }) => {
     const data = mDoc.data();
-    if (data.disponible === false) continue;
-    if (cilindrada != null && !cilindradaCoincide(data.cilindrada, cilindrada)) continue;
+    if (data.disponible === false) return false;
+    if (cilindrada != null && !cilindradaCoincide(data.cilindrada, cilindrada)) return false;
+    return true;
+  });
+  // Calificaciones EN PARALELO (Promise.all), no una por una — con marca=null (ej. "motor
+  // nissan" sin modelo) `candidatos` puede tener decenas de coincidencias, y una lectura
+  // secuencial por cada una convertía la búsqueda en varios segundos de espera.
+  return Promise.all(candidatos.map(async ({ yonkeDoc, vDoc: mDoc }) => {
     const calificacion = await getRatingParaYonke(yonkeDoc.id);
-    encontrados.push(toResultadoMotor(yonkeDoc, mDoc, calificacion));
-  }
-  return encontrados;
+    return toResultadoMotor(yonkeDoc, mDoc, calificacion);
+  }));
 }
 
 function separarPorTipo(lista) {
@@ -191,19 +195,21 @@ export async function consultarMotoresTransmisiones({ marca, modelo, anio, cilin
   return { motores, transmisiones, motoresCercanos: [], transmisionesCercanos: [], tipoResultadoMotor: 'cualquierAno' };
 }
 
-// modelo=null: cualquier modelo de esa marca (búsqueda solo por marca, ej. "nissan 2015").
-// El matching en sí (marca/modelo/año contra las subcolecciones de vehiculos) vive en
-// lib/buscarVehiculosPorAnio.js, compartido con el buscador manual (page.js) — si cambia
-// cómo se compara marca/modelo, cambia para los dos. Aquí solo se agrega calificación y
-// se da forma al resultado (con fechaIngreso removido, porque esto cruza a JSON en /api/buscar).
+// modelo=null: cualquier modelo de esa marca (búsqueda solo por marca, ej. "nissan 2015", o
+// "alternador nissan" desde consultarInventario/buscarConSplitDePieza). El matching en sí
+// (marca/modelo/año contra las subcolecciones de vehiculos) vive en lib/buscarVehiculosPorAnio.js,
+// compartido con el buscador manual (page.js) — si cambia cómo se compara marca/modelo, cambia
+// para los dos. Aquí solo se agrega calificación y se da forma al resultado (con fechaIngreso
+// removido, porque esto cruza a JSON en /api/buscar).
+// Calificaciones EN PARALELO: con modelo=null una marca grande puede traer decenas/cientos de
+// vehículos (ej. "chevrolet" o "alternador nissan" — ver consultarInventario.js) y una lectura
+// secuencial por cada uno convertía la búsqueda en 10-100+ segundos de espera real (medido).
 async function buscarVehiculos(yonkesDocs, marca, modelo, anio) {
   const pares = await buscarVehiculosPorAnio(dbServer, yonkesDocs, marca, modelo, anio);
-  const encontrados = [];
-  for (const { yonkeDoc, vDoc } of pares) {
+  return Promise.all(pares.map(async ({ yonkeDoc, vDoc }) => {
     const calificacion = await getRatingParaYonke(yonkeDoc.id);
-    encontrados.push(toResultado(yonkeDoc, vDoc, calificacion));
-  }
-  return encontrados;
+    return toResultado(yonkeDoc, vDoc, calificacion);
+  }));
 }
 
 function normalizarPalabras(texto) {
@@ -247,6 +253,20 @@ async function buscarPiezasSueltas(yonkesDocs, marca, modelo, anio, pieza) {
   }
 }
 
+// Filtra por la cilindrada del VEHÍCULO padre (r.vehiculo.cilindrada, ya presente en cada
+// resultado — ver toResultado) y marca los que pasan con coincidePorCilindrada:true, para que
+// el frontend los distinga con un indicador ("por cilindrada 3.6") — a diferencia de motores/
+// transmisiones sueltos, aquí la pieza en sí no tiene cilindrada, la hereda de su vehículo.
+// cilindrada=null (búsqueda normal, sin mencionar cilindrada) es un no-op total: se usa en TODOS
+// los llamados existentes de buscarConSplitDePieza/buscarVehiculos, así que ninguna búsqueda que
+// no mencione cilindrada cambia de resultado.
+function aplicarCilindrada(lista, cilindrada) {
+  if (cilindrada == null) return lista;
+  return lista
+    .filter((r) => cilindradaCoincide(r.vehiculo?.cilindrada, cilindrada))
+    .map((r) => ({ ...r, coincidePorCilindrada: true }));
+}
+
 function claveVehiculo(r) {
   return `${r.yonkeId}_${(r.vehiculo?.marca || '').toLowerCase()}_${(r.vehiculo?.modelo || '').toLowerCase()}_${r.vehiculo?.ano}`;
 }
@@ -274,14 +294,21 @@ async function tienePiezaDisponible(yonkeId, vehiculoId, pieza) {
 
 // Busca vehículos para marca/modelo/año (o cualquier año si anio es null) y separa
 // los que confirman la pieza disponible de los que solo confirman el vehículo.
-async function buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza) {
-  const encontrados = await buscarVehiculos(yonkesDocs, marca, modelo, anio);
+// cilindrada (opcional): filtra ANTES de gastar lecturas en tienePiezaDisponible (menos lecturas,
+// no más) contra la cilindrada del vehículo padre — así "arranque 3.6 chevrolet" solo revisa la
+// subcolección de piezas de los Chevrolet que sí son 3.6.
+// tienePiezaDisponible EN PARALELO: con modelo=null ("alternador nissan", "transmision
+// chevrolet") `encontrados` puede tener decenas de vehículos de toda la marca — revisarlos uno
+// por uno (await secuencial) medía 10-100+ segundos reales; en paralelo baja a 1-3s.
+async function buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza, cilindrada = null) {
+  const todos = await buscarVehiculos(yonkesDocs, marca, modelo, anio);
+  const encontrados = aplicarCilindrada(todos, cilindrada);
+  const tieneFlags = await Promise.all(encontrados.map((r) => tienePiezaDisponible(r.yonkeId, r.vehiculoId, pieza)));
   const conPieza = [];
   const soloVehiculo = [];
-  for (const r of encontrados) {
-    const tiene = await tienePiezaDisponible(r.yonkeId, r.vehiculoId, pieza);
-    if (tiene) conPieza.push(r); else soloVehiculo.push(r);
-  }
+  encontrados.forEach((r, i) => {
+    (tieneFlags[i] ? conPieza : soloVehiculo).push(r);
+  });
   ordenarPorPlan(conPieza);
   ordenarPorPlan(soloVehiculo);
   return { conPieza, soloVehiculo };
@@ -304,7 +331,12 @@ async function buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza) {
 // dónde vino cada resultado. Se ejecuta SIEMPRE (ya no depende de enCatalogo en route.js) para
 // que una pieza suelta de una marca/modelo nunca antes registrado como vehículo completo no
 // quede invisible — mismo motivo por el que motores/transmisiones sueltos ya corren siempre.
-export async function consultarInventario({ marca, modelo, anio, pieza, estado }) {
+// cilindrada (opcional): filtro adicional sobre la subcolección `vehiculos` — las piezas no
+// tienen cilindrada propia, la heredan de su vehículo padre (ver aplicarCilindrada). Las piezas
+// sueltas (yonkes/{id}/piezasSueltas) NO tienen vehículo padre ni campo de cilindrada (su
+// formulario no lo captura — ver piezasCatalogo.js), así que se excluyen por completo de la
+// búsqueda cuando cilindrada != null en vez de mezclarlas sin filtrar, que sería incorrecto.
+export async function consultarInventario({ marca, modelo, anio, pieza, cilindrada = null, estado }) {
   const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
   const { yonkesDocs, sinYonkesEnEstado } = filtrarPorEstado(yonkesSnap.docs, estado);
   if (sinYonkesEnEstado) {
@@ -316,8 +348,8 @@ export async function consultarInventario({ marca, modelo, anio, pieza, estado }
   // No hay "exacto vs cercano" que acumular aquí — no aplica el fix.
   if (anio == null) {
     const [{ conPieza, soloVehiculo }, piezasSueltasRaw] = await Promise.all([
-      buscarConSplitDePieza(yonkesDocs, marca, modelo, null, pieza),
-      buscarPiezasSueltas(yonkesDocs, marca, modelo, null, pieza),
+      buscarConSplitDePieza(yonkesDocs, marca, modelo, null, pieza, cilindrada),
+      cilindrada != null ? Promise.resolve([]) : buscarPiezasSueltas(yonkesDocs, marca, modelo, null, pieza),
     ]);
     const piezasSueltas = sinPiezasSueltasRedundantes(piezasSueltasRaw, conPieza);
     const confirmados = sinDuplicados([...conPieza, ...piezasSueltas]);
@@ -333,12 +365,13 @@ export async function consultarInventario({ marca, modelo, anio, pieza, estado }
 
   // Año exacto: se calcula pero YA NO se hace return inmediato. Las 4 búsquedas (vehículo
   // exacto, pieza suelta exacta, vehículo cercano, pieza suelta cercana) corren EN PARALELO.
-  const [{ conPieza, soloVehiculo }, piezasSueltasExactasRaw, cercanosVehiculo, piezasSueltasCercanasRaw] = await Promise.all([
-    buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza),
-    buscarPiezasSueltas(yonkesDocs, marca, modelo, anio, pieza),
+  const [{ conPieza, soloVehiculo }, piezasSueltasExactasRaw, cercanosVehiculoRaw, piezasSueltasCercanasRaw] = await Promise.all([
+    buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza, cilindrada),
+    cilindrada != null ? Promise.resolve([]) : buscarPiezasSueltas(yonkesDocs, marca, modelo, anio, pieza),
     buscarAniosCercanos((a) => buscarVehiculos(yonkesDocs, marca, modelo, a), anio, sinDuplicados),
-    buscarAniosCercanos((a) => buscarPiezasSueltas(yonkesDocs, marca, modelo, a, pieza), anio, sinDuplicados),
+    cilindrada != null ? Promise.resolve([]) : buscarAniosCercanos((a) => buscarPiezasSueltas(yonkesDocs, marca, modelo, a, pieza), anio, sinDuplicados),
   ]);
+  const cercanosVehiculo = aplicarCilindrada(cercanosVehiculoRaw, cilindrada);
 
   const piezasSueltasExactas = sinPiezasSueltasRedundantes(piezasSueltasExactasRaw, conPieza);
   const confirmadosExacto = sinDuplicados([...conPieza, ...piezasSueltasExactas]);
@@ -361,10 +394,11 @@ export async function consultarInventario({ marca, modelo, anio, pieza, estado }
   }
 
   // Nivel 3: cualquier año, mismo marca/modelo.
-  const [cualquierAnoVehiculo, piezasSueltasCualquierAnoRaw] = await Promise.all([
+  const [cualquierAnoVehiculoRaw, piezasSueltasCualquierAnoRaw] = await Promise.all([
     buscarVehiculos(yonkesDocs, marca, modelo, null),
-    buscarPiezasSueltas(yonkesDocs, marca, modelo, null, pieza),
+    cilindrada != null ? Promise.resolve([]) : buscarPiezasSueltas(yonkesDocs, marca, modelo, null, pieza),
   ]);
+  const cualquierAnoVehiculo = aplicarCilindrada(cualquierAnoVehiculoRaw, cilindrada);
   const piezasSueltasCualquierAno = sinPiezasSueltasRedundantes(piezasSueltasCualquierAnoRaw, cualquierAnoVehiculo);
   const cualquierAno = sinDuplicados([...cualquierAnoVehiculo, ...piezasSueltasCualquierAno]);
   ordenarPorPlan(cualquierAno);
