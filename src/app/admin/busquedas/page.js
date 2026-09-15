@@ -46,16 +46,38 @@ function agruparPorClave(docs, obtenerClave) {
   return [...mapa.values()].sort((a, b) => b.conteo - a.conteo).slice(0, 10);
 }
 
+// Filtro de país para las 4 tablas de detalle — se aplica CLIENT-SIDE sobre los docs ya
+// descargados (no agrega lecturas ni cambia las queries de Firestore, que siguen exactamente
+// igual que antes: estado + orderBy(fecha) + limit). 'mexico' exige pais === 'MX' EXACTO
+// (confirmado), no incluye histórico sin país — ver nota grande en el useEffect de abajo sobre
+// por qué se decidió así. 'todo' no filtra nada, igual que el dashboard de siempre.
+function filtrarPorVista(docs, vista) {
+  return vista === 'mexico' ? docs.filter((d) => d.pais === 'MX') : docs;
+}
+
 export default function AdminBusquedasPage() {
   const router = useRouter();
   const [cargando, setCargando] = useState(true);
   const [total, setTotal] = useState(0);
   const [conteos, setConteos] = useState({});
+  const [conteosMx, setConteosMx] = useState({});
+  // Resumen de país (spec: "para que David vea el tamaño del ruido de un vistazo") — SIEMPRE
+  // visible sin importar la vista activa, no solo cuando se filtra. totalFueraDeMexico usa
+  // pais != 'MX' (excluye por definición los docs sin campo `pais` — comportamiento documentado
+  // de Firestore), así que es un conteo de países EXTRANJEROS CONFIRMADOS, nunca histórico
+  // colado por error. totalDesconocido se calcula por resta, no por query (Firestore no tiene
+  // forma barata de consultar "campo ausente").
+  const [totalMx, setTotalMx] = useState(0);
+  const [totalFueraDeMexico, setTotalFueraDeMexico] = useState(0);
+  const [vista, setVista] = useState('mexico'); // 'mexico' (default) | 'todo'
   const [conContacto, setConContacto] = useState(0);
-  const [tablaFueraCatalogo, setTablaFueraCatalogo] = useState([]);
-  const [tablaSinInventario, setTablaSinInventario] = useState([]);
-  const [tablaFueraDeGiro, setTablaFueraDeGiro] = useState([]);
-  const [tablaNoInterpretadas, setTablaNoInterpretadas] = useState([]);
+  // Se guardan los docs CRUDOS (no ya agrupados) para poder re-filtrar por país en el cliente
+  // cuando cambia `vista`, sin volver a leer Firestore — ver filtrarPorVista/agruparPorClave más
+  // abajo, calculados en cada render a partir de estos arreglos.
+  const [docsFueraCatalogo, setDocsFueraCatalogo] = useState([]);
+  const [docsSinInventario, setDocsSinInventario] = useState([]);
+  const [docsFueraDeGiro, setDocsFueraDeGiro] = useState([]);
+  const [docsNoInterpretadas, setDocsNoInterpretadas] = useState([]);
   const [contactosPendientes, setContactosPendientes] = useState([]);
   const [marcandoId, setMarcandoId] = useState(null);
 
@@ -64,14 +86,30 @@ export default function AdminBusquedasPage() {
       try {
         const ref = collection(db, 'busquedas');
 
-        const [totalSnap, ...estadoSnaps] = await Promise.all([
+        // Conteos "Todo" (sin filtro de país) y "Solo México" (pais == 'MX') EN PARALELO —
+        // estado+pais son dos filtros de igualdad puros, Firestore los resuelve sin necesitar un
+        // índice compuesto nuevo (verificado en vivo contra este mismo proyecto). pais != 'MX'
+        // combinado con estado SÍ requeriría un índice nuevo por cada estado (equality+inequality
+        // en campos distintos) — por eso "Solo México" se define como pais=='MX' exacto, nunca
+        // como resta contra "fuera de México", ver nota en filtrarPorVista.
+        const [totalSnap, totalMxSnap, totalFueraSnap, ...estadoSnaps] = await Promise.all([
           getCountFromServer(ref),
+          getCountFromServer(query(ref, where('pais', '==', 'MX'))),
+          getCountFromServer(query(ref, where('pais', '!=', 'MX'))),
           ...ESTADOS.map((e) => getCountFromServer(query(ref, where('estado', '==', e.key)))),
+          ...ESTADOS.map((e) => getCountFromServer(query(ref, where('estado', '==', e.key), where('pais', '==', 'MX')))),
         ]);
         setTotal(totalSnap.data().count);
+        setTotalMx(totalMxSnap.data().count);
+        setTotalFueraDeMexico(totalFueraSnap.data().count);
         const nuevoConteos = {};
-        ESTADOS.forEach((e, i) => { nuevoConteos[e.key] = estadoSnaps[i].data().count; });
+        const nuevoConteosMx = {};
+        ESTADOS.forEach((e, i) => {
+          nuevoConteos[e.key] = estadoSnaps[i].data().count;
+          nuevoConteosMx[e.key] = estadoSnaps[ESTADOS.length + i].data().count;
+        });
         setConteos(nuevoConteos);
+        setConteosMx(nuevoConteosMx);
 
         const [fueraCatalogoSnap, sinInventarioSnap, fueraDeGiroSnap, noInterpretadasSnap, pendientesSnap] = await Promise.all([
           getDocs(query(ref, where('estado', '==', 'fuera_de_catalogo'), orderBy('fecha', 'desc'), limit(300))),
@@ -81,20 +119,15 @@ export default function AdminBusquedasPage() {
           getDocs(query(collection(db, 'busquedas_pendientes'), orderBy('fecha', 'desc'), limit(300))),
         ]);
 
-        setTablaFueraCatalogo(agruparPorClave(
-          fueraCatalogoSnap.docs.map((d) => d.data()),
-          (d) => `${d.marca || '?'} ${d.modelo || ''}`.trim(),
-        ));
-        setTablaSinInventario(agruparPorClave(
-          sinInventarioSnap.docs.map((d) => d.data()),
-          (d) => `${d.pieza || '?'} — ${d.marca || '?'} ${d.modelo || ''}`.trim(),
-        ));
-        setTablaFueraDeGiro(fueraDeGiroSnap.docs.map((d) => d.data()));
-        setTablaNoInterpretadas(noInterpretadasSnap.docs.map((d) => d.data()));
+        setDocsFueraCatalogo(fueraCatalogoSnap.docs.map((d) => d.data()));
+        setDocsSinInventario(sinInventarioSnap.docs.map((d) => d.data()));
+        setDocsFueraDeGiro(fueraDeGiroSnap.docs.map((d) => d.data()));
+        setDocsNoInterpretadas(noInterpretadasSnap.docs.map((d) => d.data()));
 
         // "Con contacto dejado" se calcula de busquedas_pendientes (no de busquedas.tieneContacto):
         // ahí solo cuenta contacto si la búsqueda realmente quedó sin inventario — el mismo grupo
         // que necesita seguimiento real, para que el número de la tarjeta coincida con la lista.
+        // No lleva país (un bot casi nunca deja un WhatsApp real) — se muestra igual en ambas vistas.
         const conContactoDocs = pendientesSnap.docs
           .filter((d) => Boolean(d.data().contacto))
           .map((d) => ({ id: d.id, ...d.data() }));
@@ -107,6 +140,20 @@ export default function AdminBusquedasPage() {
     }
     cargar();
   }, []);
+
+  const totalDesconocido = Math.max(0, total - totalMx - totalFueraDeMexico);
+  const totalVista = vista === 'mexico' ? totalMx : total;
+  const conteosVista = vista === 'mexico' ? conteosMx : conteos;
+  const tablaFueraCatalogo = agruparPorClave(
+    filtrarPorVista(docsFueraCatalogo, vista),
+    (d) => `${d.marca || '?'} ${d.modelo || ''}`.trim(),
+  );
+  const tablaSinInventario = agruparPorClave(
+    filtrarPorVista(docsSinInventario, vista),
+    (d) => `${d.pieza || '?'} — ${d.marca || '?'} ${d.modelo || ''}`.trim(),
+  );
+  const tablaFueraDeGiro = filtrarPorVista(docsFueraDeGiro, vista);
+  const tablaNoInterpretadas = filtrarPorVista(docsNoInterpretadas, vista);
 
   async function marcarAtendido(id) {
     setMarcandoId(id);
@@ -144,22 +191,61 @@ export default function AdminBusquedasPage() {
           <p style={{ textAlign: 'center', color: '#888', marginTop: '32px' }}>Cargando...</p>
         ) : (
           <>
-            {/* Métricas */}
+            {/* Resumen de país — SIEMPRE visible sin importar la vista, para dimensionar el
+                ruido de un vistazo. "Desconocido" es histórico (de antes de capturar país) o
+                tráfico local/sin header — no es necesariamente bot, por eso no cuenta como
+                "fuera de México" ni se mezcla con él. */}
+            <div style={{ marginBottom: '18px' }}>
+              <h2 style={{ color: '#1A3C5E', fontSize: '15px', margin: '0 0 10px' }}>Origen por país</h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                <MetricaCard label="🇲🇽 México (confirmado)" valor={totalMx} pct={total > 0 ? Math.round((totalMx / total) * 100) : 0} color="#2E7D32" />
+                <MetricaCard label="🌎 Fuera de México (confirmado)" valor={totalFueraDeMexico} pct={total > 0 ? Math.round((totalFueraDeMexico / total) * 100) : 0} color="#C62828" />
+                <MetricaCard label="❓ País desconocido" valor={totalDesconocido} pct={total > 0 ? Math.round((totalDesconocido / total) * 100) : 0} color="#888" />
+              </div>
+            </div>
+
+            {/* Vista: qué tan limpios se muestran los datos de abajo (tarjetas por estado +
+                tablas). "Solo México" es el default para análisis — excluye tanto lo confirmado
+                fuera de México como el histórico sin país, para que los números reflejen SOLO
+                búsquedas confirmadas de México. Si se ve vacío o bajo al inicio es esperado: solo
+                cuenta búsquedas nuevas que ya traen país detectado, no el histórico (ver arriba,
+                "País desconocido" es donde vive ese histórico) — usa "Todo" para verlo completo. */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
+              {[
+                { key: 'mexico', label: '🇲🇽 Solo México' },
+                { key: 'todo', label: '🌐 Todo' },
+              ].map((v) => (
+                <button
+                  key={v.key}
+                  onClick={() => setVista(v.key)}
+                  style={{
+                    padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '700',
+                    border: vista === v.key ? 'none' : '1px solid #ccc', cursor: 'pointer',
+                    backgroundColor: vista === v.key ? '#1A3C5E' : '#fff',
+                    color: vista === v.key ? '#fff' : '#666',
+                  }}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Métricas de la vista activa (México o Todo) */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '24px' }}>
-              <MetricaCard label="Total de búsquedas" valor={total} />
+              <MetricaCard label="Total de búsquedas" valor={totalVista} />
               {ESTADOS.map((e) => (
                 <MetricaCard
                   key={e.key}
                   label={e.label}
-                  valor={conteos[e.key] || 0}
-                  pct={total > 0 ? Math.round(((conteos[e.key] || 0) / total) * 100) : 0}
+                  valor={conteosVista[e.key] || 0}
+                  pct={totalVista > 0 ? Math.round(((conteosVista[e.key] || 0) / totalVista) * 100) : 0}
                   color={e.color}
                 />
               ))}
               <MetricaCard
                 label="Con contacto dejado"
                 valor={conContacto}
-                pct={total > 0 ? Math.round((conContacto / total) * 100) : 0}
+                pct={totalVista > 0 ? Math.round((conContacto / totalVista) * 100) : 0}
               />
             </div>
 

@@ -31,7 +31,7 @@ export async function registrarBusqueda({
   texto, estado, pieza = null, marca = null, modelo = null, anio = null,
   tipoResultado = null, totalResultados = 0, piezaNoEncontrada = null,
   subtipo = null, origen = 'web', tieneContacto = false,
-  estadoGeografico = null, ciudad = null, yonkeIds = [],
+  estadoGeografico = null, ciudad = null, yonkeIds = [], pais = null,
 }) {
   if (!ESTADOS_VALIDOS.has(estado)) {
     console.error(`[registrarBusqueda] estado inválido, no se guarda: "${estado}"`);
@@ -53,6 +53,12 @@ export async function registrarBusqueda({
     tipoResultado, numResultados, piezaNoEncontrada,
     subtipo, origen, tieneContacto: Boolean(tieneContacto),
     estadoGeografico, ciudad,
+    // pais: código ISO del visitante desde el header de Vercel (route.js/obtenerPaisVisitante),
+    // ej. 'MX', 'US' — null cuando no se pudo determinar (local, o el header no llegó), NUNCA se
+    // asume 'MX' por default. Sirve para que el dashboard filtre el ruido de bots de fuera de
+    // México sin borrar nada — ver admin/busquedas/page.js. Búsquedas de antes de este campo se
+    // quedan con pais=null (no se migran), el dashboard las trata como "país desconocido".
+    pais,
     yonkeIds: Array.isArray(yonkeIds) ? yonkeIds : [],
     conResultado: estado === 'ok',
     fecha: Timestamp.now(),

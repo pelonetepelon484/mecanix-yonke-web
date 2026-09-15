@@ -56,6 +56,18 @@ function obtenerIp(request) {
   return request.headers.get('x-real-ip') || 'unknown';
 }
 
+// Vercel inyecta el país del visitante (ISO 3166-1 alpha-2, ej. 'MX', 'US') en este header para
+// todo request que pasa por su red edge — a diferencia de resolverGeoIp (ip-api.com), esto es
+// instantáneo y gratis, sin llamada externa. Solo sirve para DETECTAR/MARCAR tráfico de fuera de
+// México (limpieza del dashboard) — no reemplaza resolverGeoIp, que resuelve estado/ciudad
+// DENTRO de México para el mapa de búsquedas. Devuelve null (nunca 'MX' por default) cuando el
+// header no llega — en local (npm run dev) o si algo cambia en el edge de Vercel — para que un
+// dato ausente se guarde como país desconocido, nunca se asuma México ni fuera de México.
+function obtenerPaisVisitante(request) {
+  const pais = request.headers.get('x-vercel-ip-country');
+  return pais ? pais.toUpperCase() : null;
+}
+
 // yonkeIds para el "Mapa de búsquedas" (spec sección 1): qué yonkes sí tenían la pieza/vehículo
 // buscado. Cada resultado (pieza, motor/transmisión, exacto o cercano) trae su propio yonkeId
 // — ver toResultado/toResultadoMotor en consultarInventario.js.
@@ -120,7 +132,7 @@ async function persistirContactoSiExiste(contacto, { texto, pieza = null, marca 
 // y consulta inventario filtrado por esa pieza.
 async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null, numeroDeParteExplicito = false, numeroDeParteSospechoso = false }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
-  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad };
+  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais };
   // Señal explícita de SKU/número de parte ("sku 609", "código 609"): 100% segura, así que
   // sustituye el mensaje de "no encontrado" en CUALQUIER punto de esta función donde de otro
   // modo se respondería con no_catalogado/sin_inventario — nunca antes de intentar la búsqueda
@@ -236,7 +248,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
 // consultarInventarioVehiculo no filtra/separa por pieza.
 async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExplicito = false }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
-  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad };
+  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais };
   // Marca sola, sin modelo NI año (ej. "chevrolet" a secas): no hay nada más con qué acotar la
   // búsqueda. Solo se OFRECE la ayuda si de verdad no hay ningún resultado que mostrar (ver los
   // dos usos de estadoYMensajeNoEncontrado abajo) — si la marca sí tiene inventario disponible,
@@ -361,6 +373,10 @@ export async function POST(request) {
   // {estado: 'desconocido', ciudad: null} si falla o no resuelve. Se calcula una sola vez por
   // request y se pasa a resolverBusqueda/resolverBusquedaVehiculo, igual que estadoFiltro.
   const geo = await resolverGeoIp(ip);
+  // País del visitante (limpieza de dashboard, ver obtenerPaisVisitante) — se mete en el mismo
+  // objeto `geo` para viajar junto con estado/ciudad por todos los mismos call sites, sin
+  // agregar un parámetro nuevo a cada función.
+  geo.pais = obtenerPaisVisitante(request);
 
   // Modo confirmación: el usuario ya aceptó una sugerencia difusa ("¿Quisiste decir...?") o una
   // aclaración de cilindrada ("¿Buscas el motor 3.6 de Chevrolet?"). Se salta Capa 0/Capa 1 por
@@ -387,7 +403,7 @@ export async function POST(request) {
   const { permitido } = filtrarPrevio(texto);
   if (!permitido) {
     await persistirContactoSiExiste(contacto, { texto, estado: 'no_interpretada' });
-    await registrarBusqueda({ texto, estado: 'no_interpretada', origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad });
+    await registrarBusqueda({ texto, estado: 'no_interpretada', origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais });
     return NextResponse.json({ estado: 'rechazado', mensaje: MENSAJE_RECHAZO_CAPA0 });
   }
 
@@ -408,7 +424,7 @@ export async function POST(request) {
     await registrarBusqueda({
       texto, estado: 'fuera_de_giro', subtipo: categoria,
       pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
-      origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad,
+      origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
     });
     return NextResponse.json({ estado: 'fuera_de_giro', mensaje: MENSAJE_FUERA_DE_GIRO });
   }
@@ -443,7 +459,7 @@ export async function POST(request) {
       });
       await registrarBusqueda({
         texto, estado: 'numero_de_parte', pieza: intencion.pieza, anio: intencion.anio, origen, tieneContacto,
-        estadoGeografico: geo.estado, ciudad: geo.ciudad,
+        estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
       });
       return NextResponse.json({ estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE });
     }
@@ -457,7 +473,7 @@ export async function POST(request) {
     });
     await registrarBusqueda({
       texto, estado: estadoLog, pieza: intencion.pieza, anio: intencion.anio, origen, tieneContacto,
-      estadoGeografico: geo.estado, ciudad: geo.ciudad,
+      estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
     });
     return NextResponse.json({
       estado: estadoLog,
@@ -498,7 +514,7 @@ export async function POST(request) {
     });
     await registrarBusqueda({
       texto, estado: esNumeroDeParte ? 'numero_de_parte' : 'fuera_de_catalogo', pieza: null, marca: intencion.marca, modelo: null,
-      anio: intencion.anio, origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad,
+      anio: intencion.anio, origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
     });
     return NextResponse.json(esNumeroDeParte
       ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
