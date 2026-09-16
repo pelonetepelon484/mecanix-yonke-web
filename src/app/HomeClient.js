@@ -386,9 +386,16 @@ export default function HomeClient({ textoSeoEstados }) {
     return { docs, sinYonkesEnEseEstado };
   }
 
-  async function buscarMotoresOTransmisiones(yonkesDocs) {
+  // tipoFiltro y anioBuscar EXPLÍCITOS (no se leen de tipoBusqueda/ano por closure) — así esta
+  // misma función sirve tanto al modo dedicado "motor"/"transmision" (tipoFiltro EXACTO) como al
+  // modo "vehiculo" cuando la pieza elegida es Motor/Transmisión (ver más abajo,
+  // buscarMotoresConNiveles y su uso dentro de la búsqueda de vehículo), sin duplicar el query.
+  // anioBuscar=null = cualquier año. tipoFiltro=null = cualquiera de los dos tipos (Motor Y
+  // Transmisión) — el buscador inteligente siempre muestra ambos como inventario relacionado del
+  // mismo vehículo aunque el cliente haya pedido solo uno (ver consultarMotoresTransmisiones.js,
+  // no filtra por pieza); el modo "vehiculo" usa null a propósito para dar el mismo resultado.
+  async function buscarMotoresOTransmisiones(yonkesDocs, tipoFiltro, anioBuscar) {
     const encontrados = [];
-    const tipoFiltro = tipoBusqueda === 'motor' ? 'Motor' : 'Transmisión';
     for (const yonkeDoc of yonkesDocs) {
       const yonkeData = yonkeDoc.data();
       if (!yonkeData.activo) continue;
@@ -397,10 +404,10 @@ export default function HomeClient({ textoSeoEstados }) {
       const coincidentes = motoresSnap.docs.filter(mDoc => {
         const data = mDoc.data();
         if (data.disponible === false) return false;
-        if (data.tipo !== tipoFiltro) return false;
+        if (tipoFiltro && data.tipo !== tipoFiltro) return false;
         if (marca && data.marca?.toLowerCase() !== marca.trim().toLowerCase()) return false;
         if (modelo && data.modelo?.toLowerCase() !== modelo.trim().toLowerCase()) return false;
-        if (ano && data.ano !== parseInt(ano)) return false;
+        if (anioBuscar != null && data.ano !== anioBuscar) return false;
         return true;
       });
       for (const mDoc of coincidentes) {
@@ -428,6 +435,57 @@ export default function HomeClient({ textoSeoEstados }) {
     return encontrados;
   }
 
+  // Mismos 3 niveles (exacto -> años cercanos ±4 -> cualquier año) que ya usa la búsqueda de
+  // vehículo (buscarEnAnos/buscarCualquierAno) y el buscador inteligente (consultarMotoresTransmisiones)
+  // — antes esta función solo hacía año EXACTO, así que un motor/transmisión registrado en un año
+  // distinto (ej. 2002 buscando 2004) nunca aparecía aquí aunque el inteligente sí lo mostrara
+  // como "cercano". Consolida esa inconsistencia sin duplicar la lógica de niveles otra vez.
+  async function buscarMotoresConNiveles(yonkesDocs, tipoFiltro, anioBuscar) {
+    let encontrados = await buscarMotoresOTransmisiones(yonkesDocs, tipoFiltro, anioBuscar);
+    let tipo = 'exacto';
+    if (encontrados.length === 0 && anioBuscar != null) {
+      const anosRango = [];
+      for (let d = 1; d <= 4; d++) { anosRango.push(anioBuscar - d); anosRango.push(anioBuscar + d); }
+      const porAnio = await Promise.all(anosRango.map((a) => buscarMotoresOTransmisiones(yonkesDocs, tipoFiltro, a)));
+      encontrados = porAnio.flat();
+      if (encontrados.length > 0) tipo = 'cercano';
+    }
+    if (encontrados.length === 0) {
+      encontrados = await buscarMotoresOTransmisiones(yonkesDocs, tipoFiltro, null);
+      if (encontrados.length > 0) tipo = 'cualquierAno';
+    }
+    return { encontrados, tipo };
+  }
+
+  // Confirma si un vehículo YA REGISTRADO tiene la pieza pedida disponible en su propia
+  // subcolección de piezas — mismo criterio que el buscador inteligente (tienePiezaDisponible en
+  // lib/busqueda/consultarInventario.js). piezaFiltro=null (sin pieza elegida) nunca se llama con
+  // esto (ver separarPorPieza).
+  async function tienePiezaDisponibleEnVehiculo(yonkeId, vehiculoId, piezaFiltro) {
+    const piezasRef = collection(db, 'yonkes', yonkeId, 'vehiculos', vehiculoId, 'piezas');
+    const piezasSnap = await getDocs(piezasRef);
+    return piezasSnap.docs.some((pDoc) => {
+      const data = pDoc.data();
+      return data.disponible && data.nombre.toLowerCase() === piezaFiltro.toLowerCase();
+    });
+  }
+
+  // Separa una lista de vehículos ya encontrados (año cercano o cualquier año) en los que SÍ
+  // confirman la pieza pedida y los que solo confirman el vehículo — EN PARALELO (Promise.all),
+  // mismo motivo de rendimiento que el buscador inteligente (10-100+ vehículos candidatos en
+  // marcas grandes). Antes, buscarEnAnos/buscarCualquierAno regresaban el vehículo directo sin
+  // revisar la pieza en absoluto (a diferencia del año exacto, que sí la revisaba) — el cliente
+  // veía "X yonkes tienen tu pieza" sin que nadie hubiera confirmado que la pieza existiera ahí.
+  // Sin piezaFiltro (búsqueda de solo vehículo, sin pieza elegida) no aplica el concepto: todo
+  // cae en soloVehiculo tal cual, exactamente el comportamiento de siempre.
+  async function separarPorPieza(lista, piezaFiltro) {
+    if (!piezaFiltro) return { conPieza: [], soloVehiculo: lista };
+    const flags = await Promise.all(lista.map((r) => tienePiezaDisponibleEnVehiculo(r.yonkeId, r.vehiculoId, piezaFiltro)));
+    const conPieza = [], soloVehiculo = [];
+    lista.forEach((r, i) => (flags[i] ? conPieza : soloVehiculo).push(r));
+    return { conPieza, soloVehiculo };
+  }
+
   // Los años se consultan EN PARALELO (Promise.all), no uno por uno — antes esto disparaba
   // un round-trip secuencial por cada (yonke, año), ~9.7s para 6 años cercanos con 14 yonkes
   // (benchmark original con el rango de ±3 años de entonces). La
@@ -435,7 +493,8 @@ export default function HomeClient({ textoSeoEstados }) {
   // lib/busqueda/consultarInventario.js, el buscador inteligente) — si cambia cómo se
   // compara marca/modelo, cambia para los dos. El orden final no cambia: se reordena a
   // "yonke primero, año después", igual que el loop secuencial que reemplaza.
-  async function buscarEnAnos(yonkesDocs, marcaBuscar, modeloBuscar, anos) {
+  // piezaFiltro (opcional): ver separarPorPieza — devuelve {conPieza, soloVehiculo}.
+  async function buscarEnAnos(yonkesDocs, marcaBuscar, modeloBuscar, anos, piezaFiltro = null) {
     const pares = await buscarVehiculosEnAniosParalelo(db, yonkesDocs, marcaBuscar, modeloBuscar, anos);
     const encontrados = [];
     for (const { yonkeDoc, vDoc } of pares) {
@@ -452,10 +511,10 @@ export default function HomeClient({ textoSeoEstados }) {
         vehiculo: vDoc.data(), calificacion,
       });
     }
-    return encontrados;
+    return separarPorPieza(encontrados, piezaFiltro);
   }
 
-  async function buscarCualquierAno(yonkesDocs, marcaBuscar, modeloBuscar) {
+  async function buscarCualquierAno(yonkesDocs, marcaBuscar, modeloBuscar, piezaFiltro = null) {
     const encontrados = [];
     for (const yonkeDoc of yonkesDocs) {
       const yonkeData = yonkeDoc.data();
@@ -485,7 +544,7 @@ export default function HomeClient({ textoSeoEstados }) {
         });
       }
     }
-    return encontrados;
+    return separarPorPieza(encontrados, piezaFiltro);
   }
 
   async function buscarPiezas() {
@@ -508,7 +567,8 @@ export default function HomeClient({ textoSeoEstados }) {
 
       // Búsqueda de motor o transmisión
       if (tipoBusqueda === 'motor' || tipoBusqueda === 'transmision') {
-        const encontrados = await buscarMotoresOTransmisiones(yonkesFiltrados);
+        const tipoFiltro = tipoBusqueda === 'motor' ? 'Motor' : 'Transmisión';
+        const { encontrados, tipo } = await buscarMotoresConNiveles(yonkesFiltrados, tipoFiltro, ano ? parseInt(ano) : null);
         const ordenar = (lista) => lista.sort((a, b) => {
           if (a.plan === 'premium' && b.plan !== 'premium') return -1;
           if (a.plan !== 'premium' && b.plan === 'premium') return 1;
@@ -516,6 +576,7 @@ export default function HomeClient({ textoSeoEstados }) {
         });
         ordenar(encontrados);
         setResultados(encontrados);
+        setTipoResultado(tipo);
         registrarEvento('busqueda_pieza', {
           tipo: tipoBusqueda,
           marca: marca.trim().toLowerCase(),
@@ -582,17 +643,54 @@ export default function HomeClient({ textoSeoEstados }) {
         setPiezaNoEncontrada(false);
         resultadosFinales = hayFiltroPieza ? conPiezaExacta : soloVehiculo;
       }
+      // piezaFiltro reutilizado tal cual desde el chequeo de año exacto de arriba, para que
+      // "años cercanos"/"cualquier año" apliquen EXACTAMENTE el mismo filtro de pieza (antes no
+      // filtraban por pieza en absoluto, a diferencia del año exacto — inconsistencia corregida
+      // junto con la de motores/transmisiones sueltos, mismo espíritu).
+      const piezaFiltroNiveles = (piezaSeleccion && piezaSeleccion !== 'OTRA') ? piezaSeleccion : null;
       if (resultadosFinales.length === 0) {
         const anosRango = [];
         for (let d = 1; d <= 4; d++) { anosRango.push(parseInt(ano) - d); anosRango.push(parseInt(ano) + d); }
-        const cercanos = await buscarEnAnos(yonkesFiltrados, marca, modelo, anosRango);
+        const { conPieza: cercanosConPieza, soloVehiculo: cercanosSoloVehiculo } = await buscarEnAnos(yonkesFiltrados, marca, modelo, anosRango, piezaFiltroNiveles);
+        const cercanos = piezaFiltroNiveles && cercanosConPieza.length > 0 ? cercanosConPieza : cercanosSoloVehiculo;
         ordenar(cercanos);
-        if (cercanos.length > 0) { resultadosFinales = cercanos; setTipoResultado('cercano'); }
+        if (cercanos.length > 0) {
+          resultadosFinales = cercanos;
+          setTipoResultado('cercano');
+          if (piezaFiltroNiveles && cercanosConPieza.length === 0) setPiezaNoEncontrada(true);
+        }
       }
       if (resultadosFinales.length === 0) {
-        const cualquierAno = await buscarCualquierAno(yonkesFiltrados, marca, modelo);
+        const { conPieza: cualquierAnoConPieza, soloVehiculo: cualquierAnoSoloVehiculo } = await buscarCualquierAno(yonkesFiltrados, marca, modelo, piezaFiltroNiveles);
+        const cualquierAno = piezaFiltroNiveles && cualquierAnoConPieza.length > 0 ? cualquierAnoConPieza : cualquierAnoSoloVehiculo;
         ordenar(cualquierAno);
-        if (cualquierAno.length > 0) { resultadosFinales = cualquierAno; setTipoResultado('cualquierAno'); }
+        if (cualquierAno.length > 0) {
+          resultadosFinales = cualquierAno;
+          setTipoResultado('cualquierAno');
+          if (piezaFiltroNiveles && cualquierAnoConPieza.length === 0) setPiezaNoEncontrada(true);
+        }
+      }
+      // Motor/Transmisión SUELTOS (yonkes/{id}/motores) son una fuente aparte de "vehiculos +
+      // piezas" — un yonke puede tener el motor/transmisión de un vehículo sin haber registrado
+      // el vehículo completo. El buscador inteligente ya los combina (consultarInventario +
+      // consultarMotoresTransmisiones, en paralelo); aquí faltaba del todo cuando piezaSeleccion
+      // es 'Motor'/'Transmisión' dentro del modo "vehiculo" — por eso, para la misma búsqueda,
+      // el buscador de filtros mostraba MENOS yonkes que el inteligente (ej. "transmisión GMC
+      // Yukon 2004": el inteligente sí incluía un motor suelto de otro yonke, este buscador no).
+      // renderTarjetaVehiculo ya sabe pintar r.esMotor:true dentro de este mismo arreglo, así
+      // que basta con concatenar — no hace falta tocar el render.
+      if (piezaSeleccion === 'Motor' || piezaSeleccion === 'Transmisión') {
+        const { encontrados: motoresSueltos } = await buscarMotoresConNiveles(yonkesFiltrados, null, parseInt(ano));
+        if (motoresSueltos.length > 0) {
+          resultadosFinales = [...resultadosFinales, ...motoresSueltos];
+          ordenar(resultadosFinales);
+          // Solo se apaga el aviso de "pieza sin confirmar" si lo que se sumó es del MISMO tipo
+          // pedido (ej. pediste Transmisión y sí hay una Transmisión suelta) — si lo único que
+          // apareció es un Motor mientras se pedía Transmisión (o viceversa), la pieza pedida
+          // sigue sin confirmarse en ningún lado y el aviso debe seguir mostrándose (honestidad,
+          // ver piezaNoEncontrada más abajo en el render).
+          if (motoresSueltos.some((r) => r.motor?.tipo === piezaSeleccion)) setPiezaNoEncontrada(false);
+        }
       }
       setResultados(resultadosFinales);
       registrarEvento('busqueda_pieza', {
@@ -781,6 +879,9 @@ export default function HomeClient({ textoSeoEstados }) {
   }
 
   const bannerTexto = getBannerCompatibilidad();
+  // Nombre de la pieza actual, para el aviso de "vehículo completo para partes" (piezaNoEncontrada)
+  // — mismo patrón ya usado en varios lados de este archivo para construir mensajes de WhatsApp.
+  const piezaTextoActual = (piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion) || '';
 
   // Único cálculo de "¿este estado tiene visitas?" para la pestaña "Tengo un yonke" — lo usan
   // juntos el banner de bienvenida y el servicio de captura a domicilio, para que reaccionen al
@@ -1487,10 +1588,22 @@ function obtenerEstadoAbierto(horario) {
                   </div>
                 )}
 
+                {/* Alternativa honesta cuando la pieza pedida no está registrada por separado
+                    pero SÍ existe el vehículo completo "para partes" (exacto, cercano o
+                    cualquier año — ver piezaNoEncontrada en consultarInventario.js/HomeClient.js,
+                    ahora consistente en los 3 niveles). Nunca afirma que la pieza está
+                    disponible — solo que el vehículo existe y hay que confirmar con el yonke,
+                    tal como pidió David: así trabajan los yonkes reales, muchas piezas se sacan
+                    del carro completo sin estar etiquetadas por separado. */}
                 {piezaNoEncontrada && (
-                  <p style={{ color: '#aaa', fontSize: '13px', marginTop: '-6px', marginBottom: '14px' }}>
-                    Puedes preguntar directamente por tu pieza al reservar — el yonke te confirma si la tiene.
-                  </p>
+                  <div style={compatibilidadBannerStyle}>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#7A4F00', fontWeight: 'bold' }}>
+                      🔧 No encontramos {piezaTextoActual ? `"${piezaTextoActual}"` : 'esta pieza'} registrada por separado
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00' }}>
+                      Pero sí hay {[marca, modelo, ano].filter(Boolean).join(' ') || 'el vehículo'} completo para partes en el/los yonke(s) de abajo — muchos yonkeros la sacan al momento aunque no esté en su lista. Llama o escribe por WhatsApp para confirmar si la tienen antes de ir.
+                    </p>
+                  </div>
                 )}
 
                 {/* "Coincidencia exacta" solo se rotula cuando también hay un grupo de cercanos con el
