@@ -518,31 +518,42 @@ export default function HomeClient({ textoSeoEstados }) {
   // compara marca/modelo, cambia para los dos. El orden final no cambia: se reordena a
   // "yonke primero, año después", igual que el loop secuencial que reemplaza.
   // piezaFiltro (opcional): ver separarPorPieza — devuelve {conPieza, soloVehiculo}.
+  // Calificaciones EN PARALELO (Promise.all), no una por una — con "buscar en todos los estados"
+  // (forzarTodos en buscarPiezas, ver ese comentario) esta función ya no revisa un solo estado
+  // sino los 22 yonkes de todo el país en 8 años cercanos, y una lectura secuencial por cada
+  // vehículo encontrado se sentía como una búsqueda colgada (medido: 10-15s reales). Mismo
+  // patrón ya aplicado del lado servidor en consultarInventario.js.
   async function buscarEnAnos(yonkesDocs, marcaBuscar, modeloBuscar, anos, piezaFiltro = null) {
     const pares = await buscarVehiculosEnAniosParalelo(db, yonkesDocs, marcaBuscar, modeloBuscar, anos);
-    const encontrados = [];
-    for (const { yonkeDoc, vDoc } of pares) {
-      const yaExiste = encontrados.some(r => r.yonkeId === yonkeDoc.id && r.vehiculoId === vDoc.id);
-      if (yaExiste) continue;
+    const vistos = new Set();
+    const sinDuplicados = pares.filter(({ yonkeDoc, vDoc }) => {
+      const clave = `${yonkeDoc.id}_${vDoc.id}`;
+      if (vistos.has(clave)) return false;
+      vistos.add(clave);
+      return true;
+    });
+    const encontrados = await Promise.all(sinDuplicados.map(async ({ yonkeDoc, vDoc }) => {
       const yonkeData = yonkeDoc.data();
       const calificacion = await obtenerCalificacion(yonkeDoc.id);
-      encontrados.push({
+      return {
         yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
         yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
         metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
         ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
         vehiculo: vDoc.data(), calificacion,
-      });
-    }
+      };
+    }));
     return separarPorPieza(encontrados, piezaFiltro);
   }
 
   async function buscarCualquierAno(yonkesDocs, marcaBuscar, modeloBuscar, piezaFiltro = null) {
-    const encontrados = [];
-    for (const yonkeDoc of yonkesDocs) {
+    // Query por yonke EN PARALELO — mismo motivo/medición que el año exacto en buscarPiezas()
+    // (ver ese comentario): con "buscar en todos los estados" este nivel también puede escanear
+    // los ~23 yonkes del país, no solo los de un estado.
+    const paresPorYonke = await Promise.all(yonkesDocs.map(async (yonkeDoc) => {
       const yonkeData = yonkeDoc.data();
-      if (!yonkeData.activo) continue;
+      if (!yonkeData.activo) return [];
       const vehiculosRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos');
       const vehiculosSnap = await getDocs(vehiculosRef);
       // DEUDA TÉCNICA: el filtrado de marca/modelo se hace client-side tras traer por año, lo que
@@ -554,20 +565,27 @@ export default function HomeClient({ textoSeoEstados }) {
         return data.marca?.toLowerCase() === marcaBuscar.trim().toLowerCase() &&
           data.modelo?.toLowerCase() === modeloBuscar.trim().toLowerCase();
       });
-      for (const vDoc of vehiculosCoincidentes) {
-        const yaExiste = encontrados.some(r => r.yonkeId === yonkeDoc.id && r.vehiculoId === vDoc.id);
-        if (yaExiste) continue;
-        const calificacion = await obtenerCalificacion(yonkeDoc.id);
-        encontrados.push({
-          yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
-          telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-          metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
-          ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
-          vehiculo: vDoc.data(), calificacion,
-        });
-      }
-    }
+      return vehiculosCoincidentes.map((vDoc) => ({ yonkeDoc, yonkeData, vDoc }));
+    }));
+    const vistos = new Set();
+    const pares = paresPorYonke.flat().filter(({ yonkeDoc, vDoc }) => {
+      const clave = `${yonkeDoc.id}_${vDoc.id}`;
+      if (vistos.has(clave)) return false;
+      vistos.add(clave);
+      return true;
+    });
+    // Calificaciones EN PARALELO — mismo motivo que buscarEnAnos justo arriba.
+    const encontrados = await Promise.all(pares.map(async ({ yonkeDoc, yonkeData, vDoc }) => {
+      const calificacion = await obtenerCalificacion(yonkeDoc.id);
+      return {
+        yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
+        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
+        telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
+        metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+        ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+        vehiculo: vDoc.data(), calificacion,
+      };
+    }));
     return separarPorPieza(encontrados, piezaFiltro);
   }
 
@@ -619,45 +637,49 @@ export default function HomeClient({ textoSeoEstados }) {
         return;
       }
 
-      // Búsqueda de vehículo
-      const conPiezaExacta = [], soloVehiculo = [];
-      for (const yonkeDoc of yonkesFiltrados) {
+      // Búsqueda de vehículo — año exacto. El query por yonke se hace EN PARALELO (Promise.all),
+      // no uno por uno — medido en vivo: con "buscar en todos los estados" (forzarTodos, ver ese
+      // comentario) esto pasó de escanear ~1-2 yonkes de un estado a los ~23 de todo el país, y
+      // la versión secuencial tardaba 15-20s reales (se sentía colgada). El filtrado de marca/
+      // modelo se sigue haciendo client-side tras traer por año — deuda técnica ya documentada
+      // (desperdicia lecturas; irrelevante hasta ~100 yonkes), no se toca aquí, solo se paraleliza
+      // el fetch en sí.
+      const candidatosPorYonke = await Promise.all(yonkesFiltrados.map(async (yonkeDoc) => {
         const yonkeData = yonkeDoc.data();
-        if (!yonkeData.activo) continue;
+        if (!yonkeData.activo) return [];
         const vehiculosRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos');
         const q = query(vehiculosRef, where('ano', '==', parseInt(ano)));
         const vehiculosSnapTodos = await getDocs(q);
-        // DEUDA TÉCNICA: el filtrado de marca/modelo se hace client-side tras traer por año, lo que
-        // desperdicia lecturas de Firestore. Irrelevante con ~14 yonkes; revisar si se acerca a ~100
-        // yonkes o si el bot de WhatsApp genera tráfico alto, moviendo el filtro a la query (requiere
-        // índices compuestos marca+modelo+ano).
         const vehiculosCoincidentes = vehiculosSnapTodos.docs.filter((vDoc) => {
           const data = vDoc.data();
           return data.marca?.toLowerCase() === marca.trim().toLowerCase() &&
             data.modelo?.toLowerCase() === modelo.trim().toLowerCase();
         });
-        for (const vDoc of vehiculosCoincidentes) {
-          const calificacion = await obtenerCalificacion(yonkeDoc.id);
-          const resultadoBase = {
-            yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-            yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
-            telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-            metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
-            ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
-            vehiculo: vDoc.data(), calificacion,
-          };
-          const piezaFiltro = (piezaSeleccion && piezaSeleccion !== 'OTRA') ? piezaSeleccion : '';
-          if (!piezaFiltro) { soloVehiculo.push(resultadoBase); continue; }
-          const piezasRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos', vDoc.id, 'piezas');
-          const piezasSnap = await getDocs(piezasRef);
-          const tienePiezaDisponible = piezasSnap.docs.some((pDoc) => {
-            const data = pDoc.data();
-            return data.disponible && data.nombre.toLowerCase() === piezaFiltro.toLowerCase();
-          });
-          if (tienePiezaDisponible) conPiezaExacta.push(resultadoBase);
-          else soloVehiculo.push(resultadoBase);
-        }
-      }
+        return vehiculosCoincidentes.map((vDoc) => ({ yonkeDoc, yonkeData, vDoc }));
+      }));
+      const candidatosExacto = candidatosPorYonke.flat();
+      const piezaFiltro = (piezaSeleccion && piezaSeleccion !== 'OTRA') ? piezaSeleccion : '';
+      const conPiezaExacta = [], soloVehiculo = [];
+      await Promise.all(candidatosExacto.map(async ({ yonkeDoc, yonkeData, vDoc }) => {
+        const calificacion = await obtenerCalificacion(yonkeDoc.id);
+        const resultadoBase = {
+          yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
+          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
+          telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
+          metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+          ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+          vehiculo: vDoc.data(), calificacion,
+        };
+        if (!piezaFiltro) { soloVehiculo.push(resultadoBase); return; }
+        const piezasRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos', vDoc.id, 'piezas');
+        const piezasSnap = await getDocs(piezasRef);
+        const tienePiezaDisponible = piezasSnap.docs.some((pDoc) => {
+          const data = pDoc.data();
+          return data.disponible && data.nombre.toLowerCase() === piezaFiltro.toLowerCase();
+        });
+        if (tienePiezaDisponible) conPiezaExacta.push(resultadoBase);
+        else soloVehiculo.push(resultadoBase);
+      }));
       const ordenar = (lista) => lista.sort((a, b) => {
         if (a.plan === 'premium' && b.plan !== 'premium') return -1;
         if (a.plan !== 'premium' && b.plan === 'premium') return 1;
@@ -916,6 +938,17 @@ export default function HomeClient({ textoSeoEstados }) {
     if (resultados.length === 0) {
       if (tipoBusqueda === 'motor') return `No encontramos motores disponibles${sufijoCiudad}`;
       if (tipoBusqueda === 'transmision') return `No encontramos transmisiones disponibles${sufijoCiudad}`;
+      // Modo "vehiculo" (buscador de filtros, o el inteligente sin pieza): resultadosMotores/
+      // TransmisionesLibre son "bonus" del mismo vehículo (motores/transmisiones sueltos —
+      // ver resolverBusquedaVehiculo en route.js, siempre corren en paralelo). Si el vehículo en
+      // sí no apareció pero SÍ hay alguno de esos, el mensaje debe reflejarlo — antes decía "no
+      // encontramos ese vehículo en ningún yonke registrado" aunque abajo se mostrara un motor
+      // relacionado, una contradicción visible para el cliente.
+      const hayMotoresRelacionados = resultadosMotoresLibre.length > 0 || resultadosMotoresCercanosLibre.length > 0
+        || resultadosTransmisionesLibre.length > 0 || resultadosTransmisionesCercanosLibre.length > 0;
+      if (hayMotoresRelacionados) {
+        return `No encontramos el ${[marca, modelo, ano].filter(Boolean).join(' ')} exacto, pero hay motores/transmisiones relacionados${sufijoCiudad}`;
+      }
       return `No encontramos ese vehículo en ningún yonke registrado${sufijoCiudad}`;
     }
     if (tipoBusqueda === 'motor') return `${resultados.length} yonke(s) tienen el motor que buscas${sufijoCiudad}`;
@@ -1638,20 +1671,26 @@ function obtenerEstadoAbierto(horario) {
                         escríbenos por WhatsApp
                       </a>.
                     </p>
-                    {/* Buscador de FILTROS: mismo botón que el inteligente (ver mensajeLibre más
-                        arriba) para el mismo caso — filtró por estado y no hubo nada ahí, pero
-                        puede haber yonkes de otros estados con envíos nacionales. Nunca aparece
-                        si ya estaba buscando en "todos los estados" de entrada. */}
-                    {estadoBusqueda !== 'todos' && (
-                      <button
-                        onClick={() => buscarPiezas(true)}
-                        disabled={buscando}
-                        style={{ marginTop: '10px', width: '100%', padding: '11px', borderRadius: '10px', border: '1px solid #C5D8EC', backgroundColor: '#fff', color: '#1A3C5E', fontWeight: '700', fontSize: '13px', cursor: buscando ? 'default' : 'pointer' }}
-                      >
-                        🌎 Buscar en todos los estados — hay yonkes que hacen envíos
-                      </button>
-                    )}
                   </div>
+                )}
+
+                {/* "Buscar en todos los estados" — se decide SOLO por si el vehículo/pieza que
+                    realmente se pidió apareció (resultados/resultadosCercanosLibre), sin importar
+                    si hay motores/transmisiones relacionados como bonus (ver getHeaderText: esos
+                    NO cuentan como "encontrado" para este botón, aunque sí se muestren abajo).
+                    Antes este botón vivía DENTRO del bloque de arriba, que exige TODO vacío
+                    (incluidos motores) — por eso no aparecía cuando había un motor relacionado
+                    pero no el vehículo exacto, justo el caso que reportó David (GMC Yukon 2004 en
+                    Sonora: sí hay un motor 2002, pero no la Yukon 2004 — el cliente sigue sin lo
+                    que buscaba y merece la opción de ver otros estados). */}
+                {resultados.length === 0 && resultadosCercanosLibre.length === 0 && estadoBusqueda !== 'todos' && (
+                  <button
+                    onClick={() => buscarPiezas(true)}
+                    disabled={buscando}
+                    style={{ marginBottom: '16px', width: '100%', padding: '11px', borderRadius: '10px', border: '1px solid #C5D8EC', backgroundColor: '#fff', color: '#1A3C5E', fontWeight: '700', fontSize: '13px', cursor: buscando ? 'default' : 'pointer' }}
+                  >
+                    🌎 Buscar en todos los estados — hay yonkes que hacen envíos
+                  </button>
                 )}
 
                 {(resultadosMotoresLibre.length > 0 || resultadosMotoresCercanosLibre.length > 0 || resultadosTransmisionesLibre.length > 0 || resultadosTransmisionesCercanosLibre.length > 0) && (resultados.length > 0 || resultadosCercanosLibre.length > 0) && (
