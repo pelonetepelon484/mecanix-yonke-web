@@ -92,6 +92,7 @@ export default function EditarYonkePage() {
   const [verificado, setVerificado] = useState(false);
   const [entregaInmediata, setEntregaInmediata] = useState(false);
   const [capturaADomicilio, setCapturaADomicilio] = useState(false);
+  const [enviosNacionales, setEnviosNacionales] = useState(false);
   const [subdominioActivo, setSubdominioActivo] = useState(true);
   const [subdominio, setSubdominio] = useState('');
   const [generandoSubdominio, setGenerandoSubdominio] = useState(false);
@@ -210,6 +211,7 @@ export default function EditarYonkePage() {
         setVerificado(data.verificado === true);
         setEntregaInmediata(data.entregaInmediata === true);
         setCapturaADomicilio(data.capturaADomicilio === true);
+        setEnviosNacionales(data.enviosNacionales === true);
         // Compatibilidad: si el campo no existe (subdominios que ya funcionaban antes de este
         // control), se muestra activo por defecto — igual que subdominioEstaActivo() en getTenant.js.
         setSubdominioActivo(data.subdominioActivo !== false);
@@ -332,6 +334,7 @@ export default function EditarYonkePage() {
         verificado,
         entregaInmediata,
         capturaADomicilio,
+        enviosNacionales,
         subdominioActivo,
         metodosPago,
         horario,
@@ -600,6 +603,23 @@ export default function EditarYonkePage() {
             <a href="/admin/captura-domicilio" style={{ color: '#1A3C5E', fontWeight: '700' }}>
               Captura a domicilio
             </a>.
+          </p>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={enviosNacionales}
+              onChange={(e) => setEnviosNacionales(e.target.checked)}
+              style={{ width: '18px', height: '18px', accentColor: '#1565C0', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>
+              📦 Envíos nacionales
+            </span>
+          </label>
+          <p style={{ fontSize: '12px', color: '#999', marginTop: '4px', marginLeft: '28px' }}>
+            Marca esto solo si confirmaste que el yonke envía piezas a otros estados. Se muestra
+            como insignia en sus resultados de búsqueda, y ayuda a ofrecerlo como alternativa
+            cuando un cliente busca en un estado sin inventario disponible.
           </p>
 
           <div style={{ marginTop: '16px' }}>

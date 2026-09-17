@@ -150,6 +150,20 @@ function BadgeVerificado() {
   );
 }
 
+// Insignia "Envíos nacionales" — mismo patrón que BadgeVerificado, para yonkes que envían a
+// otros estados (campo enviosNacionales, solo lo activa el admin — ver admin/yonke/[id]/page.js).
+function BadgeEnviosNacionales() {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      backgroundColor: '#E3F2FD', color: '#1565C0', fontSize: '11px',
+      fontWeight: '700', padding: '3px 8px', borderRadius: '12px', flexShrink: 0,
+    }}>
+      📦 Envíos nacionales
+    </span>
+  );
+}
+
 // Aviso de compra segura — versión completa, en la pestaña "Busco una pieza" debajo de
 // "¿cómo funciona?" (nunca encima del buscador, que sigue siendo el protagonista). El mensaje
 // completo con consejos extra vive en /compra-segura; este banner es el mismo texto resumido
@@ -253,6 +267,12 @@ export default function HomeClient({ textoSeoEstados }) {
   const [estadoPlanes, setEstadoPlanes] = useState(ESTADO_DEFAULT);
   const [estadoBusqueda, setEstadoBusqueda] = useState('todos');
   const [sinYonkesEnEstadoManual, setSinYonkesEnEstadoManual] = useState(false);
+  // true cuando los resultados que se ven vienen de "buscar en todos los estados" tras no
+  // encontrar nada en el estado elegido por el cliente (ver botón en el mensaje de "sin
+  // resultados", tanto en el buscador estructurado como en el inteligente) — activa el aviso
+  // honesto de "está en otro estado, coordina el envío" en las tarjetas. Se resetea a false al
+  // inicio de cualquier búsqueda normal (con o sin filtro de estado).
+  const [resultadosDeOtroEstado, setResultadosDeOtroEstado] = useState(false);
 
   useEffect(() => {
     cargarEstados().then(setEstadosDisponibles);
@@ -371,8 +391,12 @@ export default function HomeClient({ textoSeoEstados }) {
   // ambos) — filtra primero por estado (ausente = Baja California, ver lib/estados.js) y luego
   // por ciudad (BC únicamente; para otros estados no hay dropdown de ciudad, ver render). Con
   // estado 'todos' (default) el comportamiento es idéntico a como funcionaba antes de esto.
-  function filtrarPorEstadoYCiudad(yonkesSnap) {
+  // forzarTodos: ignora estadoBusqueda/ciudad por completo — lo usa "buscar en todos los
+  // estados" (ver botonBuscarTodosLosEstados más abajo) para reintentar sin el filtro
+  // geográfico del cliente, sin tener que tocar el selector real.
+  function filtrarPorEstadoYCiudad(yonkesSnap, forzarTodos = false) {
     let docs = yonkesSnap.docs;
+    if (forzarTodos) return { docs, sinYonkesEnEseEstado: false };
     if (estadoBusqueda && estadoBusqueda !== 'todos') {
       docs = docs.filter(d => estadoDeYonke(d.data()) === estadoBusqueda);
     }
@@ -420,7 +444,7 @@ export default function HomeClient({ textoSeoEstados }) {
           yonkeNombre: yonkeData.nombre,
           logoUrl: yonkeData.logoUrl || null,
           verificado: yonkeData.verificado === true,
-          entregaInmediata: yonkeData.entregaInmediata === true,
+          entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true,
           direccion: yonkeData.direccion,
           telefono: yonkeData.telefono,
           whatsapp: yonkeData.whatsapp || '',
@@ -504,7 +528,7 @@ export default function HomeClient({ textoSeoEstados }) {
       const calificacion = await obtenerCalificacion(yonkeDoc.id);
       encontrados.push({
         yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, direccion: yonkeData.direccion,
+        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
         metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
         ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -536,7 +560,7 @@ export default function HomeClient({ textoSeoEstados }) {
         const calificacion = await obtenerCalificacion(yonkeDoc.id);
         encontrados.push({
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, direccion: yonkeData.direccion,
+          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
           metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
           ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -547,7 +571,11 @@ export default function HomeClient({ textoSeoEstados }) {
     return separarPorPieza(encontrados, piezaFiltro);
   }
 
-  async function buscarPiezas() {
+  // forzarTodos: reintenta ignorando el filtro de estado/ciudad del cliente (ver botón "Buscar en
+  // todos los estados" en el render, solo aparece cuando la búsqueda normal dio cero resultados
+  // Y había un filtro de estado activo). Marca resultadosDeOtroEstado para que las tarjetas
+  // muestren el aviso honesto de coordinar envío — nunca se activa en una búsqueda normal.
+  async function buscarPiezas(forzarTodos = false) {
     if (tipoBusqueda === 'vehiculo' && (!marca || !modelo || !ano)) {
       alert('Llena marca, modelo y año'); return;
     }
@@ -555,9 +583,10 @@ export default function HomeClient({ textoSeoEstados }) {
       alert('Llena al menos la marca'); return;
     }
     setBuscando(true); setBusquedaHecha(true); setPiezaNoEncontrada(false); setTipoResultado('exacto');
+    setResultadosDeOtroEstado(forzarTodos && estadoBusqueda !== 'todos');
     try {
       const yonkesSnap = await getDocs(collection(db, 'yonkes'));
-      const { docs: yonkesFiltrados, sinYonkesEnEseEstado } = filtrarPorEstadoYCiudad(yonkesSnap);
+      const { docs: yonkesFiltrados, sinYonkesEnEseEstado } = filtrarPorEstadoYCiudad(yonkesSnap, forzarTodos);
       setSinYonkesEnEstadoManual(sinYonkesEnEseEstado);
       if (sinYonkesEnEseEstado) {
         setResultados([]);
@@ -611,7 +640,7 @@ export default function HomeClient({ textoSeoEstados }) {
           const calificacion = await obtenerCalificacion(yonkeDoc.id);
           const resultadoBase = {
             yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-            yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, direccion: yonkeData.direccion,
+            yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
             telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
             metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
             ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
@@ -712,9 +741,10 @@ export default function HomeClient({ textoSeoEstados }) {
     } finally { setBuscando(false); }
   }
 
-  function aplicarRespuestaBusquedaLibre(data) {
+  function aplicarRespuestaBusquedaLibre(data, { deOtroEstado = false } = {}) {
     if (data.estado === 'resultados') {
       setMensajeLibre(null);
+      setResultadosDeOtroEstado(deOtroEstado);
       setEncabezadoVehiculo(data.encabezadoVehiculo || null);
       setTipoBusqueda('vehiculo');
       setMarca(data.marca || '');
@@ -764,6 +794,7 @@ export default function HomeClient({ textoSeoEstados }) {
     if (!textoLibre.trim()) return;
     setBuscandoLibre(true);
     setMensajeLibre(null);
+    setResultadosDeOtroEstado(false);
     try {
       const res = await fetch('/api/buscar', {
         method: 'POST',
@@ -772,6 +803,29 @@ export default function HomeClient({ textoSeoEstados }) {
       });
       const data = await res.json();
       aplicarRespuestaBusquedaLibre(data);
+    } catch (error) {
+      console.error(error);
+      setMensajeLibre({ tipo: 'error', texto: 'Hubo un error al buscar, intenta de nuevo.' });
+    } finally {
+      setBuscandoLibre(false);
+    }
+  }
+
+  // "Buscar en todos los estados" del buscador inteligente — mismo texto, mismo contacto, pero
+  // ignorando el filtro de estado del cliente (estado:'todos' explícito, sin tocar el selector
+  // real). Solo se ofrece cuando la búsqueda normal con estado específico dio cero resultados
+  // (ver botón dentro del bloque de mensajeLibre, más abajo en el render).
+  async function buscarLibreEnTodosLosEstados() {
+    if (!textoLibre.trim()) return;
+    setBuscandoLibre(true);
+    try {
+      const res = await fetch('/api/buscar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim(), estado: 'todos' }),
+      });
+      const data = await res.json();
+      aplicarRespuestaBusquedaLibre(data, { deOtroEstado: true });
     } catch (error) {
       console.error(error);
       setMensajeLibre({ tipo: 'error', texto: 'Hubo un error al buscar, intenta de nuevo.' });
@@ -1051,6 +1105,7 @@ function obtenerEstadoAbierto(horario) {
           )}
           <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
           {r.verificado && <BadgeVerificado />}
+          {r.enviosNacionales && <BadgeEnviosNacionales />}
         </div>
 
         {r.entregaInmediata && (
@@ -1150,6 +1205,7 @@ function obtenerEstadoAbierto(horario) {
           )}
           <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{r.yonkeNombre}</p>
           {r.verificado && <BadgeVerificado />}
+          {r.enviosNacionales && <BadgeEnviosNacionales />}
         </div>
         {r.entregaInmediata && (
           <p style={{ color: '#E8720C', fontSize: '13px', fontWeight: '700', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1291,6 +1347,18 @@ function obtenerEstadoAbierto(horario) {
                         No, corregir
                       </button>
                     </div>
+                  )}
+                  {/* Filtró por estado y no hubo nada ahí (o el estado no tiene yonkes en
+                      absoluto) — ofrecer ampliar a todos los estados en vez de solo decir "no
+                      hay". Nunca aparece si ya buscaba en "todos los estados" de entrada. */}
+                  {['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && estadoBusqueda !== 'todos' && (
+                    <button
+                      onClick={buscarLibreEnTodosLosEstados}
+                      disabled={buscandoLibre}
+                      style={{ marginTop: '10px', width: '100%', padding: '11px', borderRadius: '10px', border: '1px solid #C5D8EC', backgroundColor: '#fff', color: '#1A3C5E', fontWeight: '700', fontSize: '13px', cursor: buscandoLibre ? 'default' : 'pointer' }}
+                    >
+                      🌎 Buscar en todos los estados — hay yonkes que hacen envíos
+                    </button>
                   )}
                 </div>
               )}
@@ -1570,6 +1638,19 @@ function obtenerEstadoAbierto(horario) {
                         escríbenos por WhatsApp
                       </a>.
                     </p>
+                    {/* Buscador de FILTROS: mismo botón que el inteligente (ver mensajeLibre más
+                        arriba) para el mismo caso — filtró por estado y no hubo nada ahí, pero
+                        puede haber yonkes de otros estados con envíos nacionales. Nunca aparece
+                        si ya estaba buscando en "todos los estados" de entrada. */}
+                    {estadoBusqueda !== 'todos' && (
+                      <button
+                        onClick={() => buscarPiezas(true)}
+                        disabled={buscando}
+                        style={{ marginTop: '10px', width: '100%', padding: '11px', borderRadius: '10px', border: '1px solid #C5D8EC', backgroundColor: '#fff', color: '#1A3C5E', fontWeight: '700', fontSize: '13px', cursor: buscando ? 'default' : 'pointer' }}
+                      >
+                        🌎 Buscar en todos los estados — hay yonkes que hacen envíos
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -1602,6 +1683,24 @@ function obtenerEstadoAbierto(horario) {
                     </p>
                     <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00' }}>
                       Pero sí hay {[marca, modelo, ano].filter(Boolean).join(' ') || 'el vehículo'} completo para partes en el/los yonke(s) de abajo — muchos yonkeros la sacan al momento aunque no esté en su lista. Llama o escribe por WhatsApp para confirmar si la tienen antes de ir.
+                    </p>
+                  </div>
+                )}
+
+                {/* Aviso HONESTO al ampliar a "todos los estados" (ver botón en el mensaje de
+                    "sin resultados" de arriba): nunca promete envío gratis ni inmediato — solo
+                    que estos yonkes están fuera del estado elegido y hay que coordinar el envío
+                    con cada uno. La insignia 📦 Envíos nacionales en la tarjeta (BadgeEnviosNacionales)
+                    marca cuáles SÍ envían; los demás igual pueden aceptar, pero hay que
+                    preguntarles — por eso el aviso aplica a todos los resultados de este grupo,
+                    no solo a los que traen la insignia. */}
+                {resultadosDeOtroEstado && (
+                  <div style={compatibilidadBannerStyle}>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#7A4F00', fontWeight: 'bold' }}>
+                      🌎 Estos resultados son de otros estados
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00' }}>
+                      No hay nada en tu estado por ahora. Los yonkes de abajo están fuera de tu zona — coordina el envío directamente con cada uno por WhatsApp (costo y tiempo varían). La insignia 📦 Envíos nacionales indica cuáles hacen envíos a otros estados con más frecuencia, pero siempre confirma antes de comprar.
                     </p>
                   </div>
                 )}
