@@ -14,6 +14,8 @@ export const PIEZAS_CATALOGO = [
   'Computadora de transmisión', 'Caja de fusibles', 'Cremallera', 'Bomba de dirección', 'Barra estabilizadora',
   'Múltiple de admisión', 'Múltiple de escape', 'Garganta', 'Filtro de aire', 'Manguera de aire', 'Sensor MAF',
   'Flecha delantera izquierda', 'Flecha delantera derecha', 'Motor', 'Transmisión', 'Pistón', 'Arranque',
+  // Mangueta/muñón de dirección (spindle) — alta rotación; sinónimos en lib/busqueda/sinonimosPiezas.js.
+  'Mango/muñón de dirección',
 ];
 
 // Piezas sueltas (yonkes/{id}/piezasSueltas): Motor y Transmisión ya tienen su propio flujo

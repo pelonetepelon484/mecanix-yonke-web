@@ -3,6 +3,8 @@ import { obtenerCatalogoCombinado } from './catalogoCombinado';
 import { extraerCilindradaDeTexto } from './cilindrada';
 import { tieneSenialExplicitaNumeroDeParte, tieneNumeroSospechoso } from './numeroDeParte';
 import { PIEZAS_CATALOGO } from '../piezasCatalogo';
+import { distanciaLevenshtein, umbralMaximo, MIN_LARGO_PARA_DIFUSO, PALABRAS_EXCLUIDAS_DIFUSO } from './fuzzy';
+import { SINONIMOS_PALABRA, obtenerSinonimosCombinados, aplicarSinonimosFrases, tokenizar } from './sinonimosPiezas';
 
 // Alias comunes de marcas — mismo espíritu que el mapa MARCAS de admin/page.js (migrarInventario).
 const ALIAS_MARCA = {
@@ -19,6 +21,12 @@ const ALIAS_MARCA = {
   'land rover': 'Land Rover', 'landrover': 'Land Rover', 'mini': 'Mini', 'smart': 'Smart',
 };
 
+// Generaciones de plataforma que los mecánicos usan como nombre de vehículo. Solo se aplican como
+// último recurso (ver extraerMarcaModelo). Agregar aquí otras plataformas si el log las muestra.
+const ALIAS_PLATAFORMA = {
+  'mk4': 'Volkswagen', 'mk5': 'Volkswagen', 'mk6': 'Volkswagen', 'mk7': 'Volkswagen',
+};
+
 // Modelos de RAM que NO existen como "Ram <numero>" bajo Dodge en el catálogo (1500 y 2500 sí
 // se venden bajo ambas marcas según el año, así que esos se dejan intactos — ver el uso más
 // abajo en extraerMarcaModelo). Calculado una sola vez a partir de CATALOGO_BASE, no hardcodeado,
@@ -27,22 +35,6 @@ const MODELOS_RAM_EXCLUSIVOS = (CATALOGO_BASE['RAM'] || []).filter((modelo) => {
   const comoModeloDodge = `ram ${modelo}`.toLowerCase();
   return !(CATALOGO_BASE['Dodge'] || []).some((m) => m.toLowerCase() === comoModeloDodge);
 });
-
-// Las llaves siempre se comparan contra palabras ya normalizadas (sin acentos, minúsculas),
-// así que tanto llaves como valores deben estar en esa misma forma normalizada.
-const SINONIMOS_PALABRA = {
-  'defensa': 'parachoques', 'defensas': 'parachoques',
-  'maletero': 'cajuela', 'cajuelas': 'cajuela',
-  'capo': 'cofre',
-  'espejos': 'espejo', 'puertas': 'puerta', 'faros': 'faro', 'calaveras': 'calavera',
-  'amortiguadores': 'amortiguador', 'resorte': 'resortes',
-  'rin': 'rines', 'llanta': 'rines', 'llantas': 'rines',
-  'pistones': 'piston',
-  'transmision': 'transmision', 'caja': 'transmision', 'clutch': 'transmision', 'embrague': 'transmision',
-  'izquierda': 'izquierdo', 'derecha': 'derecho',
-  'delantera': 'delantero', 'adelante': 'delantero', 'frontal': 'delantero',
-  'trasera': 'trasero', 'atras': 'trasero',
-};
 
 const DIACRITICOS_COMBINABLES = new RegExp('[\\u0300-\\u036f]', 'g');
 
@@ -59,47 +51,6 @@ function extraerAnio(textoNormalizado) {
   const anio = parseInt(match[1], 10);
   return anio >= 1980 && anio <= 2035 ? anio : null;
 }
-
-// Distancia de Levenshtein clásica (edición mínima entre dos strings).
-function distanciaLevenshtein(a, b) {
-  const m = a.length, n = b.length;
-  if (m === 0) return n;
-  if (n === 0) return m;
-  const fila = new Array(n + 1);
-  for (let j = 0; j <= n; j++) fila[j] = j;
-  for (let i = 1; i <= m; i++) {
-    let anterior = fila[0];
-    fila[0] = i;
-    for (let j = 1; j <= n; j++) {
-      const temp = fila[j];
-      const costo = a[i - 1] === b[j - 1] ? 0 : 1;
-      fila[j] = Math.min(fila[j] + 1, fila[j - 1] + 1, anterior + costo);
-      anterior = temp;
-    }
-  }
-  return fila[n];
-}
-
-// Umbral conservador y proporcional: palabras cortas/medianas toleran menos error para
-// evitar confundir marcas/modelos distintos que casualmente se parecen (ej. "hola" no debe
-// hacer match con "honda" — distancia real 2 — ni "carro" con "camaro" — también distancia 2).
-function umbralMaximo(longitud) {
-  if (longitud <= 6) return 1;
-  if (longitud <= 9) return 2;
-  return 3;
-}
-
-const MIN_LARGO_PARA_DIFUSO = 4;
-
-// Palabras genéricas/comunes del dominio que NUNCA deben tratarse como posible typo de
-// marca/modelo, por más cerca que caigan en distancia — el umbral numérico solo no basta
-// (ej. "carro"~"camaro" y "hola"~"honda" caen dentro de distancias razonables).
-const PALABRAS_EXCLUIDAS_DIFUSO = new Set([
-  'carro', 'carros', 'coche', 'coches', 'auto', 'autos', 'vehiculo', 'vehiculos',
-  'pieza', 'piezas', 'parte', 'partes', 'necesito', 'busco', 'quiero', 'tengo',
-  'hola', 'gracias', 'favor', 'ayuda', 'urgente', 'rapido', 'bueno', 'buena',
-  'para', 'como', 'estas', 'esta', 'este', 'usado', 'usados', 'comprar', 'vender',
-]);
 
 function mejorCandidatoDifuso(palabra, candidatos) {
   if (palabra.length < MIN_LARGO_PARA_DIFUSO) return null;
@@ -206,6 +157,15 @@ async function extraerMarcaModelo(textoNormalizado, anio) {
   let marca = marcaEncontrada || marcaDelModelo || null;
   let modelo = modeloEncontrado || null;
 
+  // Alias de PLATAFORMA (ej. "mk6" = generación 6 de Golf/Jetta): solo marca, nunca modelo (cubre
+  // varios) y solo como ÚLTIMO recurso cuando nada más resolvió marca/modelo — "mk" también se usa
+  // en otras marcas ("focus mk3"), y ahí el modelo/alias real debe ganar siempre.
+  if (!marca) {
+    for (const palabra of textoNormalizado.split(/\s+/).filter(Boolean).map(limpiarToken)) {
+      if (ALIAS_PLATAFORMA[palabra]) { marca = ALIAS_PLATAFORMA[palabra]; break; }
+    }
+  }
+
   // 3. Difuso: si el exacto no encontró marca, busca la palabra del texto más cercana
   // a algún alias de marca (typos tipo "hiundia" -> "hyundai").
   if (!marca) {
@@ -291,7 +251,7 @@ const CALIFICADORES_LADO = new Set([
 ]);
 
 const PIEZAS_INFO = PIEZAS_CATALOGO.map((nombre) => {
-  const palabras = normalizar(nombre).split(/\s+/).filter(Boolean);
+  const palabras = tokenizar(normalizar(nombre));
   const calificadores = palabras.filter((p) => CALIFICADORES_LADO.has(p));
   const base = palabras.filter((p) => !CALIFICADORES_LADO.has(p));
   return { nombre, palabras, base };
@@ -367,9 +327,29 @@ function buscarPiezaPorPalabras(set) {
   return null;
 }
 
-function extraerPieza(textoNormalizado) {
-  const palabras = textoNormalizado.split(/\s+/).filter(Boolean)
-    .map((p) => SINONIMOS_PALABRA[p] || p);
+// Typos en el calificador de lado ("trasra", "delantea", "izquierdp") se corrigen ANTES del match:
+// el match base (paso 2 de buscarPiezaPorPalabras) ignora los calificadores, así que sin esto
+// "facia trasra" se reconocía como "Parachoques" a secas (ambos lados) en vez de "trasero". Solo
+// toca palabras de letras que NO son ya un término válido, contra términos de lado/posición.
+const TERMINOS_LADO = [...new Set([
+  ...Object.entries(SINONIMOS_PALABRA).filter(([, v]) => CALIFICADORES_LADO.has(v)).map(([k]) => k),
+  ...CALIFICADORES_LADO,
+])];
+function corregirTypoDeLado(palabra) {
+  if (!/^[a-z]{5,}$/.test(palabra) || TERMINOS_LADO.includes(palabra)) return palabra;
+  const candidato = mejorCandidatoDifuso(palabra, TERMINOS_LADO);
+  return candidato ? (SINONIMOS_PALABRA[candidato] || candidato) : palabra;
+}
+
+// piezasSinonimo: piezas canónicas que aplicarSinonimosFrases ya reconoció en el texto (ver
+// sinonimosPiezas.js). Si el catálogo no resuelve nada pero el diccionario SÍ reconoció una pieza
+// que no está en PIEZAS_CATALOGO (ej. "header plate" -> "Soporte de radiador"), se devuelve esa: la
+// búsqueda la entiende y responde "sin inventario" en vez de "no entendí" hasta que alguien la
+// registre — y el log de búsquedas mide la demanda antes de decidir agregarla al catálogo.
+function extraerPieza(textoNormalizado, piezasSinonimo = []) {
+  const palabras = tokenizar(textoNormalizado)
+    .map((p) => SINONIMOS_PALABRA[p] || p)
+    .map(corregirTypoDeLado);
 
   const exacto = buscarPiezaPorPalabras(new Set(palabras));
   if (exacto) return exacto;
@@ -383,7 +363,7 @@ function extraerPieza(textoNormalizado) {
   const corregidas = palabras.map((p) => (
     vocabularioSet.has(p) ? p : (mejorCandidatoDifuso(p, VOCABULARIO_PIEZAS) || p)
   ));
-  return buscarPiezaPorPalabras(new Set(corregidas));
+  return buscarPiezaPorPalabras(new Set(corregidas)) || piezasSinonimo[0] || null;
 }
 
 // Piezas para las que "cilindrada sola" significa un motor/transmisión SUELTO (identificado por
@@ -402,7 +382,12 @@ export async function extraerIntencion(textoOriginal) {
   const anio = extraerAnio(textoNormalizado);
   const cilindrada = extraerCilindradaDeTexto(textoNormalizado);
   const { marca, modelo, difuso } = await extraerMarcaModelo(textoNormalizado, anio);
-  const pieza = extraerPieza(textoNormalizado);
+  // Frases/sinónimos de piezas (inglés<->español, facia/fascia, header plate, spindle...) con
+  // fuzzy sobre las llaves — SOLO para la pieza: marca/modelo/año se siguen leyendo del texto
+  // original, sin sustituciones (ver sinonimosPiezas.js).
+  const sinonimos = await obtenerSinonimosCombinados();
+  const { texto: textoConSinonimos, piezas: piezasSinonimo } = aplicarSinonimosFrases(textoNormalizado, sinonimos);
+  const pieza = extraerPieza(textoConSinonimos, piezasSinonimo);
 
   // "motor 3.6" (sin marca/modelo) también cuenta como reconocido cuando la pieza es un
   // motor/transmisión y sí se extrajo cilindrada — un motor suelto de cierto tamaño es una

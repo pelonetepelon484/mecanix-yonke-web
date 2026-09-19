@@ -1,19 +1,7 @@
 import { CATALOGO_BASE } from '../catalogoBase';
 import { extraerCilindradaDeTexto } from './cilindrada';
 import { tieneSenialExplicitaNumeroDeParte } from './numeroDeParte';
-
-const PIEZA_PALABRAS_CLAVE = [
-  'faro', 'calavera', 'cofre', 'cajuela', 'defensa', 'parachoques', 'espejo', 'puerta',
-  'parabrisas', 'rin', 'rines', 'llanta', 'llantas', 'tablero', 'asiento', 'asientos',
-  'orquilla', 'disco', 'freno', 'frenos', 'prensa', 'amortiguador', 'amortiguadores',
-  'resorte', 'resortes', 'compresor', 'alternador', 'computadora', 'fusible', 'fusibles',
-  'cremallera', 'direccion', 'dirección', 'barra', 'estabilizadora', 'multiple', 'múltiple',
-  'admision', 'admisión', 'escape', 'garganta', 'filtro', 'manguera', 'sensor', 'flecha',
-  'motor', 'transmision', 'transmisión', 'caja', 'vidrio', 'ventana', 'salpicadera',
-  'toldo', 'techo', 'volante', 'radiador', 'bomba', 'clutch', 'embrague', 'catalizador',
-  'mofle', 'escobilla', 'escobillas', 'bisagra', 'manija', 'chapa', 'moldura', 'defensas',
-  'piston', 'pistones',
-];
+import { vocabularioCapa0, aplicarSinonimosFrases } from './sinonimosPiezas';
 
 const PATRONES_BASURA = [
   /^(.)\1{4,}$/, // un solo carácter repetido 5+ veces (aaaaaa)
@@ -43,7 +31,10 @@ function soloEmojisOSimbolos(texto) {
 const MARCAS_NORMALIZADAS = Object.keys(CATALOGO_BASE).map((m) => normalizar(m));
 const MODELOS_NORMALIZADOS = Object.values(CATALOGO_BASE).flat().map((m) => normalizar(m));
 
-export function filtrarPrevio(textoOriginal) {
+// sinonimos: índice combinado (base + Firestore, ver obtenerSinonimosCombinados en
+// sinonimosPiezas.js) que pasa route.js; sin él se usa solo la base del repo. El vocabulario de
+// piezas ya NO vive aquí: Capa 0 y Capa 1 comparten el de sinonimosPiezas.js.
+export function filtrarPrevio(textoOriginal, sinonimos) {
   const texto = (textoOriginal || '').trim();
 
   if (texto.length < 3) {
@@ -77,7 +68,12 @@ export function filtrarPrevio(textoOriginal) {
 
   const tieneMarcaOModelo = MARCAS_NORMALIZADAS.some((m) => normalizado.includes(m))
     || MODELOS_NORMALIZADOS.some((m) => normalizado.includes(m));
-  const tienePiezaClave = PIEZA_PALABRAS_CLAVE.some((p) => palabras.includes(normalizar(p)));
+  const vocabulario = vocabularioCapa0();
+  // Palabras sueltas del vocabulario, o una frase/sinónimo (incluso con typo) como "header plate"
+  // o "facia trasra" — misma lógica que Capa 1, para que Capa 0 nunca rechace lo que Capa 1 sí
+  // sabría interpretar.
+  const tienePiezaClave = palabras.some((p) => vocabulario.has(p))
+    || aplicarSinonimosFrases(normalizado, sinonimos).piezas.length > 0;
 
   if (!tieneMarcaOModelo && !tienePiezaClave && !tieneCilindrada && !tieneSenialNumeroDeParte) {
     return { permitido: false };

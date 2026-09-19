@@ -3,6 +3,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { dbServer } from '../../lib/firebase-server';
 import { filtrarPrevio, MENSAJE_RECHAZO_CAPA0 } from '../../lib/busqueda/filtroPrevio';
 import { extraerIntencion } from '../../lib/busqueda/extraerIntencion';
+import { obtenerSinonimosCombinados } from '../../lib/busqueda/sinonimosPiezas';
 import { detectarFueraDeGiro } from '../../lib/busqueda/detectarFueraDeGiro';
 import { registrarBusqueda } from '../../lib/busqueda/registrarBusqueda';
 import { resolverGeoIp } from '../../lib/busqueda/geolocalizarIp';
@@ -400,7 +401,7 @@ export async function POST(request) {
   const tieneContacto = Boolean(contacto);
 
   // Capa 0: filtro barato, sin Firestore.
-  const { permitido } = filtrarPrevio(texto);
+  const { permitido } = filtrarPrevio(texto, await obtenerSinonimosCombinados());
   if (!permitido) {
     await persistirContactoSiExiste(contacto, { texto, estado: 'no_interpretada' });
     await registrarBusqueda({ texto, estado: 'no_interpretada', origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais });
