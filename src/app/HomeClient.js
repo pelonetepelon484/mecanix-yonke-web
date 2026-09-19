@@ -27,75 +27,6 @@ const TIPO_BUSQUEDA = [
   { key: 'transmision', label: '⚙️ Transmisión', desc: 'Transmisión suelta' },
 ];
 
-const BANNER_IMAGES = [
-  '/rigs1.png', '/rigs2.png', '/rigs3.png',
-];
-
-function BannerRH() {
-  const [indice, setIndice] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIndice(prev => (prev + 1) % BANNER_IMAGES.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <a
-      href="https://wa.me/526633349151"
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={() => registrarEvento('click_publicidad', {
-        anunciante: 'rh_diagnostico',
-        medio: 'whatsapp',
-      })}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        marginBottom: '16px',
-        backgroundColor: '#111',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-        textDecoration: 'none',
-        padding: '8px',
-        position: 'relative',
-      }}
-    >
-      <div style={{
-        position: 'absolute', top: '6px', right: '8px',
-        backgroundColor: 'rgba(255,255,255,0.15)', color: '#ccc',
-        fontSize: '9px', padding: '2px 6px', borderRadius: '10px',
-        fontWeight: '600', letterSpacing: '0.5px',
-      }}>
-        Publicidad
-      </div>
-      <img
-        src={BANNER_IMAGES[indice]}
-        alt="RH Diagnóstico Automotriz"
-        style={{ width: '200px', height: '200px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }}
-      />
-      <div style={{ flex: 1 }}>
-        <p style={{ color: '#fff', fontWeight: '700', fontSize: '13px', margin: '0 0 4px' }}>
-          RH Diagnóstico Automotriz
-        </p>
-        <p style={{ color: '#aaa', fontSize: '12px', margin: '0 0 6px', lineHeight: '1.4' }}>
-          Sensores TPMS · Escaneo · Servicio a domicilio
-        </p>
-        <span style={{
-          backgroundColor: '#25D366', color: '#fff',
-          fontSize: '11px', fontWeight: '700', padding: '4px 10px',
-          borderRadius: '12px', display: 'inline-block',
-        }}>
-          💬 Contactar
-        </span>
-      </div>
-    </a>
-  );
-}
-
 // Leyenda del sello "Mecanix Verificado" — aparece en la página principal (siempre visible)
 // y también arriba de los resultados de búsqueda; mismo componente en los dos lugares para
 // que no se desincronicen el texto o el estilo.
@@ -1606,10 +1537,10 @@ function obtenerEstadoAbierto(horario) {
                 SOLO antes de la primera búsqueda. Es contenido de bienvenida para quien todavía
                 no ha buscado nada; una vez que sí buscó, dejarlo aquí metía ~1500px de contenido
                 estático entre el botón de buscar y los resultados reales (¿CÓMO FUNCIONA? +
-                Compra segura + esta Leyenda + el banner + OTRA Leyenda + el aviso corto, todo
+                Compra segura + esta Leyenda + OTRA Leyenda + el aviso corto, todo
                 ANTES de llegar a los resultados) — el usuario veía la misma pantalla de siempre
                 justo después de buscar y creía que no había pasado nada / que no funcionaba.
-                Las versiones cortas de abajo (BannerRH, LeyendaVerificados de nuevo,
+                Las versiones cortas de abajo (LeyendaVerificados de nuevo,
                 AvisoCompraSeguraCorto) siguen mostrándose junto a los resultados, sin cambio. */}
             {!busquedaHecha && !mensajeLibre && (
               <>
@@ -1636,11 +1567,6 @@ function obtenerEstadoAbierto(horario) {
 
                 <LeyendaVerificados />
               </>
-            )}
-
-            {/* Banner publicitario RH Diagnóstico */}
-            {busquedaHecha && !buscando && resultados.length > 0 && (
-              <BannerRH />
             )}
 
             {/* Leyenda del sello Mecanix Verificado, otra vez arriba de los resultados si los hay */}
