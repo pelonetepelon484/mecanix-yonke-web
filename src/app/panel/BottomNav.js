@@ -7,6 +7,7 @@ const TABS = [
   { path: '/panel/reservaciones', icon: '📋', label: 'Pedidos' },
   { path: '/panel/ventas', icon: '💰', label: 'Ventas' },
   { path: '/panel/venta-manual', icon: '🧾', label: 'Manual' },
+  { path: '/panel/reciclaje', icon: '♻️', label: 'Reciclaje' },
   { path: '/panel/perfil', icon: '⚙️', label: 'Negocio' },
 ];
 

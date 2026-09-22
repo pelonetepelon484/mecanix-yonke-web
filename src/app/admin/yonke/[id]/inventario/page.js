@@ -197,7 +197,9 @@ export default function InventarioAdminPage() {
       await registrarEnCatalogo(piezaSueltaMarca.trim(), piezaSueltaModelo.trim());
       setPiezaSueltaModalVisible(false);
     } catch (error) {
-      console.error(error); alert('No se pudo guardar');
+      console.error('[guardarPiezaSuelta]', error?.code, error?.message, error);
+      // Se muestra el código real (ej. permission-denied) para poder diagnosticar sin abrir la consola.
+      alert(`No se pudo guardar${error?.code ? ` (${error.code})` : ''}`);
     } finally { setGuardandoPiezaSuelta(false); }
   }
 
