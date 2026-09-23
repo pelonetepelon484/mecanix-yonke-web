@@ -9,6 +9,7 @@ import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
+import { GARANTIA_DIAS_DEFAULT, GARANTIA_QUE_CUBRE_DEFAULT, GARANTIA_QUE_NO_CUBRE_DEFAULT } from '../../lib/garantiaDefault';
 
 const METODOS_PAGO = [
   { key: 'efectivo', label: 'Efectivo' },
@@ -55,6 +56,10 @@ export default function PerfilPanel() {
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [temaElegido, setTemaElegido] = useState(TEMA_DEFAULT_ID);
   const [guardandoTema, setGuardandoTema] = useState(false);
+  const [garantiaDias, setGarantiaDias] = useState(String(GARANTIA_DIAS_DEFAULT));
+  const [garantiaQueCubre, setGarantiaQueCubre] = useState(GARANTIA_QUE_CUBRE_DEFAULT);
+  const [garantiaQueNoCubre, setGarantiaQueNoCubre] = useState(GARANTIA_QUE_NO_CUBRE_DEFAULT);
+  const [guardandoGarantia, setGuardandoGarantia] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -82,6 +87,12 @@ export default function PerfilPanel() {
         const b = data.branding || {};
         const temaActual = TEMAS_COLOR.find((t) => t.colorPrimario === b.colorPrimario && t.colorAcento === b.colorAcento);
         setTemaElegido(temaActual ? temaActual.id : TEMA_DEFAULT_ID);
+        // Condiciones de garantía — si el yonke nunca las configuró, se muestran los valores de
+        // arranque (editables desde el primer momento) en vez de dejar los campos vacíos.
+        const g = data.garantia || {};
+        setGarantiaDias(String(g.diasDefault ?? GARANTIA_DIAS_DEFAULT));
+        setGarantiaQueCubre(g.queCubre || GARANTIA_QUE_CUBRE_DEFAULT);
+        setGarantiaQueNoCubre(g.queNoCubre || GARANTIA_QUE_NO_CUBRE_DEFAULT);
       }
       setLoadingPerfil(false);
     }
@@ -151,6 +162,34 @@ export default function PerfilPanel() {
       alert('No se pudo guardar el tema de color. Intenta de nuevo.');
     } finally {
       setGuardandoTema(false);
+    }
+  }
+
+  // Guardado independiente de "Guardar cambios" de abajo (igual espíritu que elegirTema): así
+  // configurar la garantía nunca queda bloqueado por la validación de nombre/dirección/teléfono
+  // de guardarPerfil(), y guardar la garantía tampoco reescribe esos otros campos por accidente.
+  // setDoc+merge es seguro aquí (a diferencia de branding.*) porque `garantia` es un objeto
+  // anidado real, no una key con punto literal, y se manda COMPLETO cada vez — Firestore lo
+  // fusiona a nivel de campo raíz sin tocar el resto del documento (nombre, branding, etc.).
+  async function guardarGarantia() {
+    const dias = parseInt(garantiaDias, 10);
+    if (!dias || dias <= 0) { alert('Escribe un número de días válido'); return; }
+    if (!garantiaQueCubre.trim() || !garantiaQueNoCubre.trim()) { alert('Completa los dos textos de condiciones'); return; }
+    setGuardandoGarantia(true);
+    try {
+      await setDoc(doc(db, 'yonkes', yonkeId), {
+        garantia: {
+          diasDefault: dias,
+          queCubre: garantiaQueCubre.trim(),
+          queNoCubre: garantiaQueNoCubre.trim(),
+        },
+      }, { merge: true });
+      alert('Tus condiciones de garantía se guardaron correctamente');
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo guardar');
+    } finally {
+      setGuardandoGarantia(false);
     }
   }
 
@@ -293,6 +332,40 @@ export default function PerfilPanel() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Condiciones de garantía — se usan como default en cada nota nueva (panel/venta-manual
+            y panel/ventas, ver NotaGarantiaModal.js). Editar aquí NO cambia notas ya generadas:
+            cada nota guarda su propia copia de estos textos al momento de generarse. */}
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Condiciones de garantía</h2>
+          <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
+            Se usan como base al generar una nota de garantía desde una venta. Puedes editarlas
+            cuando quieras — los cambios solo aplican a las notas nuevas, no a las ya impresas.
+          </p>
+
+          <p style={labelStyle}>Días de garantía por defecto</p>
+          <input
+            type="number" min="1" inputMode="numeric"
+            value={garantiaDias} onChange={(e) => setGarantiaDias(e.target.value)}
+            placeholder="Ej. 15" style={{ ...inputStyle, maxWidth: '140px' }}
+          />
+
+          <p style={labelStyle}>Qué cubre</p>
+          <textarea
+            value={garantiaQueCubre} onChange={(e) => setGarantiaQueCubre(e.target.value)}
+            rows={4} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+          />
+
+          <p style={labelStyle}>Qué NO cubre</p>
+          <textarea
+            value={garantiaQueNoCubre} onChange={(e) => setGarantiaQueNoCubre(e.target.value)}
+            rows={4} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+          />
+
+          <button onClick={guardarGarantia} disabled={guardandoGarantia} style={{ ...saveButtonStyle, marginTop: '14px', marginBottom: 0 }}>
+            {guardandoGarantia ? 'Guardando...' : 'Guardar condiciones de garantía'}
+          </button>
         </div>
 
         {/* Información del negocio */}

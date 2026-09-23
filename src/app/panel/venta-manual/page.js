@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc, doc, getDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import NotaGarantiaModal from '../NotaGarantiaModal';
 
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
@@ -27,6 +28,10 @@ export default function VentaManualPanel() {
   const [monto, setMonto] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [folioGenerado, setFolioGenerado] = useState(null);
+  const [ventaGenerada, setVentaGenerada] = useState(null); // { id, ...datos } para la nota de garantía
+  const [notaModalVisible, setNotaModalVisible] = useState(false);
+  const [nombreYonke, setNombreYonke] = useState('');
+  const [logoUrl, setLogoUrl] = useState(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -53,6 +58,17 @@ export default function VentaManualPanel() {
     cargarVehiculos();
   }, [yonkeId, yonkePlan]);
 
+  // Nombre y logo del yonke — solo para el encabezado de la nota de garantía impresa.
+  useEffect(() => {
+    if (!yonkeId) return;
+    getDoc(doc(db, 'yonkes', yonkeId)).then((snap) => {
+      if (snap.exists()) {
+        setNombreYonke(snap.data().nombre || '');
+        setLogoUrl(snap.data().logoUrl || null);
+      }
+    }).catch((e) => console.error(e));
+  }, [yonkeId]);
+
   function generarFolioManual() {
     const random = Math.floor(1000 + Math.random() * 9000);
     const fecha = new Date();
@@ -78,7 +94,7 @@ export default function VentaManualPanel() {
     setGuardando(true);
     try {
       const folio = generarFolioManual();
-      await addDoc(collection(db, 'ventas'), {
+      const datosVenta = {
         numeroPedido: folio,
         yonkeId,
         origen: 'manual',
@@ -90,8 +106,10 @@ export default function VentaManualPanel() {
         },
         monto: parseFloat(monto),
         fecha: new Date(),
-      });
+      };
+      const ventaRef = await addDoc(collection(db, 'ventas'), datosVenta);
       setFolioGenerado(folio);
+      setVentaGenerada({ id: ventaRef.id, ...datosVenta });
     } catch (error) {
       console.error(error);
       alert('No se pudo registrar la venta');
@@ -105,6 +123,7 @@ export default function VentaManualPanel() {
     setPiezaVendida('');
     setMonto('');
     setFolioGenerado(null);
+    setVentaGenerada(null);
   }
 
   async function handleLogout() {
@@ -171,6 +190,9 @@ export default function VentaManualPanel() {
           <div style={{ backgroundColor: '#1A3C5E', color: '#fff', fontSize: '22px', fontWeight: 'bold', padding: '16px', borderRadius: '10px', letterSpacing: '1px', marginBottom: '24px' }}>
             {folioGenerado}
           </div>
+          <button onClick={() => setNotaModalVisible(true)} style={{ ...secondaryButtonStyle, marginBottom: '12px' }}>
+            🛡️ Generar nota de garantía
+          </button>
           <button onClick={registrarOtra} style={{ ...secondaryButtonStyle, marginBottom: '12px' }}>
             Registrar otra venta
           </button>
@@ -178,6 +200,15 @@ export default function VentaManualPanel() {
             Listo
           </button>
         </div>
+        {notaModalVisible && ventaGenerada && (
+          <NotaGarantiaModal
+            venta={ventaGenerada}
+            yonkeId={yonkeId}
+            nombreYonke={nombreYonke}
+            logoUrl={logoUrl}
+            onClose={() => setNotaModalVisible(false)}
+          />
+        )}
         <BottomNav />
       </main>
     );

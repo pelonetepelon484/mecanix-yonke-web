@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import NotaGarantiaModal from '../NotaGarantiaModal';
 
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
@@ -22,6 +23,9 @@ export default function VentasPanel() {
   const [loadingVentas, setLoadingVentas] = useState(true);
   const [periodoActivo, setPeriodoActivo] = useState('semana');
   const [generandoPDF, setGenerandoPDF] = useState(false);
+  const [nombreYonke, setNombreYonke] = useState('');
+  const [logoUrl, setLogoUrl] = useState(null);
+  const [ventaParaNota, setVentaParaNota] = useState(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -41,6 +45,17 @@ export default function VentasPanel() {
     });
     return unsubscribe;
   }, [yonkeId, yonkePlan]);
+
+  // Nombre y logo del yonke — solo para el encabezado de la nota de garantía impresa.
+  useEffect(() => {
+    if (!yonkeId) return;
+    getDoc(doc(db, 'yonkes', yonkeId)).then((snap) => {
+      if (snap.exists()) {
+        setNombreYonke(snap.data().nombre || '');
+        setLogoUrl(snap.data().logoUrl || null);
+      }
+    }).catch((e) => console.error(e));
+  }, [yonkeId]);
 
   function getFechaInicio(periodo) {
     const hoy = new Date();
@@ -439,13 +454,26 @@ export default function VentasPanel() {
                 </p>
                 <p style={{ color: '#aaa', fontSize: '12px', marginTop: '4px' }}>{formatearFecha(v.fecha)}</p>
               </div>
-              <p style={{ fontSize: '17px', fontWeight: 'bold', color: '#1A3C5E' }}>
-                ${v.monto?.toLocaleString('es-MX')}
-              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                <p style={{ fontSize: '17px', fontWeight: 'bold', color: '#1A3C5E', margin: 0 }}>
+                  ${v.monto?.toLocaleString('es-MX')}
+                </p>
+                <button onClick={() => setVentaParaNota(v)} style={notaBotonStyle}>🛡️ Nota</button>
+              </div>
             </div>
           ))
         )}
       </div>
+
+      {ventaParaNota && (
+        <NotaGarantiaModal
+          venta={ventaParaNota}
+          yonkeId={yonkeId}
+          nombreYonke={nombreYonke}
+          logoUrl={logoUrl}
+          onClose={() => setVentaParaNota(null)}
+        />
+      )}
 
       <BottomNav />
     </main>
@@ -455,6 +483,10 @@ export default function VentasPanel() {
 const resumenCardStyle = {
   flex: 1, backgroundColor: '#fff', borderRadius: '12px', padding: '16px',
   textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+};
+const notaBotonStyle = {
+  background: 'none', border: '1px solid #1A3C5E', borderRadius: '8px', padding: '5px 10px',
+  color: '#1A3C5E', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap',
 };
 const ventaCardStyle = {
   backgroundColor: '#fff', borderRadius: '10px', padding: '16px', marginBottom: '12px',
