@@ -13,7 +13,7 @@ export default function Terminos() {
           Términos y Condiciones de Uso
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 9 de septiembre de 2026
+          Última actualización: 23 de septiembre de 2026
         </p>
 
         <Seccion titulo="1. Aceptación de los términos">
@@ -52,6 +52,7 @@ export default function Terminos() {
           <p style={parrafoStyle}>Mecanix Yonke Virtual no se hace responsable por la calidad, condición, legalidad o disponibilidad real de las piezas publicadas por los yonkes registrados.</p>
           <p style={parrafoStyle}>Mecanix no garantiza que la plataforma estará disponible de forma ininterrumpida. Podemos suspender o interrumpir el servicio temporalmente por mantenimiento o causas técnicas sin responsabilidad alguna.</p>
           <p style={parrafoStyle}>Mecanix no será responsable por pérdidas económicas, daños directos o indirectos derivados del uso o la imposibilidad de uso de la plataforma.</p>
+          <p style={parrafoStyle}>Esto incluye las notas de garantía que un yonke genere para sus ventas: la garantía es ofrecida y respaldada únicamente por el yonke, no por Mecanix Yonke Virtual (ver sección 20).</p>
         </Seccion>
 
         <Seccion titulo="8. Contenido prohibido">
@@ -118,6 +119,13 @@ export default function Terminos() {
           <p style={parrafoStyle}>Algunos yonkes participan en el servicio de Entrega Inmediata, identificado con el distintivo correspondiente en la plataforma. En estos casos, el cliente puede solicitar que Mecanix Yonke Virtual coordine el traslado de una pieza desde el yonke hasta su taller, mediante un servicio de logística operado directamente por Mecanix Yonke Virtual con un costo adicional que se acuerda por separado.</p>
           <p style={parrafoStyle}>Aun cuando Mecanix Yonke Virtual participe físicamente en la entrega, esto no lo convierte en vendedor de la pieza: el yonke sigue siendo el único responsable de la calidad, condición, legalidad y garantía de la pieza entregada. El cobro de la pieza y de la tarifa de entrega se coordina directamente entre el cliente y Mecanix Yonke Virtual o el yonke, según se acuerde, y no se procesa mediante una pasarela de pagos dentro de la plataforma.</p>
           <p style={parrafoStyle}>La disponibilidad de este servicio depende de cada yonke participante y puede cancelarse o modificarse en cualquier momento.</p>
+        </Seccion>
+
+        <Seccion titulo="20. Notas de garantía">
+          <p style={parrafoStyle}>Mecanix Yonke Virtual pone a disposición de los yonkes registrados una herramienta, dentro de su panel, para generar e imprimir notas de garantía por las piezas que venden.</p>
+          <p style={parrafoStyle}>La garantía descrita en esa nota es ofrecida única y exclusivamente por el yonke que vende la pieza. El yonke define libremente las condiciones de su garantía (días de cobertura, qué cubre y qué no cubre) y es el único responsable de cumplirlas.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual no es parte de la garantía, no la respalda, no la garantiza y no responde por su cumplimiento. Cualquier reclamo relacionado con una garantía (cambio, reparación, reembolso, etc.) debe resolverse directamente entre el cliente y el yonke que la emitió.</p>
+          <p style={parrafoStyle}>El contenido de cada nota de garantía, incluidos los datos del cliente que el yonke capture para generarla, se almacena como parte del funcionamiento de esta herramienta, conforme a lo descrito en nuestro Aviso de Privacidad.</p>
         </Seccion>
 
         <div style={{ textAlign: 'center', marginTop: '40px' }}>

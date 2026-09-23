@@ -13,7 +13,7 @@ export default function Privacidad() {
           Política de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 9 de septiembre de 2026
+          Última actualización: 23 de septiembre de 2026
         </p>
 
         <Seccion titulo="1. Introducción">
@@ -26,6 +26,7 @@ export default function Privacidad() {
           <p style={parrafoStyle}><strong>Datos de autenticación:</strong> correo electrónico y contraseña (almacenada de forma cifrada por nuestro proveedor de autenticación, Firebase Authentication de Google) para los usuarios con acceso al panel (yonkes y administradores).</p>
           <p style={parrafoStyle}><strong>Registro propio:</strong> los yonkes pueden registrarse directamente en la plataforma a través del formulario público disponible en el sitio web. La información proporcionada durante el registro es revisada por nuestro equipo antes de ser activada públicamente.</p>
           <p style={parrafoStyle}><strong>Captura de inventario a domicilio (servicio opcional, con costo por visita):</strong> en los estados donde Mecanix ofrece este servicio, el yonke puede solicitar que nuestro personal visite el negocio para registrar su inventario de vehículos directamente en la plataforma. Los datos capturados son los que el propio yonke proporciona durante la visita.</p>
+          <p style={parrafoStyle}><strong>Notas de garantía:</strong> cuando un yonke genera una nota de garantía para una venta, captura el nombre (y, si lo desea, el teléfono) del cliente que recibe la pieza. Este dato lo captura y administra el propio yonke a través de su panel; el yonke es responsable de la información del cliente que registre en sus notas de garantía.</p>
         </Seccion>
 
         <Seccion titulo="3. Planes de servicio">
