@@ -4,7 +4,7 @@
 // materialesReciclaje todavía está vacía — después el yonke administra su propia lista
 // (agregar, editar precio, eliminar) sin que este archivo la vuelva a tocar.
 export const MATERIALES_RECICLAJE_BASE = [
-  'Aluminio', 'Cobre', 'Bronce', 'Latón', 'Fierro/Chatarra', 'Acero inoxidable', 'Plomo',
-  'Radiador de aluminio', 'Radiador de cobre', 'Cable con forro', 'Cable pelado', 'Batería',
-  'PET', 'Cartón',
+  'Aluminio', 'Aluminio de rin', 'Aluminio de radiador', 'Cobre', 'Bronce', 'Latón',
+  'Fierro/Chatarra', 'Acero inoxidable', 'Plomo', 'Radiador de cobre', 'Cable con forro',
+  'Cable pelado', 'Batería', 'PET', 'Cartón',
 ];
