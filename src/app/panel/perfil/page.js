@@ -10,6 +10,7 @@ import BottomNav from '../BottomNav';
 import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 import { GARANTIA_DIAS_DEFAULT, GARANTIA_QUE_CUBRE_DEFAULT, GARANTIA_QUE_NO_CUBRE_DEFAULT } from '../../lib/garantiaDefault';
+import { IVA_PORCENTAJE_DEFAULT, IVA_RETENIDO_PORCENTAJE_DEFAULT, ISR_PORCENTAJE_DEFAULT, INCLUIR_AVISO_FACTURA_DEFAULT } from '../../lib/fiscalReciclajeDefault';
 
 const METODOS_PAGO = [
   { key: 'efectivo', label: 'Efectivo' },
@@ -60,6 +61,11 @@ export default function PerfilPanel() {
   const [garantiaQueCubre, setGarantiaQueCubre] = useState(GARANTIA_QUE_CUBRE_DEFAULT);
   const [garantiaQueNoCubre, setGarantiaQueNoCubre] = useState(GARANTIA_QUE_NO_CUBRE_DEFAULT);
   const [guardandoGarantia, setGuardandoGarantia] = useState(false);
+  const [ivaPorcentaje, setIvaPorcentaje] = useState(String(IVA_PORCENTAJE_DEFAULT));
+  const [ivaRetenidoPorcentaje, setIvaRetenidoPorcentaje] = useState(String(IVA_RETENIDO_PORCENTAJE_DEFAULT));
+  const [isrPorcentaje, setIsrPorcentaje] = useState(String(ISR_PORCENTAJE_DEFAULT));
+  const [incluirAvisoFactura, setIncluirAvisoFactura] = useState(INCLUIR_AVISO_FACTURA_DEFAULT);
+  const [guardandoFiscal, setGuardandoFiscal] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -93,6 +99,13 @@ export default function PerfilPanel() {
         setGarantiaDias(String(g.diasDefault ?? GARANTIA_DIAS_DEFAULT));
         setGarantiaQueCubre(g.queCubre || GARANTIA_QUE_CUBRE_DEFAULT);
         setGarantiaQueNoCubre(g.queNoCubre || GARANTIA_QUE_NO_CUBRE_DEFAULT);
+        // Configuración fiscal de la nota de reciclaje — mismo criterio: si el yonke nunca la
+        // tocó, se muestran los valores de arranque en vez de dejar los campos vacíos.
+        const f = data.fiscalReciclaje || {};
+        setIvaPorcentaje(String(f.ivaPorcentaje ?? IVA_PORCENTAJE_DEFAULT));
+        setIvaRetenidoPorcentaje(String(f.ivaRetenidoPorcentaje ?? IVA_RETENIDO_PORCENTAJE_DEFAULT));
+        setIsrPorcentaje(String(f.isrPorcentaje ?? ISR_PORCENTAJE_DEFAULT));
+        setIncluirAvisoFactura(f.incluirAvisoFactura ?? INCLUIR_AVISO_FACTURA_DEFAULT);
       }
       setLoadingPerfil(false);
     }
@@ -190,6 +203,36 @@ export default function PerfilPanel() {
       alert('No se pudo guardar');
     } finally {
       setGuardandoGarantia(false);
+    }
+  }
+
+  // Igual espíritu que guardarGarantia(): guardado independiente para no bloquearse con la
+  // validación de guardarPerfil(), y setDoc+merge es seguro porque `fiscalReciclaje` es un
+  // objeto anidado real (no una key con punto literal) enviado completo cada vez.
+  async function guardarFiscal() {
+    const iva = parseFloat(ivaPorcentaje);
+    const ivaRet = parseFloat(ivaRetenidoPorcentaje);
+    const isr = parseFloat(isrPorcentaje);
+    if (isNaN(iva) || iva < 0 || isNaN(ivaRet) || ivaRet < 0 || isNaN(isr) || isr < 0) {
+      alert('Escribe porcentajes válidos (pueden ser 0)');
+      return;
+    }
+    setGuardandoFiscal(true);
+    try {
+      await setDoc(doc(db, 'yonkes', yonkeId), {
+        fiscalReciclaje: {
+          ivaPorcentaje: iva,
+          ivaRetenidoPorcentaje: ivaRet,
+          isrPorcentaje: isr,
+          incluirAvisoFactura,
+        },
+      }, { merge: true });
+      alert('Tu configuración fiscal se guardó correctamente');
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo guardar');
+    } finally {
+      setGuardandoFiscal(false);
     }
   }
 
@@ -365,6 +408,54 @@ export default function PerfilPanel() {
 
           <button onClick={guardarGarantia} disabled={guardandoGarantia} style={{ ...saveButtonStyle, marginTop: '14px', marginBottom: 0 }}>
             {guardandoGarantia ? 'Guardando...' : 'Guardar condiciones de garantía'}
+          </button>
+        </div>
+
+        {/* Configuración fiscal de la nota de reciclaje — se usa como default en cada compra nueva
+            (panel/reciclaje). Editar aquí NO cambia notas ya generadas: cada compra guarda su
+            propia copia de estos porcentajes al momento de registrarse. */}
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Datos fiscales de la nota de reciclaje</h2>
+          <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
+            Se usan como base al registrar una compra de material reciclable. Puedes editarlos
+            cuando quieras, y también en cada compra si ese caso lo requiere.
+          </p>
+
+          <p style={labelStyle}>I.V.A. %</p>
+          <input
+            type="number" min="0" step="0.01" inputMode="decimal"
+            value={ivaPorcentaje} onChange={(e) => setIvaPorcentaje(e.target.value)}
+            style={{ ...inputStyle, maxWidth: '140px' }}
+          />
+
+          <p style={labelStyle}>I.V.A. retenido %</p>
+          <input
+            type="number" min="0" step="0.01" inputMode="decimal"
+            value={ivaRetenidoPorcentaje} onChange={(e) => setIvaRetenidoPorcentaje(e.target.value)}
+            style={{ ...inputStyle, maxWidth: '140px' }}
+          />
+
+          <p style={labelStyle}>Retención I.S.R. %</p>
+          <input
+            type="number" min="0" step="0.01" inputMode="decimal"
+            value={isrPorcentaje} onChange={(e) => setIsrPorcentaje(e.target.value)}
+            style={{ ...inputStyle, maxWidth: '140px' }}
+          />
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', fontSize: '14px', color: '#333', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={incluirAvisoFactura}
+              onChange={(e) => setIncluirAvisoFactura(e.target.checked)}
+            />
+            Incluir aviso de &ldquo;factura provisional&rdquo; en la nota
+          </label>
+          <p style={{ fontSize: '12px', color: '#aaa', marginTop: '4px' }}>
+            Actívalo solo si tu yonke emite factura. Si no facturas, déjalo apagado.
+          </p>
+
+          <button onClick={guardarFiscal} disabled={guardandoFiscal} style={{ ...saveButtonStyle, marginTop: '14px', marginBottom: 0 }}>
+            {guardandoFiscal ? 'Guardando...' : 'Guardar datos fiscales'}
           </button>
         </div>
 

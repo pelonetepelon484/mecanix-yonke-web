@@ -12,6 +12,10 @@ import BottomNav from '../BottomNav';
 import { MATERIALES_RECICLAJE_BASE } from '../../lib/materialesReciclajeBase';
 import { ESTADO_DEFAULT, estadoDeYonke } from '../../lib/estados';
 import { DECLARACION_LEGAL_BC } from '../../lib/declaracionLegalReciclaje';
+import {
+  IVA_PORCENTAJE_DEFAULT, IVA_RETENIDO_PORCENTAJE_DEFAULT, ISR_PORCENTAJE_DEFAULT,
+  INCLUIR_AVISO_FACTURA_DEFAULT, AVISO_FACTURA_TEXTO,
+} from '../../lib/fiscalReciclajeDefault';
 
 // Siembra la lista base UNA sola vez (si la subcolección está vacía) — mismo patrón que
 // crearPiezasComunes en admin/yonke/[id]/inventario/page.js: un solo writeBatch, precioPorKilo
@@ -110,6 +114,13 @@ export default function ReciclajePanel() {
   const [vendedorCurp, setVendedorCurp] = useState('');
   const [declaracionLegal, setDeclaracionLegal] = useState('');
 
+  // Datos fiscales de la compra actual — prellenados desde el default del perfil (ver
+  // panel/perfil/page.js), editables por si una compra en particular necesita otro porcentaje.
+  const [ivaPorcentaje, setIvaPorcentaje] = useState(String(IVA_PORCENTAJE_DEFAULT));
+  const [ivaRetenidoPorcentaje, setIvaRetenidoPorcentaje] = useState(String(IVA_RETENIDO_PORCENTAJE_DEFAULT));
+  const [isrPorcentaje, setIsrPorcentaje] = useState(String(ISR_PORCENTAJE_DEFAULT));
+  const [incluirAvisoFactura, setIncluirAvisoFactura] = useState(INCLUIR_AVISO_FACTURA_DEFAULT);
+
   // Modal material (agregar / editar precio)
   const [materialModalVisible, setMaterialModalVisible] = useState(false);
   const [materialEditando, setMaterialEditando] = useState(null);
@@ -139,6 +150,11 @@ export default function ReciclajePanel() {
       // La referencia legal (Código Civil de B.C.) solo aplica a yonkes de Baja California — para
       // los demás se deja en blanco pero editable, no inventamos una cita legal de otro estado.
       if (estadoDeYonke(data) === ESTADO_DEFAULT) setDeclaracionLegal(DECLARACION_LEGAL_BC);
+      const f = data.fiscalReciclaje || {};
+      setIvaPorcentaje(String(f.ivaPorcentaje ?? IVA_PORCENTAJE_DEFAULT));
+      setIvaRetenidoPorcentaje(String(f.ivaRetenidoPorcentaje ?? IVA_RETENIDO_PORCENTAJE_DEFAULT));
+      setIsrPorcentaje(String(f.isrPorcentaje ?? ISR_PORCENTAJE_DEFAULT));
+      setIncluirAvisoFactura(f.incluirAvisoFactura ?? INCLUIR_AVISO_FACTURA_DEFAULT);
     }).catch((e) => console.error(e));
   }, [yonkeId]);
 
@@ -173,6 +189,13 @@ export default function ReciclajePanel() {
     ? kilosNum * (materialSeleccionado.precioPorKilo || 0)
     : 0;
   const totalCompra = conceptos.reduce((sum, c) => sum + c.importe, 0);
+  const ivaPct = parseFloat(ivaPorcentaje) || 0;
+  const ivaRetPct = parseFloat(ivaRetenidoPorcentaje) || 0;
+  const isrPct = parseFloat(isrPorcentaje) || 0;
+  const montoIva = totalCompra * (ivaPct / 100);
+  const montoIvaRetenido = totalCompra * (ivaRetPct / 100);
+  const montoIsr = totalCompra * (isrPct / 100);
+  const netoAPagar = totalCompra + montoIva - montoIvaRetenido - montoIsr;
 
   function generarFolioReciclaje() {
     const random = Math.floor(1000 + Math.random() * 9000);
@@ -223,6 +246,17 @@ export default function ReciclajePanel() {
         declaracionLegal: declaracionLegal.trim(),
         conceptos,
         total: Math.round(totalCompra * 100) / 100,
+        // Porcentajes Y montos ya calculados se guardan juntos — mismo criterio de snapshot que
+        // el resto de la nota: si el yonke cambia sus porcentajes por defecto después, esta
+        // compra ya registrada no se recalcula.
+        ivaPorcentaje: ivaPct,
+        ivaRetenidoPorcentaje: ivaRetPct,
+        isrPorcentaje: isrPct,
+        montoIva: Math.round(montoIva * 100) / 100,
+        montoIvaRetenido: Math.round(montoIvaRetenido * 100) / 100,
+        montoIsr: Math.round(montoIsr * 100) / 100,
+        netoAPagar: Math.round(netoAPagar * 100) / 100,
+        incluirAvisoFactura,
         fecha: new Date(),
       };
       const ref = await addDoc(collection(db, 'yonkes', yonkeId, 'comprasReciclaje'), datos);
@@ -471,10 +505,58 @@ export default function ReciclajePanel() {
                       style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
                     />
 
+                    <p style={{ ...seccionTituloStyle, marginTop: '20px' }}>Datos fiscales de esta compra</p>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ flex: 1 }}>
+                        <p style={labelStyle}>I.V.A. %</p>
+                        <input
+                          type="number" min="0" step="0.01" inputMode="decimal"
+                          value={ivaPorcentaje} onChange={(e) => setIvaPorcentaje(e.target.value)}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={labelStyle}>I.V.A. ret. %</p>
+                        <input
+                          type="number" min="0" step="0.01" inputMode="decimal"
+                          value={ivaRetenidoPorcentaje} onChange={(e) => setIvaRetenidoPorcentaje(e.target.value)}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={labelStyle}>I.S.R. %</p>
+                        <input
+                          type="number" min="0" step="0.01" inputMode="decimal"
+                          value={isrPorcentaje} onChange={(e) => setIsrPorcentaje(e.target.value)}
+                          style={inputStyle}
+                        />
+                      </div>
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', fontSize: '14px', color: '#333', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={incluirAvisoFactura}
+                        onChange={(e) => setIncluirAvisoFactura(e.target.checked)}
+                      />
+                      Incluir aviso de &ldquo;factura provisional&rdquo;
+                    </label>
+
                     <div style={totalBoxStyle}>
-                      <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Total a pagar</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#666', padding: '2px 0' }}>
+                        <span>Total</span><span>{formatoMoneda(totalCompra)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#666', padding: '2px 0' }}>
+                        <span>I.V.A. {ivaPct}%</span><span>{formatoMoneda(montoIva)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#666', padding: '2px 0' }}>
+                        <span>- I.V.A. Ret. {ivaRetPct}%</span><span>{formatoMoneda(montoIvaRetenido)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#666', padding: '2px 0' }}>
+                        <span>- Retención {isrPct}% I.S.R.</span><span>{formatoMoneda(montoIsr)}</span>
+                      </div>
+                      <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#888' }}>Neto a pagar</p>
                       <p style={{ margin: '2px 0 0', fontSize: '28px', fontWeight: 'bold', color: '#1A3C5E' }}>
-                        {formatoMoneda(totalCompra)}
+                        {formatoMoneda(netoAPagar)}
                       </p>
                     </div>
 
@@ -660,8 +742,14 @@ function TicketReciclaje({ compra, nombreYonke }) {
   const fecha = getFecha(compra);
   const items = conceptosDeCompra(compra);
   const vendedor = compra.vendedor || {};
+  // Compras registradas antes de agregar la sección fiscal no tienen estos campos — el ticket
+  // simplemente no muestra el desglose ni el neto (queda igual que antes, solo con el TOTAL).
+  const tieneDesgloseFiscal = compra.netoAPagar !== undefined && compra.netoAPagar !== null;
   return (
     <div id="ticket-imprimible" style={ticketStyle}>
+      {compra.incluirAvisoFactura && (
+        <p style={{ ...ticketLineaStyle, fontSize: '11px', marginBottom: '8px' }}>{AVISO_FACTURA_TEXTO}</p>
+      )}
       <p style={ticketCentroStyle}>{nombreYonke || 'Mecanix Yonke Virtual'}</p>
       <p style={ticketCentroStyle}>Compra de material reciclable</p>
       <p style={ticketSepStyle}>--------------------------------</p>
@@ -687,7 +775,17 @@ function TicketReciclaje({ compra, nombreYonke }) {
         </div>
       ))}
       <p style={ticketSepStyle}>--------------------------------</p>
-      <p style={ticketTotalStyle}>TOTAL: {formatoMoneda(compra.total)}</p>
+      <p style={tieneDesgloseFiscal ? ticketLineaStyle : ticketTotalStyle}>TOTAL: {formatoMoneda(compra.total)}</p>
+
+      {tieneDesgloseFiscal && (
+        <>
+          <p style={ticketLineaStyle}>I.V.A. {compra.ivaPorcentaje}%: {formatoMoneda(compra.montoIva)}</p>
+          <p style={ticketLineaStyle}>- I.V.A. Ret. {compra.ivaRetenidoPorcentaje}%: {formatoMoneda(compra.montoIvaRetenido)}</p>
+          <p style={ticketLineaStyle}>- Retención {compra.isrPorcentaje}% I.S.R.: {formatoMoneda(compra.montoIsr)}</p>
+          <p style={ticketSepStyle}>--------------------------------</p>
+          <p style={ticketTotalStyle}>NETO A PAGAR: {formatoMoneda(compra.netoAPagar)}</p>
+        </>
+      )}
 
       {compra.declaracionLegal && (
         <>
