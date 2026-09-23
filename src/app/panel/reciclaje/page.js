@@ -10,6 +10,8 @@ import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import { MATERIALES_RECICLAJE_BASE } from '../../lib/materialesReciclajeBase';
+import { ESTADO_DEFAULT, estadoDeYonke } from '../../lib/estados';
+import { DECLARACION_LEGAL_BC } from '../../lib/declaracionLegalReciclaje';
 
 // Siembra la lista base UNA sola vez (si la subcolección está vacía) — mismo patrón que
 // crearPiezasComunes en admin/yonke/[id]/inventario/page.js: un solo writeBatch, precioPorKilo
@@ -31,6 +33,33 @@ function formatoMoneda(n) {
 
 function getFecha(c) {
   return c.fecha?.toDate ? c.fecha.toDate() : new Date(c.fecha);
+}
+
+// Compras antiguas (antes de soportar varios conceptos por compra) guardan material/kilos/precio
+// directo en el documento; las nuevas guardan un arreglo `conceptos`. Esta función deja ambos
+// formatos con la misma forma para que el resto de la pantalla no tenga que distinguirlos.
+function conceptosDeCompra(c) {
+  if (c.conceptos && c.conceptos.length > 0) return c.conceptos;
+  if (c.material) {
+    return [{ material: c.material, materialId: c.materialId, precioPorKilo: c.precioPorKilo, kilos: c.kilos, importe: c.total }];
+  }
+  return [];
+}
+
+function tituloCompra(c) {
+  const items = conceptosDeCompra(c);
+  if (items.length <= 1) return items[0]?.material || '(sin material)';
+  return items.map((i) => i.material).join(', ');
+}
+
+function subtituloCompra(c) {
+  const items = conceptosDeCompra(c);
+  if (items.length === 1) {
+    const i = items[0];
+    return `${i.kilos} kg × ${formatoMoneda(i.precioPorKilo)}`;
+  }
+  const kilosTotal = items.reduce((sum, i) => sum + (i.kilos || 0), 0);
+  return `${items.length} conceptos · ${kilosTotal.toLocaleString('es-MX')} kg`;
 }
 
 // Mismo cálculo de "inicio de periodo" que ya usa panel/ventas/page.js — para que "hoy/semana/mes"
@@ -66,10 +95,20 @@ export default function ReciclajePanel() {
   const [compras, setCompras] = useState([]);
   const [loadingCompras, setLoadingCompras] = useState(true);
 
-  // Formulario de compra
+  // Formulario de compra — concepto que se está armando (material + kilos) antes de agregarlo
+  // a la lista de conceptos de la compra actual.
   const [materialSeleccionadoId, setMaterialSeleccionadoId] = useState('');
   const [kilos, setKilos] = useState('');
+  const [conceptos, setConceptos] = useState([]);
   const [guardandoCompra, setGuardandoCompra] = useState(false);
+
+  // Datos del vendedor y declaración legal de la compra actual — editables, se capturan una vez
+  // por compra (no por concepto).
+  const [vendedorNombre, setVendedorNombre] = useState('');
+  const [vendedorDireccion, setVendedorDireccion] = useState('');
+  const [vendedorRfc, setVendedorRfc] = useState('');
+  const [vendedorCurp, setVendedorCurp] = useState('');
+  const [declaracionLegal, setDeclaracionLegal] = useState('');
 
   // Modal material (agregar / editar precio)
   const [materialModalVisible, setMaterialModalVisible] = useState(false);
@@ -94,7 +133,12 @@ export default function ReciclajePanel() {
   useEffect(() => {
     if (!yonkeId) return;
     getDoc(doc(db, 'yonkes', yonkeId)).then((snap) => {
-      if (snap.exists()) setNombreYonke(snap.data().nombre || '');
+      if (!snap.exists()) return;
+      const data = snap.data();
+      setNombreYonke(data.nombre || '');
+      // La referencia legal (Código Civil de B.C.) solo aplica a yonkes de Baja California — para
+      // los demás se deja en blanco pero editable, no inventamos una cita legal de otro estado.
+      if (estadoDeYonke(data) === ESTADO_DEFAULT) setDeclaracionLegal(DECLARACION_LEGAL_BC);
     }).catch((e) => console.error(e));
   }, [yonkeId]);
 
@@ -125,32 +169,68 @@ export default function ReciclajePanel() {
 
   const materialSeleccionado = materiales.find((m) => m.id === materialSeleccionadoId) || null;
   const kilosNum = parseFloat(kilos);
-  const totalCompra = materialSeleccionado && !isNaN(kilosNum) && kilosNum > 0
+  const importeConcepto = materialSeleccionado && !isNaN(kilosNum) && kilosNum > 0
     ? kilosNum * (materialSeleccionado.precioPorKilo || 0)
     : 0;
+  const totalCompra = conceptos.reduce((sum, c) => sum + c.importe, 0);
 
-  async function registrarCompra() {
+  function generarFolioReciclaje() {
+    const random = Math.floor(1000 + Math.random() * 9000);
+    const fecha = new Date();
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    return `RC-${mes}${dia}-${random}`;
+  }
+
+  function agregarConcepto() {
     if (!materialSeleccionado) { alert('Selecciona un material'); return; }
     if (!kilosNum || kilosNum <= 0) { alert('Escribe los kilos'); return; }
     if (!materialSeleccionado.precioPorKilo) {
       alert(`"${materialSeleccionado.nombre}" todavía no tiene precio — ponle precio primero en la pestaña Materiales.`);
       return;
     }
+    // precioPorKilo se copia AQUÍ, al agregar el concepto — si después cambia el precio del
+    // material, este concepto ya agregado (y la compra una vez guardada) NO se recalcula
+    // (histórico correcto, mismo criterio que ya usaba esta pantalla).
+    setConceptos((prev) => [...prev, {
+      materialId: materialSeleccionado.id,
+      material: materialSeleccionado.nombre,
+      precioPorKilo: materialSeleccionado.precioPorKilo,
+      kilos: kilosNum,
+      importe: Math.round(importeConcepto * 100) / 100,
+    }]);
+    setMaterialSeleccionadoId('');
+    setKilos('');
+  }
+
+  function quitarConcepto(index) {
+    setConceptos((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function registrarCompra() {
+    if (!vendedorNombre.trim()) { alert('Escribe el nombre de quien vende el material'); return; }
+    if (conceptos.length === 0) { alert('Agrega al menos un concepto (material + kilos)'); return; }
     setGuardandoCompra(true);
     try {
-      // precioPorKilo se copia AQUÍ, en el momento de la compra — si después cambia el precio del
-      // material, esta compra ya guardada NO se recalcula (histórico correcto, ver comentario del
-      // archivo lib/materialesReciclajeBase.js y la tarea que pidió esto explícitamente).
       const datos = {
-        materialId: materialSeleccionado.id,
-        material: materialSeleccionado.nombre,
-        precioPorKilo: materialSeleccionado.precioPorKilo,
-        kilos: kilosNum,
+        folio: generarFolioReciclaje(),
+        vendedor: {
+          nombre: vendedorNombre.trim(),
+          direccion: vendedorDireccion.trim(),
+          rfc: vendedorRfc.trim(),
+          curp: vendedorCurp.trim(),
+        },
+        declaracionLegal: declaracionLegal.trim(),
+        conceptos,
         total: Math.round(totalCompra * 100) / 100,
         fecha: new Date(),
       };
       const ref = await addDoc(collection(db, 'yonkes', yonkeId, 'comprasReciclaje'), datos);
-      setKilos('');
+      setConceptos([]);
+      setVendedorNombre('');
+      setVendedorDireccion('');
+      setVendedorRfc('');
+      setVendedorCurp('');
       setCompraParaTicket({ id: ref.id, ...datos });
     } catch (error) {
       console.error('[registrarCompra]', error?.code, error);
@@ -200,6 +280,17 @@ export default function ReciclajePanel() {
     }
   }
 
+  async function eliminarCompra(compra) {
+    if (!confirm(`¿Eliminar esta compra${compra.folio ? ` (folio ${compra.folio})` : ''}? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteDoc(doc(db, 'yonkes', yonkeId, 'comprasReciclaje', compra.id));
+      if (compraParaTicket?.id === compra.id) setCompraParaTicket(null);
+    } catch (error) {
+      console.error('[eliminarCompra]', error?.code, error);
+      alert(`No se pudo eliminar${error?.code ? ` (${error.code})` : ''}`);
+    }
+  }
+
   async function eliminarMaterial(material) {
     if (!confirm(`¿Quitar "${material.nombre}" de tu lista? Las compras ya registradas con este material no se ven afectadas.`)) return;
     try {
@@ -225,10 +316,12 @@ export default function ReciclajePanel() {
   const totalPeriodo = comprasFiltradas.reduce((sum, c) => sum + (c.total || 0), 0);
   const desglose = {};
   comprasFiltradas.forEach((c) => {
-    const clave = c.material || '(sin nombre)';
-    if (!desglose[clave]) desglose[clave] = { kilos: 0, total: 0 };
-    desglose[clave].kilos += c.kilos || 0;
-    desglose[clave].total += c.total || 0;
+    conceptosDeCompra(c).forEach((item) => {
+      const clave = item.material || '(sin nombre)';
+      if (!desglose[clave]) desglose[clave] = { kilos: 0, total: 0 };
+      desglose[clave].kilos += item.kilos || 0;
+      desglose[clave].total += item.importe || 0;
+    });
   });
   const desgloseOrdenado = Object.entries(desglose).sort((a, b) => b[1].total - a[1].total);
 
@@ -311,16 +404,85 @@ export default function ReciclajePanel() {
                   style={inputStyle}
                 />
 
-                <div style={totalBoxStyle}>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Total a pagar</p>
-                  <p style={{ margin: '2px 0 0', fontSize: '28px', fontWeight: 'bold', color: '#1A3C5E' }}>
-                    {formatoMoneda(totalCompra)}
+                {importeConcepto > 0 && (
+                  <p style={{ color: '#888', fontSize: '13px', margin: '6px 0 0' }}>
+                    Importe de este concepto: <strong style={{ color: '#1A3C5E' }}>{formatoMoneda(importeConcepto)}</strong>
                   </p>
-                </div>
+                )}
 
-                <button onClick={registrarCompra} disabled={guardandoCompra} style={{ ...primaryButtonStyle, marginTop: '16px' }}>
-                  {guardandoCompra ? 'Guardando...' : 'Registrar compra'}
+                <button onClick={agregarConcepto} style={{ ...addButtonStyle, marginTop: '10px' }}>
+                  + Agregar concepto
                 </button>
+
+                {conceptos.length > 0 && (
+                  <>
+                    <p style={{ ...seccionTituloStyle, marginTop: '20px' }}>Conceptos de esta compra</p>
+                    {conceptos.map((c, i) => (
+                      <div key={i} style={compraRowStyle}>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E', fontSize: '14px' }}>{c.material}</p>
+                          <p style={{ margin: '2px 0 0', color: '#888', fontSize: '12px' }}>
+                            {c.kilos} kg × {formatoMoneda(c.precioPorKilo)}
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{formatoMoneda(c.importe)}</p>
+                          <button onClick={() => quitarConcepto(i)} style={ticketBotonStyle}>✕</button>
+                        </div>
+                      </div>
+                    ))}
+
+                    <p style={{ ...labelStyle, marginTop: '20px' }}>Nombre de quien vende *</p>
+                    <input
+                      type="text"
+                      value={vendedorNombre}
+                      onChange={(e) => setVendedorNombre(e.target.value)}
+                      placeholder="Nombre completo"
+                      style={inputStyle}
+                    />
+                    <p style={labelStyle}>Dirección (opcional)</p>
+                    <input
+                      type="text"
+                      value={vendedorDireccion}
+                      onChange={(e) => setVendedorDireccion(e.target.value)}
+                      placeholder="Calle, colonia, ciudad"
+                      style={inputStyle}
+                    />
+                    <p style={labelStyle}>RFC (opcional)</p>
+                    <input
+                      type="text"
+                      value={vendedorRfc}
+                      onChange={(e) => setVendedorRfc(e.target.value)}
+                      style={inputStyle}
+                    />
+                    <p style={labelStyle}>CURP (opcional)</p>
+                    <input
+                      type="text"
+                      value={vendedorCurp}
+                      onChange={(e) => setVendedorCurp(e.target.value)}
+                      style={inputStyle}
+                    />
+                    <p style={labelStyle}>Declaración legal en la nota (opcional, editable)</p>
+                    <textarea
+                      value={declaracionLegal}
+                      onChange={(e) => setDeclaracionLegal(e.target.value)}
+                      rows={3}
+                      placeholder="Se deja en blanco si no aplica en tu estado"
+                      style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+                    />
+
+                    <div style={totalBoxStyle}>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Total a pagar</p>
+                      <p style={{ margin: '2px 0 0', fontSize: '28px', fontWeight: 'bold', color: '#1A3C5E' }}>
+                        {formatoMoneda(totalCompra)}
+                      </p>
+                    </div>
+
+                    <button onClick={registrarCompra} disabled={guardandoCompra} style={{ ...primaryButtonStyle, marginTop: '16px' }}>
+                      {guardandoCompra ? 'Guardando...' : 'Registrar compra'}
+                    </button>
+                  </>
+                )}
               </>
             )}
 
@@ -330,14 +492,15 @@ export default function ReciclajePanel() {
                 {compras.slice(0, 8).map((c) => (
                   <div key={c.id} style={compraRowStyle}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E', fontSize: '14px' }}>{c.material}</p>
+                      <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E', fontSize: '14px' }}>{tituloCompra(c)}</p>
                       <p style={{ margin: '2px 0 0', color: '#888', fontSize: '12px' }}>
-                        {c.kilos} kg × {formatoMoneda(c.precioPorKilo)} · {getFecha(c).toLocaleDateString('es-MX')}
+                        {c.folio ? `${c.folio} · ` : ''}{subtituloCompra(c)} · {getFecha(c).toLocaleDateString('es-MX')}
                       </p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{formatoMoneda(c.total)}</p>
                       <button onClick={() => setCompraParaTicket(c)} style={ticketBotonStyle}>🖨️</button>
+                      <button onClick={() => eliminarCompra(c)} style={eliminarBotonStyle}>🗑️</button>
                     </div>
                   </div>
                 ))}
@@ -432,14 +595,15 @@ export default function ReciclajePanel() {
               comprasFiltradas.map((c) => (
                 <div key={c.id} style={compraRowStyle}>
                   <div>
-                    <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E', fontSize: '14px' }}>{c.material}</p>
+                    <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E', fontSize: '14px' }}>{tituloCompra(c)}</p>
                     <p style={{ margin: '2px 0 0', color: '#888', fontSize: '12px' }}>
-                      {c.kilos} kg × {formatoMoneda(c.precioPorKilo)} · {getFecha(c).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
+                      {c.folio ? `${c.folio} · ` : ''}{subtituloCompra(c)} · {getFecha(c).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{formatoMoneda(c.total)}</p>
                     <button onClick={() => setCompraParaTicket(c)} style={ticketBotonStyle}>🖨️</button>
+                    <button onClick={() => eliminarCompra(c)} style={eliminarBotonStyle}>🗑️</button>
                   </div>
                 </div>
               ))
@@ -494,18 +658,43 @@ export default function ReciclajePanel() {
 // @media print de arriba usa para ocultar todo lo demás de la página al imprimir.
 function TicketReciclaje({ compra, nombreYonke }) {
   const fecha = getFecha(compra);
+  const items = conceptosDeCompra(compra);
+  const vendedor = compra.vendedor || {};
   return (
     <div id="ticket-imprimible" style={ticketStyle}>
       <p style={ticketCentroStyle}>{nombreYonke || 'Mecanix Yonke Virtual'}</p>
-      <p style={ticketCentroStyle}>Compra de material</p>
+      <p style={ticketCentroStyle}>Compra de material reciclable</p>
       <p style={ticketSepStyle}>--------------------------------</p>
-      <p style={ticketLineaStyle}>Material: {compra.material}</p>
-      <p style={ticketLineaStyle}>Kilos: {compra.kilos} kg</p>
-      <p style={ticketLineaStyle}>Precio/kg: {formatoMoneda(compra.precioPorKilo)}</p>
+      {compra.folio && <p style={ticketLineaStyle}>Folio: {compra.folio}</p>}
+      <p style={ticketLineaStyle}>{fecha.toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</p>
+
+      {vendedor.nombre && (
+        <>
+          <p style={ticketSepStyle}>--------------------------------</p>
+          <p style={ticketLineaStyle}>Vendedor: {vendedor.nombre}</p>
+          {vendedor.direccion && <p style={ticketLineaStyle}>Dirección: {vendedor.direccion}</p>}
+          {vendedor.rfc && <p style={ticketLineaStyle}>RFC: {vendedor.rfc}</p>}
+          {vendedor.curp && <p style={ticketLineaStyle}>CURP: {vendedor.curp}</p>}
+        </>
+      )}
+
+      <p style={ticketSepStyle}>--------------------------------</p>
+      <p style={{ ...ticketLineaStyle, fontWeight: 'bold' }}>Descripción · Kg · Importe</p>
+      {items.map((it, i) => (
+        <div key={i}>
+          <p style={ticketLineaStyle}>{it.material}</p>
+          <p style={ticketLineaStyle}>{it.kilos} kg × {formatoMoneda(it.precioPorKilo)} = {formatoMoneda(it.importe)}</p>
+        </div>
+      ))}
       <p style={ticketSepStyle}>--------------------------------</p>
       <p style={ticketTotalStyle}>TOTAL: {formatoMoneda(compra.total)}</p>
-      <p style={ticketSepStyle}>--------------------------------</p>
-      <p style={ticketLineaStyle}>{fecha.toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</p>
+
+      {compra.declaracionLegal && (
+        <>
+          <p style={ticketSepStyle}>--------------------------------</p>
+          <p style={{ ...ticketLineaStyle, fontSize: '11px' }}>{compra.declaracionLegal}</p>
+        </>
+      )}
     </div>
   );
 }
@@ -560,6 +749,9 @@ const totalBoxStyle = {
 };
 const ticketBotonStyle = {
   background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', fontSize: '15px',
+};
+const eliminarBotonStyle = {
+  background: 'none', border: '1px solid #F3C7BB', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', fontSize: '15px',
 };
 const ticketStyle = {
   fontFamily: "'Courier New', Courier, monospace", width: '280px', maxWidth: '100%', margin: '0 auto',
