@@ -22,9 +22,13 @@ const ALIAS_MARCA = {
 };
 
 // Generaciones de plataforma que los mecánicos usan como nombre de vehículo. Solo se aplican como
-// último recurso (ver extraerMarcaModelo). Agregar aquí otras plataformas si el log las muestra.
+// último recurso (ver extraerMarcaModelo) — nunca pisan una marca/modelo ya resuelto por alias o
+// catálogo (ej. "focus mk2" resuelve Ford por el modelo "Focus" antes de llegar aquí). Solo marca,
+// nunca modelo ni año — un "mk2" real podría ser Golf, Jetta, etc., y cada uno tiene su propio
+// rango de años; eso queda pendiente (ver auditoría 2026-09-24, Opción B, todavía no implementada).
 const ALIAS_PLATAFORMA = {
-  'mk4': 'Volkswagen', 'mk5': 'Volkswagen', 'mk6': 'Volkswagen', 'mk7': 'Volkswagen',
+  'mk1': 'Volkswagen', 'mk2': 'Volkswagen', 'mk3': 'Volkswagen', 'mk4': 'Volkswagen',
+  'mk5': 'Volkswagen', 'mk6': 'Volkswagen', 'mk7': 'Volkswagen', 'mk8': 'Volkswagen',
 };
 
 // Modelos de RAM que NO existen como "Ram <numero>" bajo Dodge en el catálogo (1500 y 2500 sí
@@ -225,6 +229,12 @@ function detectarModeloDesconocido(textoNormalizado, { marca, modelo, anio, piez
     if (canonica === marca) {
       normalizar(alias).split(/\s+/).forEach((w) => aliasPalabras.add(w));
     }
+  }
+  // Un alias de plataforma (ej. "mk6") que resolvió la marca actual tampoco cuenta como "palabra
+  // sin explicar" — sin esto, "calavera de un mk6" o "mk6" solo disparaban modeloDesconocido=true
+  // aunque "mk6" fue justo la palabra que identificó Volkswagen (auditoría 2026-09-24).
+  for (const [alias, canonica] of Object.entries(ALIAS_PLATAFORMA)) {
+    if (canonica === marca) aliasPalabras.add(alias);
   }
   const piezaPalabras = new Set(pieza ? normalizar(pieza).split(/\s+/) : []);
   const anioStr = anio != null ? String(anio) : null;
