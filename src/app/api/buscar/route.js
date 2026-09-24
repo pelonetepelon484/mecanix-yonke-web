@@ -175,14 +175,20 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
   // NINGUNO de los tres encuentra nada — ni un motor ni una pieza suelta reales deben quedar
   // invisibles por esto.
   //
-  // Búsqueda de motor/transmisión SUELTO por cilindrada: se fuerza enCatalogo=false Y se salta
-  // consultarInventario() por completo — esa colección no tiene motores/transmisiones sueltos, y
-  // el inventario que sí los filtra por cilindrada es consultarMotoresTransmisiones (abajo). Para
-  // cualquier OTRA pieza con cilindrada, en cambio, consultarInventario() SÍ corre — ahí es donde
-  // se filtra por la cilindrada del vehículo padre (cilindrada se le pasa igual que a
-  // consultarMotoresTransmisiones, sin cambiar nada cuando es null).
+  // Búsqueda de motor/transmisión SUELTO por cilindrada: se salta consultarInventario() por
+  // completo — esa colección no tiene motores/transmisiones sueltos, y el inventario que sí los
+  // filtra por cilindrada es consultarMotoresTransmisiones (abajo). Para cualquier OTRA pieza con
+  // cilindrada, en cambio, consultarInventario() SÍ corre — ahí es donde se filtra por la
+  // cilindrada del vehículo padre (cilindrada se le pasa igual que a consultarMotoresTransmisiones,
+  // sin cambiar nada cuando es null).
+  // FIX (auditoría 2026-09-24): antes, esta rama forzaba enCatalogo=false SIEMPRE, sin importar si
+  // la marca/modelo sí tenían inventario real — "motor honda civic 2.0", "yukon 4.8L transmision"
+  // y "motor de charger 2.7" mostraban "no identificamos ese modelo" pese a que Honda Civic/GMC
+  // Yukon/Dodge Charger SÍ están en el catálogo. Ahora existeEnCatalogoVivo() corre igual que en
+  // cualquier otra búsqueda; si el vehículo SÍ es conocido pero no hay un motor/transmisión suelto
+  // con esa cilindrada, el flujo cae más abajo en el mensaje correcto ("sin_inventario"), no aquí.
   const [enCatalogo, resultadoMotores, resultadoInventario] = await Promise.all([
-    esBusquedaMotorPorCilindrada ? Promise.resolve(false) : existeEnCatalogoVivo(marca, modelo),
+    existeEnCatalogoVivo(marca, modelo),
     consultarMotoresTransmisiones({ marca, modelo, anio, cilindrada, estado: estadoFiltro }),
     esBusquedaMotorPorCilindrada
       ? Promise.resolve({ resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false })

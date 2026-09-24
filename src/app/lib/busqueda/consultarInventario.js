@@ -4,6 +4,26 @@ import { getRatingParaYonke } from '../yonkesServerData';
 import { buscarVehiculosPorAnio } from '../buscarVehiculosPorAnio';
 import { estadoDeYonke } from './estadosServer';
 import { cilindradaCoincide } from './cilindrada';
+import { CATALOGO_BASE } from '../catalogoBase';
+
+// Un modelo REAL y conocido (ej. Volkswagen Atlas, Dodge Stratus) que nadie ha registrado nunca
+// en vivo no debe verse igual que un texto que no se entendió en absoluto — antes, ambos casos
+// devolvían "no identificamos ese modelo todavía", cuando el mensaje honesto para el primero es
+// "no tenemos inventario de ese modelo" (mismo criterio que ya usa el resto del pipeline para
+// "sin_inventario"). Por eso el catálogo estático (CATALOGO_BASE, el diccionario amplio que ya se
+// usa para RECONOCER texto en extraerIntencion.js) ahora también cuenta como "catalogado" aquí,
+// además del catálogo vivo (inventario alguna vez registrado). Auditoría 2026-09-24 (búsquedas
+// sin resultado) encontró esto confirmado contra vehículos con inventario real: "yukon 4.8L
+// transmision", "motor honda civic 2.0" y "motor de charger 2.7" mostraban "no identificamos ese
+// modelo" pese a que GMC Yukon / Honda Civic / Dodge Charger SÍ estaban en el catálogo vivo — la
+// causa de ESOS tres era otro bug (ver nota en route.js sobre búsquedas de motor por cilindrada),
+// pero el mismo mensaje enganoso aplicaba también a modelos que de plano nunca tuvieron inventario.
+function existeEnCatalogoEstatico(marca, modelo) {
+  const modelos = CATALOGO_BASE[marca];
+  if (!modelos || modelos.length === 0) return false;
+  if (modelo == null) return true;
+  return modelos.some((m) => m.toLowerCase() === modelo.toLowerCase());
+}
 
 // Filtro de estado, opcional y aditivo: sin `estado` (o 'todos') se devuelven TODOS los yonkes,
 // idéntico al comportamiento de siempre — ningún llamador existente cambia de resultado. Con un
@@ -64,6 +84,7 @@ async function buscarAniosCercanos(buscarUnAnio, anio, dedupe) {
 // modelo=null (búsqueda solo por marca, ej. "nissan 2015"): basta con que la marca tenga
 // algún modelo vivo registrado, sin exigir uno específico.
 export async function existeEnCatalogoVivo(marca, modelo) {
+  if (existeEnCatalogoEstatico(marca, modelo)) return true;
   const snap = await getDoc(doc(dbServer, 'config', 'catalogoVehiculos'));
   if (!snap.exists()) return false;
   const catalogo = snap.data().catalogo || {};
