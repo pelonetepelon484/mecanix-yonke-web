@@ -1,3 +1,10 @@
+export const metadata = {
+  title: 'Política de Privacidad',
+  description: 'Cómo Mecanix Yonke Virtual recopila, usa y protege tu información al buscar refacciones o registrar tu yonke.',
+  alternates: { canonical: '/privacidad' },
+  robots: { index: true, follow: true },
+};
+
 export default function Privacidad() {
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '40px 20px' }}>

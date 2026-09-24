@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { dbServer } from './lib/firebase-server';
 import { obtenerEstadosCombinado, estadoDeYonke, ESTADO_DEFAULT } from './lib/busqueda/estadosServer';
@@ -27,13 +28,32 @@ function construirTextoSeoEstados(estados) {
 // todavía, y esos no deben prometerse en el SEO. Una sola lectura de "yonkes" (misma colección
 // completa que ya lee consultarInventario.js en cada búsqueda), agrupada en memoria — barata,
 // y aquí encima solo se ejecuta cada 10 min gracias al revalidate de arriba.
-async function obtenerEstadosConCobertura() {
+// cache(): dedupea la lectura entre generateMetadata() y Home() dentro del mismo request —
+// mismo patrón que resolveDemo() en tenant-demo/page.js — para no leer "yonkes" dos veces.
+const obtenerEstadosConCobertura = cache(async function obtenerEstadosConCobertura() {
   const [estados, yonkesSnap] = await Promise.all([
     obtenerEstadosCombinado(),
     getDocs(collection(dbServer, 'yonkes')),
   ]);
   const estadosConYonkes = new Set(yonkesSnap.docs.map((d) => estadoDeYonke(d.data())));
   return estados.filter((e) => estadosConYonkes.has(e.id));
+});
+
+// Nada de "title" aquí a propósito: se deja heredar el default rico en keywords de layout.js.
+// Solo se enriquece la description con la cobertura real (dinámica), sin tocar openGraph/
+// twitter/robots/keywords, que ya vienen bien desde el layout raíz.
+export async function generateMetadata() {
+  let estadosConCobertura;
+  try {
+    estadosConCobertura = await obtenerEstadosConCobertura();
+  } catch {
+    estadosConCobertura = [];
+  }
+  const textoSeoEstados = construirTextoSeoEstados(estadosConCobertura);
+  const description = textoSeoEstados
+    ? `Encuentra autopartes y refacciones usadas entre los yonkes y deshuesaderos afiliados en México. ${textoSeoEstados} Busca por marca, modelo y año. Reserva en línea al instante.`
+    : undefined; // undefined = hereda la description del layout raíz
+  return description ? { description } : {};
 }
 
 export default async function Home() {

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 export const metadata = {
-  title: 'Nuestra Historia — Mecanix Yonke Virtual',
+  title: 'Nuestra Historia',
   description: 'Conoce a David, mecánico de Tijuana y fundador de Mecanix Yonke Virtual, y la historia detrás de la plataforma.',
 };
 

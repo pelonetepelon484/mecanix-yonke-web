@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Compra segura — Mecanix Yonke Virtual',
+  title: 'Compra segura',
   description: 'Mecanix es un buscador gratuito y nunca pide dinero. Consejos para comprar tu autoparte usada de forma segura, sin caer en fraudes.',
 };
 

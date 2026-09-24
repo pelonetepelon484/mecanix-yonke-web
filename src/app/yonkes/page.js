@@ -4,7 +4,7 @@ import { getConteoYonkesPorCiudad } from '../lib/yonkesServerData';
 export const revalidate = 3600;
 
 export const metadata = {
-  title: 'Yonkes registrados en Baja California | Mecanix Yonke Virtual',
+  title: 'Yonkes registrados en Baja California',
   description: 'Consulta la lista de yonkes y deshuesaderos afiliados a Mecanix Yonke Virtual en Tijuana, Mexicali, Ensenada, Tecate, Playas de Rosarito y San Quintín.',
   alternates: { canonical: '/yonkes' },
   openGraph: {

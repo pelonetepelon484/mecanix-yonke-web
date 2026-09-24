@@ -4,7 +4,7 @@ import { dbServer } from '../lib/firebase-server';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Yonkes Verificados — Mecanix Yonke Virtual',
+  title: 'Yonkes Verificados',
   description: 'Yonkes que Mecanix confirmó personalmente que son negocios reales y cumplen lo que ofrecen.',
 };
 

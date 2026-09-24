@@ -1,3 +1,10 @@
+export const metadata = {
+  title: 'Términos y Condiciones',
+  description: 'Términos y condiciones de uso de Mecanix Yonke Virtual — la plataforma que conecta clientes con yonkes afiliados en México.',
+  alternates: { canonical: '/terminos' },
+  robots: { index: true, follow: true },
+};
+
 export default function Terminos() {
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '40px 20px' }}>
