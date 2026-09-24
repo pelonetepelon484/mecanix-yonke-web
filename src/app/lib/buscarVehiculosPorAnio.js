@@ -1,5 +1,15 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 
+// Modelos que el cliente nombra con un nombre comercial regional distinto al que normalmente
+// captura el yonke en su inventario (mismo vehículo, otro badge) — se revisan ADEMÁS del nombre
+// exacto, nunca en vez de él. Cheyenne es el nombre con el que GM vende en México la misma
+// plataforma de la pickup Chevrolet Silverado (auditoría 2026-09-24: búsqueda real de "cheyene
+// 2010" sin match, aunque el yonke pudo haber registrado el mismo vehículo como "Silverado").
+// Agregar aquí a medida que el log de búsquedas muestre otros casos.
+const MODELOS_EQUIVALENTES = {
+  cheyenne: ['silverado', 'silverado 1500'],
+};
+
 // Núcleo de matching compartido entre el buscador manual (page.js, con `db`) y el
 // inteligente (lib/busqueda/consultarInventario.js, con `dbServer`) — antes duplicado casi
 // palabra por palabra en ambos archivos. Un cambio futuro a esta lógica (ej. cómo se
@@ -31,8 +41,11 @@ export async function buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, mod
     const coincidentes = snap.docs.filter((vDoc) => {
       const data = vDoc.data();
       const marcaOk = marca == null || data.marca?.toLowerCase() === marca.trim().toLowerCase();
-      const modeloOk = modelo == null || data.modelo?.toLowerCase() === modelo.trim().toLowerCase();
-      return marcaOk && modeloOk;
+      const modeloBuscado = modelo?.trim().toLowerCase();
+      const modeloDatoOk = modelo == null || data.modelo?.toLowerCase() === modeloBuscado;
+      const modeloEquivalenteOk = modelo != null
+        && (MODELOS_EQUIVALENTES[modeloBuscado] || []).includes(data.modelo?.toLowerCase());
+      return marcaOk && (modeloDatoOk || modeloEquivalenteOk);
     });
     for (const vDoc of coincidentes) {
       encontrados.push({ yonkeDoc, vDoc });

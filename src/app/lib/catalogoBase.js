@@ -6,7 +6,7 @@ export const CATALOGO_BASE = {
   'Chevrolet': ['Aveo', 'Chevy', 'Chevy Pop', 'Spark', 'Sonic', 'Cruze', 'Malibu', 'Impala', 'Cavalier', 'Cobalt', 'Equinox', 'Traverse', 'Trax', 'Tahoe', 'Suburban', 'Silverado', 'Silverado 1500', 'Cheyenne', 'Colorado', 'S10', 'Blazer', 'Trailblazer', 'Astro', 'Express', 'Venture', 'Camaro', 'Monte Carlo', 'HHR', 'Captiva', 'Chevy Van'],
   'Ford': ['Fiesta', 'Focus', 'Fusion', 'Taurus', 'Mustang', 'Escape', 'Edge', 'Explorer', 'Expedition', 'Flex', 'EcoSport', 'Ranger', 'F-150', 'F-250', 'F-350', 'Lobo', 'Transit', 'Econoline', 'Windstar', 'Freestar', 'Escort', 'Contour', 'Courier', 'Bronco', 'Crown Victoria', 'Aerostar'],
   'Honda': ['Civic', 'Accord', 'Fit', 'City', 'CR-V', 'HR-V', 'Pilot', 'Odyssey', 'Element', 'Ridgeline', 'Prelude'],
-  'Volkswagen': ['Jetta', 'Golf', 'Beetle', 'Vocho', 'Passat', 'Pointer', 'Lupo', 'Polo', 'Bora', 'Tiguan', 'Touareg', 'Eurovan', 'Combi', 'Derby', 'Caribe', 'Atlantic', 'CrossFox', 'Saveiro', 'Amarok', 'Vento', 'Gol'],
+  'Volkswagen': ['Jetta', 'Golf', 'Beetle', 'Vocho', 'Passat', 'Pointer', 'Lupo', 'Polo', 'Bora', 'Tiguan', 'Touareg', 'Eurovan', 'Combi', 'Derby', 'Caribe', 'Atlantic', 'CrossFox', 'Saveiro', 'Amarok', 'Vento', 'Gol', 'Atlas'],
   'Dodge': ['Attitude', 'Neon', 'Stratus', 'Avenger', 'Charger', 'Challenger', 'Dart', 'Journey', 'Durango', 'Caravan', 'Grand Caravan', 'Ram 1500', 'Ram 2500', 'Dakota', 'Nitro', 'Caliber', 'Intrepid', 'Shadow', 'Spirit'],
   'Chrysler': ['200', '300', '300M', 'Cirrus', 'Sebring', 'PT Cruiser', 'Town & Country', 'Voyager', 'Pacifica', 'Concorde', 'LeBaron'],
   'Jeep': ['Wrangler', 'Cherokee', 'Grand Cherokee', 'Liberty', 'Compass', 'Patriot', 'Commander', 'Renegade'],

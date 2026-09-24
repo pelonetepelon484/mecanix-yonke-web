@@ -97,6 +97,9 @@ export const FRASES_PIEZAS_BASE = [
   ['core support', 'Soporte de radiador'], ['radiator support', 'Soporte de radiador'],
   ['soporte de radiador', 'Soporte de radiador'], ['soporte radiador', 'Soporte de radiador'],
   ['cuna de radiador', 'Soporte de radiador'], ['cuna radiador', 'Soporte de radiador'],
+  // "placa estructural (de radiador)" es la misma pieza, en el término que usan varios clientes en
+  // español (auditoría 2026-09-24: 3 búsquedas repetidas del mismo cliente sin reconocerse).
+  ['placa estructural de radiador', 'Soporte de radiador'], ['placa estructural', 'Soporte de radiador'],
 
   // Spindle / mango / muñón = mangueta de dirección (misma pieza).
   ['spindle', 'Mango/muñón de dirección'], ['mango', 'Mango/muñón de dirección'],
