@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
+import { filtroBusquedasConfiables } from '../../../lib/busqueda/corteBusquedasConfiables';
 import mexicoMap from '@svg-maps/mexico';
 
 // @svg-maps/mexico usa como `id` el código ISO 3166-2:MX en minúsculas (agu, bcn, ..., zac) —
@@ -82,6 +83,11 @@ export default function MapaBusquedasPage() {
           const desde = new Date();
           desde.setDate(desde.getDate() - rangoInfo.dias);
           restricciones.push(where('fecha', '>=', Timestamp.fromDate(desde)));
+        } else {
+          // Vista "Todo" (sin ventana relativa) — excluye lo anterior al corte de datos
+          // confiables (ver corteBusquedasConfiables.js). Las vistas de 7/30/90 días no lo
+          // necesitan: se van a limpiar solas con el tiempo al ser relativas a hoy.
+          restricciones.push(filtroBusquedasConfiables());
         }
         const snap = await getDocs(query(ref, ...restricciones));
         setDocs(snap.docs.map((d) => d.data()));

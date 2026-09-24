@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, limit, getDocs, getCountFromServer, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { filtroBusquedasConfiables } from '../../lib/busqueda/corteBusquedasConfiables';
 
 const ESTADOS = [
   { key: 'ok', label: 'Con resultados', color: '#2E7D32' },
@@ -93,8 +94,11 @@ export default function AdminBusquedasPage() {
         // combinado con estado SÍ requeriría un índice nuevo por cada estado (equality+inequality
         // en campos distintos) — por eso "Solo México" se define como pais=='MX' exacto, nunca
         // como resta contra "fuera de México", ver nota en filtrarPorVista.
+        // "Total de búsquedas" excluye lo anterior al corte de datos confiables (ver
+        // corteBusquedasConfiables.js) — el bug de clasificación ya corregido contaminaba la
+        // mayoría de los documentos viejos, no queremos que ese ruido infle este número.
         const [totalSnap, totalMxSnap, totalFueraSnap, ...estadoSnaps] = await Promise.all([
-          getCountFromServer(ref),
+          getCountFromServer(query(ref, filtroBusquedasConfiables())),
           getCountFromServer(query(ref, where('pais', '==', 'MX'))),
           getCountFromServer(query(ref, where('pais', '!=', 'MX'))),
           ...ESTADOS.map((e) => getCountFromServer(query(ref, where('estado', '==', e.key)))),
@@ -112,11 +116,14 @@ export default function AdminBusquedasPage() {
         setConteos(nuevoConteos);
         setConteosMx(nuevoConteosMx);
 
+        // Las 4 queries que alimentan las tablas de abajo también excluyen lo anterior al corte
+        // (busquedas_pendientes, que alimenta "Contactos pendientes", NO lleva este filtro —
+        // ver corteBusquedasConfiables.js).
         const [fueraCatalogoSnap, sinInventarioSnap, fueraDeGiroSnap, noInterpretadasSnap, pendientesSnap] = await Promise.all([
-          getDocs(query(ref, where('estado', '==', 'fuera_de_catalogo'), orderBy('fecha', 'desc'), limit(300))),
-          getDocs(query(ref, where('estado', '==', 'sin_inventario'), orderBy('fecha', 'desc'), limit(300))),
-          getDocs(query(ref, where('estado', '==', 'fuera_de_giro'), orderBy('fecha', 'desc'), limit(30))),
-          getDocs(query(ref, where('estado', 'in', ['no_interpretada', 'parseo_parcial']), orderBy('fecha', 'desc'), limit(30))),
+          getDocs(query(ref, where('estado', '==', 'fuera_de_catalogo'), filtroBusquedasConfiables(), orderBy('fecha', 'desc'), limit(300))),
+          getDocs(query(ref, where('estado', '==', 'sin_inventario'), filtroBusquedasConfiables(), orderBy('fecha', 'desc'), limit(300))),
+          getDocs(query(ref, where('estado', '==', 'fuera_de_giro'), filtroBusquedasConfiables(), orderBy('fecha', 'desc'), limit(30))),
+          getDocs(query(ref, where('estado', 'in', ['no_interpretada', 'parseo_parcial']), filtroBusquedasConfiables(), orderBy('fecha', 'desc'), limit(30))),
           getDocs(query(collection(db, 'busquedas_pendientes'), orderBy('fecha', 'desc'), limit(300))),
         ]);
 
