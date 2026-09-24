@@ -123,13 +123,27 @@ async function extraerMarcaModelo(textoNormalizado, anio) {
   }
 
   // 2. Exacto: modelo por secuencia de tokens completos (funciona incluso sin marca, ej.
-  // "tsuru 2010"). Si ya se encontró marca por alias, se prueban primero sus propios modelos
-  // (evita que un token corto/genérico case por error contra otra marca) y luego el resto.
+  // "tsuru 2010"). Si ya se encontró marca por alias, SOLO se prueban sus propios modelos —
+  // nunca los de otra marca.
+  // FIX (auditoría 2026-09-24, bug #2): antes, si ninguno de los modelos de la marca ya resuelta
+  // coincidía, el loop seguía probando TODAS las demás marcas y adoptaba el primer modelo que
+  // apareciera ahí, aunque fuera de una marca distinta — "chevrolet 200" terminaba con
+  // marca=Chevrolet + modelo="200" (modelo real de Chrysler, catalogoBase.js), y una búsqueda de
+  // "Suzuki Jimny...5 velocidades..." terminaba con modelo="5" (de Mazda, por la palabra suelta
+  // "5" en "5 velocidades"), ignorando "Jimny" por completo. Ver también existeEnCatalogoVivo:
+  // ya no hace falta ese modelo prestado para llegar a un mensaje "sin inventario" razonable.
+  //
+  // EXCEPCIÓN: RAM se sigue agregando a la lista a probar cuando la marca ya resuelta es Dodge o
+  // Chrysler — el corrector de RAM/Dodge de abajo (línea ~155) depende de que este loop SÍ
+  // encuentre el modelo en la lista de RAM (ej. "700", "4000", "ProMaster") mientras marcaEncontrada
+  // todavía dice "Dodge"/"Chrysler" (el alias genérico se dispara antes de llegar a "ram" en el
+  // texto — ver ese comentario). Sin esta excepción, "dodge ram 700"/"chrysler ram 700" dejarían
+  // de reconocer RAM (regresión confirmada con pruebas antes de este commit).
   let modeloEncontrado = null;
   let marcaDelModelo = null;
   const tokensTexto = textoNormalizado.split(/\s+/).filter(Boolean).map(limpiarToken);
   const marcasAProbar = marcaEncontrada
-    ? [marcaEncontrada, ...Object.keys(catalogo).filter((m) => m !== marcaEncontrada)]
+    ? [marcaEncontrada, ...(['Dodge', 'Chrysler'].includes(marcaEncontrada) ? ['RAM'] : [])]
     : Object.keys(catalogo);
   for (const marca of marcasAProbar) {
     const modelos = catalogo[marca] || [];
