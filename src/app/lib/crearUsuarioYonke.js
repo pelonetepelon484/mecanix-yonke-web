@@ -1,14 +1,6 @@
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAuWJajKo8NuJT_SGD4tvvc6jZa6DMDBCQ",
-  authDomain: "mecanix-yonke-virtual.firebaseapp.com",
-  projectId: "mecanix-yonke-virtual",
-  storageBucket: "mecanix-yonke-virtual.firebasestorage.app",
-  messagingSenderId: "650815226147",
-  appId: "1:650815226147:web:1629984619db0659b00c96"
-};
+import { firebaseConfig } from './firebaseConfig';
 
 // createUserWithEmailAndPassword cambia la sesión activa del Auth al que se le llama — si
 // usáramos el `auth` normal de la app, el admin quedaría deslogueado y logueado como el
