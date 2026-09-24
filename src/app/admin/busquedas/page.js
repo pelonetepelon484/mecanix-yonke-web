@@ -80,6 +80,7 @@ export default function AdminBusquedasPage() {
   const [docsNoInterpretadas, setDocsNoInterpretadas] = useState([]);
   const [contactosPendientes, setContactosPendientes] = useState([]);
   const [marcandoId, setMarcandoId] = useState(null);
+  const [exportando, setExportando] = useState(false);
 
   useEffect(() => {
     async function cargar() {
@@ -167,6 +168,38 @@ export default function AdminBusquedasPage() {
     setMarcandoId(null);
   }
 
+  // Exportación de solo lectura para auditoría manual: TODAS las búsquedas con conResultado
+  // false (cualquier estado que no sea 'ok'), sin límite — se descarga como un .json en el
+  // navegador del propio admin ya autenticado, nada se sube a ningún lado ni se toca Firestore
+  // aparte de esta lectura. fecha se convierte a ISO string porque un Timestamp de Firestore no
+  // serializa a JSON legible.
+  async function exportarJson() {
+    setExportando(true);
+    try {
+      const ref = collection(db, 'busquedas');
+      const q = query(ref, where('conResultado', '==', false), orderBy('fecha', 'desc'));
+      const snap = await getDocs(q);
+      const docs = snap.docs.map((d) => {
+        const data = d.data();
+        return { id: d.id, ...data, fecha: data.fecha?.toDate ? data.fecha.toDate().toISOString() : data.fecha };
+      });
+      const blob = new Blob([JSON.stringify(docs, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `busquedas_sin_resultado_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('[admin/busquedas] No se pudo exportar', error?.code, error);
+      alert(`No se pudo exportar${error?.code ? ` (${error.code})` : ''}. Revisa la consola.`);
+    } finally {
+      setExportando(false);
+    }
+  }
+
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', fontFamily: "'Inter', sans-serif", paddingBottom: '40px' }}>
       <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -177,12 +210,21 @@ export default function AdminBusquedasPage() {
             </button>
             <h1 style={{ color: '#fff', fontSize: '18px', margin: '4px 0 0', fontWeight: '700' }}>Búsquedas del Buscador Inteligente</h1>
           </div>
-          <button
-            onClick={() => router.push('/admin/busquedas/mapa')}
-            style={{ backgroundColor: '#E8720C', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '13px', fontWeight: '700', padding: '8px 14px', cursor: 'pointer' }}
-          >
-            🗺️ Mapa
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={exportarJson}
+              disabled={exportando}
+              style={{ backgroundColor: '#1A3C5E', border: '1px solid #fff', borderRadius: '8px', color: '#fff', fontSize: '13px', fontWeight: '700', padding: '8px 14px', cursor: 'pointer' }}
+            >
+              {exportando ? 'Exportando...' : '⬇️ Exportar JSON'}
+            </button>
+            <button
+              onClick={() => router.push('/admin/busquedas/mapa')}
+              style={{ backgroundColor: '#E8720C', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '13px', fontWeight: '700', padding: '8px 14px', cursor: 'pointer' }}
+            >
+              🗺️ Mapa
+            </button>
+          </div>
         </div>
       </div>
 
