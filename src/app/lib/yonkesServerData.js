@@ -1,6 +1,7 @@
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { dbServer } from './firebase-server';
 import { CIUDADES_BC } from './ciudades';
+import { estadoDeYonke } from './estados';
 
 export async function getRatingParaYonke(yonkeId) {
   const q = query(collection(dbServer, 'calificaciones'), where('yonkeId', '==', yonkeId));
@@ -13,10 +14,10 @@ export async function getRatingParaYonke(yonkeId) {
   return { promedio, total };
 }
 
-function toYonkePublico(doc) {
-  const d = doc.data();
+function toYonkePublico(docSnap) {
+  const d = docSnap.data();
   return {
-    id: doc.id,
+    id: docSnap.id,
     nombre: d.nombre || '',
     direccion: d.direccion || '',
     telefono: d.telefono || '',
@@ -25,6 +26,9 @@ function toYonkePublico(doc) {
     plan: d.plan || 'freemium',
     metodosPago: d.metodosPago || [],
     horario: d.horario || null,
+    logoUrl: d.logoUrl || null,
+    verificado: d.verificado === true,
+    estado: estadoDeYonke(d),
   };
 }
 
@@ -49,6 +53,18 @@ export async function getYonkesPorCiudad(ciudadKey) {
   });
 }
 
+// Usado por yonkes/[ciudad]/[yonkeId]/page.js (detalle de un yonke). null si no existe, está
+// inactivo, o no pertenece a la ciudad indicada (evita URLs tipo /yonkes/tijuana/{id-de-otra-ciudad}).
+export async function getYonkeById(id, ciudadKey) {
+  const snap = await getDoc(doc(dbServer, 'yonkes', id));
+  if (!snap.exists()) return null;
+  const d = snap.data();
+  if (d.activo !== true || d.ciudad !== ciudadKey) return null;
+  const yonke = toYonkePublico(snap);
+  yonke.calificacion = await getRatingParaYonke(id);
+  return yonke;
+}
+
 // Usado por generateStaticParams: ciudades con al menos un yonke activo, para pre-generar en build.
 export async function getCiudadesConYonkesActivos() {
   const snap = await getDocs(collection(dbServer, 'yonkes'));
@@ -58,6 +74,15 @@ export async function getCiudadesConYonkesActivos() {
     if (d.activo === true && d.ciudad) ciudades.add(d.ciudad);
   });
   return [...ciudades];
+}
+
+// Usado por sitemap.js: pares {id, ciudad} de TODOS los yonkes activos en ciudades de
+// CIUDADES_BC, en una sola lectura completa de "yonkes" (evita 6 lecturas, una por ciudad).
+export async function getYonkesActivosParaSitemap() {
+  const snap = await getDocs(collection(dbServer, 'yonkes'));
+  return snap.docs
+    .map((d) => ({ id: d.id, activo: d.data().activo, ciudad: d.data().ciudad }))
+    .filter((y) => y.activo === true && CIUDADES_BC.some((c) => c.key === y.ciudad));
 }
 
 // Usado por la página índice /yonkes: conteo de yonkes activos por ciudad (0 si no hay).

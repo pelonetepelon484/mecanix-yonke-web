@@ -3,6 +3,7 @@ import { CIUDADES_BC } from '../../lib/ciudades';
 import { getYonkesPorCiudad, getCiudadesConYonkesActivos } from '../../lib/yonkesServerData';
 import { formatearHorario, obtenerEstadoAbierto, metodosPagoLabels } from '../../lib/horario';
 import { toSafeJsonLdString } from '../../lib/jsonLd';
+import { buildYonkeJsonLd } from '../../lib/yonkeJsonLd';
 
 export async function generateStaticParams() {
   const ciudadesActivas = await getCiudadesConYonkesActivos();
@@ -19,12 +20,16 @@ export async function generateMetadata({ params }) {
   const ciudadInfo = CIUDADES_BC.find((c) => c.key === ciudad);
   if (!ciudadInfo) return {};
 
-  const title = `Yonkes en ${ciudadInfo.label} | Mecanix Yonke Virtual`;
+  // titleBase (sin sufijo) es lo que se manda como `title` de la página — el layout raíz ya le
+  // agrega " | Mecanix Yonke Virtual" vía el template; openGraph/twitter no pasan por ese
+  // template, así que ahí sí se manda el título completo.
+  const titleBase = `Yonkes en ${ciudadInfo.label}`;
+  const title = `${titleBase} | Mecanix Yonke Virtual`;
   const description = `Encuentra yonkes y deshuesaderos afiliados en ${ciudadInfo.label}, Baja California. Consulta refacciones usadas, teléfono, horario y contacta directo por WhatsApp.`;
   const url = `/yonkes/${ciudad}`;
 
   return {
-    title,
+    title: titleBase,
     description,
     alternates: { canonical: url },
     openGraph: {
@@ -38,62 +43,7 @@ export async function generateMetadata({ params }) {
   };
 }
 
-const DIA_SCHEMA = {
-  lunes: 'https://schema.org/Monday',
-  martes: 'https://schema.org/Tuesday',
-  miercoles: 'https://schema.org/Wednesday',
-  jueves: 'https://schema.org/Thursday',
-  viernes: 'https://schema.org/Friday',
-  sabado: 'https://schema.org/Saturday',
-  domingo: 'https://schema.org/Sunday',
-};
-
-function buildOpeningHoursSpecification(horario) {
-  return Object.keys(DIA_SCHEMA)
-    .filter((dia) => horario[dia]?.abierto)
-    .map((dia) => ({
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: DIA_SCHEMA[dia],
-      opens: horario[dia].apertura,
-      closes: horario[dia].cierre,
-    }));
-}
-
-function buildYonkeJsonLd(yonke, ciudadLabel, pageUrl) {
-  const entry = {
-    '@type': 'AutoPartsStore',
-    name: yonke.nombre,
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: yonke.direccion,
-      addressLocality: ciudadLabel,
-      addressRegion: 'Baja California',
-      addressCountry: 'MX',
-    },
-    url: pageUrl,
-  };
-
-  if (yonke.telefono) {
-    entry.telephone = `+52${yonke.telefono.replace(/\D/g, '')}`;
-  }
-
-  if (yonke.horario) {
-    const spec = buildOpeningHoursSpecification(yonke.horario);
-    if (spec.length) entry.openingHoursSpecification = spec;
-  }
-
-  if (yonke.calificacion.total > 0) {
-    entry.aggregateRating = {
-      '@type': 'AggregateRating',
-      ratingValue: yonke.calificacion.promedio,
-      reviewCount: yonke.calificacion.total,
-    };
-  }
-
-  return entry;
-}
-
-function YonkeCard({ yonke }) {
+function YonkeCard({ yonke, ciudadKey }) {
   const estado = obtenerEstadoAbierto(yonke.horario);
   const horarioTexto = formatearHorario(yonke.horario);
 
@@ -101,7 +51,9 @@ function YonkeCard({ yonke }) {
     <div style={cardStyle}>
       {yonke.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
 
-      <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{yonke.nombre}</p>
+      <a href={`/yonkes/${ciudadKey}/${yonke.id}`} style={{ textDecoration: 'none' }}>
+        <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{yonke.nombre}</p>
+      </a>
 
       {yonke.calificacion.promedio ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
@@ -144,16 +96,19 @@ function YonkeCard({ yonke }) {
         </div>
       )}
 
-      {yonke.whatsapp && (
-        <a
-          href={`https://wa.me/52${yonke.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, los encontré en Mecanix Yonke Virtual. ¿Me pueden ayudar con una pieza?')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={whatsappButtonStyle}
-        >
-          💬 WhatsApp
-        </a>
-      )}
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        {yonke.whatsapp && (
+          <a
+            href={`https://wa.me/52${yonke.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, los encontré en Mecanix Yonke Virtual. ¿Me pueden ayudar con una pieza?')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={whatsappButtonStyle}
+          >
+            💬 WhatsApp
+          </a>
+        )}
+        <a href={`/yonkes/${ciudadKey}/${yonke.id}`} style={verDetalleLinkStyle}>Ver detalle →</a>
+      </div>
     </div>
   );
 }
@@ -203,7 +158,7 @@ export default async function CiudadPage({ params }) {
           </div>
 
           {yonkes.map((y) => (
-            <YonkeCard key={y.id} yonke={y} />
+            <YonkeCard key={y.id} yonke={y} ciudadKey={ciudad} />
           ))}
 
           {yonkes.length === 0 && (
@@ -242,7 +197,7 @@ export default async function CiudadPage({ params }) {
           dangerouslySetInnerHTML={{
             __html: toSafeJsonLdString({
               '@context': 'https://schema.org',
-              '@graph': yonkes.map((y) => buildYonkeJsonLd(y, ciudadInfo.label, pageUrl)),
+              '@graph': yonkes.map((y) => buildYonkeJsonLd(y, ciudadInfo.label, `${pageUrl}/${y.id}`)),
             }),
           }}
         />
@@ -259,6 +214,7 @@ const cardStyle = { backgroundColor: '#fff', borderRadius: '16px', padding: '20p
 const premiumBadgeStyle = { position: 'absolute', top: '14px', right: '14px', backgroundColor: '#FAEEDA', color: '#854F0B', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' };
 const pagoTagStyle = { backgroundColor: '#F0F4F8', color: '#1A3C5E', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: '600' };
 const whatsappButtonStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px', borderRadius: '50px', backgroundColor: '#25D366', color: '#fff', fontWeight: '700', fontSize: '13px', textDecoration: 'none', width: 'fit-content' };
+const verDetalleLinkStyle = { color: '#1A3C5E', fontSize: '13px', fontWeight: '700', textDecoration: 'none' };
 const ciudadTagStyle = { backgroundColor: '#F0F4F8', color: '#1A3C5E', fontSize: '13px', fontWeight: '600', padding: '8px 14px', borderRadius: '20px', textDecoration: 'none' };
 const ctaRowStyle = { display: 'flex', gap: '12px', marginTop: '8px' };
 const ctaLinkStyle = { display: 'block', textAlign: 'center', textDecoration: 'none', flex: 1 };
