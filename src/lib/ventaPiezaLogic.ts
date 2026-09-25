@@ -8,6 +8,8 @@
 // no tener que volver a tocar esta lógica si se agrega después; mientras no exista, vender una
 // pieza es simplemente disponible:false (cantidad implícita de 1).
 
+import { esPrecioValido } from './precio';
+
 export const PIEZA_CUSTOM_MAX_LEN = 100;
 
 export type PartSource = 'inventory' | 'custom';
@@ -88,4 +90,23 @@ export function resolverVentaCustom(textoLibre: string): VentaPiezaResultado {
     return { ok: false, error: 'Escribe el nombre de la pieza que vendiste' };
   }
   return { ok: true, piezaUpdate: {}, ventaExtra: { partSource: 'custom', piezaVendida: nombre } };
+}
+
+// Precarga del monto al elegir una pieza del inventario que tiene precio. Solo pisa el monto si
+// está vacío o si sigue siendo exactamente el que se precargó antes (el usuario no lo tocó); un
+// monto que el usuario escribió o editó a mano nunca se sobrescribe. Una pieza sin precio
+// (o "Otra...") deja el monto vacío como siempre, salvo que limpie una precarga anterior sin tocar.
+export function calcularMontoPrecargado(params: {
+  precioPieza: unknown;
+  montoActual: string;
+  montoPrecargadoPrevio: string | null;
+}): { monto: string; montoPrecargado: string | null } {
+  const { precioPieza, montoActual, montoPrecargadoPrevio } = params;
+  const sinTocar = montoActual === '' || (montoPrecargadoPrevio !== null && montoActual === montoPrecargadoPrevio);
+  if (!sinTocar) return { monto: montoActual, montoPrecargado: montoPrecargadoPrevio };
+  if (esPrecioValido(precioPieza)) {
+    const texto = String(precioPieza);
+    return { monto: texto, montoPrecargado: texto };
+  }
+  return { monto: '', montoPrecargado: null };
 }

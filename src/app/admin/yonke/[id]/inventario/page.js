@@ -13,6 +13,8 @@ import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, 
 import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../../../lib/piezasCatalogo';
 import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPorError } from '../../../../../lib/vehiculoEstado';
 import ItemFreshnessBadge from '../../../../lib/ItemFreshnessBadge';
+import PrecioInput, { PiezaPrecioInput } from '../../../../lib/PrecioInput';
+import { parsePrecio, esPrecioValido, formatPrecio } from '../../../../../lib/precio';
 
 // vendidoAt es un Timestamp de Firestore — mismo patrón usado en panel/inventario/page.js.
 function timestampComoDate(valor) {
@@ -63,6 +65,7 @@ export default function InventarioAdminPage() {
   const [motorConfiguracionMotor, setMotorConfiguracionMotor] = useState(OTRO_NO_ESPECIFICADO);
   const [motorTransmision, setMotorTransmision] = useState(OTRO_NO_ESPECIFICADO);
   const [motorCilindrada, setMotorCilindrada] = useState('');
+  const [motorPrecio, setMotorPrecio] = useState('');
   const [guardandoMotor, setGuardandoMotor] = useState(false);
 
   // Modal pieza suelta — pieza sin vehículo registrado (yonkes/{id}/piezasSueltas). Igual que
@@ -72,6 +75,7 @@ export default function InventarioAdminPage() {
   const [piezaSueltaMarca, setPiezaSueltaMarca] = useState('');
   const [piezaSueltaModelo, setPiezaSueltaModelo] = useState('');
   const [piezaSueltaAno, setPiezaSueltaAno] = useState('');
+  const [piezaSueltaPrecio, setPiezaSueltaPrecio] = useState('');
   const [guardandoPiezaSuelta, setGuardandoPiezaSuelta] = useState(false);
 
   // Modal piezas
@@ -138,7 +142,7 @@ export default function InventarioAdminPage() {
     setMotorEditando(null);
     setMotorTipo('Motor'); setMotorMarca(''); setMotorModelo('');
     setMotorAno(''); setMotorConfiguracionMotor(OTRO_NO_ESPECIFICADO); setMotorTransmision(OTRO_NO_ESPECIFICADO);
-    setMotorCilindrada('');
+    setMotorCilindrada(''); setMotorPrecio('');
     setMotorModalVisible(true);
   }
 
@@ -168,6 +172,9 @@ export default function InventarioAdminPage() {
 
   async function guardarMotor() {
     if (!motorMarca || !motorModelo || !motorAno) { alert('Llena marca, modelo y año'); return; }
+    const precioParsed = parsePrecio(motorPrecio);
+    if (!precioParsed.ok) { alert(precioParsed.error); return; }
+    const precio = precioParsed.value;
     setGuardandoMotor(true);
     try {
       // configuracionMotor solo aplica a tipo "Motor"; transmision solo a tipo "Transmisión"
@@ -184,6 +191,7 @@ export default function InventarioAdminPage() {
           tipo: motorTipo, marca: motorMarca.trim(), modelo: motorModelo.trim(),
           ano: parseInt(motorAno), cilindrada: motorCilindrada.trim() || null,
           disponible: true, fechaIngreso: new Date(),
+          ...(precio !== null ? { precio } : {}),
           ...(motorTipo === 'Motor' ? { configuracionMotor: motorConfiguracionMotor } : {}),
           ...(motorTipo === 'Transmisión' ? { transmision: motorTransmision } : {}),
         });
@@ -197,7 +205,7 @@ export default function InventarioAdminPage() {
 
   function abrirModalPiezaSuelta() {
     setPiezaSueltaNombre(PIEZAS_CATALOGO_SUELTAS[0]);
-    setPiezaSueltaMarca(''); setPiezaSueltaModelo(''); setPiezaSueltaAno('');
+    setPiezaSueltaMarca(''); setPiezaSueltaModelo(''); setPiezaSueltaAno(''); setPiezaSueltaPrecio('');
     setPiezaSueltaModalVisible(true);
   }
 
@@ -205,11 +213,15 @@ export default function InventarioAdminPage() {
     if (!piezaSueltaNombre || !piezaSueltaMarca || !piezaSueltaModelo || !piezaSueltaAno) {
       alert('Llena la pieza, marca, modelo y año'); return;
     }
+    const precioParsed = parsePrecio(piezaSueltaPrecio);
+    if (!precioParsed.ok) { alert(precioParsed.error); return; }
+    const precio = precioParsed.value;
     setGuardandoPiezaSuelta(true);
     try {
       await addDoc(collection(db, 'yonkes', id, 'piezasSueltas'), {
         pieza: piezaSueltaNombre, marca: piezaSueltaMarca.trim(), modelo: piezaSueltaModelo.trim(),
         ano: parseInt(piezaSueltaAno), disponible: true, fechaIngreso: new Date(),
+        ...(precio !== null ? { precio } : {}),
       });
       await registrarEnCatalogo(piezaSueltaMarca.trim(), piezaSueltaModelo.trim());
       setPiezaSueltaModalVisible(false);
@@ -281,6 +293,12 @@ export default function InventarioAdminPage() {
   function cerrarPiezas() {
     if (vehiculoSeleccionado?._unsubscribe) vehiculoSeleccionado._unsubscribe();
     setPiezasModalVisible(false); setVehiculoSeleccionado(null); setPiezas([]);
+  }
+
+  // Precio por pieza del vehículo: number válido, o deleteField() si se vació. Nunca 0 ni string.
+  async function guardarPrecioPieza(piezaId, precio) {
+    const piezaRef = doc(db, 'yonkes', id, 'vehiculos', vehiculoSeleccionado.id, 'piezas', piezaId);
+    await updateDoc(piezaRef, { precio: precio !== null ? precio : deleteField() });
   }
 
   async function togglePieza(piezaId, disponibleActual) {
@@ -407,6 +425,9 @@ export default function InventarioAdminPage() {
                         {[m.configuracionMotor, m.transmision, m.cilindrada].filter(Boolean).join(' · ')}
                       </p>
                     )}
+                    {esPrecioValido(m.precio) && (
+                      <p style={precioTextoStyle}>{formatPrecio(m.precio)}</p>
+                    )}
                     {m.fechaIngreso && (
                       <div style={{ marginTop: '6px' }}>
                         <ItemFreshnessBadge item={m} categoria={m.tipo === 'Transmisión' ? 'transmisiones' : 'motores'} />
@@ -436,6 +457,9 @@ export default function InventarioAdminPage() {
                     <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: '6px 0 0' }}>
                       {p.marca} {p.modelo} {p.ano}
                     </p>
+                    {esPrecioValido(p.precio) && (
+                      <p style={precioTextoStyle}>{formatPrecio(p.precio)}</p>
+                    )}
                     {p.fechaIngreso && (
                       <div style={{ marginTop: '6px' }}>
                         <ItemFreshnessBadge item={p} categoria="piezasSueltas" />
@@ -519,6 +543,7 @@ export default function InventarioAdminPage() {
               </>
             )}
             <input type="text" placeholder="Cilindrada (ej. 1.8L)" value={motorCilindrada} onChange={(e) => setMotorCilindrada(e.target.value)} style={inputStyle} />
+            <PrecioInput value={motorPrecio} onChange={setMotorPrecio} inputStyle={inputStyle} />
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
               <button onClick={() => setMotorModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
               <button onClick={guardarMotor} disabled={guardandoMotor} style={confirmButtonStyle}>
@@ -552,6 +577,7 @@ export default function InventarioAdminPage() {
               inputStyle={inputStyle}
             />
             <input type="number" placeholder="Año" value={piezaSueltaAno} onChange={(e) => setPiezaSueltaAno(e.target.value)} style={inputStyle} />
+            <PrecioInput value={piezaSueltaPrecio} onChange={setPiezaSueltaPrecio} inputStyle={inputStyle} />
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
               <button onClick={() => setPiezaSueltaModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
               <button onClick={guardarPiezaSuelta} disabled={guardandoPiezaSuelta} style={confirmButtonStyle}>
@@ -569,17 +595,20 @@ export default function InventarioAdminPage() {
             <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '4px' }}>
               {vehiculoSeleccionado?.marca} {vehiculoSeleccionado?.modelo}
             </h2>
-            <p style={{ color: '#888', fontSize: '13px', marginBottom: '16px' }}>Activa o desactiva piezas</p>
+            <p style={{ color: '#888', fontSize: '13px', marginBottom: '16px' }}>Activa o desactiva piezas. El precio (MXN) es opcional.</p>
             {loadingPiezas ? (
               <p style={{ textAlign: 'center', color: '#888' }}>Cargando...</p>
             ) : (
               piezas.map((p) => (
                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #F4F5F5' }}>
-                  <span style={{ color: p.disponible ? '#333' : '#bbb', textDecoration: p.disponible ? 'none' : 'line-through', fontSize: '15px' }}>
+                  <span style={{ color: p.disponible ? '#333' : '#bbb', textDecoration: p.disponible ? 'none' : 'line-through', fontSize: '15px', flex: 1, minWidth: 0 }}>
                     {p.nombre}
                   </span>
-                  <input type="checkbox" checked={!!p.disponible} onChange={() => togglePieza(p.id, p.disponible)}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#E8720C' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <PiezaPrecioInput key={p.id} precio={p.precio} onCommit={(precio) => guardarPrecioPieza(p.id, precio)} />
+                    <input type="checkbox" checked={!!p.disponible} onChange={() => togglePieza(p.id, p.disponible)}
+                      style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#E8720C' }} />
+                  </div>
                 </div>
               ))
             )}
@@ -621,6 +650,7 @@ export default function InventarioAdminPage() {
 
 const primaryButtonStyle = { padding: '14px', borderRadius: '10px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontWeight: '700', fontSize: '14px', cursor: 'pointer', fontFamily: "'Inter', sans-serif" };
 const cardStyle = { backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 8px rgba(26,60,94,0.06)' };
+const precioTextoStyle = { color: '#2E7D32', fontSize: '14px', fontWeight: '700', margin: '4px 0 0' };
 const seccionTituloStyle = { fontSize: '13px', fontWeight: '700', color: '#888', letterSpacing: '1px', marginBottom: '10px' };
 const smallButtonStyle = (color) => ({ background: 'none', border: 'none', color, fontSize: '13px', fontWeight: '700', cursor: 'pointer', padding: '4px 8px' });
 const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000 };

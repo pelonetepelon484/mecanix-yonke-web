@@ -9,7 +9,7 @@ import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import NotaGarantiaModal from '../NotaGarantiaModal';
 import { sacarDelInventario } from '../../../lib/vehiculoEstado';
-import { piezasDisponibles, resolverVentaDeInventario, resolverVentaCustom, PIEZA_CUSTOM_MAX_LEN } from '../../../lib/ventaPiezaLogic';
+import { piezasDisponibles, resolverVentaDeInventario, resolverVentaCustom, calcularMontoPrecargado, PIEZA_CUSTOM_MAX_LEN } from '../../../lib/ventaPiezaLogic';
 
 const OPCION_OTRA = '__OTRA__';
 
@@ -33,6 +33,7 @@ export default function VentaManualPanel() {
   const [piezaSeleccionId, setPiezaSeleccionId] = useState(''); // '' | id real de la pieza | OPCION_OTRA
   const [piezaOtroTexto, setPiezaOtroTexto] = useState('');
   const [monto, setMonto] = useState('');
+  const [montoPrecargado, setMontoPrecargado] = useState(null); // último monto puesto automáticamente desde el precio de la pieza
   const [guardando, setGuardando] = useState(false);
   const [errorVenta, setErrorVenta] = useState('');
   const [avisoSinPiezas, setAvisoSinPiezas] = useState(false);
@@ -111,6 +112,17 @@ export default function VentaManualPanel() {
     const dia = String(fecha.getDate()).padStart(2, '0');
     const mes = String(fecha.getMonth() + 1).padStart(2, '0');
     return `VM-${mes}${dia}-${random}`;
+  }
+
+  // Al elegir pieza: si tiene precio, precarga el monto (editable). Sin precio / "Otra...", el
+  // monto queda como estaba (vacío) — ver calcularMontoPrecargado para la regla completa.
+  function elegirPieza(valor) {
+    setPiezaSeleccionId(valor);
+    setErrorVenta('');
+    const pieza = piezasParaElegir.find((p) => p.id === valor);
+    const r = calcularMontoPrecargado({ precioPieza: pieza?.precio, montoActual: monto, montoPrecargadoPrevio: montoPrecargado });
+    setMonto(r.monto);
+    setMontoPrecargado(r.montoPrecargado);
   }
 
   async function registrarVenta() {
@@ -215,6 +227,7 @@ export default function VentaManualPanel() {
     setPiezaSeleccionId('');
     setPiezaOtroTexto('');
     setMonto('');
+    setMontoPrecargado(null);
     setErrorVenta('');
     setAvisoSinPiezas(false);
     setFolioGenerado(null);
@@ -372,7 +385,7 @@ export default function VentaManualPanel() {
           ) : (
             <select
               value={piezaSeleccionId}
-              onChange={(e) => { setPiezaSeleccionId(e.target.value); setErrorVenta(''); }}
+              onChange={(e) => elegirPieza(e.target.value)}
               style={inputStyle}
             >
               <option value="">Selecciona una pieza</option>
@@ -429,6 +442,8 @@ export default function VentaManualPanel() {
                       // disponibles de uno no tienen nada que ver con las del otro.
                       setPiezaSeleccionId('');
                       setPiezaOtroTexto('');
+                      if (montoPrecargado !== null && monto === montoPrecargado) setMonto('');
+                      setMontoPrecargado(null);
                       setErrorVenta('');
                       setAvisoSinPiezas(false);
                     }}

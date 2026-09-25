@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { esPrecioValido, formatPrecio } from '../../lib/precio';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -399,9 +400,16 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
                         <div style={{ marginTop: '8px' }}>
                           {v.piezas.map((p) => (
                             <div key={p.id} style={piezaRowStyle(p._match)}>
-                              <span style={{ color: p.disponible ? '#333' : '#bbb', textDecoration: p.disponible ? 'none' : 'line-through', fontSize: '13px' }}>
-                                {p.nombre}
-                              </span>
+                              <div style={{ minWidth: 0, paddingRight: '8px' }}>
+                                <span style={{ color: p.disponible ? '#333' : '#bbb', textDecoration: p.disponible ? 'none' : 'line-through', fontSize: '13px' }}>
+                                  {p.nombre}
+                                </span>
+                                {p.disponible && (
+                                  esPrecioValido(p.precio)
+                                    ? <span style={precioPiezaStyle}>{formatPrecio(p.precio)}</span>
+                                    : <span style={consultarPrecioStyle}>Consultar precio con el yonke</span>
+                                )}
+                              </div>
                               {p.disponible ? (
                                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 }}>
                                   {whatsappHrefPieza(v, p.nombre) && (
@@ -433,6 +441,9 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
                 <p style={itemSubStyle}>
                   {[m.configuracionMotor, m.transmision, m.cilindrada].filter(Boolean).join(' · ')}
                 </p>
+                {esPrecioValido(m.precio)
+                  ? <p style={{ ...precioPiezaStyle, display: 'block', margin: '6px 0 0', fontSize: '15px', marginLeft: 0 }}>{formatPrecio(m.precio)}</p>
+                  : <p style={{ ...consultarPrecioStyle, display: 'block', margin: '6px 0 0', marginLeft: 0 }}>Consultar precio</p>}
                 <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
                   {whatsappHrefMotor(m) && (
                     <a href={whatsappHrefMotor(m)} target="_blank" rel="noopener noreferrer" style={whatsappBotonStyle}>
@@ -536,6 +547,8 @@ const piezaRowStyle = (destacada) => ({
   padding: '8px 0', borderBottom: '1px solid #F4F5F5',
   backgroundColor: destacada ? '#FFF9E6' : 'transparent',
 });
+const precioPiezaStyle = { display: 'block', color: '#2E7D32', fontSize: '13px', fontWeight: '700', marginTop: '2px' };
+const consultarPrecioStyle = { display: 'block', color: '#999', fontSize: '11px', marginTop: '2px' };
 const noDisponibleTagStyle = {
   fontSize: '11px', color: '#aaa', fontWeight: '600', flexShrink: 0,
 };

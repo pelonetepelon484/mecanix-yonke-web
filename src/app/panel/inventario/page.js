@@ -15,6 +15,8 @@ import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPo
 import SelectorOpciones from '../../lib/SelectorOpciones';
 import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../lib/opcionesVehiculo';
 import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../lib/piezasCatalogo';
+import PrecioInput, { PiezaPrecioInput, precioATexto } from '../../lib/PrecioInput';
+import { parsePrecio, esPrecioValido, formatPrecio } from '../../../lib/precio';
 
 // fechaIngreso/vendidoAt son Timestamp de Firestore (o, en documentos muy viejos/recién creados
 // con serverTimestamp() aún sin confirmar, podrían faltar) — mismo patrón getFecha() ya usado en
@@ -69,6 +71,7 @@ export default function InventarioPanel() {
   const [motorTransmision, setMotorTransmision] = useState(OTRO_NO_ESPECIFICADO);
   const [motorCilindrada, setMotorCilindrada] = useState('');
   const [motorDisponible, setMotorDisponible] = useState(true);
+  const [motorPrecio, setMotorPrecio] = useState('');
   const [guardandoMotor, setGuardandoMotor] = useState(false);
 
   // Modal pieza suelta — pieza sin vehículo registrado (yonkes/{id}/piezasSueltas). Motor y
@@ -80,6 +83,7 @@ export default function InventarioPanel() {
   const [piezaSueltaModelo, setPiezaSueltaModelo] = useState('');
   const [piezaSueltaAno, setPiezaSueltaAno] = useState('');
   const [piezaSueltaDisponible, setPiezaSueltaDisponible] = useState(true);
+  const [piezaSueltaPrecio, setPiezaSueltaPrecio] = useState('');
   const [guardandoPiezaSuelta, setGuardandoPiezaSuelta] = useState(false);
 
   // Modal piezas
@@ -159,7 +163,7 @@ export default function InventarioPanel() {
     setMotorEditando(null);
     setMotorTipo('Motor'); setMotorMarca(''); setMotorModelo('');
     setMotorAno(''); setMotorConfiguracionMotor(OTRO_NO_ESPECIFICADO); setMotorTransmision(OTRO_NO_ESPECIFICADO);
-    setMotorCilindrada(''); setMotorDisponible(true);
+    setMotorCilindrada(''); setMotorDisponible(true); setMotorPrecio('');
     setMotorModalVisible(true);
   }
 
@@ -170,6 +174,7 @@ export default function InventarioPanel() {
     setMotorConfiguracionMotor(motor.configuracionMotor || OTRO_NO_ESPECIFICADO);
     setMotorTransmision(motor.transmision || OTRO_NO_ESPECIFICADO);
     setMotorCilindrada(motor.cilindrada || ''); setMotorDisponible(motor.disponible !== false);
+    setMotorPrecio(precioATexto(motor.precio));
     setMotorModalVisible(true);
   }
 
@@ -177,7 +182,7 @@ export default function InventarioPanel() {
     setPiezaSueltaEditando(null);
     setPiezaSueltaNombre(PIEZAS_CATALOGO_SUELTAS[0]);
     setPiezaSueltaMarca(''); setPiezaSueltaModelo(''); setPiezaSueltaAno('');
-    setPiezaSueltaDisponible(true);
+    setPiezaSueltaDisponible(true); setPiezaSueltaPrecio('');
     setPiezaSueltaModalVisible(true);
   }
 
@@ -187,6 +192,7 @@ export default function InventarioPanel() {
     setPiezaSueltaMarca(piezaSuelta.marca || ''); setPiezaSueltaModelo(piezaSuelta.modelo || '');
     setPiezaSueltaAno(String(piezaSuelta.ano || ''));
     setPiezaSueltaDisponible(piezaSuelta.disponible !== false);
+    setPiezaSueltaPrecio(precioATexto(piezaSuelta.precio));
     setPiezaSueltaModalVisible(true);
   }
 
@@ -220,6 +226,9 @@ export default function InventarioPanel() {
     if (!motorMarca || !motorModelo || !motorAno) {
       alert('Llena marca, modelo y año'); return;
     }
+    const precioParsed = parsePrecio(motorPrecio);
+    if (!precioParsed.ok) { alert(precioParsed.error); return; }
+    const precio = precioParsed.value;
     setGuardandoMotor(true);
     try {
       // configuracionMotor solo aplica a tipo "Motor"; transmision solo a tipo "Transmisión"
@@ -230,6 +239,7 @@ export default function InventarioPanel() {
           tipo: motorTipo, marca: motorMarca.trim(), modelo: motorModelo.trim(),
           ano: parseInt(motorAno), cilindrada: motorCilindrada.trim() || null,
           disponible: motorDisponible,
+          precio: precio !== null ? precio : deleteField(),
           configuracionMotor: motorTipo === 'Motor' ? motorConfiguracionMotor : deleteField(),
           transmision: motorTipo === 'Transmisión' ? motorTransmision : deleteField(),
         });
@@ -238,6 +248,7 @@ export default function InventarioPanel() {
           tipo: motorTipo, marca: motorMarca.trim(), modelo: motorModelo.trim(),
           ano: parseInt(motorAno), cilindrada: motorCilindrada.trim() || null,
           disponible: true, fechaIngreso: new Date(),
+          ...(precio !== null ? { precio } : {}),
           ...(motorTipo === 'Motor' ? { configuracionMotor: motorConfiguracionMotor } : {}),
           ...(motorTipo === 'Transmisión' ? { transmision: motorTransmision } : {}),
         });
@@ -253,6 +264,9 @@ export default function InventarioPanel() {
     if (!piezaSueltaNombre || !piezaSueltaMarca || !piezaSueltaModelo || !piezaSueltaAno) {
       alert('Llena la pieza, marca, modelo y año'); return;
     }
+    const precioParsed = parsePrecio(piezaSueltaPrecio);
+    if (!precioParsed.ok) { alert(precioParsed.error); return; }
+    const precio = precioParsed.value;
     setGuardandoPiezaSuelta(true);
     try {
       if (piezaSueltaEditando) {
@@ -260,11 +274,13 @@ export default function InventarioPanel() {
         await updateDoc(ref, {
           pieza: piezaSueltaNombre, marca: piezaSueltaMarca.trim(), modelo: piezaSueltaModelo.trim(),
           ano: parseInt(piezaSueltaAno), disponible: piezaSueltaDisponible,
+          precio: precio !== null ? precio : deleteField(),
         });
       } else {
         await addDoc(collection(db, 'yonkes', yonkeId, 'piezasSueltas'), {
           pieza: piezaSueltaNombre, marca: piezaSueltaMarca.trim(), modelo: piezaSueltaModelo.trim(),
           ano: parseInt(piezaSueltaAno), disponible: true, fechaIngreso: new Date(),
+          ...(precio !== null ? { precio } : {}),
         });
       }
       await registrarEnCatalogo(piezaSueltaMarca.trim(), piezaSueltaModelo.trim());
@@ -355,6 +371,12 @@ export default function InventarioPanel() {
       const piezaRef = doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoSeleccionado.id, 'piezas', piezaId);
       await updateDoc(piezaRef, { disponible: !disponibleActual });
     } catch (error) { alert('No se pudo actualizar la pieza'); }
+  }
+
+  // Precio por pieza del vehículo: number válido, o deleteField() si se vació. Nunca 0 ni string.
+  async function guardarPrecioPieza(piezaId, precio) {
+    const piezaRef = doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoSeleccionado.id, 'piezas', piezaId);
+    await updateDoc(piezaRef, { precio: precio !== null ? precio : deleteField() });
   }
 
   async function handleLogout() { await signOut(auth); router.push('/panel'); }
@@ -506,6 +528,9 @@ export default function InventarioPanel() {
                       {[m.configuracionMotor, m.transmision, m.cilindrada].filter(Boolean).join(' · ')}
                     </p>
                   )}
+                  {esPrecioValido(m.precio) && (
+                    <p style={precioTextoStyle}>{formatPrecio(m.precio)}</p>
+                  )}
                   {m.fechaIngreso && (
                     <div style={{ marginTop: '6px' }}>
                       <ItemFreshnessBadge item={m} categoria={m.tipo === 'Transmisión' ? 'transmisiones' : 'motores'} />
@@ -549,6 +574,9 @@ export default function InventarioPanel() {
                   <p style={{ fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px', margin: '6px 0 0' }}>
                     {p.marca} {p.modelo} {p.ano}
                   </p>
+                  {esPrecioValido(p.precio) && (
+                    <p style={precioTextoStyle}>{formatPrecio(p.precio)}</p>
+                  )}
                   {p.fechaIngreso && (
                     <div style={{ marginTop: '6px' }}>
                       <ItemFreshnessBadge item={p} categoria="piezasSueltas" />
@@ -644,6 +672,7 @@ export default function InventarioPanel() {
               </>
             )}
             <input type="text" placeholder="Cilindrada (ej. 1.8L)" value={motorCilindrada} onChange={(e) => setMotorCilindrada(e.target.value)} style={inputStyle} />
+            <PrecioInput value={motorPrecio} onChange={setMotorPrecio} inputStyle={inputStyle} />
             {motorEditando && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                 <input type="checkbox" checked={motorDisponible} onChange={(e) => setMotorDisponible(e.target.checked)} style={{ width: '18px', height: '18px' }} />
@@ -683,6 +712,7 @@ export default function InventarioPanel() {
               inputStyle={inputStyle}
             />
             <input type="number" placeholder="Año (ej. 2015)" value={piezaSueltaAno} onChange={(e) => setPiezaSueltaAno(e.target.value)} style={inputStyle} />
+            <PrecioInput value={piezaSueltaPrecio} onChange={setPiezaSueltaPrecio} inputStyle={inputStyle} />
             {piezaSueltaEditando && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                 <input type="checkbox" checked={piezaSueltaDisponible} onChange={(e) => setPiezaSueltaDisponible(e.target.checked)} style={{ width: '18px', height: '18px' }} />
@@ -707,19 +737,22 @@ export default function InventarioPanel() {
               {vehiculoSeleccionado?.marca} {vehiculoSeleccionado?.modelo}
             </h2>
             <p style={{ color: '#888', fontSize: '13px', marginBottom: '16px' }}>
-              Activa o desactiva las piezas disponibles
+              Activa o desactiva las piezas disponibles. El precio (MXN) es opcional.
             </p>
             {loadingPiezas ? (
               <p style={{ textAlign: 'center', color: '#888' }}>Cargando...</p>
             ) : (
               piezas.map((p) => (
                 <div key={p.id} style={piezaRowStyle}>
-                  <span style={{ color: p.disponible ? '#333' : '#bbb', textDecoration: p.disponible ? 'none' : 'line-through', fontSize: '15px' }}>
+                  <span style={{ color: p.disponible ? '#333' : '#bbb', textDecoration: p.disponible ? 'none' : 'line-through', fontSize: '15px', flex: 1, minWidth: 0 }}>
                     {p.nombre}
                   </span>
-                  <label style={switchStyle}>
-                    <input type="checkbox" checked={!!p.disponible} onChange={() => togglePieza(p.id, p.disponible)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <PiezaPrecioInput key={p.id} precio={p.precio} onCommit={(precio) => guardarPrecioPieza(p.id, precio)} />
+                    <label style={switchStyle}>
+                      <input type="checkbox" checked={!!p.disponible} onChange={() => togglePieza(p.id, p.disponible)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                    </label>
+                  </div>
                 </div>
               ))
             )}
@@ -773,6 +806,7 @@ const modalStyle = { backgroundColor: '#fff', borderRadius: '16px', padding: '24
 const selectorStyle = { flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#F4F5F5', color: '#888', fontWeight: '600', cursor: 'pointer', fontSize: '14px' };
 const selectorActiveStyle = { ...selectorStyle, backgroundColor: '#1A3C5E', borderColor: '#1A3C5E', color: '#fff' };
 const piezaRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #F4F5F5' };
+const precioTextoStyle = { color: '#2E7D32', fontSize: '14px', fontWeight: 'bold', margin: '4px 0 0' };
 const switchStyle = { display: 'flex', alignItems: 'center' };
 const seccionTituloStyle = { fontSize: '13px', fontWeight: 'bold', color: '#888', letterSpacing: '1px', marginBottom: '10px', marginTop: '8px' };
 const tabVehiculoStyle = { flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#666', fontWeight: '700', fontSize: '13px', cursor: 'pointer' };

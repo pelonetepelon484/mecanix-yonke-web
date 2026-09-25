@@ -5,6 +5,7 @@ import { buscarVehiculosPorAnio } from '../buscarVehiculosPorAnio';
 import { estadoDeYonke } from './estadosServer';
 import { cilindradaCoincide } from './cilindrada';
 import { CATALOGO_BASE } from '../catalogoBase';
+import { elegirPiezaParaPrecio, esPrecioValido } from '../../../lib/precio';
 
 // Un modelo REAL y conocido (ej. Volkswagen Atlas, Dodge Stratus) que nadie ha registrado nunca
 // en vivo no debe verse igual que un texto que no se entendió en absoluto — antes, ambos casos
@@ -119,7 +120,7 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
 // funcionan sin ningún cambio, porque solo leen esos mismos campos genéricos.
 function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
   const yonkeData = yonkeDoc.data();
-  const { marca, modelo, ano } = pDoc.data();
+  const { marca, modelo, ano, pieza, precio } = pDoc.data();
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
     verificado: yonkeData.verificado === true,
@@ -130,6 +131,8 @@ function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
     vehiculoId: pDoc.id, vehiculo: { marca, modelo, ano }, calificacion,
+    // Pieza confirmada + su precio opcional (null = "Consultar precio con el yonke" en la UI).
+    piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null },
   };
 }
 
@@ -307,31 +310,36 @@ function sinPiezasSueltasRedundantes(piezasSueltas, resultadosVehiculo) {
   return piezasSueltas.filter((r) => !clavesVehiculo.has(claveVehiculo(r)));
 }
 
-async function tienePiezaDisponible(yonkeId, vehiculoId, pieza) {
+// Devuelve { nombre, precio|null } de la pieza disponible que coincide (la de menor precio si
+// coinciden varias, ver elegirPiezaParaPrecio), o null si el vehículo no la tiene disponible.
+// El criterio de coincidencia/disponibilidad es el mismo de siempre; solo se conserva QUÉ pieza
+// coincidió para poder mostrar su precio.
+async function buscarPiezaDisponible(yonkeId, vehiculoId, pieza) {
   const piezasRef = collection(dbServer, 'yonkes', yonkeId, 'vehiculos', vehiculoId, 'piezas');
   const snap = await getDocs(piezasRef);
-  return snap.docs.some((pDoc) => {
-    const data = pDoc.data();
-    return data.disponible && piezaCoincide(pieza, data.nombre);
-  });
+  const coincidentes = snap.docs
+    .map((pDoc) => pDoc.data())
+    .filter((data) => data.disponible && piezaCoincide(pieza, data.nombre));
+  return elegirPiezaParaPrecio(coincidentes);
 }
 
 // Busca vehículos para marca/modelo/año (o cualquier año si anio es null) y separa
 // los que confirman la pieza disponible de los que solo confirman el vehículo.
-// cilindrada (opcional): filtra ANTES de gastar lecturas en tienePiezaDisponible (menos lecturas,
+// cilindrada (opcional): filtra ANTES de gastar lecturas en buscarPiezaDisponible (menos lecturas,
 // no más) contra la cilindrada del vehículo padre — así "arranque 3.6 chevrolet" solo revisa la
 // subcolección de piezas de los Chevrolet que sí son 3.6.
-// tienePiezaDisponible EN PARALELO: con modelo=null ("alternador nissan", "transmision
+// buscarPiezaDisponible EN PARALELO: con modelo=null ("alternador nissan", "transmision
 // chevrolet") `encontrados` puede tener decenas de vehículos de toda la marca — revisarlos uno
 // por uno (await secuencial) medía 10-100+ segundos reales; en paralelo baja a 1-3s.
 async function buscarConSplitDePieza(yonkesDocs, marca, modelo, anio, pieza, cilindrada = null) {
   const todos = await buscarVehiculos(yonkesDocs, marca, modelo, anio);
   const encontrados = aplicarCilindrada(todos, cilindrada);
-  const tieneFlags = await Promise.all(encontrados.map((r) => tienePiezaDisponible(r.yonkeId, r.vehiculoId, pieza)));
+  const piezasEncontradas = await Promise.all(encontrados.map((r) => buscarPiezaDisponible(r.yonkeId, r.vehiculoId, pieza)));
   const conPieza = [];
   const soloVehiculo = [];
   encontrados.forEach((r, i) => {
-    (tieneFlags[i] ? conPieza : soloVehiculo).push(r);
+    if (piezasEncontradas[i]) conPieza.push({ ...r, piezaResultado: piezasEncontradas[i] });
+    else soloVehiculo.push(r);
   });
   ordenarPorPlan(conPieza);
   ordenarPorPlan(soloVehiculo);

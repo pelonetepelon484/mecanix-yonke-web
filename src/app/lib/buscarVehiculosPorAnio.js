@@ -69,9 +69,9 @@ export async function buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, mod
 // Reordena el resultado a "yonke primero, año después" (el mismo orden que producía el
 // loop secuencial original) aunque las consultas se disparan en paralelo por año — así el
 // orden final que ve el usuario no cambia, solo el tiempo de ejecución.
-export async function buscarVehiculosEnAniosParalelo(dbInstancia, yonkesDocs, marca, modelo, anios) {
+export async function buscarVehiculosEnAniosParalelo(dbInstancia, yonkesDocs, marca, modelo, anios, subcoleccion = 'vehiculos') {
   const listasPorAnio = await Promise.all(
-    anios.map((anio) => buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, modelo, anio))
+    anios.map((anio) => buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, modelo, anio, subcoleccion))
   );
   const indiceYonke = new Map(yonkesDocs.map((d, i) => [d.id, i]));
   const plano = listasPorAnio.flat();

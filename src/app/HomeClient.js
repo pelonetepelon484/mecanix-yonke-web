@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
-import { buscarVehiculosEnAniosParalelo } from './lib/buscarVehiculosPorAnio';
+import { buscarVehiculosPorAnio, buscarVehiculosEnAniosParalelo } from './lib/buscarVehiculosPorAnio';
 import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from './lib/estados';
 import { PIEZAS_CATALOGO } from './lib/piezasCatalogo';
+import { elegirPiezaParaPrecio, esPrecioValido, formatPrecio } from '../lib/precio';
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', nombre, params);
@@ -413,16 +414,67 @@ export default function HomeClient({ textoSeoEstados }) {
   }
 
   // Confirma si un vehículo YA REGISTRADO tiene la pieza pedida disponible en su propia
-  // subcolección de piezas — mismo criterio que el buscador inteligente (tienePiezaDisponible en
+  // subcolección de piezas — mismo criterio que el buscador inteligente (buscarPiezaDisponible en
   // lib/busqueda/consultarInventario.js). piezaFiltro=null (sin pieza elegida) nunca se llama con
   // esto (ver separarPorPieza).
-  async function tienePiezaDisponibleEnVehiculo(yonkeId, vehiculoId, piezaFiltro) {
+  // Devuelve { nombre, precio|null } de la pieza que coincide (o null) — el precio es opcional.
+  async function buscarPiezaEnVehiculo(yonkeId, vehiculoId, piezaFiltro) {
     const piezasRef = collection(db, 'yonkes', yonkeId, 'vehiculos', vehiculoId, 'piezas');
     const piezasSnap = await getDocs(piezasRef);
-    return piezasSnap.docs.some((pDoc) => {
-      const data = pDoc.data();
-      return data.disponible && data.nombre.toLowerCase() === piezaFiltro.toLowerCase();
-    });
+    const coincidentes = piezasSnap.docs
+      .map((pDoc) => pDoc.data())
+      .filter((data) => data.disponible && data.nombre.toLowerCase() === piezaFiltro.toLowerCase());
+    return elegirPiezaParaPrecio(coincidentes);
+  }
+
+  // Piezas sueltas (yonkes/{id}/piezasSueltas) que coinciden con la pieza pedida — mismo matching
+  // de marca/modelo/año que los vehículos (núcleo compartido, subcolección 'piezasSueltas') y
+  // mismo criterio de nombre que este buscador (igualdad exacta con el catálogo). `anos` es una
+  // lista de años, o [null] para "cualquier año". El shape de salida es IDÉNTICO al de un
+  // resultado de vehículo (vehiculoId, vehiculo.{marca,modelo,ano}), igual que en el buscador
+  // inteligente, así renderTarjetaVehiculo/WhatsApp/Reservar no cambian. Motor y Transmisión
+  // tienen su propio flujo (subcolección 'motores'), no existen como pieza suelta.
+  // Si la lectura falla (ej. reglas de Firestore) se degrada a "sin piezas sueltas": nunca debe
+  // tumbar la búsqueda de vehículos, que es independiente.
+  async function buscarPiezasSueltasManual(yonkesDocs, marcaB, modeloB, anos, piezaFiltro) {
+    if (!piezaFiltro || piezaFiltro === 'Motor' || piezaFiltro === 'Transmisión') return [];
+    try {
+      const listas = await Promise.all(anos.map((a) => buscarVehiculosPorAnio(db, yonkesDocs, marcaB, modeloB, a, 'piezasSueltas')));
+      const vistos = new Set();
+      const pares = listas.flat().filter(({ yonkeDoc, vDoc }) => {
+        if (vDoc.data().pieza?.toLowerCase() !== piezaFiltro.toLowerCase()) return false;
+        const clave = `${yonkeDoc.id}_${vDoc.id}`;
+        if (vistos.has(clave)) return false;
+        vistos.add(clave);
+        return true;
+      });
+      return await Promise.all(pares.map(async ({ yonkeDoc, vDoc }) => {
+        const yonkeData = yonkeDoc.data();
+        const { marca: m, modelo: mo, ano: a, pieza, precio } = vDoc.data();
+        const calificacion = await obtenerCalificacion(yonkeDoc.id);
+        return {
+          yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
+          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
+          telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
+          metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+          ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+          vehiculo: { marca: m, modelo: mo, ano: a }, calificacion,
+          piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null },
+        };
+      }));
+    } catch (error) {
+      console.error('[buscarPiezasSueltasManual] No se pudo leer piezasSueltas', error?.code, error?.message);
+      return [];
+    }
+  }
+
+  // Quita las piezas sueltas ya cubiertas por un resultado real de vehículo (mismo yonke + marca
+  // + modelo + año) — gana el vehículo. Mismo criterio que sinPiezasSueltasRedundantes en
+  // lib/busqueda/consultarInventario.js. Nunca colapsa vehículo contra vehículo.
+  function sinSueltasRedundantes(sueltas, resultadosVehiculo) {
+    const clave = (r) => `${r.yonkeId}_${(r.vehiculo?.marca || '').toLowerCase()}_${(r.vehiculo?.modelo || '').toLowerCase()}_${r.vehiculo?.ano}`;
+    const claves = new Set(resultadosVehiculo.map(clave));
+    return sueltas.filter((r) => !claves.has(clave(r)));
   }
 
   // Separa una lista de vehículos ya encontrados (año cercano o cualquier año) en los que SÍ
@@ -435,9 +487,12 @@ export default function HomeClient({ textoSeoEstados }) {
   // cae en soloVehiculo tal cual, exactamente el comportamiento de siempre.
   async function separarPorPieza(lista, piezaFiltro) {
     if (!piezaFiltro) return { conPieza: [], soloVehiculo: lista };
-    const flags = await Promise.all(lista.map((r) => tienePiezaDisponibleEnVehiculo(r.yonkeId, r.vehiculoId, piezaFiltro)));
+    const piezas = await Promise.all(lista.map((r) => buscarPiezaEnVehiculo(r.yonkeId, r.vehiculoId, piezaFiltro)));
     const conPieza = [], soloVehiculo = [];
-    lista.forEach((r, i) => (flags[i] ? conPieza : soloVehiculo).push(r));
+    lista.forEach((r, i) => {
+      if (piezas[i]) conPieza.push({ ...r, piezaResultado: piezas[i] });
+      else soloVehiculo.push(r);
+    });
     return { conPieza, soloVehiculo };
   }
 
@@ -475,7 +530,9 @@ export default function HomeClient({ textoSeoEstados }) {
         vehiculo: vDoc.data(), calificacion,
       };
     }));
-    return separarPorPieza(encontrados, piezaFiltro);
+    const { conPieza, soloVehiculo } = await separarPorPieza(encontrados, piezaFiltro);
+    const sueltas = await buscarPiezasSueltasManual(yonkesDocs, marcaBuscar, modeloBuscar, anos, piezaFiltro);
+    return { conPieza: [...conPieza, ...sinSueltasRedundantes(sueltas, conPieza)], soloVehiculo };
   }
 
   async function buscarCualquierAno(yonkesDocs, marcaBuscar, modeloBuscar, piezaFiltro = null) {
@@ -520,7 +577,9 @@ export default function HomeClient({ textoSeoEstados }) {
         vehiculo: vDoc.data(), calificacion,
       };
     }));
-    return separarPorPieza(encontrados, piezaFiltro);
+    const { conPieza, soloVehiculo } = await separarPorPieza(encontrados, piezaFiltro);
+    const sueltas = await buscarPiezasSueltasManual(yonkesDocs, marcaBuscar, modeloBuscar, [null], piezaFiltro);
+    return { conPieza: [...conPieza, ...sinSueltasRedundantes(sueltas, conPieza)], soloVehiculo };
   }
 
   // forzarTodos: reintenta ignorando el filtro de estado/ciudad del cliente (ver botón "Buscar en
@@ -610,13 +669,17 @@ export default function HomeClient({ textoSeoEstados }) {
         if (!piezaFiltro) { soloVehiculo.push(resultadoBase); return; }
         const piezasRef = collection(db, 'yonkes', yonkeDoc.id, 'vehiculos', vDoc.id, 'piezas');
         const piezasSnap = await getDocs(piezasRef);
-        const tienePiezaDisponible = piezasSnap.docs.some((pDoc) => {
-          const data = pDoc.data();
-          return data.disponible && data.nombre.toLowerCase() === piezaFiltro.toLowerCase();
-        });
-        if (tienePiezaDisponible) conPiezaExacta.push(resultadoBase);
+        const piezaEncontrada = elegirPiezaParaPrecio(
+          piezasSnap.docs
+            .map((pDoc) => pDoc.data())
+            .filter((data) => data.disponible && data.nombre.toLowerCase() === piezaFiltro.toLowerCase())
+        );
+        if (piezaEncontrada) conPiezaExacta.push({ ...resultadoBase, piezaResultado: piezaEncontrada });
         else soloVehiculo.push(resultadoBase);
       }));
+      // Piezas sueltas del año exacto: se suman a las confirmadas (tienen su propio nombre de pieza).
+      const sueltasExacto = await buscarPiezasSueltasManual(yonkesFiltrados, marca, modelo, [parseInt(ano)], piezaFiltro);
+      conPiezaExacta.push(...sinSueltasRedundantes(sueltasExacto, conPiezaExacta));
       const ordenar = (lista) => lista.sort((a, b) => {
         if (a.plan === 'premium' && b.plan !== 'premium') return -1;
         if (a.plan !== 'premium' && b.plan === 'premium') return 1;
@@ -1003,6 +1066,29 @@ function obtenerEstadoAbierto(horario) {
     registrarEvento('pedido_entrega_inmediata', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, ciudad: r.ciudad || 'sin_ciudad' });
   }
 
+  // Precio opcional. Pieza (dentro de vehículo o suelta): solo aplica cuando la pieza buscada se
+  // confirmó (r.piezaResultado); sin precio -> "Consultar precio con el yonke". Motor/transmisión:
+  // el precio es del propio ítem; sin precio -> "Consultar precio".
+  function renderPrecioPieza(r) {
+    if (!r.piezaResultado) return null;
+    const { nombre, precio } = r.piezaResultado;
+    return esPrecioValido(precio) ? (
+      <p style={{ color: '#2E7D32', fontSize: '15px', fontWeight: '700', margin: '4px 0 8px' }}>
+        {nombre}: {formatPrecio(precio)}
+      </p>
+    ) : (
+      <p style={{ color: '#888', fontSize: '13px', margin: '4px 0 8px' }}>Consultar precio con el yonke</p>
+    );
+  }
+
+  function renderPrecioMotor(motor) {
+    return esPrecioValido(motor?.precio) ? (
+      <p style={{ color: '#2E7D32', fontSize: '15px', fontWeight: '700', margin: '4px 0 0' }}>{formatPrecio(motor.precio)}</p>
+    ) : (
+      <p style={{ color: '#888', fontSize: '13px', margin: '4px 0 0' }}>Consultar precio</p>
+    );
+  }
+
   // Bloque de "info del negocio del yonke" — ciudad, calificaciones, abierto/cerrado,
   // dirección, teléfono y horario en texto. Compartido entre la tarjeta de vehículo/pieza y la
   // de motor/transmisión para que nunca se vuelvan a desincronizar (antes vivía duplicado solo
@@ -1098,6 +1184,7 @@ function obtenerEstadoAbierto(horario) {
             {r.motor.cilindrada && (
               <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
             )}
+            {renderPrecioMotor(r.motor)}
           </div>
         )}
 
@@ -1122,6 +1209,8 @@ function obtenerEstadoAbierto(horario) {
             🔧 Coincide por cilindrada {r.vehiculo.cilindrada}
           </span>
         )}
+
+        {!r.esMotor && renderPrecioPieza(r)}
 
         {r.metodosPago.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', marginBottom: '14px' }}>
@@ -1191,6 +1280,7 @@ function obtenerEstadoAbierto(horario) {
         {r.motor.cilindrada && (
           <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
         )}
+        {renderPrecioMotor(r.motor)}
         {r.whatsapp && (
           <a
             href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp({ ...r, esMotor: true }))}`}

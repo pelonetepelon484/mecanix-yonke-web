@@ -4,6 +4,7 @@ import {
   piezasDisponibles,
   resolverVentaDeInventario,
   resolverVentaCustom,
+  calcularMontoPrecargado,
   type PiezaInventarioConId,
 } from './ventaPiezaLogic';
 
@@ -109,5 +110,46 @@ describe('resolverVentaCustom', () => {
     expect(resultado.ok).toBe(true);
     if (!resultado.ok) throw new Error('esperaba ok');
     expect(resultado.ventaExtra.piezaVendida).toHaveLength(PIEZA_CUSTOM_MAX_LEN);
+  });
+});
+
+describe('calcularMontoPrecargado', () => {
+  it('pieza con precio y monto vacío -> precarga el precio', () => {
+    expect(calcularMontoPrecargado({ precioPieza: 1500, montoActual: '', montoPrecargadoPrevio: null }))
+      .toEqual({ monto: '1500', montoPrecargado: '1500' });
+  });
+
+  it('precio con centavos', () => {
+    expect(calcularMontoPrecargado({ precioPieza: 1500.5, montoActual: '', montoPrecargadoPrevio: null }).monto).toBe('1500.5');
+  });
+
+  it('pieza sin precio y monto vacío -> queda vacío como hoy', () => {
+    expect(calcularMontoPrecargado({ precioPieza: undefined, montoActual: '', montoPrecargadoPrevio: null }))
+      .toEqual({ monto: '', montoPrecargado: null });
+  });
+
+  it('precio inválido (0, string) se trata como sin precio', () => {
+    expect(calcularMontoPrecargado({ precioPieza: 0, montoActual: '', montoPrecargadoPrevio: null }).monto).toBe('');
+    expect(calcularMontoPrecargado({ precioPieza: '500', montoActual: '', montoPrecargadoPrevio: null }).monto).toBe('');
+  });
+
+  it('monto escrito a mano no se sobrescribe', () => {
+    expect(calcularMontoPrecargado({ precioPieza: 1500, montoActual: '999', montoPrecargadoPrevio: null }))
+      .toEqual({ monto: '999', montoPrecargado: null });
+  });
+
+  it('monto precargado sin editar se reemplaza al cambiar de pieza con precio', () => {
+    expect(calcularMontoPrecargado({ precioPieza: 800, montoActual: '1500', montoPrecargadoPrevio: '1500' }))
+      .toEqual({ monto: '800', montoPrecargado: '800' });
+  });
+
+  it('monto precargado sin editar se limpia al cambiar a pieza sin precio / "Otra..."', () => {
+    expect(calcularMontoPrecargado({ precioPieza: null, montoActual: '1500', montoPrecargadoPrevio: '1500' }))
+      .toEqual({ monto: '', montoPrecargado: null });
+  });
+
+  it('monto precargado que el usuario editó no se toca al cambiar de pieza', () => {
+    expect(calcularMontoPrecargado({ precioPieza: 800, montoActual: '1400', montoPrecargadoPrevio: '1500' }))
+      .toEqual({ monto: '1400', montoPrecargado: '1500' });
   });
 });

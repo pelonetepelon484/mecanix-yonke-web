@@ -1,5 +1,6 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { dbServer } from './firebase-server';
+import { esPrecioValido } from '../../lib/precio';
 
 const DEFAULT_BRANDING = {
   logoUrl: '/mecanix-logo.webp',
@@ -37,14 +38,17 @@ export async function getInventarioDeTenant(yonkeId) {
   const vehiculos = await Promise.all(vehiculosActivos.map(async (vDoc) => {
     const { fechaIngreso, ...datos } = vDoc.data();
     const piezasSnap = await getDocs(collection(dbServer, 'yonkes', yonkeId, 'vehiculos', vDoc.id, 'piezas'));
-    const piezas = piezasSnap.docs.map((p) => ({ id: p.id, nombre: p.data().nombre, disponible: p.data().disponible !== false }));
+    const piezas = piezasSnap.docs.map((p) => ({
+      id: p.id, nombre: p.data().nombre, disponible: p.data().disponible !== false,
+      precio: esPrecioValido(p.data().precio) ? p.data().precio : null,
+    }));
     return { id: vDoc.id, ...datos, piezas };
   }));
 
   const motores = motoresSnap.docs
     .map((d) => {
       const { fechaIngreso, ...datos } = d.data();
-      return { id: d.id, ...datos };
+      return { id: d.id, ...datos, precio: esPrecioValido(datos.precio) ? datos.precio : null };
     })
     .filter((m) => m.disponible !== false);
 
