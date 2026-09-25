@@ -358,11 +358,15 @@ export default function InventarioAdminPage() {
                     <p style={{ color: '#888', fontSize: '13px', margin: '2px 0 0' }}>
                       {v.transmision} · {v.traccion}{v.configuracionMotor ? ` · ${v.configuracionMotor}` : ''}{v.cilindrada ? ` · ${v.cilindrada}` : ''}
                     </p>
-                    {esVendido && (
+                    {esVendido ? (
                       <p style={{ color: '#888', fontSize: '12px', marginTop: '4px' }}>
                         {MOTIVO_BAJA_LABEL[v.motivoBaja] || 'Sacado del inventario'}
                         {vendidoAt ? ` · ${vendidoAt.toLocaleDateString('es-MX')}` : ''}
                       </p>
+                    ) : v.fechaIngreso && (
+                      <div style={{ marginTop: '4px' }}>
+                        <VehicleFreshnessBadge vehiculo={v} />
+                      </div>
                     )}
                     <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: '600', marginTop: '4px' }}>
                       Ver / editar piezas →
