@@ -2,12 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, getDocs, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc, doc, getDoc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import NotaGarantiaModal from '../NotaGarantiaModal';
+import { sacarDelInventario } from '../../../lib/vehiculoEstado';
+import { piezasDisponibles, resolverVentaDeInventario, resolverVentaCustom, PIEZA_CUSTOM_MAX_LEN } from '../../../lib/ventaPiezaLogic';
+
+const OPCION_OTRA = '__OTRA__';
 
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
@@ -24,14 +28,22 @@ export default function VentaManualPanel() {
 
   const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState(null);
   const [selectorVisible, setSelectorVisible] = useState(false);
-  const [piezaVendida, setPiezaVendida] = useState('');
+  const [piezasDelVehiculo, setPiezasDelVehiculo] = useState([]);
+  const [loadingPiezas, setLoadingPiezas] = useState(false);
+  const [piezaSeleccionId, setPiezaSeleccionId] = useState(''); // '' | id real de la pieza | OPCION_OTRA
+  const [piezaOtroTexto, setPiezaOtroTexto] = useState('');
   const [monto, setMonto] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [errorVenta, setErrorVenta] = useState('');
+  const [avisoSinPiezas, setAvisoSinPiezas] = useState(false);
+  const [sacandoDelInventario, setSacandoDelInventario] = useState(false);
   const [folioGenerado, setFolioGenerado] = useState(null);
   const [ventaGenerada, setVentaGenerada] = useState(null); // { id, ...datos } para la nota de garantía
   const [notaModalVisible, setNotaModalVisible] = useState(false);
   const [nombreYonke, setNombreYonke] = useState('');
   const [logoUrl, setLogoUrl] = useState(null);
+
+  const piezasParaElegir = piezasDisponibles(piezasDelVehiculo);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -62,6 +74,26 @@ export default function VentaManualPanel() {
     cargarVehiculos();
   }, [yonkeId, yonkePlan]);
 
+  // Piezas disponibles del vehículo elegido (yonkes/{id}/vehiculos/{id}/piezas: { nombre, disponible }).
+  // onSnapshot en vez de getDocs para reflejar en vivo si alguien más vende una pieza mientras el
+  // formulario sigue abierto (la transacción de registrarVenta es la que da la garantía real).
+  useEffect(() => {
+    if (!yonkeId || !vehiculoSeleccionado) {
+      setPiezasDelVehiculo([]);
+      return;
+    }
+    setLoadingPiezas(true);
+    const ref = collection(db, 'yonkes', yonkeId, 'vehiculos', vehiculoSeleccionado.id, 'piezas');
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      setPiezasDelVehiculo(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLoadingPiezas(false);
+    }, (error) => {
+      console.error(error);
+      setLoadingPiezas(false);
+    });
+    return unsubscribe;
+  }, [yonkeId, vehiculoSeleccionado]);
+
   // Nombre y logo del yonke — solo para el encabezado de la nota de garantía impresa.
   useEffect(() => {
     if (!yonkeId) return;
@@ -82,12 +114,17 @@ export default function VentaManualPanel() {
   }
 
   async function registrarVenta() {
+    setErrorVenta('');
     if (!vehiculoSeleccionado) {
       alert('Selecciona el vehículo del que vendiste la pieza');
       return;
     }
-    if (!piezaVendida.trim()) {
-      alert('Escribe qué pieza vendiste');
+    if (!piezaSeleccionId) {
+      alert('Selecciona qué pieza vendiste');
+      return;
+    }
+    if (piezaSeleccionId === OPCION_OTRA && !piezaOtroTexto.trim()) {
+      alert('Escribe el nombre de la pieza');
       return;
     }
     if (!monto || isNaN(parseFloat(monto))) {
@@ -96,27 +133,78 @@ export default function VentaManualPanel() {
     }
 
     setGuardando(true);
+    const folio = generarFolioManual();
+    const vehiculoSnapshot = {
+      marca: vehiculoSeleccionado.marca,
+      modelo: vehiculoSeleccionado.modelo,
+      ano: vehiculoSeleccionado.ano,
+    };
+    const base = {
+      numeroPedido: folio,
+      yonkeId,
+      origen: 'manual',
+      vehiculo: vehiculoSnapshot,
+      monto: parseFloat(monto),
+      fecha: new Date(),
+    };
+
     try {
-      const folio = generarFolioManual();
-      const datosVenta = {
-        numeroPedido: folio,
-        yonkeId,
-        origen: 'manual',
-        piezaVendida: piezaVendida.trim(),
-        vehiculo: {
-          marca: vehiculoSeleccionado.marca,
-          modelo: vehiculoSeleccionado.modelo,
-          ano: vehiculoSeleccionado.ano,
-        },
-        monto: parseFloat(monto),
-        fecha: new Date(),
-      };
-      const ventaRef = await addDoc(collection(db, 'ventas'), datosVenta);
+      let ventaId;
+      let datosVentaFinal;
+
+      if (piezaSeleccionId === OPCION_OTRA) {
+        // "Otra...": texto libre, no toca el inventario.
+        const resultado = resolverVentaCustom(piezaOtroTexto);
+        if (!resultado.ok) {
+          setErrorVenta(resultado.error);
+          setGuardando(false);
+          return;
+        }
+        datosVentaFinal = { ...base, partSource: resultado.ventaExtra.partSource, piezaVendida: resultado.ventaExtra.piezaVendida };
+        const ventaRef = await addDoc(collection(db, 'ventas'), datosVentaFinal);
+        ventaId = ventaRef.id;
+      } else {
+        // Pieza del inventario: releer + marcar no disponible + crear la venta, todo en la misma
+        // transacción, para que dos ventas simultáneas de la misma pieza no puedan pasar las dos.
+        const piezaRef = doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoSeleccionado.id, 'piezas', piezaSeleccionId);
+        const ventaRef = doc(collection(db, 'ventas'));
+        await runTransaction(db, async (transaction) => {
+          const piezaSnap = await transaction.get(piezaRef);
+          const piezaActual = piezaSnap.exists() ? piezaSnap.data() : null;
+          const resultado = resolverVentaDeInventario(piezaActual, piezaSeleccionId);
+          if (!resultado.ok) {
+            throw new Error(resultado.error);
+          }
+          transaction.update(piezaRef, resultado.piezaUpdate);
+          transaction.set(ventaRef, {
+            ...base,
+            partSource: resultado.ventaExtra.partSource,
+            piezaId: resultado.ventaExtra.piezaId,
+            piezaVendida: resultado.ventaExtra.piezaVendida,
+          });
+        });
+        const nombrePieza = piezasParaElegir.find((p) => p.id === piezaSeleccionId)?.nombre || '';
+        datosVentaFinal = { ...base, partSource: 'inventory', piezaId: piezaSeleccionId, piezaVendida: nombrePieza };
+        ventaId = ventaRef.id;
+
+        // Requisito 5: si ya no quedan piezas disponibles, avisar -- nunca sacar del inventario
+        // automáticamente.
+        try {
+          const snap = await getDocs(collection(db, 'yonkes', yonkeId, 'vehiculos', vehiculoSeleccionado.id, 'piezas'));
+          const restantes = piezasDisponibles(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+          if (restantes.length === 0) setAvisoSinPiezas(true);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
       setFolioGenerado(folio);
-      setVentaGenerada({ id: ventaRef.id, ...datosVenta });
+      setVentaGenerada({ id: ventaId, ...datosVentaFinal });
     } catch (error) {
       console.error(error);
-      alert('No se pudo registrar la venta');
+      // Errores de la transacción (p.ej. "ya se vendió") tienen mensaje claro para el usuario;
+      // cualquier otra falla (red, permisos) usa el mensaje genérico de siempre.
+      setErrorVenta(error?.message || 'No se pudo registrar la venta');
     } finally {
       setGuardando(false);
     }
@@ -124,8 +212,11 @@ export default function VentaManualPanel() {
 
   function registrarOtra() {
     setVehiculoSeleccionado(null);
-    setPiezaVendida('');
+    setPiezaSeleccionId('');
+    setPiezaOtroTexto('');
     setMonto('');
+    setErrorVenta('');
+    setAvisoSinPiezas(false);
     setFolioGenerado(null);
     setVentaGenerada(null);
   }
@@ -194,6 +285,34 @@ export default function VentaManualPanel() {
           <div style={{ backgroundColor: '#1A3C5E', color: '#fff', fontSize: '22px', fontWeight: 'bold', padding: '16px', borderRadius: '10px', letterSpacing: '1px', marginBottom: '24px' }}>
             {folioGenerado}
           </div>
+          {avisoSinPiezas && (
+            <div style={{ backgroundColor: '#FFF4E5', border: '1px solid #E8720C', borderRadius: '10px', padding: '14px', marginBottom: '16px', textAlign: 'left' }}>
+              <p style={{ fontSize: '14px', color: '#1A3C5E', margin: '0 0 8px', fontWeight: 'bold' }}>
+                Este vehículo ya no tiene piezas disponibles
+              </p>
+              <p style={{ fontSize: '13px', color: '#666', margin: '0 0 12px' }}>
+                ¿Quieres sacarlo del inventario? Si te equivocas, puedes reactivarlo después.
+              </p>
+              <button
+                onClick={async () => {
+                  setSacandoDelInventario(true);
+                  try {
+                    await sacarDelInventario(db, yonkeId, vehiculoSeleccionado.id, 'vendido');
+                    setAvisoSinPiezas(false);
+                  } catch (e) {
+                    console.error(e);
+                    alert('No se pudo sacar el vehículo del inventario');
+                  } finally {
+                    setSacandoDelInventario(false);
+                  }
+                }}
+                disabled={sacandoDelInventario}
+                style={secondaryButtonStyle}
+              >
+                {sacandoDelInventario ? 'Guardando...' : 'Sacar del inventario'}
+              </button>
+            </div>
+          )}
           <button onClick={() => setNotaModalVisible(true)} style={{ ...secondaryButtonStyle, marginBottom: '12px' }}>
             🛡️ Generar nota de garantía
           </button>
@@ -246,13 +365,33 @@ export default function VentaManualPanel() {
           )}
 
           <p style={labelStyle}>Pieza vendida</p>
-          <input
-            type="text"
-            value={piezaVendida}
-            onChange={(e) => setPiezaVendida(e.target.value)}
-            placeholder="Ej. Espejo lateral izquierdo"
-            style={inputStyle}
-          />
+          {!vehiculoSeleccionado ? (
+            <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>Primero selecciona un vehículo</p>
+          ) : loadingPiezas ? (
+            <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>Cargando piezas...</p>
+          ) : (
+            <select
+              value={piezaSeleccionId}
+              onChange={(e) => { setPiezaSeleccionId(e.target.value); setErrorVenta(''); }}
+              style={inputStyle}
+            >
+              <option value="">Selecciona una pieza</option>
+              {piezasParaElegir.map((p) => (
+                <option key={p.id} value={p.id}>{p.nombre}</option>
+              ))}
+              <option value={OPCION_OTRA}>Otra...</option>
+            </select>
+          )}
+          {piezaSeleccionId === OPCION_OTRA && (
+            <input
+              type="text"
+              value={piezaOtroTexto}
+              onChange={(e) => setPiezaOtroTexto(e.target.value)}
+              placeholder="Escribe el nombre de la pieza"
+              maxLength={PIEZA_CUSTOM_MAX_LEN}
+              style={{ ...inputStyle, marginTop: '8px' }}
+            />
+          )}
 
           <p style={labelStyle}>Monto de la venta</p>
           <input
@@ -263,6 +402,9 @@ export default function VentaManualPanel() {
             style={inputStyle}
           />
 
+          {errorVenta && (
+            <p style={{ color: '#C0392B', fontSize: '13px', marginTop: '10px', marginBottom: 0 }}>{errorVenta}</p>
+          )}
           <button onClick={registrarVenta} disabled={guardando} style={{ ...primaryButtonStyle, marginTop: '20px' }}>
             {guardando ? 'Guardando...' : 'Registrar venta'}
           </button>
@@ -283,6 +425,12 @@ export default function VentaManualPanel() {
                     onClick={() => {
                       setVehiculoSeleccionado(v);
                       setSelectorVisible(false);
+                      // Requisito 6: cambiar de vehículo reinicia la pieza elegida -- las piezas
+                      // disponibles de uno no tienen nada que ver con las del otro.
+                      setPiezaSeleccionId('');
+                      setPiezaOtroTexto('');
+                      setErrorVenta('');
+                      setAvisoSinPiezas(false);
                     }}
                     style={vehiculoOpcionStyle}
                   >
