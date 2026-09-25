@@ -11,6 +11,14 @@ import SelectorMarcaModelo, { registrarEnCatalogo } from '../../../../lib/Select
 import SelectorOpciones from '../../../../lib/SelectorOpciones';
 import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../../../lib/opcionesVehiculo';
 import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../../../lib/piezasCatalogo';
+import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPorError } from '../../../../../lib/vehiculoEstado';
+
+// vendidoAt es un Timestamp de Firestore — mismo patrón usado en panel/inventario/page.js.
+function timestampComoDate(valor) {
+  if (!valor) return null;
+  return valor.toDate ? valor.toDate() : new Date(valor);
+}
+const MOTIVO_BAJA_LABEL = Object.fromEntries(MOTIVOS_BAJA.map((m) => [m.value, m.label]));
 
 async function crearPiezasComunes(vehiculoRef) {
   const batch = writeBatch(db);
@@ -70,6 +78,14 @@ export default function InventarioAdminPage() {
   const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState(null);
   const [piezas, setPiezas] = useState([]);
   const [loadingPiezas, setLoadingPiezas] = useState(false);
+
+  // Vista de vehículos (Activos / Vendidos) y modal de "Sacar del inventario" con motivo —
+  // mismo patrón que panel/inventario/page.js (ver src/lib/vehiculoEstado.js).
+  const [vistaVehiculos, setVistaVehiculos] = useState('activos');
+  const [motivoModalVisible, setMotivoModalVisible] = useState(false);
+  const [vehiculoParaSacar, setVehiculoParaSacar] = useState(null);
+  const [motivoBaja, setMotivoBaja] = useState(MOTIVOS_BAJA[0].value);
+  const [procesandoBaja, setProcesandoBaja] = useState(false);
 
   useEffect(() => {
     async function cargarNombre() {
@@ -208,9 +224,40 @@ export default function InventarioAdminPage() {
     await deleteDoc(doc(db, 'yonkes', id, 'piezasSueltas', piezaSueltaId));
   }
 
+  function abrirModalSacarDelInventario(vehiculo) {
+    setVehiculoParaSacar(vehiculo);
+    setMotivoBaja(MOTIVOS_BAJA[0].value);
+    setMotivoModalVisible(true);
+  }
+
+  async function confirmarSacarDelInventario() {
+    setProcesandoBaja(true);
+    try {
+      await sacarDelInventario(db, id, vehiculoParaSacar.id, motivoBaja);
+      setMotivoModalVisible(false);
+      setVehiculoParaSacar(null);
+    } catch (error) {
+      console.error('[confirmarSacarDelInventario]', error?.code, error);
+      alert(`No se pudo actualizar${error?.code ? ` (${error.code})` : ''}`);
+    } finally {
+      setProcesandoBaja(false);
+    }
+  }
+
+  async function handleReactivar(vehiculoId) {
+    try {
+      await reactivarVehiculo(db, id, vehiculoId);
+    } catch (error) {
+      console.error('[handleReactivar]', error?.code, error);
+      alert('No se pudo reactivar');
+    }
+  }
+
+  // Borrado real y permanente — solo para errores de captura. Para vender/retirar normalmente
+  // se usa "Sacar del inventario" (arriba), que no borra nada.
   async function eliminarVehiculo(vehiculoId) {
-    if (!confirm('¿Eliminar este vehículo?')) return;
-    await deleteDoc(doc(db, 'yonkes', id, 'vehiculos', vehiculoId));
+    if (!confirm('Esto borra el vehículo PERMANENTEMENTE — úsalo solo si fue un error de captura, no para ventas normales (para eso usa "Sacar del inventario"). ¿Continuar?')) return;
+    await eliminarVehiculoPorError(db, id, vehiculoId);
   }
 
   async function eliminarMotor(motorId) {
@@ -240,6 +287,10 @@ export default function InventarioAdminPage() {
     await updateDoc(piezaRef, { disponible: !disponibleActual });
   }
 
+  const vehiculosActivos = vehiculos.filter((v) => v.disponible !== false);
+  const vehiculosVendidos = vehiculos.filter((v) => v.disponible === false);
+  const vehiculosVista = vistaVehiculos === 'vendidos' ? vehiculosVendidos : vehiculosActivos;
+
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', fontFamily: "'Inter', sans-serif", paddingBottom: '40px' }}>
       <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -250,7 +301,7 @@ export default function InventarioAdminPage() {
             </button>
             <h1 style={{ color: '#fff', fontSize: '18px', margin: '4px 0 0', fontWeight: '700' }}>{nombreYonke}</h1>
             <p style={{ color: '#cdd9e4', fontSize: '13px', margin: '2px 0 0' }}>
-              {vehiculos.length} vehículos · {motores.filter(m => m.tipo === 'Motor').length} motores · {motores.filter(m => m.tipo === 'Transmisión').length} transmisiones · {piezasSueltas.length} piezas sueltas
+              {vehiculosActivos.length} vehículos activos{vehiculosVendidos.length > 0 ? ` (+${vehiculosVendidos.length} vendidos)` : ''} · {motores.filter(m => m.tipo === 'Motor').length} motores · {motores.filter(m => m.tipo === 'Transmisión').length} transmisiones · {piezasSueltas.length} piezas sueltas
             </p>
           </div>
         </div>
@@ -272,9 +323,32 @@ export default function InventarioAdminPage() {
         {/* Vehículos */}
         {vehiculos.length > 0 && (
           <>
-            <p style={seccionTituloStyle}>🚗 Vehículos ({vehiculos.length})</p>
-            {vehiculos.map((v, index) => (
-              <div key={v.id} style={cardStyle}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              {[
+                { key: 'activos', label: `🚗 Activos (${vehiculosActivos.length})` },
+                { key: 'vendidos', label: `📦 Vendidos (${vehiculosVendidos.length})` },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setVistaVehiculos(t.key)}
+                  style={{ ...tabVehiculoStyle, ...(vistaVehiculos === t.key ? tabVehiculoActivoStyle : {}) }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {vehiculosVista.length === 0 && (
+              <p style={{ textAlign: 'center', color: '#aaa', fontSize: '13px', padding: '16px 0' }}>
+                {vistaVehiculos === 'vendidos' ? 'Sin vehículos vendidos todavía' : 'Sin vehículos activos'}
+              </p>
+            )}
+
+            {vehiculosVista.map((v, index) => {
+              const vendidoAt = timestampComoDate(v.vendidoAt);
+              const esVendido = v.disponible === false;
+              return (
+              <div key={v.id} style={{ ...cardStyle, opacity: esVendido ? 0.75 : 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div onClick={() => abrirPiezas(v)} style={{ flex: 1, cursor: 'pointer' }}>
                     <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: 0 }}>
@@ -283,17 +357,29 @@ export default function InventarioAdminPage() {
                     <p style={{ color: '#888', fontSize: '13px', margin: '2px 0 0' }}>
                       {v.transmision} · {v.traccion}{v.configuracionMotor ? ` · ${v.configuracionMotor}` : ''}{v.cilindrada ? ` · ${v.cilindrada}` : ''}
                     </p>
+                    {esVendido && (
+                      <p style={{ color: '#888', fontSize: '12px', marginTop: '4px' }}>
+                        {MOTIVO_BAJA_LABEL[v.motivoBaja] || 'Sacado del inventario'}
+                        {vendidoAt ? ` · ${vendidoAt.toLocaleDateString('es-MX')}` : ''}
+                      </p>
+                    )}
                     <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: '600', marginTop: '4px' }}>
                       Ver / editar piezas →
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={() => abrirModalEditar(v)} style={smallButtonStyle('#1A3C5E')}>Editar</button>
+                    {esVendido ? (
+                      <button onClick={() => handleReactivar(v.id)} style={smallButtonStyle('#2E7D32')}>Reactivar</button>
+                    ) : (
+                      <button onClick={() => abrirModalSacarDelInventario(v)} style={smallButtonStyle('#E8720C')}>Sacar</button>
+                    )}
                     <button onClick={() => eliminarVehiculo(v.id)} style={smallButtonStyle('#D85A30')}>Eliminar</button>
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </>
         )}
 
@@ -488,6 +574,32 @@ export default function InventarioAdminPage() {
           </div>
         </div>
       )}
+
+      {/* Modal "Sacar del inventario" — motivo opcional, no borra nada (src/lib/vehiculoEstado.js). */}
+      {motivoModalVisible && (
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '4px' }}>
+              Sacar del inventario
+            </h2>
+            <p style={{ color: '#888', fontSize: '13px', marginBottom: '16px' }}>
+              {vehiculoParaSacar?.marca} {vehiculoParaSacar?.modelo} {vehiculoParaSacar?.ano} — no se borra, se puede reactivar después desde la pestaña &ldquo;Vendidos&rdquo;.
+            </p>
+            <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '6px' }}>Motivo (opcional)</p>
+            <select value={motivoBaja} onChange={(e) => setMotivoBaja(e.target.value)} style={inputStyle}>
+              {MOTIVOS_BAJA.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <button onClick={() => setMotivoModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
+              <button onClick={confirmarSacarDelInventario} disabled={procesandoBaja} style={confirmButtonStyle}>
+                {procesandoBaja ? 'Guardando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -503,3 +615,5 @@ const selectorStyle = { flex: 1, padding: '10px', borderRadius: '8px', border: '
 const selectorActiveStyle = { ...selectorStyle, backgroundColor: '#1A3C5E', borderColor: '#1A3C5E', color: '#fff' };
 const cancelButtonStyle = { flex: 1, padding: '14px', borderRadius: '8px', border: 'none', backgroundColor: '#F4F5F5', color: '#888', fontWeight: '700', fontSize: '15px', cursor: 'pointer' };
 const confirmButtonStyle = { flex: 1, padding: '14px', borderRadius: '8px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontWeight: '700', fontSize: '15px', cursor: 'pointer' };
+const tabVehiculoStyle = { flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#666', fontWeight: '700', fontSize: '13px', cursor: 'pointer' };
+const tabVehiculoActivoStyle = { backgroundColor: '#1A3C5E', borderColor: '#1A3C5E', color: '#fff' };

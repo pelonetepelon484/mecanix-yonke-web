@@ -40,6 +40,13 @@ export async function buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, mod
     // índices compuestos marca+modelo+ano).
     const coincidentes = snap.docs.filter((vDoc) => {
       const data = vDoc.data();
+      // disponible !== false (ausente o true = disponible) — mismo criterio ya usado para
+      // motores/piezasSueltas y ya implementado en getInventarioDeTenant (lib/getTenant.js).
+      // Filtrado client-side a propósito, junto con marca/modelo (ver DEUDA TÉCNICA arriba):
+      // agregar esto como where() de Firestore junto al where('ano') existente pediría un
+      // índice compuesto nuevo (igualdad + desigualdad en campos distintos); así, cero índices
+      // nuevos (auditoría 2026-09-24, "vehículos vendidos ya no se borran").
+      if (data.disponible === false) return false;
       const marcaOk = marca == null || data.marca?.toLowerCase() === marca.trim().toLowerCase();
       const modeloBuscado = modelo?.trim().toLowerCase();
       const modeloDatoOk = modelo == null || data.modelo?.toLowerCase() === modeloBuscado;

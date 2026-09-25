@@ -12,16 +12,22 @@ import BottomNav from '../BottomNav';
 import FreshnessBadge from '../FreshnessBadge';
 import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarcaModelo';
 import { getVehicleFreshness } from '../../../lib/inventoryStatus';
-
-// fechaIngreso es un Timestamp de Firestore (o, en documentos muy viejos, podría faltar) —
-// mismo patrón getFecha() ya usado en reciclaje/ventas para convertir a Date de forma segura.
-function fechaIngresoComoDate(v) {
-  if (!v.fechaIngreso) return null;
-  return v.fechaIngreso.toDate ? v.fechaIngreso.toDate() : new Date(v.fechaIngreso);
-}
+import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPorError } from '../../../lib/vehiculoEstado';
 import SelectorOpciones from '../../lib/SelectorOpciones';
 import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../lib/opcionesVehiculo';
 import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../lib/piezasCatalogo';
+
+// fechaIngreso/vendidoAt son Timestamp de Firestore (o, en documentos muy viejos/recién creados
+// con serverTimestamp() aún sin confirmar, podrían faltar) — mismo patrón getFecha() ya usado en
+// reciclaje/ventas para convertir a Date de forma segura.
+function timestampComoDate(valor) {
+  if (!valor) return null;
+  return valor.toDate ? valor.toDate() : new Date(valor);
+}
+function fechaIngresoComoDate(v) {
+  return timestampComoDate(v.fechaIngreso);
+}
+const MOTIVO_BAJA_LABEL = Object.fromEntries(MOTIVOS_BAJA.map((m) => [m.value, m.label]));
 
 async function crearPiezasComunes(vehiculoRef) {
   const batch = writeBatch(db);
@@ -85,6 +91,13 @@ export default function InventarioPanel() {
   const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState(null);
   const [piezas, setPiezas] = useState([]);
   const [loadingPiezas, setLoadingPiezas] = useState(false);
+
+  // Vista de vehículos (Activos / Vendidos) y modal de "Sacar del inventario" con motivo.
+  const [vistaVehiculos, setVistaVehiculos] = useState('activos');
+  const [motivoModalVisible, setMotivoModalVisible] = useState(false);
+  const [vehiculoParaSacar, setVehiculoParaSacar] = useState(null);
+  const [motivoBaja, setMotivoBaja] = useState(MOTIVOS_BAJA[0].value);
+  const [procesandoBaja, setProcesandoBaja] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -267,9 +280,41 @@ export default function InventarioPanel() {
     } finally { setGuardandoPiezaSuelta(false); }
   }
 
+  function abrirModalSacarDelInventario(vehiculo) {
+    setVehiculoParaSacar(vehiculo);
+    setMotivoBaja(MOTIVOS_BAJA[0].value);
+    setMotivoModalVisible(true);
+  }
+
+  async function confirmarSacarDelInventario() {
+    setProcesandoBaja(true);
+    try {
+      await sacarDelInventario(db, yonkeId, vehiculoParaSacar.id, motivoBaja);
+      setMotivoModalVisible(false);
+      setVehiculoParaSacar(null);
+    } catch (error) {
+      console.error('[confirmarSacarDelInventario]', error?.code, error);
+      alert(`No se pudo actualizar${error?.code ? ` (${error.code})` : ''}`);
+    } finally {
+      setProcesandoBaja(false);
+    }
+  }
+
+  async function handleReactivar(vehiculoId) {
+    try {
+      await reactivarVehiculo(db, yonkeId, vehiculoId);
+    } catch (error) {
+      console.error('[handleReactivar]', error?.code, error);
+      alert('No se pudo reactivar');
+    }
+  }
+
+  // Borrado real y permanente — se conserva solo como acción secundaria para errores de
+  // captura (vehículo duplicado, datos mal cargados). Para vender/retirar normalmente se usa
+  // "Sacar del inventario" (arriba), que no borra nada.
   async function eliminarVehiculo(vehiculoId) {
-    if (!confirm('¿Seguro que quieres quitarlo del inventario?')) return;
-    await deleteDoc(doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoId));
+    if (!confirm('Esto borra el vehículo PERMANENTEMENTE — úsalo solo si fue un error de captura, no para ventas normales (para eso usa "Sacar del inventario"). ¿Continuar?')) return;
+    await eliminarVehiculoPorError(db, yonkeId, vehiculoId);
   }
 
   async function eliminarMotor(motorId) {
@@ -327,6 +372,9 @@ export default function InventarioPanel() {
   }
 
   const totalItems = vehiculos.length + motores.length + piezasSueltas.length;
+  const vehiculosActivos = vehiculos.filter((v) => v.disponible !== false);
+  const vehiculosVendidos = vehiculos.filter((v) => v.disponible === false);
+  const vehiculosVista = vistaVehiculos === 'vendidos' ? vehiculosVendidos : vehiculosActivos;
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
@@ -336,7 +384,7 @@ export default function InventarioPanel() {
             <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Inventario</h1>
             {!loadingVehiculos && (
               <p style={{ color: '#cdd9e4', fontSize: '13px', margin: '4px 0 0' }}>
-                {vehiculos.length} {vehiculos.length === 1 ? 'vehículo' : 'vehículos'} · {motores.filter(m => m.tipo === 'Motor').length} motores · {motores.filter(m => m.tipo === 'Transmisión').length} transmisiones · {piezasSueltas.length} piezas sueltas
+                {vehiculosActivos.length} {vehiculosActivos.length === 1 ? 'vehículo activo' : 'vehículos activos'}{vehiculosVendidos.length > 0 ? ` (+${vehiculosVendidos.length} vendidos)` : ''} · {motores.filter(m => m.tipo === 'Motor').length} motores · {motores.filter(m => m.tipo === 'Transmisión').length} transmisiones · {piezasSueltas.length} piezas sueltas
               </p>
             )}
           </div>
@@ -364,12 +412,34 @@ export default function InventarioPanel() {
           <p style={{ textAlign: 'center', color: '#888', marginTop: '16px' }}>Cargando...</p>
         ) : vehiculos.length > 0 && (
           <>
-            <p style={seccionTituloStyle}>🚗 Vehículos ({vehiculos.length})</p>
-            {vehiculos.map((v, index) => {
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              {[
+                { key: 'activos', label: `🚗 Activos (${vehiculosActivos.length})` },
+                { key: 'vendidos', label: `📦 Vendidos (${vehiculosVendidos.length})` },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setVistaVehiculos(t.key)}
+                  style={{ ...tabVehiculoStyle, ...(vistaVehiculos === t.key ? tabVehiculoActivoStyle : {}) }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {vehiculosVista.length === 0 && (
+              <p style={{ textAlign: 'center', color: '#aaa', fontSize: '13px', padding: '16px 0' }}>
+                {vistaVehiculos === 'vendidos' ? 'Sin vehículos vendidos todavía' : 'Sin vehículos activos'}
+              </p>
+            )}
+
+            {vehiculosVista.map((v, index) => {
               const capturedAt = fechaIngresoComoDate(v);
               const frescura = capturedAt ? getVehicleFreshness(capturedAt) : null;
+              const vendidoAt = timestampComoDate(v.vendidoAt);
+              const esVendido = v.disponible === false;
               return (
-              <div key={v.id} style={vehiculoCardStyle}>
+              <div key={v.id} style={{ ...vehiculoCardStyle, opacity: esVendido ? 0.75 : 1 }}>
                 <div onClick={() => abrirPiezas(v)} style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'flex-start' }}>
                   <div style={numeroBadgeStyle}>{index + 1}</div>
                   <div style={{ marginLeft: '10px' }}>
@@ -379,7 +449,12 @@ export default function InventarioPanel() {
                     <p style={{ color: '#888', fontSize: '13px', margin: '2px 0 0' }}>
                       {v.ano} · {v.transmision} · {v.traccion}{v.configuracionMotor ? ` · ${v.configuracionMotor}` : ''}{v.cilindrada ? ` · ${v.cilindrada}` : ''}
                     </p>
-                    {frescura && (
+                    {esVendido ? (
+                      <p style={{ color: '#888', fontSize: '12px', marginTop: '6px' }}>
+                        {MOTIVO_BAJA_LABEL[v.motivoBaja] || 'Sacado del inventario'}
+                        {vendidoAt ? ` · ${vendidoAt.toLocaleDateString('es-MX')}` : ''}
+                      </p>
+                    ) : frescura && (
                       <div style={{ marginTop: '6px' }}>
                         <FreshnessBadge status={frescura.status} days={frescura.days} />
                       </div>
@@ -393,8 +468,17 @@ export default function InventarioPanel() {
                   <button onClick={() => abrirModalEditar(v)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                     Editar
                   </button>
-                  <button onClick={() => eliminarVehiculo(v.id)} style={{ background: 'none', border: 'none', color: '#D85A30', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    Eliminar
+                  {esVendido ? (
+                    <button onClick={() => handleReactivar(v.id)} style={{ background: 'none', border: 'none', color: '#2E7D32', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      Reactivar
+                    </button>
+                  ) : (
+                    <button onClick={() => abrirModalSacarDelInventario(v)} style={{ background: 'none', border: 'none', color: '#E8720C', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      Sacar del inventario
+                    </button>
+                  )}
+                  <button onClick={() => eliminarVehiculo(v.id)} style={{ background: 'none', border: 'none', color: '#D85A30', fontSize: '12px', cursor: 'pointer' }}>
+                    Eliminar (error de captura)
                   </button>
                 </div>
               </div>
@@ -642,6 +726,33 @@ export default function InventarioPanel() {
         </div>
       )}
 
+      {/* Modal "Sacar del inventario" — motivo opcional, no borra nada (ver
+          src/lib/vehiculoEstado.js). Reactivar no necesita modal, es un solo clic. */}
+      {motivoModalVisible && (
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '4px' }}>
+              Sacar del inventario
+            </h2>
+            <p style={{ color: '#888', fontSize: '13px', marginBottom: '16px' }}>
+              {vehiculoParaSacar?.marca} {vehiculoParaSacar?.modelo} {vehiculoParaSacar?.ano} — no se borra, puedes reactivarlo después desde la pestaña &ldquo;Vendidos&rdquo;.
+            </p>
+            <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px' }}>Motivo (opcional)</p>
+            <select value={motivoBaja} onChange={(e) => setMotivoBaja(e.target.value)} style={inputStyle}>
+              {MOTIVOS_BAJA.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <button onClick={() => setMotivoModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
+              <button onClick={confirmarSacarDelInventario} disabled={procesandoBaja} style={buttonStyle}>
+                {procesandoBaja ? 'Guardando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <BottomNav />
     </main>
   );
@@ -660,3 +771,5 @@ const selectorActiveStyle = { ...selectorStyle, backgroundColor: '#1A3C5E', bord
 const piezaRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #F4F5F5' };
 const switchStyle = { display: 'flex', alignItems: 'center' };
 const seccionTituloStyle = { fontSize: '13px', fontWeight: 'bold', color: '#888', letterSpacing: '1px', marginBottom: '10px', marginTop: '8px' };
+const tabVehiculoStyle = { flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#666', fontWeight: '700', fontSize: '13px', cursor: 'pointer' };
+const tabVehiculoActivoStyle = { backgroundColor: '#1A3C5E', borderColor: '#1A3C5E', color: '#fff' };

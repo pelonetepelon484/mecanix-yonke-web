@@ -47,7 +47,11 @@ export default function VentaManualPanel() {
         const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
         const q = query(ref, orderBy('marca'));
         const snap = await getDocs(q);
-        const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // disponible !== false — un vehículo ya sacado del inventario no debería ofrecerse
+        // para atribuirle una venta nueva (auditoría 2026-09-24).
+        const lista = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter((v) => v.disponible !== false);
         setVehiculos(lista);
       } catch (error) {
         console.error(error);

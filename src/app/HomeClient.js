@@ -493,6 +493,9 @@ export default function HomeClient({ textoSeoEstados }) {
       // índices compuestos marca+modelo+ano).
       const vehiculosCoincidentes = vehiculosSnap.docs.filter((vDoc) => {
         const data = vDoc.data();
+        // disponible !== false — mismo criterio que buscarVehiculosPorAnio.js (auditoría
+        // 2026-09-24), filtrado client-side para no requerir un índice nuevo.
+        if (data.disponible === false) return false;
         return data.marca?.toLowerCase() === marcaBuscar.trim().toLowerCase() &&
           data.modelo?.toLowerCase() === modeloBuscar.trim().toLowerCase();
       });
@@ -583,6 +586,9 @@ export default function HomeClient({ textoSeoEstados }) {
         const vehiculosSnapTodos = await getDocs(q);
         const vehiculosCoincidentes = vehiculosSnapTodos.docs.filter((vDoc) => {
           const data = vDoc.data();
+          // disponible !== false — mismo criterio que buscarVehiculosPorAnio.js (auditoría
+          // 2026-09-24), filtrado client-side para no requerir un índice nuevo.
+          if (data.disponible === false) return false;
           return data.marca?.toLowerCase() === marca.trim().toLowerCase() &&
             data.modelo?.toLowerCase() === modelo.trim().toLowerCase();
         });
