@@ -9,7 +9,16 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import FreshnessBadge from '../FreshnessBadge';
 import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarcaModelo';
+import { getVehicleFreshness } from '../../../lib/inventoryStatus';
+
+// fechaIngreso es un Timestamp de Firestore (o, en documentos muy viejos, podría faltar) —
+// mismo patrón getFecha() ya usado en reciclaje/ventas para convertir a Date de forma segura.
+function fechaIngresoComoDate(v) {
+  if (!v.fechaIngreso) return null;
+  return v.fechaIngreso.toDate ? v.fechaIngreso.toDate() : new Date(v.fechaIngreso);
+}
 import SelectorOpciones from '../../lib/SelectorOpciones';
 import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../lib/opcionesVehiculo';
 import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../lib/piezasCatalogo';
@@ -356,7 +365,10 @@ export default function InventarioPanel() {
         ) : vehiculos.length > 0 && (
           <>
             <p style={seccionTituloStyle}>🚗 Vehículos ({vehiculos.length})</p>
-            {vehiculos.map((v, index) => (
+            {vehiculos.map((v, index) => {
+              const capturedAt = fechaIngresoComoDate(v);
+              const frescura = capturedAt ? getVehicleFreshness(capturedAt) : null;
+              return (
               <div key={v.id} style={vehiculoCardStyle}>
                 <div onClick={() => abrirPiezas(v)} style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'flex-start' }}>
                   <div style={numeroBadgeStyle}>{index + 1}</div>
@@ -367,6 +379,11 @@ export default function InventarioPanel() {
                     <p style={{ color: '#888', fontSize: '13px', margin: '2px 0 0' }}>
                       {v.ano} · {v.transmision} · {v.traccion}{v.configuracionMotor ? ` · ${v.configuracionMotor}` : ''}{v.cilindrada ? ` · ${v.cilindrada}` : ''}
                     </p>
+                    {frescura && (
+                      <div style={{ marginTop: '6px' }}>
+                        <FreshnessBadge status={frescura.status} days={frescura.days} />
+                      </div>
+                    )}
                     <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: 'bold', marginTop: '6px' }}>
                       Ver / editar piezas →
                     </p>
@@ -381,7 +398,8 @@ export default function InventarioPanel() {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </>
         )}
 
