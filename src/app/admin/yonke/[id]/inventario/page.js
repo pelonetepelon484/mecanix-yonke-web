@@ -12,7 +12,7 @@ import SelectorOpciones from '../../../../lib/SelectorOpciones';
 import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../../../lib/opcionesVehiculo';
 import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../../../lib/piezasCatalogo';
 import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPorError } from '../../../../../lib/vehiculoEstado';
-import VehicleFreshnessBadge from '../../../../lib/VehicleFreshnessBadge';
+import ItemFreshnessBadge from '../../../../lib/ItemFreshnessBadge';
 
 // vendidoAt es un Timestamp de Firestore — mismo patrón usado en panel/inventario/page.js.
 function timestampComoDate(valor) {
@@ -365,7 +365,7 @@ export default function InventarioAdminPage() {
                       </p>
                     ) : v.fechaIngreso && (
                       <div style={{ marginTop: '4px' }}>
-                        <VehicleFreshnessBadge vehiculo={v} />
+                        <ItemFreshnessBadge item={v} categoria="vehiculos" />
                       </div>
                     )}
                     <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: '600', marginTop: '4px' }}>
@@ -407,6 +407,11 @@ export default function InventarioAdminPage() {
                         {[m.configuracionMotor, m.transmision, m.cilindrada].filter(Boolean).join(' · ')}
                       </p>
                     )}
+                    {m.fechaIngreso && (
+                      <div style={{ marginTop: '6px' }}>
+                        <ItemFreshnessBadge item={m} categoria={m.tipo === 'Transmisión' ? 'transmisiones' : 'motores'} />
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={() => eliminarMotor(m.id)} style={smallButtonStyle('#D85A30')}>Eliminar</button>
@@ -431,6 +436,11 @@ export default function InventarioAdminPage() {
                     <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: '6px 0 0' }}>
                       {p.marca} {p.modelo} {p.ano}
                     </p>
+                    {p.fechaIngreso && (
+                      <div style={{ marginTop: '6px' }}>
+                        <ItemFreshnessBadge item={p} categoria="piezasSueltas" />
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={() => eliminarPiezaSuelta(p.id)} style={smallButtonStyle('#D85A30')}>Eliminar</button>

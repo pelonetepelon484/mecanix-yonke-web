@@ -9,7 +9,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
-import VehicleFreshnessBadge from '../../lib/VehicleFreshnessBadge';
+import ItemFreshnessBadge from '../../lib/ItemFreshnessBadge';
 import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarcaModelo';
 import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPorError } from '../../../lib/vehiculoEstado';
 import SelectorOpciones from '../../lib/SelectorOpciones';
@@ -450,7 +450,7 @@ export default function InventarioPanel() {
                       </p>
                     ) : v.fechaIngreso && (
                       <div style={{ marginTop: '6px' }}>
-                        <VehicleFreshnessBadge vehiculo={v} />
+                        <ItemFreshnessBadge item={v} categoria="vehiculos" />
                       </div>
                     )}
                     <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: 'bold', marginTop: '6px' }}>
@@ -506,6 +506,11 @@ export default function InventarioPanel() {
                       {[m.configuracionMotor, m.transmision, m.cilindrada].filter(Boolean).join(' · ')}
                     </p>
                   )}
+                  {m.fechaIngreso && (
+                    <div style={{ marginTop: '6px' }}>
+                      <ItemFreshnessBadge item={m} categoria={m.tipo === 'Transmisión' ? 'transmisiones' : 'motores'} />
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
                   <button onClick={() => abrirModalEditarMotor(m)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
@@ -544,6 +549,11 @@ export default function InventarioPanel() {
                   <p style={{ fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px', margin: '6px 0 0' }}>
                     {p.marca} {p.modelo} {p.ano}
                   </p>
+                  {p.fechaIngreso && (
+                    <div style={{ marginTop: '6px' }}>
+                      <ItemFreshnessBadge item={p} categoria="piezasSueltas" />
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
                   <button onClick={() => abrirModalEditarPiezaSuelta(p)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>

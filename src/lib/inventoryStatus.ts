@@ -1,54 +1,87 @@
 // Semáforo de frescura de inventario — funciones puras, sin dependencia de Firestore ni de
 // React, para poder probarlas con datos sintéticos y reusarlas donde haga falta.
 //
-// Auditoría del modelo real (2026-09-24): los vehículos de un yonke
-// (yonkes/{yonkeId}/vehiculos) guardan su fecha de captura en el campo `fechaIngreso`
-// (Timestamp de Firestore, escrito una sola vez con `new Date()` al crear el documento —
-// nunca se toca al editar marca/modelo/año, ver panel/inventario/page.js). Los vehículos NO
-// tienen hoy un campo "vendido"/"activo" propio — solo motores y piezasSueltas tienen un
-// toggle `disponible` (ausente o true = disponible; false = dado de baja). getYonkeActivity()
-// de abajo sigue ese mismo criterio (`disponible !== false`) para que, si el modelo de datos
-// de vehículos llega a tener ese campo más adelante, esta función ya funcione correcto sin
-// cambios — mientras tanto, todos los vehículos existentes cuentan como activos.
+// Auditoría 2026-09-24 (extensión a motores/transmisiones/piezas sueltas): confirmado en
+// panel/inventario/page.js y su espejo admin/yonke/[id]/inventario/page.js que las 4 categorías
+// ya seguían el MISMO patrón de campos desde antes de este cambio — no hizo falta ninguna
+// migración ni backfill:
+//   - vehiculos           (yonkes/{id}/vehiculos)
+//   - motores             (yonkes/{id}/motores, campo tipo:'Motor')
+//   - transmisiones       (misma colección yonkes/{id}/motores, campo tipo:'Transmisión' — NO es
+//                          una colección aparte)
+//   - piezasSueltas       (yonkes/{id}/piezasSueltas)
+// Las 4 guardan su fecha de captura en `fechaIngreso` (Timestamp de Firestore, escrito una sola
+// vez al crear — la edición nunca la toca en ninguna de las 4) y su disponibilidad en
+// `disponible` (ausente o true = disponible/activo; false = dado de baja).
 
-export const INVENTORY_THRESHOLDS = {
-  greenMaxDays: 30,
-  yellowMaxDays: 90,
-} as const;
+export type ItemCategory = 'vehiculos' | 'motores' | 'transmisiones' | 'piezasSueltas';
+
+export const INVENTORY_THRESHOLDS: Record<ItemCategory, { greenMaxDays: number; yellowMaxDays: number }> = {
+  vehiculos: { greenMaxDays: 30, yellowMaxDays: 90 },
+  motores: { greenMaxDays: 30, yellowMaxDays: 90 },
+  transmisiones: { greenMaxDays: 30, yellowMaxDays: 90 },
+  // Piezas sueltas se mueven más rápido que un vehículo completo — umbrales más cortos a
+  // propósito (pedido explícito, no un descuido de copiar/pegar los mismos números).
+  piezasSueltas: { greenMaxDays: 15, yellowMaxDays: 45 },
+};
 
 export type FreshnessStatus = 'green' | 'yellow' | 'red';
 
-export interface VehicleFreshness {
+export interface ItemFreshness {
   status: FreshnessStatus;
   days: number;
 }
 
+// Alias de tipo para no romper código existente que ya importe "VehicleFreshness" por nombre.
+export type VehicleFreshness = ItemFreshness;
+
 const MS_POR_DIA = 1000 * 60 * 60 * 24;
 
-// Clasifica un número de días ya calculado contra los umbrales — compartido por
-// getVehicleFreshness (días desde la captura) y getYonkeActivity (mediana de esos días).
-// Límites INCLUSIVOS: día 30 todavía es 'green', día 90 todavía es 'yellow'.
-function clasificarDias(dias: number): FreshnessStatus {
-  if (dias <= INVENTORY_THRESHOLDS.greenMaxDays) return 'green';
-  if (dias <= INVENTORY_THRESHOLDS.yellowMaxDays) return 'yellow';
+// Límites INCLUSIVOS por categoría: el día greenMaxDays todavía es 'green', el día yellowMaxDays
+// todavía es 'yellow'.
+function clasificarDias(categoria: ItemCategory, dias: number): FreshnessStatus {
+  const umbrales = INVENTORY_THRESHOLDS[categoria];
+  if (dias <= umbrales.greenMaxDays) return 'green';
+  if (dias <= umbrales.yellowMaxDays) return 'yellow';
   return 'red';
 }
 
-// FASE 1 — semáforo por vehículo individual, basado en su propia fecha de captura.
-// `now` es inyectable a propósito (nunca `new Date()` interno sin parámetro) para que los
-// tests sean deterministas sin necesidad de mockear el reloj del sistema.
-export function getVehicleFreshness(capturedAt: Date, now: Date = new Date()): VehicleFreshness {
+// Núcleo genérico por categoría — asume capturedAt válido (siempre un Date real). El caso "no
+// hay fecha" se resuelve ANTES de llegar aquí (ver getItemFreshnessOrNull más abajo), para que
+// esta función se quede simple, pura y siempre determinista.
+export function getItemFreshness(categoria: ItemCategory, capturedAt: Date, now: Date = new Date()): ItemFreshness {
   const diffMs = now.getTime() - capturedAt.getTime();
-  // Math.max(0, ...): una fecha de captura en el futuro (reloj mal puesto, dato corrupto)
-  // nunca debe devolver días negativos — se trata como "capturado hoy" (0 días, 'green').
+  // Math.max(0, ...): una fecha de captura en el futuro (reloj mal puesto, dato corrupto) nunca
+  // debe devolver días negativos — se trata como "capturado hoy" (0 días, 'green').
   const days = Math.max(0, Math.floor(diffMs / MS_POR_DIA));
-  return { status: clasificarDias(days), days };
+  return { status: clasificarDias(categoria, days), days };
+}
+
+// FASE 1 original — misma firma y mismo comportamiento exacto de antes (categoría 'vehiculos'
+// fija), para no romper nada de lo que ya la usa (getYonkeActivity, cualquier import existente).
+export function getVehicleFreshness(capturedAt: Date, now: Date = new Date()): ItemFreshness {
+  return getItemFreshness('vehiculos', capturedAt, now);
+}
+
+// Usado por <ItemFreshnessBadge/> — centraliza las dos razones por las que un ítem NO debe
+// mostrar semáforo (sin fecha de captura, o disponible === false) en un solo lugar puro y
+// testeable, en vez de repetir ese `if` en cada componente/página que lo use.
+export function getItemFreshnessOrNull(
+  categoria: ItemCategory,
+  capturedAt: Date | null | undefined,
+  disponible: boolean | undefined,
+  now: Date = new Date(),
+): ItemFreshness | null {
+  if (!capturedAt) return null;
+  if (disponible === false) return null;
+  return getItemFreshness(categoria, capturedAt, now);
 }
 
 // FASE 2 (preparada, no conectada a UI todavía) — actividad del YONKE completo: mediana de
 // antigüedad de sus vehículos activos. Un yonke con muchos vehículos viejos pero uno recién
 // capturado no debe verse "reciente" por un solo dato atípico — por eso mediana, no promedio
-// ni el más nuevo.
+// ni el más nuevo. Se queda específica de vehículos a propósito (no se generalizó a otras
+// categorías, no se pidió).
 export type YonkeActivityStatus = FreshnessStatus | 'none';
 
 export interface YonkeVehicleInput {
@@ -80,5 +113,5 @@ export function getYonkeActivity(vehicles: YonkeVehicleInput[], now: Date = new 
     .map((v) => getVehicleFreshness(v.capturedAt, now).days)
     .sort((a, b) => a - b);
   const medianDays = mediana(dias);
-  return { status: clasificarDias(medianDays), medianDays };
+  return { status: clasificarDias('vehiculos', medianDays), medianDays };
 }
