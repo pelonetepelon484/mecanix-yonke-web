@@ -12,6 +12,7 @@ import SelectorOpciones from '../../../../lib/SelectorOpciones';
 import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../../../lib/opcionesVehiculo';
 import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../../../lib/piezasCatalogo';
 import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPorError } from '../../../../../lib/vehiculoEstado';
+import VehicleFreshnessBadge from '../../../../lib/VehicleFreshnessBadge';
 
 // vendidoAt es un Timestamp de Firestore — mismo patrón usado en panel/inventario/page.js.
 function timestampComoDate(valor) {

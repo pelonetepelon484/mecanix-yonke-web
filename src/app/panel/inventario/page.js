@@ -9,9 +9,8 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
-import FreshnessBadge from '../FreshnessBadge';
+import VehicleFreshnessBadge from '../../lib/VehicleFreshnessBadge';
 import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarcaModelo';
-import { getVehicleFreshness } from '../../../lib/inventoryStatus';
 import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPorError } from '../../../lib/vehiculoEstado';
 import SelectorOpciones from '../../lib/SelectorOpciones';
 import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../lib/opcionesVehiculo';
@@ -23,9 +22,6 @@ import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../lib/piezasCatalo
 function timestampComoDate(valor) {
   if (!valor) return null;
   return valor.toDate ? valor.toDate() : new Date(valor);
-}
-function fechaIngresoComoDate(v) {
-  return timestampComoDate(v.fechaIngreso);
 }
 const MOTIVO_BAJA_LABEL = Object.fromEntries(MOTIVOS_BAJA.map((m) => [m.value, m.label]));
 
@@ -434,8 +430,6 @@ export default function InventarioPanel() {
             )}
 
             {vehiculosVista.map((v, index) => {
-              const capturedAt = fechaIngresoComoDate(v);
-              const frescura = capturedAt ? getVehicleFreshness(capturedAt) : null;
               const vendidoAt = timestampComoDate(v.vendidoAt);
               const esVendido = v.disponible === false;
               return (
@@ -454,9 +448,9 @@ export default function InventarioPanel() {
                         {MOTIVO_BAJA_LABEL[v.motivoBaja] || 'Sacado del inventario'}
                         {vendidoAt ? ` · ${vendidoAt.toLocaleDateString('es-MX')}` : ''}
                       </p>
-                    ) : frescura && (
+                    ) : v.fechaIngreso && (
                       <div style={{ marginTop: '6px' }}>
-                        <FreshnessBadge status={frescura.status} days={frescura.days} />
+                        <VehicleFreshnessBadge vehiculo={v} />
                       </div>
                     )}
                     <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: 'bold', marginTop: '6px' }}>
