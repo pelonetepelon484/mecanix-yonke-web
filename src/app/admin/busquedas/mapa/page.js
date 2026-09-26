@@ -9,7 +9,7 @@ import mexicoMap from '@svg-maps/mexico';
 
 // @svg-maps/mexico usa como `id` el código ISO 3166-2:MX en minúsculas (agu, bcn, ..., zac) —
 // el mismo esquema que resolverGeoIp() ya guarda en `estadoGeografico` (ver
-// lib/busqueda/geolocalizarIp.js). Nombres en español para mostrar (el paquete trae "Mexico
+// src/lib/geoVercel.ts). Nombres en español para mostrar (el paquete trae "Mexico
 // City" sin acentos en varios casos).
 const NOMBRES_ESTADO = {
   agu: 'Aguascalientes', bcn: 'Baja California', bcs: 'Baja California Sur',

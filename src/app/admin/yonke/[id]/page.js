@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp, deleteField, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp, deleteField, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
+import { refContactoPrivado, leerEmailContacto } from '../../../../lib/contactoPrivado';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
 import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../lib/estados';
@@ -201,7 +202,7 @@ export default function EditarYonkePage() {
         }
         setTelefono(data.telefono || '');
         setWhatsapp(data.whatsapp || '');
-        setEmail(data.email || '');
+        setEmail(await leerEmailContacto(db, id, data));
         setPlan(data.plan || 'freemium');
         if (data.premiumHasta) {
           const fecha = data.premiumHasta?.toDate ? data.premiumHasta.toDate() : new Date(data.premiumHasta);
@@ -318,14 +319,18 @@ export default function EditarYonkePage() {
     }
     setGuardando(true);
     try {
-      await setDoc(doc(db, 'yonkes', id), {
+      // El correo se guarda en el subdocumento privado; `email: deleteField()` limpia el campo
+      // público que dejaron los yonkes anteriores a este cambio. Ambas escrituras van en un batch.
+      const batch = writeBatch(db);
+      batch.set(refContactoPrivado(db, id), { email: email.trim() }, { merge: true });
+      batch.set(doc(db, 'yonkes', id), {
         nombre: nombre.trim(),
         direccion: direccion.trim(),
         estado,
         ciudad: ciudadFinal,
         telefono: telefono.trim(),
         whatsapp: whatsapp.trim() || telefono.trim(),
-        email: email.trim(),
+        email: deleteField(),
         plan,
         premiumHasta: plan === 'premium' && premiumHasta
           ? Timestamp.fromDate(new Date(`${premiumHasta}T00:00:00`))
@@ -339,6 +344,7 @@ export default function EditarYonkePage() {
         metodosPago,
         horario,
       }, { merge: true });
+      await batch.commit();
       alert('✅ Yonke actualizado correctamente');
       router.push('/admin');
     } catch (error) {

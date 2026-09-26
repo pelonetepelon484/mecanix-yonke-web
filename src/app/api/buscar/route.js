@@ -6,7 +6,7 @@ import { extraerIntencion } from '../../lib/busqueda/extraerIntencion';
 import { obtenerSinonimosCombinados } from '../../lib/busqueda/sinonimosPiezas';
 import { detectarFueraDeGiro } from '../../lib/busqueda/detectarFueraDeGiro';
 import { registrarBusqueda } from '../../lib/busqueda/registrarBusqueda';
-import { resolverGeoIp } from '../../lib/busqueda/geolocalizarIp';
+import { geoDesdeHeadersVercel } from '../../../lib/geoVercel';
 import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones } from '../../lib/busqueda/consultarInventario';
 import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLimit';
 import { MENSAJE_NUMERO_DE_PARTE } from '../../lib/busqueda/numeroDeParte';
@@ -57,16 +57,16 @@ function obtenerIp(request) {
   return request.headers.get('x-real-ip') || 'unknown';
 }
 
-// Vercel inyecta el país del visitante (ISO 3166-1 alpha-2, ej. 'MX', 'US') en este header para
-// todo request que pasa por su red edge — a diferencia de resolverGeoIp (ip-api.com), esto es
-// instantáneo y gratis, sin llamada externa. Solo sirve para DETECTAR/MARCAR tráfico de fuera de
-// México (limpieza del dashboard) — no reemplaza resolverGeoIp, que resuelve estado/ciudad
-// DENTRO de México para el mapa de búsquedas. Devuelve null (nunca 'MX' por default) cuando el
-// header no llega — en local (npm run dev) o si algo cambia en el edge de Vercel — para que un
-// dato ausente se guarde como país desconocido, nunca se asuma México ni fuera de México.
-function obtenerPaisVisitante(request) {
-  const pais = request.headers.get('x-vercel-ip-country');
-  return pais ? pais.toUpperCase() : null;
+// Geolocalización del visitante (país, estado y ciudad de México) desde los headers que Vercel
+// inyecta en el edge — instantánea, sin llamadas HTTP externas: la IP ya no se envía a ningún
+// tercero. Cuando los headers no llegan (npm run dev, cambio en el edge) todo queda como
+// desconocido/null, nunca se asume México. Ver lib/geoVercel.ts.
+function obtenerGeoVisitante(request) {
+  return geoDesdeHeadersVercel({
+    country: request.headers.get('x-vercel-ip-country'),
+    region: request.headers.get('x-vercel-ip-country-region'),
+    city: request.headers.get('x-vercel-ip-city'),
+  });
 }
 
 // yonkeIds para el "Mapa de búsquedas" (spec sección 1): qué yonkes sí tenían la pieza/vehículo
@@ -376,14 +376,10 @@ export async function POST(request) {
     return NextResponse.json({ estado: 'rate_limited', mensaje: MENSAJE_RATE_LIMIT });
   }
 
-  // Geolocalización por IP para el "Mapa de búsquedas" (spec sección 1-2) — nunca lanza, cae a
-  // {estado: 'desconocido', ciudad: null} si falla o no resuelve. Se calcula una sola vez por
-  // request y se pasa a resolverBusqueda/resolverBusquedaVehiculo, igual que estadoFiltro.
-  const geo = await resolverGeoIp(ip);
-  // País del visitante (limpieza de dashboard, ver obtenerPaisVisitante) — se mete en el mismo
-  // objeto `geo` para viajar junto con estado/ciudad por todos los mismos call sites, sin
-  // agregar un parámetro nuevo a cada función.
-  geo.pais = obtenerPaisVisitante(request);
+  // Geolocalización para el "Mapa de búsquedas" (país + estado + ciudad, todo desde headers de
+  // Vercel, ver obtenerGeoVisitante) — nunca lanza. Se calcula una sola vez por request y viaja en
+  // `geo` (estado/ciudad/pais) por los mismos call sites que estadoFiltro.
+  const geo = obtenerGeoVisitante(request);
 
   // Modo confirmación: el usuario ya aceptó una sugerencia difusa ("¿Quisiste decir...?") o una
   // aclaración de cilindrada ("¿Buscas el motor 3.6 de Chevrolet?"). Se salta Capa 0/Capa 1 por

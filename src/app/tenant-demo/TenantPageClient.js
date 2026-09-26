@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { esPrecioValido, formatPrecio } from '../../lib/precio';
+import { VERSION_LEGAL } from '../../lib/versionesLegales';
+import AvisoPrivacidadReserva from '../lib/AvisoPrivacidadReserva';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -244,6 +246,7 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
         telefonoCliente: telefonoCliente.trim(),
         estado: 'pendiente',
         fecha: new Date(),
+        avisoPrivacidadVersion: VERSION_LEGAL,
       });
       setNumeroPedido(numero);
     } catch (error) {
@@ -479,6 +482,7 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
                 <p style={{ color: '#888', fontSize: '13px', marginBottom: '16px' }}>{reservaContexto?.piezaSolicitada}</p>
                 <input type="text" placeholder="Tu nombre" value={nombreCliente} onChange={(e) => setNombreCliente(e.target.value)} style={inputStyle} />
                 <input type="tel" placeholder="Tu teléfono" value={telefonoCliente} onChange={(e) => setTelefonoCliente(e.target.value)} style={inputStyle} />
+                <AvisoPrivacidadReserva color={branding.colorPrimario} />
                 <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                   <button onClick={cerrarReserva} style={cancelButtonStyle}>Cancelar</button>
                   <button onClick={confirmarReserva} disabled={guardandoReserva} style={{ ...reservarBotonStyle(branding.colorAcento), flex: 1 }}>

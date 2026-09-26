@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { addDoc, collection } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { refContactoPrivado } from '../../../lib/contactoPrivado';
 import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
 
 const CIUDADES_BC = [
@@ -44,19 +45,23 @@ export default function NuevoYonkePage() {
     }
     setGuardando(true);
     try {
-      await addDoc(collection(db, 'yonkes'), {
+      // El correo va al subdocumento privado, no al documento público del yonke.
+      const yonkeRef = doc(collection(db, 'yonkes'));
+      const batch = writeBatch(db);
+      batch.set(yonkeRef, {
         nombre: nombre.trim(),
         direccion: direccion.trim(),
         estado,
         ciudad: ciudadFinal,
         telefono: telefono.trim(),
         whatsapp: whatsapp.trim() || telefono.trim(),
-        email: email.trim(),
         plan,
         activo,
         metodosPago: [],
         fechaRegistro: new Date(),
       });
+      if (email.trim()) batch.set(refContactoPrivado(db, yonkeRef.id), { email: email.trim() });
+      await batch.commit();
       alert('✅ Yonke creado correctamente');
       router.push('/admin');
     } catch (error) {

@@ -9,6 +9,7 @@ import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
 import { generarSubdominioUnico } from '../../lib/generarSubdominio';
 import { subirLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
+import { VERSION_LEGAL, URL_TERMINOS, URL_PRIVACIDAD } from '../../../lib/versionesLegales';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -26,6 +27,7 @@ export default function RegistroYonke() {
   const [direccion, setDireccion] = useState('');
   const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [estado, setEstado] = useState(ESTADO_DEFAULT);
+  const [aceptaLegal, setAceptaLegal] = useState(false);
   const [ciudad, setCiudad] = useState('tijuana');
   const [ciudadLibre, setCiudadLibre] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -74,6 +76,10 @@ export default function RegistroYonke() {
       setError('Las contraseñas no coinciden');
       return;
     }
+    if (!aceptaLegal) {
+      setError('Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para registrarte');
+      return;
+    }
 
     setRegistrando(true);
     try {
@@ -89,11 +95,13 @@ export default function RegistroYonke() {
         ciudad: ciudadFinal,
         telefono: telefono.trim(),
         whatsapp: whatsapp.trim() || telefono.trim(),
-        email: email.trim(),
+        // El correo NO se guarda aquí (documento público): vive en usuarios/{uid}.
         metodosPago: [],
         plan: 'freemium',
         activo: true,
         fechaRegistro: new Date(),
+        // Aceptación de Términos y Aviso de Privacidad: qué versión y cuándo.
+        aceptacionLegal: { version: VERSION_LEGAL, fecha: new Date() },
       });
 
       // 3. Crear documento del usuario en Firestore
@@ -372,6 +380,21 @@ export default function RegistroYonke() {
             style={inputStyle}
           />
         </div>
+
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', margin: '4px 0 14px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={aceptaLegal}
+            onChange={(e) => setAceptaLegal(e.target.checked)}
+            style={{ marginTop: '3px', width: '16px', height: '16px', accentColor: '#E8720C', cursor: 'pointer', flexShrink: 0 }}
+          />
+          <span style={{ fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
+            He leído y acepto los{' '}
+            <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Términos y Condiciones</a>
+            {' '}y el{' '}
+            <a href={URL_PRIVACIDAD} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Aviso de Privacidad</a>.
+          </span>
+        </label>
 
         {error && (
           <div style={errorStyle}>

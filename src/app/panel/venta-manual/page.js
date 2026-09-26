@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, getDocs, addDoc, doc, getDoc, onSnapshot, runTransaction } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, getDoc, onSnapshot, runTransaction, writeBatch } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
@@ -10,6 +10,7 @@ import BottomNav from '../BottomNav';
 import NotaGarantiaModal from '../NotaGarantiaModal';
 import { sacarDelInventario } from '../../../lib/vehiculoEstado';
 import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
+import { ventaPublicaParaEscribir } from '../../../lib/ventaPublicaRef';
 import { piezasDisponibles, resolverVentaDeInventario, resolverVentaCustom, calcularMontoPrecargado, PIEZA_CUSTOM_MAX_LEN } from '../../../lib/ventaPiezaLogic';
 
 const OPCION_OTRA = '__OTRA__';
@@ -174,7 +175,13 @@ export default function VentaManualPanel() {
           return;
         }
         datosVentaFinal = { ...base, partSource: resultado.ventaExtra.partSource, piezaVendida: resultado.ventaExtra.piezaVendida };
-        const ventaRef = await addDoc(collection(db, 'ventas'), datosVentaFinal);
+        // ventas + ventasPublicas (copia no personal para /calificar) en el mismo batch.
+        const ventaRef = doc(collection(db, 'ventas'));
+        const batch = writeBatch(db);
+        batch.set(ventaRef, datosVentaFinal);
+        const publica = ventaPublicaParaEscribir(db, ventaRef.id, datosVentaFinal);
+        if (publica) batch.set(publica.ref, publica.datos);
+        await batch.commit();
         ventaId = ventaRef.id;
       } else {
         // Pieza del inventario: releer + marcar no disponible + crear la venta, todo en la misma
@@ -189,12 +196,15 @@ export default function VentaManualPanel() {
             throw new Error(resultado.error);
           }
           transaction.update(piezaRef, resultado.piezaUpdate);
-          transaction.set(ventaRef, {
+          const datosVenta = {
             ...base,
             partSource: resultado.ventaExtra.partSource,
             piezaId: resultado.ventaExtra.piezaId,
             piezaVendida: resultado.ventaExtra.piezaVendida,
-          });
+          };
+          transaction.set(ventaRef, datosVenta);
+          const publica = ventaPublicaParaEscribir(db, ventaRef.id, datosVenta);
+          if (publica) transaction.set(publica.ref, publica.datos);
         });
         const nombrePieza = piezasParaElegir.find((p) => p.id === piezaSeleccionId)?.nombre || '';
         datosVentaFinal = { ...base, partSource: 'inventory', piezaId: piezaSeleccionId, piezaVendida: nombrePieza };

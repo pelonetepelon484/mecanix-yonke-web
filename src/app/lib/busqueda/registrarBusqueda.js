@@ -53,7 +53,7 @@ export async function registrarBusqueda({
     tipoResultado, numResultados, piezaNoEncontrada,
     subtipo, origen, tieneContacto: Boolean(tieneContacto),
     estadoGeografico, ciudad,
-    // pais: código ISO del visitante desde el header de Vercel (route.js/obtenerPaisVisitante),
+    // pais: código ISO del visitante desde el header de Vercel (route.js/obtenerGeoVisitante),
     // ej. 'MX', 'US' — null cuando no se pudo determinar (local, o el header no llegó), NUNCA se
     // asume 'MX' por default. Sirve para que el dashboard filtre el ruido de bots de fuera de
     // México sin borrar nada — ver admin/busquedas/page.js. Búsquedas de antes de este campo se

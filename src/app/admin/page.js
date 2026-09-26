@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, onSnapshot, query, orderBy, where, doc, updateDoc, setDoc, getDoc, getDocs, deleteDoc, Timestamp, deleteField } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where, doc, updateDoc, setDoc, getDoc, getDocs, deleteDoc, Timestamp, deleteField, writeBatch } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import { borrarLogoYonke } from '../lib/subirLogoYonke';
 import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from '../lib/estados';
 import YonkeActividadBadge from '../lib/YonkeActividadBadge';
+import { ventaPublicaParaEscribir } from '../../lib/ventaPublicaRef';
+import { refContactoPrivado } from '../../lib/contactoPrivado';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -47,6 +49,7 @@ export default function AdminPage() {
   const [estadosDisponibles, setEstadosDisponibles] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [estadoFiltro, setEstadoFiltro] = useState('todos');
   const [regenerandoCatalogo, setRegenerandoCatalogo] = useState(false);
+  const [migrando, setMigrando] = useState(null); // null | 'ventasPublicas' | 'emails'
   const [modalPremiumVisible, setModalPremiumVisible] = useState(false);
   const [yonkeParaPremium, setYonkeParaPremium] = useState(null);
   const [fechaPremium, setFechaPremium] = useState('');
@@ -93,6 +96,60 @@ export default function AdminPage() {
     setRegenerandoCatalogo(false);
   };
 
+  // MIGRACIÓN DE PRIVACIDAD 1/2 — copia cada venta existente a ventasPublicas/{folio} (solo
+  // campos no personales, ver src/lib/ventasPublicas.ts). Idempotente: se puede correr varias
+  // veces. Correrla ANTES de apretar la regla de lectura de `ventas`, o /calificar dejaría de
+  // encontrar pedidos anteriores. Si dos ventas comparten folio, la última escrita gana.
+  const respaldarVentasPublicas = async () => {
+    if (!confirm('Copia TODAS las ventas existentes a ventasPublicas (solo pieza, vehículo y yonke; sin nombre ni monto). Es seguro repetirlo. ¿Continuar?')) return;
+    setMigrando('ventasPublicas');
+    try {
+      const snap = await getDocs(collection(db, 'ventas'));
+      let copiadas = 0, sinFolio = 0, enBatch = 0;
+      let batch = writeBatch(db);
+      for (const d of snap.docs) {
+        const publica = ventaPublicaParaEscribir(db, d.id, d.data());
+        if (!publica) { sinFolio++; continue; }
+        batch.set(publica.ref, publica.datos);
+        copiadas++; enBatch++;
+        if (enBatch >= 400) { await batch.commit(); batch = writeBatch(db); enBatch = 0; }
+      }
+      if (enBatch > 0) await batch.commit();
+      alert(`✅ ${copiadas} venta(s) copiadas a ventasPublicas. ${sinFolio} sin folio o sin yonke (no se copiaron). Total leído: ${snap.size}.`);
+    } catch (e) {
+      console.error(e);
+      alert(`❌ Error: ${e.code || ''} ${e.message}`);
+    }
+    setMigrando(null);
+  };
+
+  // MIGRACIÓN DE PRIVACIDAD 2/2 — mueve yonkes/{id}.email (documento PÚBLICO) a
+  // yonkes/{id}/privado/contacto y borra el campo público. Solo toca yonkes que todavía tienen el
+  // campo; el resto no se modifica. Idempotente.
+  const moverEmailsAPrivado = async () => {
+    if (!confirm('Mueve el correo de cada yonke del documento público a yonkes/{id}/privado/contacto y borra el campo público. Es seguro repetirlo. ¿Continuar?')) return;
+    setMigrando('emails');
+    try {
+      const snap = await getDocs(collection(db, 'yonkes'));
+      let movidos = 0, enBatch = 0;
+      let batch = writeBatch(db);
+      for (const d of snap.docs) {
+        const email = d.data().email;
+        if (typeof email !== 'string') continue;
+        batch.set(refContactoPrivado(db, d.id), { email }, { merge: true });
+        batch.update(d.ref, { email: deleteField() });
+        movidos++; enBatch += 2;
+        if (enBatch >= 400) { await batch.commit(); batch = writeBatch(db); enBatch = 0; }
+      }
+      if (enBatch > 0) await batch.commit();
+      alert(`✅ ${movidos} yonke(s) migrados. ${snap.size - movidos} no tenían el campo email.`);
+    } catch (e) {
+      console.error(e);
+      alert(`❌ Error: ${e.code || ''} ${e.message}`);
+    }
+    setMigrando(null);
+  };
+
   // Borra todos los docs de una subcolección (piezas, motores, etc.). Devuelve cuántos borró.
   async function borrarSubcoleccionCompleta(refColeccion) {
     const snap = await getDocs(refColeccion);
@@ -120,8 +177,12 @@ export default function AdminPage() {
       const piezasSnap = await getDocs(collection(db, 'yonkes', yonke.id, 'vehiculos', vDoc.id, 'piezas'));
       piezas += piezasSnap.size;
     }
-    const [motoresSnap, usuariosSnap, reservacionesSnap, ventasSnap, calificacionesSnap] = await Promise.all([
+    const [motoresSnap, piezasSueltasSnap, notasGarantiaSnap, comprasReciclajeSnap, materialesReciclajeSnap, usuariosSnap, reservacionesSnap, ventasSnap, calificacionesSnap] = await Promise.all([
       getDocs(collection(db, 'yonkes', yonke.id, 'motores')),
+      getDocs(collection(db, 'yonkes', yonke.id, 'piezasSueltas')),
+      getDocs(collection(db, 'yonkes', yonke.id, 'notasGarantia')),
+      getDocs(collection(db, 'yonkes', yonke.id, 'comprasReciclaje')),
+      getDocs(collection(db, 'yonkes', yonke.id, 'materialesReciclaje')),
       getDocs(query(collection(db, 'usuarios'), where('yonkeId', '==', yonke.id))),
       getDocs(query(collection(db, 'reservaciones'), where('yonkeId', '==', yonke.id))),
       getDocs(query(collection(db, 'ventas'), where('yonkeId', '==', yonke.id))),
@@ -131,6 +192,10 @@ export default function AdminPage() {
       vehiculos: vehiculosSnap.size,
       piezas,
       motores: motoresSnap.size,
+      piezasSueltas: piezasSueltasSnap.size,
+      notasGarantia: notasGarantiaSnap.size,
+      comprasReciclaje: comprasReciclajeSnap.size,
+      materialesReciclaje: materialesReciclajeSnap.size,
       usuarios: usuariosSnap.size,
       reservaciones: reservacionesSnap.size,
       ventas: ventasSnap.size,
@@ -189,6 +254,25 @@ export default function AdminPage() {
       pasos.push({ nombre: 'Motores/transmisiones', ok: false, detalle: e.message });
     }
 
+    // Subcolecciones que antes se quedaban huérfanas al borrar un yonke (contienen datos de
+    // clientes: notas de garantía; y de vendedores de material: compras de reciclaje con
+    // RFC/CURP). Mismo patrón de un try/catch por paso que el resto.
+    for (const [sub, etiqueta] of [
+      ['piezasSueltas', 'Piezas sueltas'],
+      ['notasGarantia', 'Notas de garantía'],
+      ['comprasReciclaje', 'Compras de reciclaje'],
+      ['materialesReciclaje', 'Materiales de reciclaje'],
+      ['privado', 'Datos privados de contacto'],
+    ]) {
+      try {
+        const n = await borrarSubcoleccionCompleta(collection(db, 'yonkes', yonke.id, sub));
+        pasos.push({ nombre: etiqueta, ok: true, detalle: `${n} registro(s)` });
+      } catch (e) {
+        console.error(e);
+        pasos.push({ nombre: etiqueta, ok: false, detalle: e.message });
+      }
+    }
+
     try {
       const docs = await borrarPorYonkeId('usuarios', yonke.id);
       docs.forEach((d) => emailsAuth.push(d.email || d.id));
@@ -198,7 +282,7 @@ export default function AdminPage() {
       pasos.push({ nombre: 'Accesos de usuario (Firestore)', ok: false, detalle: e.message });
     }
 
-    for (const [col, etiqueta] of [['reservaciones', 'Reservaciones'], ['ventas', 'Ventas'], ['calificaciones', 'Calificaciones']]) {
+    for (const [col, etiqueta] of [['reservaciones', 'Reservaciones'], ['ventas', 'Ventas'], ['ventasPublicas', 'Ventas públicas (copia para calificar)'], ['calificaciones', 'Calificaciones']]) {
       try {
         const docs = await borrarPorYonkeId(col, yonke.id);
         pasos.push({ nombre: etiqueta, ok: true, detalle: `${docs.length} documento(s)` });
@@ -320,7 +404,7 @@ export default function AdminPage() {
 
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
         {/* Herramientas de catálogo */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <button
             onClick={regenerarCatalogo}
             disabled={regenerandoCatalogo}
@@ -332,6 +416,20 @@ export default function AdminPage() {
             }}
           >
             {regenerandoCatalogo ? '⏳ Actualizando...' : '🔄 Actualizar catálogo'}
+          </button>
+          <button
+            onClick={respaldarVentasPublicas}
+            disabled={migrando !== null}
+            style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#555', color: '#fff', fontWeight: '600', fontSize: '13px', cursor: migrando ? 'wait' : 'pointer', opacity: migrando ? 0.6 : 1 }}
+          >
+            {migrando === 'ventasPublicas' ? '⏳ Copiando...' : '🔐 Copiar ventas a públicas'}
+          </button>
+          <button
+            onClick={moverEmailsAPrivado}
+            disabled={migrando !== null}
+            style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#555', color: '#fff', fontWeight: '600', fontSize: '13px', cursor: migrando ? 'wait' : 'pointer', opacity: migrando ? 0.6 : 1 }}
+          >
+            {migrando === 'emails' ? '⏳ Moviendo...' : '🔐 Mover correos a privado'}
           </button>
           <button
             onClick={() => router.push('/admin/busquedas')}
@@ -541,12 +639,21 @@ export default function AdminPage() {
                     <li style={resumenFilaStyle}>🚗 Vehículos: <strong>{resumenBorrado.vehiculos}</strong></li>
                     <li style={resumenFilaStyle}>🔩 Piezas: <strong>{resumenBorrado.piezas}</strong></li>
                     <li style={resumenFilaStyle}>⚙️ Motores/transmisiones: <strong>{resumenBorrado.motores}</strong></li>
+                    <li style={resumenFilaStyle}>🔩 Piezas sueltas: <strong>{resumenBorrado.piezasSueltas}</strong></li>
+                    <li style={resumenFilaStyle}>🛡️ Notas de garantía: <strong>{resumenBorrado.notasGarantia}</strong></li>
+                    <li style={resumenFilaStyle}>♻️ Compras y materiales de reciclaje: <strong>{resumenBorrado.comprasReciclaje + resumenBorrado.materialesReciclaje}</strong></li>
                     <li style={resumenFilaStyle}>👤 Accesos de usuario: <strong>{resumenBorrado.usuarios}</strong></li>
                     <li style={resumenFilaStyle}>📋 Reservaciones: <strong>{resumenBorrado.reservaciones}</strong></li>
                     <li style={resumenFilaStyle}>💰 Ventas: <strong>{resumenBorrado.ventas}</strong></li>
                     <li style={resumenFilaStyle}>⭐ Calificaciones: <strong>{resumenBorrado.calificaciones}</strong></li>
                     <li style={resumenFilaStyle}>🖼️ Logo (si tiene)</li>
                   </ul>
+                )}
+                {resumenBorrado && (
+                  <p style={{ fontSize: '12px', color: '#888', margin: '0 0 14px' }}>
+                    No se borra desde aquí: la cuenta de Firebase Authentication de cada acceso (se elimina a mano en la consola),
+                    las búsquedas registradas (no están ligadas al yonke) ni los contactos pendientes de búsquedas.
+                  </p>
                 )}
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={cerrarBorrado} style={modalCancelarStyle}>Cancelar</button>

@@ -8,6 +8,8 @@ import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from './lib/estados';
 import { PIEZAS_CATALOGO } from './lib/piezasCatalogo';
 import { toMillis } from '../lib/inventoryStatus';
 import YonkeActividadBadge from './lib/YonkeActividadBadge';
+import AvisoPrivacidadReserva from './lib/AvisoPrivacidadReserva';
+import { VERSION_LEGAL } from '../lib/versionesLegales';
 import { elegirPiezaParaPrecio, esPrecioValido, formatPrecio } from '../lib/precio';
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
@@ -909,6 +911,7 @@ export default function HomeClient({ textoSeoEstados }) {
         nombreCliente: nombreCliente.trim(), telefonoCliente: telefonoCliente.trim(),
         estado: 'pendiente', fecha: new Date(),
         interesaEnvio: interesaEnvio,
+        avisoPrivacidadVersion: VERSION_LEGAL,
       });
       setNumeroPedido(numero);
       registrarEvento('reserva_creada', {
@@ -1919,8 +1922,8 @@ function obtenerEstadoAbierto(horario) {
                     </p>
                   )}
                   <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-                    ✅ Tu yonke queda visible en Mecanix <strong style={{ color: '#E8720C' }}>GRATIS, para siempre</strong> —
-                    sin mensualidades.
+                    ✅ Tu yonke queda visible en Mecanix <strong style={{ color: '#E8720C' }}>GRATIS</strong> —
+                    actualmente sin mensualidades.
                   </p>
                 </div>
                 <a
@@ -1981,7 +1984,7 @@ function obtenerEstadoAbierto(horario) {
                     clientes te encuentran y te contactan directo por WhatsApp. Sin costo.
                   </p>
                   <div style={planNotaAzulStyle}>
-                    Sin caducidad: gratis para siempre. Solo dejas la plataforma si tú decides darte de baja.
+                    Actualmente sin costo. Solo dejas la plataforma si tú decides darte de baja.
                   </div>
                   <a
                     href="/panel/registro"
@@ -2140,6 +2143,7 @@ function obtenerEstadoAbierto(horario) {
                     </span>
                   </span>
                 </label>
+                <AvisoPrivacidadReserva />
                 <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                   <button onClick={cerrarModal} style={cancelButtonStyle}>Cancelar</button>
                   <button onClick={confirmarReserva} disabled={guardando} className="mecanix-btn-primary" style={{ flex: 1, width: 'auto', marginTop: 0 }}>

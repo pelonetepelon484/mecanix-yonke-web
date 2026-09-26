@@ -1,5 +1,6 @@
-import { doc, runTransaction } from 'firebase/firestore';
+import { doc, runTransaction, Timestamp } from 'firebase/firestore';
 import { dbServer } from '../firebase-server';
+import { idContadorRateLimit } from '../../../lib/rateLimitId';
 
 const LIMITE_POR_MINUTO = 18;
 
@@ -8,7 +9,8 @@ const LIMITE_POR_MINUTO = 18;
 // atómico y no se pueda rebasar el límite por una condición de carrera.
 export async function permitirBusqueda(ip) {
   const minutoBucket = Math.floor(Date.now() / 60000);
-  const docId = `${ip}_${minutoBucket}`.replace(/[/\s]/g, '_');
+  // El ID lleva un hash (HMAC) de la IP, no la IP: ver src/lib/rateLimitId.ts.
+  const docId = idContadorRateLimit(ip, minutoBucket);
   const ref = doc(dbServer, 'busqueda_rate_limit', docId);
 
   return runTransaction(dbServer, async (transaction) => {
@@ -17,7 +19,13 @@ export async function permitirBusqueda(ip) {
     if (countActual >= LIMITE_POR_MINUTO) {
       return false;
     }
-    transaction.set(ref, { count: countActual + 1, actualizado: new Date() }, { merge: true });
+    // expiraEn: campo para la política TTL de Firestore (limpieza automática de contadores viejos).
+    // Un contador solo importa durante su minuto; se conserva 1 hora por margen y se borra solo.
+    transaction.set(ref, {
+      count: countActual + 1,
+      actualizado: new Date(),
+      expiraEn: Timestamp.fromMillis((minutoBucket + 60) * 60000),
+    }, { merge: true });
     return true;
   });
 }

@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  collection, query, where, onSnapshot, orderBy, doc, updateDoc, addDoc, deleteDoc
+  collection, query, where, onSnapshot, orderBy, doc, updateDoc, deleteDoc, writeBatch
 } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
+import { ventaPublicaParaEscribir } from '../../../lib/ventaPublicaRef';
 
 const DIAS_EXPIRACION = 3;
 
@@ -85,7 +86,9 @@ export default function ReservacionesPanel() {
     }
     setGuardando(true);
     try {
-      await addDoc(collection(db, 'ventas'), {
+      // ventas + ventasPublicas (copia no personal para /calificar) en el mismo batch.
+      const ventaRef = doc(collection(db, 'ventas'));
+      const datosVenta = {
         reservaId: reservaSeleccionada.id,
         yonkeId,
         numeroPedido: reservaSeleccionada.numeroPedido,
@@ -94,7 +97,12 @@ export default function ReservacionesPanel() {
         vehiculo: reservaSeleccionada.vehiculo,
         monto: parseFloat(montoVenta),
         fecha: new Date(),
-      });
+      };
+      const batch = writeBatch(db);
+      batch.set(ventaRef, datosVenta);
+      const publica = ventaPublicaParaEscribir(db, ventaRef.id, datosVenta);
+      if (publica) batch.set(publica.ref, publica.datos);
+      await batch.commit();
       await updateDoc(doc(db, 'reservaciones', reservaSeleccionada.id), { estado: 'completada' });
       registrarActividadYonke(db, yonkeId);
       setModalVisible(false);

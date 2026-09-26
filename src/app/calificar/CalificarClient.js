@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import {
-  collection, query, where, getDocs, addDoc, doc, updateDoc
+  collection, query, where, getDocs, addDoc, doc, getDoc, updateDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { idVentaPublica } from '../../lib/ventasPublicas';
 
 export default function CalificarClient() {
   const [numeroPedido, setNumeroPedido] = useState('');
@@ -26,23 +27,19 @@ export default function CalificarClient() {
     setVenta(null);
 
     try {
-      const ventasRef = collection(db, 'ventas');
-      const q = query(ventasRef, where('numeroPedido', '==', numeroPedido.trim().toUpperCase()));
-      const snap = await getDocs(q);
+      // ventasPublicas/{folio}: copia mínima y no personal de la venta (ver src/lib/ventasPublicas.ts).
+      // `ventas` es privada del yonke dueño y del admin, por eso esta página ya no la consulta.
+      const folio = idVentaPublica(numeroPedido);
+      const publicaSnap = folio ? await getDoc(doc(db, 'ventasPublicas', folio)) : null;
 
-      if (!snap.empty) {
-        const ventaDoc = snap.docs[0];
-        const ventaData = ventaDoc.data();
+      if (publicaSnap && publicaSnap.exists()) {
+        const ventaData = publicaSnap.data();
 
         const califRef = collection(db, 'calificaciones');
-        const qCalif = query(califRef, where('ventaId', '==', ventaDoc.id));
+        const qCalif = query(califRef, where('ventaId', '==', ventaData.ventaId));
         const califSnap = await getDocs(qCalif);
 
-        if (!califSnap.empty) {
-          setVenta({ id: ventaDoc.id, ...ventaData, yaCalificado: true });
-        } else {
-          setVenta({ id: ventaDoc.id, ...ventaData, yaCalificado: false });
-        }
+        setVenta({ ...ventaData, id: ventaData.ventaId, yaCalificado: !califSnap.empty });
       }
     } catch (error) {
       console.error(error);
