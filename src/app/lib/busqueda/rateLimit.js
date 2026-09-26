@@ -1,6 +1,7 @@
 import { doc, runTransaction, Timestamp } from 'firebase/firestore';
 import { dbServer } from '../firebase-server';
 import { idContadorRateLimit } from '../../../lib/rateLimitId';
+import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 
 const LIMITE_POR_MINUTO = 18;
 
@@ -13,7 +14,7 @@ export async function permitirBusqueda(ip) {
   const docId = idContadorRateLimit(ip, minutoBucket);
   const ref = doc(dbServer, 'busqueda_rate_limit', docId);
 
-  return runTransaction(dbServer, async (transaction) => {
+  const contar = (conExpiracion) => runTransaction(dbServer, async (transaction) => {
     const snap = await transaction.get(ref);
     const countActual = snap.exists() ? (snap.data().count || 0) : 0;
     if (countActual >= LIMITE_POR_MINUTO) {
@@ -24,10 +25,13 @@ export async function permitirBusqueda(ip) {
     transaction.set(ref, {
       count: countActual + 1,
       actualizado: new Date(),
-      expiraEn: Timestamp.fromMillis((minutoBucket + 60) * 60000),
+      ...(conExpiracion ? { expiraEn: Timestamp.fromMillis((minutoBucket + 60) * 60000) } : {}),
     }, { merge: true });
     return true;
   });
+  // Si las reglas todavía no permiten `expiraEn`, se cuenta igual sin ese campo — de lo contrario
+  // el rate limit fallaría abierto (ver route.js) y dejaría de aplicarse en silencio.
+  return conFallbackDePermisos(() => contar(true), () => contar(false), 'rate limit expiraEn');
 }
 
 export const MENSAJE_RATE_LIMIT = 'Estás buscando muy seguido — espera un momento y vuelve a intentar.';

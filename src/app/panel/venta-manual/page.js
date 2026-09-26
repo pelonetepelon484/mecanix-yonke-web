@@ -11,6 +11,7 @@ import NotaGarantiaModal from '../NotaGarantiaModal';
 import { sacarDelInventario } from '../../../lib/vehiculoEstado';
 import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
 import { ventaPublicaParaEscribir } from '../../../lib/ventaPublicaRef';
+import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 import { piezasDisponibles, resolverVentaDeInventario, resolverVentaCustom, calcularMontoPrecargado, PIEZA_CUSTOM_MAX_LEN } from '../../../lib/ventaPiezaLogic';
 
 const OPCION_OTRA = '__OTRA__';
@@ -177,18 +178,23 @@ export default function VentaManualPanel() {
         datosVentaFinal = { ...base, partSource: resultado.ventaExtra.partSource, piezaVendida: resultado.ventaExtra.piezaVendida };
         // ventas + ventasPublicas (copia no personal para /calificar) en el mismo batch.
         const ventaRef = doc(collection(db, 'ventas'));
-        const batch = writeBatch(db);
-        batch.set(ventaRef, datosVentaFinal);
         const publica = ventaPublicaParaEscribir(db, ventaRef.id, datosVentaFinal);
-        if (publica) batch.set(publica.ref, publica.datos);
-        await batch.commit();
+        const guardarVenta = async (conPublica) => {
+          const batch = writeBatch(db);
+          batch.set(ventaRef, datosVentaFinal);
+          if (conPublica && publica) batch.set(publica.ref, publica.datos);
+          await batch.commit();
+        };
+        // Si las reglas aún no permiten ventasPublicas, la venta se guarda igual (el botón de
+        // respaldo de /admin copia después las ventas que quedaron sin copia pública).
+        await conFallbackDePermisos(() => guardarVenta(true), () => guardarVenta(false), 'venta + ventasPublicas');
         ventaId = ventaRef.id;
       } else {
         // Pieza del inventario: releer + marcar no disponible + crear la venta, todo en la misma
         // transacción, para que dos ventas simultáneas de la misma pieza no puedan pasar las dos.
         const piezaRef = doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoSeleccionado.id, 'piezas', piezaSeleccionId);
         const ventaRef = doc(collection(db, 'ventas'));
-        await runTransaction(db, async (transaction) => {
+        const ejecutarVentaConInventario = (conPublica) => runTransaction(db, async (transaction) => {
           const piezaSnap = await transaction.get(piezaRef);
           const piezaActual = piezaSnap.exists() ? piezaSnap.data() : null;
           const resultado = resolverVentaDeInventario(piezaActual, piezaSeleccionId);
@@ -204,8 +210,9 @@ export default function VentaManualPanel() {
           };
           transaction.set(ventaRef, datosVenta);
           const publica = ventaPublicaParaEscribir(db, ventaRef.id, datosVenta);
-          if (publica) transaction.set(publica.ref, publica.datos);
+          if (conPublica && publica) transaction.set(publica.ref, publica.datos);
         });
+        await conFallbackDePermisos(() => ejecutarVentaConInventario(true), () => ejecutarVentaConInventario(false), 'venta con inventario + ventasPublicas');
         const nombrePieza = piezasParaElegir.find((p) => p.id === piezaSeleccionId)?.nombre || '';
         datosVentaFinal = { ...base, partSource: 'inventory', piezaId: piezaSeleccionId, piezaVendida: nombrePieza };
         ventaId = ventaRef.id;

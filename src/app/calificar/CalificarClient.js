@@ -28,18 +28,44 @@ export default function CalificarClient() {
 
     try {
       // ventasPublicas/{folio}: copia mínima y no personal de la venta (ver src/lib/ventasPublicas.ts).
-      // `ventas` es privada del yonke dueño y del admin, por eso esta página ya no la consulta.
+      // Cuando `ventas` pase a ser privada, esta será la única vía; mientras tanto, si la copia
+      // pública no existe (venta anterior al respaldo) o las reglas aún no permiten leerla, se
+      // intenta la consulta anterior sobre `ventas` (que las reglas estrictas rechazarán, y ahí
+      // simplemente no se encuentra el pedido).
+      const esPermisoDenegado = (e) => e?.code === 'permission-denied';
       const folio = idVentaPublica(numeroPedido);
-      const publicaSnap = folio ? await getDoc(doc(db, 'ventasPublicas', folio)) : null;
+      let encontrada = null; // { id, ...campos mostrables }
 
-      if (publicaSnap && publicaSnap.exists()) {
-        const ventaData = publicaSnap.data();
+      if (folio) {
+        try {
+          const publicaSnap = await getDoc(doc(db, 'ventasPublicas', folio));
+          if (publicaSnap.exists()) {
+            const d = publicaSnap.data();
+            encontrada = { ...d, id: d.ventaId };
+          }
+        } catch (e) {
+          if (!esPermisoDenegado(e)) throw e;
+        }
+      }
 
+      if (!encontrada) {
+        try {
+          const q = query(collection(db, 'ventas'), where('numeroPedido', '==', numeroPedido.trim().toUpperCase()));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const d = snap.docs[0].data();
+            encontrada = { id: snap.docs[0].id, yonkeId: d.yonkeId, piezaVendida: d.piezaVendida, vehiculo: d.vehiculo };
+          }
+        } catch (e) {
+          if (!esPermisoDenegado(e)) throw e;
+        }
+      }
+
+      if (encontrada) {
         const califRef = collection(db, 'calificaciones');
-        const qCalif = query(califRef, where('ventaId', '==', ventaData.ventaId));
+        const qCalif = query(califRef, where('ventaId', '==', encontrada.id));
         const califSnap = await getDocs(qCalif);
-
-        setVenta({ ...ventaData, id: ventaData.ventaId, yaCalificado: !califSnap.empty });
+        setVenta({ ...encontrada, yaCalificado: !califSnap.empty });
       }
     } catch (error) {
       console.error(error);

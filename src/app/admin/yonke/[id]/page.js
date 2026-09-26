@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp, deleteField, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { refContactoPrivado, leerEmailContacto } from '../../../../lib/contactoPrivado';
+import { conFallbackDePermisos } from '../../../../lib/conFallbackDePermisos';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
 import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../lib/estados';
@@ -321,16 +322,13 @@ export default function EditarYonkePage() {
     try {
       // El correo se guarda en el subdocumento privado; `email: deleteField()` limpia el campo
       // público que dejaron los yonkes anteriores a este cambio. Ambas escrituras van en un batch.
-      const batch = writeBatch(db);
-      batch.set(refContactoPrivado(db, id), { email: email.trim() }, { merge: true });
-      batch.set(doc(db, 'yonkes', id), {
+      const datosYonke = {
         nombre: nombre.trim(),
         direccion: direccion.trim(),
         estado,
         ciudad: ciudadFinal,
         telefono: telefono.trim(),
         whatsapp: whatsapp.trim() || telefono.trim(),
-        email: deleteField(),
         plan,
         premiumHasta: plan === 'premium' && premiumHasta
           ? Timestamp.fromDate(new Date(`${premiumHasta}T00:00:00`))
@@ -343,8 +341,19 @@ export default function EditarYonkePage() {
         subdominioActivo,
         metodosPago,
         horario,
-      }, { merge: true });
-      await batch.commit();
+      };
+      const yonkeRef = doc(db, 'yonkes', id);
+      await conFallbackDePermisos(
+        async () => {
+          const batch = writeBatch(db);
+          batch.set(refContactoPrivado(db, id), { email: email.trim() }, { merge: true });
+          batch.set(yonkeRef, { ...datosYonke, email: deleteField() }, { merge: true });
+          await batch.commit();
+        },
+        // Reglas aún sin la ruta privado/: se guarda como antes (correo en el documento del yonke).
+        () => setDoc(yonkeRef, { ...datosYonke, email: email.trim() }, { merge: true }),
+        'yonke + privado/contacto',
+      );
       alert('✅ Yonke actualizado correctamente');
       router.push('/admin');
     } catch (error) {

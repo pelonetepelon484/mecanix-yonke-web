@@ -10,6 +10,7 @@ import { generarSubdominioUnico } from '../../lib/generarSubdominio';
 import { subirLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 import { VERSION_LEGAL, URL_TERMINOS, URL_PRIVACIDAD } from '../../../lib/versionesLegales';
+import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -88,7 +89,7 @@ export default function RegistroYonke() {
       const uid = userCredential.user.uid;
 
       // 2. Crear documento del yonke en Firestore
-      const yonkeRef = await addDoc(collection(db, 'yonkes'), {
+      const datosYonke = {
         nombre: nombre.trim(),
         direccion: direccion.trim(),
         estado,
@@ -100,9 +101,14 @@ export default function RegistroYonke() {
         plan: 'freemium',
         activo: true,
         fechaRegistro: new Date(),
-        // Aceptación de Términos y Aviso de Privacidad: qué versión y cuándo.
-        aceptacionLegal: { version: VERSION_LEGAL, fecha: new Date() },
-      });
+      };
+      // Aceptación de Términos y Aviso de Privacidad: qué versión y cuándo. Si las reglas de
+      // Firestore aún no permiten ese campo, el registro sigue sin él (no se bloquea al yonke).
+      const yonkeRef = await conFallbackDePermisos(
+        () => addDoc(collection(db, 'yonkes'), { ...datosYonke, aceptacionLegal: { version: VERSION_LEGAL, fecha: new Date() } }),
+        () => addDoc(collection(db, 'yonkes'), datosYonke),
+        'registro de yonke + aceptacionLegal',
+      );
 
       // 3. Crear documento del usuario en Firestore
       await setDoc(doc(db, 'usuarios', uid), {

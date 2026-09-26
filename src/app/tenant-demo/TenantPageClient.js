@@ -5,6 +5,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { esPrecioValido, formatPrecio } from '../../lib/precio';
 import { VERSION_LEGAL } from '../../lib/versionesLegales';
+import { conFallbackDePermisos } from '../../lib/conFallbackDePermisos';
 import AvisoPrivacidadReserva from '../lib/AvisoPrivacidadReserva';
 
 const CIUDADES_BC = [
@@ -234,7 +235,7 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
     setGuardandoReserva(true);
     try {
       const numero = generarNumeroPedido();
-      await addDoc(collection(db, 'reservaciones'), {
+      const datosReserva = {
         numeroPedido: numero,
         yonkeId: negocio.id,
         yonkeNombre: negocio.nombre,
@@ -246,8 +247,13 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
         telefonoCliente: telefonoCliente.trim(),
         estado: 'pendiente',
         fecha: new Date(),
-        avisoPrivacidadVersion: VERSION_LEGAL,
-      });
+      };
+      // Si las reglas aún no permiten avisoPrivacidadVersion, se reserva sin ese campo.
+      await conFallbackDePermisos(
+        () => addDoc(collection(db, 'reservaciones'), { ...datosReserva, avisoPrivacidadVersion: VERSION_LEGAL }),
+        () => addDoc(collection(db, 'reservaciones'), datosReserva),
+        'reservación + avisoPrivacidadVersion',
+      );
       setNumeroPedido(numero);
     } catch (error) {
       console.error(error);

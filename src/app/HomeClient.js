@@ -10,6 +10,7 @@ import { toMillis } from '../lib/inventoryStatus';
 import YonkeActividadBadge from './lib/YonkeActividadBadge';
 import AvisoPrivacidadReserva from './lib/AvisoPrivacidadReserva';
 import { VERSION_LEGAL } from '../lib/versionesLegales';
+import { conFallbackDePermisos } from '../lib/conFallbackDePermisos';
 import { elegirPiezaParaPrecio, esPrecioValido, formatPrecio } from '../lib/precio';
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
@@ -901,7 +902,7 @@ export default function HomeClient({ textoSeoEstados }) {
     setGuardando(true);
     try {
       const numero = generarNumeroPedido();
-      await addDoc(collection(db, 'reservaciones'), {
+      const datosReserva = {
         numeroPedido: numero, yonkeId: yonkeSeleccionado.yonkeId,
         vehiculoId: yonkeSeleccionado.vehiculoId || null,
         yonkeNombre: yonkeSeleccionado.yonkeNombre,
@@ -911,8 +912,14 @@ export default function HomeClient({ textoSeoEstados }) {
         nombreCliente: nombreCliente.trim(), telefonoCliente: telefonoCliente.trim(),
         estado: 'pendiente', fecha: new Date(),
         interesaEnvio: interesaEnvio,
-        avisoPrivacidadVersion: VERSION_LEGAL,
-      });
+      };
+      // avisoPrivacidadVersion: versión del aviso vigente al reservar. Si las reglas aún no
+      // permiten ese campo, la reservación se guarda sin él (nunca se bloquea al cliente).
+      await conFallbackDePermisos(
+        () => addDoc(collection(db, 'reservaciones'), { ...datosReserva, avisoPrivacidadVersion: VERSION_LEGAL }),
+        () => addDoc(collection(db, 'reservaciones'), datosReserva),
+        'reservación + avisoPrivacidadVersion',
+      );
       setNumeroPedido(numero);
       registrarEvento('reserva_creada', {
         yonke: yonkeSeleccionado.yonkeNombre,

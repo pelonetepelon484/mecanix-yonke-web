@@ -11,6 +11,7 @@ import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
 import { ventaPublicaParaEscribir } from '../../../lib/ventaPublicaRef';
+import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 
 const DIAS_EXPIRACION = 3;
 
@@ -98,11 +99,14 @@ export default function ReservacionesPanel() {
         monto: parseFloat(montoVenta),
         fecha: new Date(),
       };
-      const batch = writeBatch(db);
-      batch.set(ventaRef, datosVenta);
       const publica = ventaPublicaParaEscribir(db, ventaRef.id, datosVenta);
-      if (publica) batch.set(publica.ref, publica.datos);
-      await batch.commit();
+      const guardarVenta = async (conPublica) => {
+        const batch = writeBatch(db);
+        batch.set(ventaRef, datosVenta);
+        if (conPublica && publica) batch.set(publica.ref, publica.datos);
+        await batch.commit();
+      };
+      await conFallbackDePermisos(() => guardarVenta(true), () => guardarVenta(false), 'venta + ventasPublicas');
       await updateDoc(doc(db, 'reservaciones', reservaSeleccionada.id), { estado: 'completada' });
       registrarActividadYonke(db, yonkeId);
       setModalVisible(false);

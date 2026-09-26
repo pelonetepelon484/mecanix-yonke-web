@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { refContactoPrivado } from '../../../lib/contactoPrivado';
+import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
 
 const CIUDADES_BC = [
@@ -47,8 +48,7 @@ export default function NuevoYonkePage() {
     try {
       // El correo va al subdocumento privado, no al documento público del yonke.
       const yonkeRef = doc(collection(db, 'yonkes'));
-      const batch = writeBatch(db);
-      batch.set(yonkeRef, {
+      const datosYonke = {
         nombre: nombre.trim(),
         direccion: direccion.trim(),
         estado,
@@ -59,9 +59,18 @@ export default function NuevoYonkePage() {
         activo,
         metodosPago: [],
         fechaRegistro: new Date(),
-      });
-      if (email.trim()) batch.set(refContactoPrivado(db, yonkeRef.id), { email: email.trim() });
-      await batch.commit();
+      };
+      await conFallbackDePermisos(
+        async () => {
+          const batch = writeBatch(db);
+          batch.set(yonkeRef, datosYonke);
+          if (email.trim()) batch.set(refContactoPrivado(db, yonkeRef.id), { email: email.trim() });
+          await batch.commit();
+        },
+        // Reglas aún sin la ruta privado/: se crea como antes (correo en el documento del yonke).
+        () => setDoc(yonkeRef, { ...datosYonke, email: email.trim() }),
+        'alta de yonke + privado/contacto',
+      );
       alert('✅ Yonke creado correctamente');
       router.push('/admin');
     } catch (error) {
