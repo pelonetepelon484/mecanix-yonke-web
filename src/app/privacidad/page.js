@@ -69,12 +69,11 @@ export default function Privacidad() {
           <p style={parrafoStyle}><strong>El yonke que atiende tu reservación</strong> recibe tu nombre, teléfono, la pieza y el vehículo, para coordinar la entrega. Es una comunicación necesaria para el servicio que solicitaste. Desde ese momento, el yonke trata esos datos como responsable por su cuenta.</p>
           <p style={parrafoStyle}><strong>Proveedores tecnológicos</strong> que procesan datos por nuestra cuenta para operar la Plataforma, algunos con servidores fuera de México:</p>
           <p style={parrafoStyle}>• <strong>Firebase (Google):</strong> autenticación de usuarios del panel, base de datos y almacenamiento de archivos (por ejemplo, logotipos).</p>
-          <p style={parrafoStyle}>• <strong>Vercel:</strong> hospedaje del sitio; sus servidores reciben tu IP al visitarlo.</p>
+          <p style={parrafoStyle}>• <strong>Vercel:</strong> hospedaje del sitio; sus servidores reciben tu IP al visitarlo y, a partir de ella, nos indican tu ubicación aproximada (país, estado y ciudad).</p>
           <p style={parrafoStyle}>• <strong>Google Analytics 4:</strong> medición del uso del sitio, que se carga en todas las páginas, incluidos los subdominios de los yonkes, el panel y el área de administración.</p>
           <p style={parrafoStyle}>• <strong>Google Fonts:</strong> tu navegador descarga las tipografías desde servidores de Google, que reciben tu IP.</p>
           <p style={parrafoStyle}>• <strong>Google Maps:</strong> algunos sitios muestran un enlace a Google Maps con la dirección del yonke; solo se comunica con Google si haces clic.</p>
           <p style={parrafoStyle}>• <strong>CallMeBot:</strong> servicio con el que enviamos avisos internos al WhatsApp del administrador (por ejemplo, un nuevo registro de yonke o una búsqueda sin resultados en la que dejaste tu WhatsApp, que puede incluir ese número, lo que buscabas y datos de contacto del yonke registrado).</p>
-          <p style={parrafoStyle}>• <strong>ip-api.com:</strong> servicio de geolocalización al que se envía tu dirección IP para estimar tu estado y ciudad. Lo declaramos mientras siga en uso.</p>
           <p style={parrafoStyle}>Estos proveedores tratan los datos bajo sus propias políticas de seguridad y privacidad. Personal autorizado de la Plataforma también puede acceder a los datos para soporte, seguridad y mejora del servicio, incluido el registro individual de búsquedas.</p>
           <p style={parrafoStyle}>Podemos compartir información si una autoridad competente la requiere conforme a la ley.</p>
         </Seccion>
