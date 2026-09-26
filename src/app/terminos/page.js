@@ -25,7 +25,7 @@ export default function Terminos() {
 
         <Seccion titulo="1. Aceptación de los términos">
           <p style={parrafoStyle}>Al acceder o utilizar la plataforma Mecanix Yonke Virtual (“la Plataforma”), ya sea como cliente que busca autopartes o como yonke registrado, aceptas quedar vinculado por estos Términos y Condiciones y por nuestro Aviso de Privacidad. Si no estás de acuerdo con alguna parte, no debes utilizar la Plataforma.</p>
-          <p style={parrafoStyle}>La Plataforma es operada por una persona física: <Pendiente>PENDIENTE: nombre completo del responsable</Pendiente>, con domicilio en <Pendiente>PENDIENTE: domicilio</Pendiente>.</p>
+          <p style={parrafoStyle}>La Plataforma es operada por una persona física: David Hernández Martínez, con domicilio en Casiopea #1-C, Colonia Sánchez Taboada, C.P. 22185, Tijuana, Baja California, México.</p>
         </Seccion>
 
         <Seccion titulo="2. Descripción del servicio y alcance geográfico">
@@ -73,7 +73,11 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="9. Insignias y distintivos">
-          <p style={parrafoStyle}>La Plataforma puede mostrar insignias o distintivos en los yonkes, como <strong>Verificado</strong>, <strong>Entrega Inmediata</strong>, <strong>Envíos nacionales</strong> o <strong>Premium</strong>, y puede crear otros en el futuro. Se otorgan con base en criterios que Mecanix define y puede modificar, y pueden retirarse cuando dejen de cumplirse. <Pendiente>PENDIENTE: criterios de cada insignia, si se desea publicarlos aquí</Pendiente></p>
+          <p style={parrafoStyle}>La Plataforma puede mostrar insignias o distintivos en los yonkes, como <strong>Verificado</strong>, <strong>Entrega Inmediata</strong>, <strong>Envíos nacionales</strong> o <strong>Premium</strong>, y puede crear otros en el futuro. Todas las asigna y las retira Mecanix de forma manual, y sus criterios pueden ajustarse con el tiempo. Los criterios actuales son:</p>
+          <p style={parrafoStyle}>• <strong>Verificado:</strong> Mecanix confirmó personalmente que el yonke es un negocio real.</p>
+          <p style={parrafoStyle}>• <strong>Entrega Inmediata:</strong> el yonke participa en el servicio de entrega descrito en la sección 11.</p>
+          <p style={parrafoStyle}>• <strong>Envíos nacionales:</strong> el yonke envía piezas a otros estados.</p>
+          <p style={parrafoStyle}>• <strong>Premium:</strong> la cuenta tiene esa designación asignada por Mecanix.</p>
           <p style={parrafoStyle}>Las insignias <strong>no constituyen garantía de calidad, de disponibilidad de piezas ni de precio</strong>, ni una recomendación de Mecanix sobre el yonke. Por ejemplo, “Verificado” significa que Mecanix confirmó que se trata de un negocio real; no significa que todas sus piezas estén disponibles ni que cumplan determinada calidad.</p>
         </Seccion>
 
@@ -156,15 +160,6 @@ function Seccion({ titulo, children }) {
   );
 }
 
-// Marcador visible de un dato que falta por llenar antes de publicar.
-function Pendiente({ children }) {
-  return <span style={pendienteStyle}>[{children}]</span>;
-}
-
 const parrafoStyle = {
   marginBottom: '10px',
-};
-
-const pendienteStyle = {
-  backgroundColor: '#FFF3CD', color: '#7A5A00', fontWeight: 'bold', padding: '1px 5px', borderRadius: '4px',
 };

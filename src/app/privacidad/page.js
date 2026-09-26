@@ -25,9 +25,9 @@ export default function Privacidad() {
 
         <Seccion titulo="1. Responsable del tratamiento de tus datos">
           <p style={parrafoStyle}>Mecanix Yonke Virtual (“la Plataforma”, “nosotros”) es un servicio con sede en Tijuana, Baja California, México, que conecta a clientes que buscan autopartes usadas con yonkes (deshuesaderos) registrados en varios estados de México. El responsable del tratamiento de tus datos personales es una persona física:</p>
-          <p style={parrafoStyle}><strong>Nombre:</strong> <Pendiente>PENDIENTE: nombre completo</Pendiente></p>
-          <p style={parrafoStyle}><strong>Domicilio:</strong> <Pendiente>PENDIENTE: domicilio</Pendiente></p>
-          <p style={parrafoStyle}><strong>Correo para ejercer derechos ARCO:</strong> <Pendiente>PENDIENTE: correo ARCO</Pendiente></p>
+          <p style={parrafoStyle}><strong>Nombre:</strong> David Hernández Martínez</p>
+          <p style={parrafoStyle}><strong>Domicilio:</strong> Casiopea #1-C, Colonia Sánchez Taboada, C.P. 22185, Tijuana, Baja California, México</p>
+          <p style={parrafoStyle}><strong>Correo para ejercer derechos ARCO:</strong> contacto@mecanixyonkevirtual.com</p>
           <p style={parrafoStyle}>Este aviso aplica a todo el sitio, incluidos los subdominios que muestran la marca de un yonke: aunque se vean con el nombre y los colores del yonke, la Plataforma sigue siendo la responsable del tratamiento de los datos que se recaben ahí (por ejemplo, las reservaciones).</p>
         </Seccion>
 
@@ -61,7 +61,7 @@ export default function Privacidad() {
           <p style={parrafoStyle}>• Analizar las búsquedas para mejorar el servicio y ampliar nuestro catálogo de vehículos y piezas.</p>
           <p style={parrafoStyle}>• Generar información de demanda para los yonkes (qué se busca y dónde), <strong>solo de forma agregada y sin identificar al comprador</strong>.</p>
           <p style={parrafoStyle}>• Medir el uso del sitio con Google Analytics 4.</p>
-          <p style={parrafoStyle}>Si no quieres que tus datos se usen para las finalidades secundarias, escríbenos al correo ARCO indicado en la sección 1. Tu negativa no afecta el uso de la Plataforma.</p>
+          <p style={parrafoStyle}>Si no quieres que tus datos se usen para las finalidades secundarias, escríbenos al correo indicado en la sección 1. Tu negativa no afecta el uso de la Plataforma.</p>
         </Seccion>
 
         <Seccion titulo="5. Con quién compartimos tus datos">
@@ -81,8 +81,8 @@ export default function Privacidad() {
 
         <Seccion titulo="6. Tus derechos ARCO">
           <p style={parrafoStyle}>Tienes derecho a <strong>acceder</strong> a tus datos personales y conocer cómo los tratamos, a <strong>rectificarlos</strong> si son inexactos, a solicitar su <strong>cancelación</strong> (eliminación) y a <strong>oponerte</strong> a su uso para fines específicos. También puedes revocar el consentimiento que nos hayas dado, o limitar el uso o divulgación de tus datos.</p>
-          <p style={parrafoStyle}><strong>Cómo ejercerlos:</strong> envía tu solicitud al correo <Pendiente>PENDIENTE: correo ARCO</Pendiente> indicando tu nombre, un medio para responderte, la descripción clara de los datos y del derecho que quieres ejercer, y algún dato que nos permita ubicarlos (por ejemplo, tu teléfono o número de pedido). Podemos pedirte que acredites tu identidad.</p>
-          <p style={parrafoStyle}><strong>Plazo de respuesta:</strong> <Pendiente>PENDIENTE: plazo de respuesta</Pendiente>.</p>
+          <p style={parrafoStyle}><strong>Cómo ejercerlos:</strong> envía tu solicitud al correo contacto@mecanixyonkevirtual.com indicando tu nombre, un medio para responderte, la descripción clara de los datos y del derecho que quieres ejercer, y algún dato que nos permita ubicarlos (por ejemplo, tu teléfono o número de pedido). Podemos pedirte que acredites tu identidad.</p>
+          <p style={parrafoStyle}><strong>Plazo de respuesta:</strong> Responderemos tu solicitud en un plazo máximo de 15 días hábiles contados a partir de que la recibamos completa.</p>
           <p style={parrafoStyle}>Si dejaste tu WhatsApp en una búsqueda y quieres que lo eliminemos, escríbenos al mismo correo. Las cuentas de acceso de yonkes que se den de baja se eliminan también a solicitud por ese medio.</p>
         </Seccion>
 
@@ -108,11 +108,10 @@ export default function Privacidad() {
         </Seccion>
 
         <Seccion titulo="12. Contacto">
-          <p style={parrafoStyle}>Para dudas generales sobre este aviso puedes escribirnos a:</p>
+          <p style={parrafoStyle}>Para dudas sobre este aviso y para ejercer tus derechos ARCO puedes escribirnos a:</p>
           <p style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '8px' }}>
             contacto@mecanixyonkevirtual.com
           </p>
-          <p style={parrafoStyle}>Las solicitudes de derechos ARCO deben enviarse al correo indicado en la sección 1.</p>
         </Seccion>
 
         <div style={{ textAlign: 'center', marginTop: '40px' }}>
@@ -134,15 +133,6 @@ function Seccion({ titulo, children }) {
   );
 }
 
-// Marcador visible de un dato que falta por llenar antes de publicar.
-function Pendiente({ children }) {
-  return <span style={pendienteStyle}>[{children}]</span>;
-}
-
 const parrafoStyle = {
   marginBottom: '10px',
-};
-
-const pendienteStyle = {
-  backgroundColor: '#FFF3CD', color: '#7A5A00', fontWeight: 'bold', padding: '1px 5px', borderRadius: '4px',
 };
