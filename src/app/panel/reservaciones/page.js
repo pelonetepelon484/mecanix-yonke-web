@@ -9,6 +9,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
 
 const DIAS_EXPIRACION = 3;
 
@@ -95,6 +96,7 @@ export default function ReservacionesPanel() {
         fecha: new Date(),
       });
       await updateDoc(doc(db, 'reservaciones', reservaSeleccionada.id), { estado: 'completada' });
+      registrarActividadYonke(db, yonkeId);
       setModalVisible(false);
       alert('¡Venta registrada correctamente!');
     } catch (error) {

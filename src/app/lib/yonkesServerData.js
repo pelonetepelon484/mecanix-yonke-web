@@ -2,6 +2,7 @@ import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firesto
 import { dbServer } from './firebase-server';
 import { CIUDADES_BC } from './ciudades';
 import { estadoDeYonke } from './estados';
+import { toMillis } from '../../lib/inventoryStatus';
 
 export async function getRatingParaYonke(yonkeId) {
   const q = query(collection(dbServer, 'calificaciones'), where('yonkeId', '==', yonkeId));
@@ -29,6 +30,8 @@ function toYonkePublico(docSnap) {
     logoUrl: d.logoUrl || null,
     verificado: d.verificado === true,
     estado: estadoDeYonke(d),
+    // Timestamp -> ms: los Timestamp no cruzan de servidor a componentes cliente ni a JSON.
+    ultimaActividadAt: toMillis(d.ultimaActividadAt),
   };
 }
 

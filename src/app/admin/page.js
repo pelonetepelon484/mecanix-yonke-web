@@ -7,6 +7,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import { borrarLogoYonke } from '../lib/subirLogoYonke';
 import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from '../lib/estados';
+import YonkeActividadBadge from '../lib/YonkeActividadBadge';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -465,6 +466,9 @@ export default function AdminPage() {
                   )}
                   {y.telefono && <p style={{ color: '#666', fontSize: '13px', margin: '2px 0 0' }}>📞 {y.telefono}</p>}
                   {y.whatsapp && <p style={{ color: '#25D366', fontSize: '13px', margin: '2px 0 0', fontWeight: '600' }}>💬 {y.whatsapp}</p>}
+                  {y.ultimaActividadAt && (
+                    <div style={{ marginTop: '6px' }}><YonkeActividadBadge ultimaActividadAt={y.ultimaActividadAt} /></div>
+                  )}
                 </div>
               </div>
 

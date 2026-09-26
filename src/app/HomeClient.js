@@ -6,6 +6,8 @@ import { db } from './lib/firebase';
 import { buscarVehiculosPorAnio, buscarVehiculosEnAniosParalelo } from './lib/buscarVehiculosPorAnio';
 import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from './lib/estados';
 import { PIEZAS_CATALOGO } from './lib/piezasCatalogo';
+import { toMillis } from '../lib/inventoryStatus';
+import YonkeActividadBadge from './lib/YonkeActividadBadge';
 import { elegirPiezaParaPrecio, esPrecioValido, formatPrecio } from '../lib/precio';
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
@@ -383,7 +385,7 @@ export default function HomeClient({ textoSeoEstados }) {
           metodosPago: yonkeData.metodosPago || [],
           plan: yonkeData.plan,
           ciudad: yonkeData.ciudad || '',
-          horario: yonkeData.horario || null,
+          horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
           calificacion,
         });
       }
@@ -457,7 +459,7 @@ export default function HomeClient({ textoSeoEstados }) {
           yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
           metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
-          ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+          ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
           vehiculo: { marca: m, modelo: mo, ano: a }, calificacion,
           piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null },
         };
@@ -526,7 +528,7 @@ export default function HomeClient({ textoSeoEstados }) {
         yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
         metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
-        ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+        ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
         vehiculo: vDoc.data(), calificacion,
       };
     }));
@@ -573,7 +575,7 @@ export default function HomeClient({ textoSeoEstados }) {
         yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
         metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
-        ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+        ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
         vehiculo: vDoc.data(), calificacion,
       };
     }));
@@ -663,7 +665,7 @@ export default function HomeClient({ textoSeoEstados }) {
           yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
           metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
-          ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+          ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
           vehiculo: vDoc.data(), calificacion,
         };
         if (!piezaFiltro) { soloVehiculo.push(resultadoBase); return; }
@@ -1100,6 +1102,10 @@ function obtenerEstadoAbierto(horario) {
           <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: '600', margin: '3px 0 0' }}>
             📌 {CIUDADES_BC.find(c => c.key === r.ciudad)?.label || r.ciudad}
           </p>
+        )}
+
+        {r.ultimaActividadAt != null && (
+          <div style={{ marginTop: '6px' }}><YonkeActividadBadge ultimaActividadAt={r.ultimaActividadAt} /></div>
         )}
 
         {r.calificacion.promedio ? (

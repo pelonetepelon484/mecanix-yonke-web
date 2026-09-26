@@ -1,5 +1,6 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { dbServer } from '../lib/firebase-server';
+import YonkeActividadBadge from '../lib/YonkeActividadBadge';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,6 +110,9 @@ function TarjetaYonkeVerificado({ yonke }) {
         <p style={{ margin: 0, fontWeight: '700', color: '#1A3C5E', fontSize: '16px' }}>{yonke.nombre}</p>
         {ciudadLabel && (
           <p style={{ margin: '4px 0 0', color: '#E8720C', fontSize: '13px', fontWeight: '600' }}>📌 {ciudadLabel}</p>
+        )}
+        {yonke.ultimaActividadAt && (
+          <div style={{ marginTop: '6px' }}><YonkeActividadBadge ultimaActividadAt={yonke.ultimaActividadAt} /></div>
         )}
       </div>
       <img src="/sello_verificado.png" alt="Verificado" style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }} />

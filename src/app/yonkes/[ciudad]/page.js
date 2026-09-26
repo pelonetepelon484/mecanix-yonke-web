@@ -4,6 +4,7 @@ import { getYonkesPorCiudad, getCiudadesConYonkesActivos } from '../../lib/yonke
 import { formatearHorario, obtenerEstadoAbierto, metodosPagoLabels } from '../../lib/horario';
 import { toSafeJsonLdString } from '../../lib/jsonLd';
 import { buildYonkeJsonLd } from '../../lib/yonkeJsonLd';
+import YonkeActividadBadge from '../../lib/YonkeActividadBadge';
 
 export async function generateStaticParams() {
   const ciudadesActivas = await getCiudadesConYonkesActivos();
@@ -79,6 +80,10 @@ function YonkeCard({ yonke, ciudadKey }) {
           <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: estado.abierto ? '#2E7D32' : '#C62828', display: 'inline-block' }} />
           {estado.texto}
         </div>
+      )}
+
+      {yonke.ultimaActividadAt !== null && (
+        <div style={{ marginTop: '6px' }}><YonkeActividadBadge ultimaActividadAt={yonke.ultimaActividadAt} /></div>
       )}
 
       <p style={{ color: '#666', fontSize: '14px', margin: '10px 0 4px' }}>📍 {yonke.direccion}</p>

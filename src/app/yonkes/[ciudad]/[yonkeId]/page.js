@@ -6,6 +6,7 @@ import { obtenerEstadosCombinado } from '../../../lib/busqueda/estadosServer';
 import { formatearHorario, obtenerEstadoAbierto, metodosPagoLabels } from '../../../lib/horario';
 import { toSafeJsonLdString } from '../../../lib/jsonLd';
 import { buildYonkeJsonLd } from '../../../lib/yonkeJsonLd';
+import YonkeActividadBadge from '../../../lib/YonkeActividadBadge';
 
 export const revalidate = 3600;
 
@@ -81,6 +82,9 @@ export default async function YonkeDetallePage({ params }) {
           <div style={cardStyle}>
             {yonke.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
             {yonke.verificado && <p style={verificadoStyle}>✅ Yonke verificado</p>}
+            {yonke.ultimaActividadAt !== null && (
+              <div style={{ marginBottom: '8px' }}><YonkeActividadBadge ultimaActividadAt={yonke.ultimaActividadAt} /></div>
+            )}
 
             {yonke.calificacion.promedio ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>

@@ -4,9 +4,12 @@ import {
   getVehicleFreshness,
   getItemFreshness,
   getItemFreshnessOrNull,
-  getYonkeActivity,
+  YONKE_ACTIVIDAD_THRESHOLDS,
+  YONKE_ACTIVIDAD_REFRESCO_HORAS,
+  getYonkeActividad,
+  debeRegistrarActividad,
+  toMillis,
   type ItemCategory,
-  type YonkeVehicleInput,
 } from './inventoryStatus';
 
 const AHORA = new Date('2026-09-24T12:00:00.000Z');
@@ -117,64 +120,97 @@ describe('getItemFreshnessOrNull', () => {
   });
 });
 
-describe('getYonkeActivity', () => {
-  it('lista vacía => none, medianDays null', () => {
-    expect(getYonkeActivity([], AHORA)).toEqual({ status: 'none', medianDays: null });
+describe('getYonkeActividad', () => {
+  it('umbrales 30 / 90', () => {
+    expect(YONKE_ACTIVIDAD_THRESHOLDS).toEqual({ greenMaxDays: 30, yellowMaxDays: 90 });
   });
 
-  it('todos los vehículos vendidos (disponible: false) => none, medianDays null', () => {
-    const vehiculos: YonkeVehicleInput[] = [
-      { capturedAt: hace(5), disponible: false },
-      { capturedAt: hace(10), disponible: false },
-    ];
-    expect(getYonkeActivity(vehiculos, AHORA)).toEqual({ status: 'none', medianDays: null });
+  it('actividad justo ahora -> green', () => {
+    expect(getYonkeActividad(AHORA, AHORA)).toBe('green');
   });
 
-  it('excluye vendidos del cálculo aunque haya activos mezclados', () => {
-    const vehiculos: YonkeVehicleInput[] = [
-      { capturedAt: hace(200), disponible: false }, // excluido — si contara, sería 'red'
-      { capturedAt: hace(5) }, // disponible ausente = activo
-      { capturedAt: hace(10), disponible: true },
-    ];
-    const r = getYonkeActivity(vehiculos, AHORA);
-    expect(r.status).toBe('green');
-    expect(r.medianDays).toBe(7.5); // mediana de [5, 10]
+  it('borde exacto 30 días -> green; 31 días -> yellow', () => {
+    expect(getYonkeActividad(hace(30), AHORA)).toBe('green');
+    expect(getYonkeActividad(hace(31), AHORA)).toBe('yellow');
   });
 
-  it('mediana con cantidad impar de activos toma el valor central', () => {
-    const vehiculos: YonkeVehicleInput[] = [
-      { capturedAt: hace(5) },
-      { capturedAt: hace(50) },
-      { capturedAt: hace(500) },
-    ];
-    expect(getYonkeActivity(vehiculos, AHORA).medianDays).toBe(50);
+  it('borde exacto 90 días -> yellow; 91 días -> red', () => {
+    expect(getYonkeActividad(hace(90), AHORA)).toBe('yellow');
+    expect(getYonkeActividad(hace(91), AHORA)).toBe('red');
   });
 
-  it(`mediana en el borde de ${INVENTORY_THRESHOLDS.vehiculos.greenMaxDays} días sigue siendo green`, () => {
-    const vehiculos: YonkeVehicleInput[] = [
-      { capturedAt: hace(INVENTORY_THRESHOLDS.vehiculos.greenMaxDays) },
-    ];
-    expect(getYonkeActivity(vehiculos, AHORA).status).toBe('green');
+  it('cuenta días completos (30 días y 23 h sigue green)', () => {
+    const casi31 = new Date(hace(30).getTime() - 23 * 60 * 60 * 1000);
+    expect(getYonkeActividad(casi31, AHORA)).toBe('green');
   });
 
-  it(`mediana un día después del borde de ${INVENTORY_THRESHOLDS.vehiculos.greenMaxDays} ya es yellow`, () => {
-    const vehiculos: YonkeVehicleInput[] = [
-      { capturedAt: hace(INVENTORY_THRESHOLDS.vehiculos.greenMaxDays + 1) },
-    ];
-    expect(getYonkeActivity(vehiculos, AHORA).status).toBe('yellow');
+  it('sin fecha -> null', () => {
+    expect(getYonkeActividad(null, AHORA)).toBeNull();
+    expect(getYonkeActividad(undefined, AHORA)).toBeNull();
   });
 
-  it(`mediana en el borde de ${INVENTORY_THRESHOLDS.vehiculos.yellowMaxDays} días sigue siendo yellow`, () => {
-    const vehiculos: YonkeVehicleInput[] = [
-      { capturedAt: hace(INVENTORY_THRESHOLDS.vehiculos.yellowMaxDays) },
-    ];
-    expect(getYonkeActivity(vehiculos, AHORA).status).toBe('yellow');
+  it('fecha inválida -> null', () => {
+    expect(getYonkeActividad(new Date('no-es-fecha'), AHORA)).toBeNull();
+    expect(getYonkeActividad(NaN, AHORA)).toBeNull();
   });
 
-  it(`mediana un día después del borde de ${INVENTORY_THRESHOLDS.vehiculos.yellowMaxDays} ya es red`, () => {
-    const vehiculos: YonkeVehicleInput[] = [
-      { capturedAt: hace(INVENTORY_THRESHOLDS.vehiculos.yellowMaxDays + 1) },
-    ];
-    expect(getYonkeActivity(vehiculos, AHORA).status).toBe('red');
+  it('fecha futura -> green', () => {
+    expect(getYonkeActividad(new Date(AHORA.getTime() + 10 * 24 * 60 * 60 * 1000), AHORA)).toBe('green');
+  });
+
+  it('acepta milisegundos (lo que cruza servidor -> cliente)', () => {
+    expect(getYonkeActividad(hace(100).getTime(), AHORA)).toBe('red');
+    expect(getYonkeActividad(hace(10).getTime(), AHORA.getTime())).toBe('green');
+  });
+});
+
+describe('debeRegistrarActividad', () => {
+  const horasAtras = (h: number) => new Date(AHORA.getTime() - h * 60 * 60 * 1000);
+
+  it('umbral de refresco = 12 horas', () => {
+    expect(YONKE_ACTIVIDAD_REFRESCO_HORAS).toBe(12);
+  });
+  it('sin valor previo (yonke nunca registrado) -> escribe', () => {
+    expect(debeRegistrarActividad(null, AHORA)).toBe(true);
+    expect(debeRegistrarActividad(undefined, AHORA)).toBe(true);
+  });
+  it('valor inválido -> escribe (se repara)', () => {
+    expect(debeRegistrarActividad('basura', AHORA)).toBe(true);
+  });
+  it('menos de 12 h -> no escribe', () => {
+    expect(debeRegistrarActividad(horasAtras(1), AHORA)).toBe(false);
+    expect(debeRegistrarActividad(horasAtras(11.9), AHORA)).toBe(false);
+  });
+  it('exactamente 12 h -> no escribe (debe ser MÁS de 12)', () => {
+    expect(debeRegistrarActividad(horasAtras(12), AHORA)).toBe(false);
+  });
+  it('más de 12 h -> escribe', () => {
+    expect(debeRegistrarActividad(horasAtras(12.01), AHORA)).toBe(true);
+    expect(debeRegistrarActividad(horasAtras(24 * 60), AHORA)).toBe(true);
+  });
+  it('acepta Timestamp-like de Firestore', () => {
+    expect(debeRegistrarActividad({ toMillis: () => horasAtras(20).getTime() }, AHORA)).toBe(true);
+    expect(debeRegistrarActividad({ toMillis: () => horasAtras(2).getTime() }, AHORA)).toBe(false);
+  });
+  it('fecha futura (dato corrupto) -> no escribe', () => {
+    expect(debeRegistrarActividad(new Date(AHORA.getTime() + 3600_000), AHORA)).toBe(false);
+  });
+});
+
+describe('toMillis', () => {
+  it('Date, número, Timestamp-like y {seconds}', () => {
+    expect(toMillis(AHORA)).toBe(AHORA.getTime());
+    expect(toMillis(1234)).toBe(1234);
+    expect(toMillis({ toMillis: () => 555 })).toBe(555);
+    expect(toMillis({ toDate: () => new Date(777) })).toBe(777);
+    expect(toMillis({ seconds: 2, nanoseconds: 500_000_000 })).toBe(2500);
+  });
+  it('null/inválido -> null', () => {
+    expect(toMillis(null)).toBeNull();
+    expect(toMillis(undefined)).toBeNull();
+    expect(toMillis('2026-01-01')).toBeNull();
+    expect(toMillis({})).toBeNull();
+    expect(toMillis(NaN)).toBeNull();
+    expect(toMillis(new Date('x'))).toBeNull();
   });
 });

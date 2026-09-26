@@ -58,7 +58,7 @@ export function getItemFreshness(categoria: ItemCategory, capturedAt: Date, now:
 }
 
 // FASE 1 original — misma firma y mismo comportamiento exacto de antes (categoría 'vehiculos'
-// fija), para no romper nada de lo que ya la usa (getYonkeActivity, cualquier import existente).
+// fija), para no romper ningún import existente.
 export function getVehicleFreshness(capturedAt: Date, now: Date = new Date()): ItemFreshness {
   return getItemFreshness('vehiculos', capturedAt, now);
 }
@@ -77,41 +77,59 @@ export function getItemFreshnessOrNull(
   return getItemFreshness(categoria, capturedAt, now);
 }
 
-// FASE 2 (preparada, no conectada a UI todavía) — actividad del YONKE completo: mediana de
-// antigüedad de sus vehículos activos. Un yonke con muchos vehículos viejos pero uno recién
-// capturado no debe verse "reciente" por un solo dato atípico — por eso mediana, no promedio
-// ni el más nuevo. Se queda específica de vehículos a propósito (no se generalizó a otras
-// categorías, no se pidió).
-export type YonkeActivityStatus = FreshnessStatus | 'none';
+// FASE 2 — ACTIVIDAD del yonke (no del inventario): qué tan reciente fue la última vez que el
+// DUEÑO usó la plataforma. Reemplaza al enfoque anterior de mediana de antigüedad de vehículos
+// (getYonkeActivity, eliminado). Vive en yonkes/{id}.ultimaActividadAt (Timestamp): se escribe
+// cuando el dueño abre el panel (máx. una vez cada YONKE_ACTIVIDAD_REFRESCO_HORAS) y al registrar
+// una venta; nunca desde admin. Es independiente de fechaIngreso y de los semáforos por ítem.
+export const YONKE_ACTIVIDAD_THRESHOLDS = { greenMaxDays: 30, yellowMaxDays: 90 };
+export const YONKE_ACTIVIDAD_REFRESCO_HORAS = 12;
 
-export interface YonkeVehicleInput {
-  capturedAt: Date;
-  // Ausente o true = activo (mismo criterio que `disponible` en motores/piezasSueltas de este
-  // proyecto). false = vendido/dado de baja — se excluye del cálculo.
-  disponible?: boolean;
-}
-
-export interface YonkeActivity {
-  status: YonkeActivityStatus;
-  medianDays: number | null;
-}
-
-function mediana(diasOrdenados: number[]): number {
-  const n = diasOrdenados.length;
-  const mitad = Math.floor(n / 2);
-  return n % 2 !== 0
-    ? diasOrdenados[mitad]
-    : (diasOrdenados[mitad - 1] + diasOrdenados[mitad]) / 2;
-}
-
-export function getYonkeActivity(vehicles: YonkeVehicleInput[], now: Date = new Date()): YonkeActivity {
-  const activos = vehicles.filter((v) => v.disponible !== false);
-  if (activos.length === 0) {
-    return { status: 'none', medianDays: null };
+// Convierte a milisegundos cualquier representación razonable de una fecha: Timestamp de
+// Firestore (toMillis/toDate), Date, número (ms) o {seconds} ya serializado. null si no hay fecha
+// o es inválida. Los Timestamp no cruzan de servidor a componentes cliente: se serializan a ms.
+export function toMillis(valor: unknown): number | null {
+  if (valor === null || valor === undefined) return null;
+  let ms: number;
+  if (typeof valor === 'number') {
+    ms = valor;
+  } else if (valor instanceof Date) {
+    ms = valor.getTime();
+  } else if (typeof valor === 'object') {
+    const v = valor as { toMillis?: () => number; toDate?: () => Date; seconds?: number; nanoseconds?: number };
+    if (typeof v.toMillis === 'function') ms = v.toMillis();
+    else if (typeof v.toDate === 'function') ms = v.toDate().getTime();
+    else if (typeof v.seconds === 'number') ms = v.seconds * 1000 + Math.floor((v.nanoseconds ?? 0) / 1e6);
+    else return null;
+  } else {
+    return null;
   }
-  const dias = activos
-    .map((v) => getVehicleFreshness(v.capturedAt, now).days)
-    .sort((a, b) => a - b);
-  const medianDays = mediana(dias);
-  return { status: clasificarDias('vehiculos', medianDays), medianDays };
+  return Number.isFinite(ms) ? ms : null;
+}
+
+// null si no hay fecha o es inválida. Fecha futura (reloj desfasado, dato corrupto) = 'green'.
+// Límites INCLUSIVOS sobre días completos transcurridos (mismo criterio que getItemFreshness):
+// día 30 todavía 'green', día 90 todavía 'yellow'.
+export function getYonkeActividad(
+  ultimaActividadAt: Date | number | null | undefined,
+  now: Date | number = new Date(),
+): FreshnessStatus | null {
+  const actividad = toMillis(ultimaActividadAt);
+  const ahora = toMillis(now);
+  if (actividad === null || ahora === null) return null;
+  const dias = Math.max(0, Math.floor((ahora - actividad) / MS_POR_DIA));
+  if (dias <= YONKE_ACTIVIDAD_THRESHOLDS.greenMaxDays) return 'green';
+  if (dias <= YONKE_ACTIVIDAD_THRESHOLDS.yellowMaxDays) return 'yellow';
+  return 'red';
+}
+
+// ¿Toca escribir ultimaActividadAt al abrir el panel? Sí si nunca se escribió (o es inválido), o
+// si pasaron MÁS de YONKE_ACTIVIDAD_REFRESCO_HORAS desde el valor actual. Una fecha futura (dato
+// corrupto) no dispara escritura. Evita una escritura por cada apertura del panel.
+export function debeRegistrarActividad(ultimaActividadAt: unknown, now: Date | number = new Date()): boolean {
+  const actual = toMillis(ultimaActividadAt);
+  const ahora = toMillis(now);
+  if (ahora === null) return false;
+  if (actual === null) return true;
+  return ahora - actual > YONKE_ACTIVIDAD_REFRESCO_HORAS * 60 * 60 * 1000;
 }

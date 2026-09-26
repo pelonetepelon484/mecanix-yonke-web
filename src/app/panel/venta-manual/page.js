@@ -9,6 +9,7 @@ import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import NotaGarantiaModal from '../NotaGarantiaModal';
 import { sacarDelInventario } from '../../../lib/vehiculoEstado';
+import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
 import { piezasDisponibles, resolverVentaDeInventario, resolverVentaCustom, calcularMontoPrecargado, PIEZA_CUSTOM_MAX_LEN } from '../../../lib/ventaPiezaLogic';
 
 const OPCION_OTRA = '__OTRA__';
@@ -210,6 +211,7 @@ export default function VentaManualPanel() {
         }
       }
 
+      registrarActividadYonke(db, yonkeId);
       setFolioGenerado(folio);
       setVentaGenerada({ id: ventaId, ...datosVentaFinal });
     } catch (error) {

@@ -5,6 +5,7 @@ import { buscarVehiculosPorAnio } from '../buscarVehiculosPorAnio';
 import { estadoDeYonke } from './estadosServer';
 import { cilindradaCoincide } from './cilindrada';
 import { CATALOGO_BASE } from '../catalogoBase';
+import { toMillis } from '../../../lib/inventoryStatus';
 import { elegirPiezaParaPrecio, esPrecioValido } from '../../../lib/precio';
 
 // Un modelo REAL y conocido (ej. Volkswagen Atlas, Dodge Stratus) que nadie ha registrado nunca
@@ -108,6 +109,7 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+    ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
     vehiculoId: vDoc.id, vehiculo, calificacion,
   };
 }
@@ -130,6 +132,7 @@ function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+    ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
     vehiculoId: pDoc.id, vehiculo: { marca, modelo, ano }, calificacion,
     // Pieza confirmada + su precio opcional (null = "Consultar precio con el yonke" en la UI).
     piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null },
@@ -148,6 +151,7 @@ function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
+    ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
     motorId: mDoc.id, motor, calificacion,
   };
 }
