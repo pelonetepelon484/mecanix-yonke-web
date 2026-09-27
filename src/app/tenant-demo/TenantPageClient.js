@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Image from 'next/image';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { esPrecioValido, formatPrecio } from '../../lib/precio';
 import { VERSION_LEGAL } from '../../lib/versionesLegales';
+import { whatsappHrefPromo } from '../../lib/promos';
 import { conFallbackDePermisos } from '../../lib/conFallbackDePermisos';
 import AvisoPrivacidadReserva from '../lib/AvisoPrivacidadReserva';
 
@@ -329,6 +331,43 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           </div>
         </div>
 
+        {/* Promociones del yonke (máx. 3) — cada imagen abre su WhatsApp con un mensaje que
+            menciona la promoción; sin número válido se muestra la imagen sin enlace. Si no hay
+            promociones, la sección no se dibuja. Las URLs vienen de Storage: unoptimized evita
+            gastar la cuota de optimización de imágenes de Vercel. */}
+        {branding.promoImagenes?.length > 0 && (
+          <section aria-label="Promociones" style={{ marginBottom: '20px' }}>
+            <p style={promosTituloStyle(branding.colorPrimario)}>🔥 Promociones</p>
+            <div style={promosGridStyle}>
+              {branding.promoImagenes.map((promo) => {
+                const href = whatsappHrefPromo(negocio.whatsapp, promo.titulo, branding.nombre);
+                const contenido = (
+                  <>
+                    <Image
+                      src={promo.url}
+                      alt={promo.titulo}
+                      width={1200}
+                      height={800}
+                      unoptimized
+                      loading="lazy"
+                      style={{ width: '100%', height: 'auto', display: 'block' }}
+                    />
+                    <div style={{ padding: '10px 12px' }}>
+                      <p style={{ margin: 0, fontWeight: '700', fontSize: '14px', color: branding.colorPrimario, lineHeight: '1.3' }}>{promo.titulo}</p>
+                      {href && <p style={{ margin: '4px 0 0', fontSize: '12px', color: branding.colorAcento, fontWeight: '700' }}>💬 Toca para preguntar por WhatsApp</p>}
+                    </div>
+                  </>
+                );
+                return href ? (
+                  <a key={promo.url} href={href} target="_blank" rel="noopener noreferrer" style={promoCardStyle}>{contenido}</a>
+                ) : (
+                  <div key={promo.url} style={promoCardStyle}>{contenido}</div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Buscador */}
         <input
           type="text"
@@ -559,6 +598,12 @@ const piezaRowStyle = (destacada) => ({
 });
 const precioPiezaStyle = { display: 'block', color: '#2E7D32', fontSize: '13px', fontWeight: '700', marginTop: '2px' };
 const consultarPrecioStyle = { display: 'block', color: '#999', fontSize: '11px', marginTop: '2px' };
+const promosTituloStyle = (color) => ({ fontSize: '15px', fontWeight: '700', color, margin: '0 0 10px' });
+const promosGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' };
+const promoCardStyle = {
+  display: 'block', textDecoration: 'none', backgroundColor: '#fff', borderRadius: '12px',
+  overflow: 'hidden', boxShadow: '0 2px 8px rgba(26,60,94,0.08)', border: '1px solid #EEF0F2',
+};
 const noDisponibleTagStyle = {
   fontSize: '11px', color: '#aaa', fontWeight: '600', flexShrink: 0,
 };

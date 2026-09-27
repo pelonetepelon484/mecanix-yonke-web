@@ -1,6 +1,7 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { dbServer } from './firebase-server';
 import { esPrecioValido } from '../../lib/precio';
+import { sanearPromoImagenes } from '../../lib/promos';
 
 const DEFAULT_BRANDING = {
   logoUrl: '/mecanix-logo.webp',
@@ -74,5 +75,8 @@ export function resolveBranding(tenant) {
     colorPrimario: b.colorPrimario || DEFAULT_BRANDING.colorPrimario,
     colorAcento: b.colorAcento || DEFAULT_BRANDING.colorAcento,
     colorFondo: b.colorFondo || DEFAULT_BRANDING.colorFondo,
+    // Imágenes de promociones (yonkes/{id}.promoImagenes, máx. 3, [{url, titulo}]). Se sanea el dato
+    // leído: si falta o está corrupto queda [] y la sección simplemente no se muestra.
+    promoImagenes: sanearPromoImagenes(tenant.promoImagenes),
   };
 }

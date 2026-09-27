@@ -9,6 +9,8 @@ import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
+import PromoImagenesEditor from '../PromoImagenesEditor';
+import { sanearPromoImagenes, PROMOS_MAX } from '../../../lib/promos';
 import { GARANTIA_DIAS_DEFAULT, GARANTIA_QUE_CUBRE_DEFAULT, GARANTIA_QUE_NO_CUBRE_DEFAULT } from '../../lib/garantiaDefault';
 import { IVA_PORCENTAJE_DEFAULT, IVA_RETENIDO_PORCENTAJE_DEFAULT, ISR_PORCENTAJE_DEFAULT, INCLUIR_AVISO_FACTURA_DEFAULT } from '../../lib/fiscalReciclajeDefault';
 
@@ -54,6 +56,8 @@ export default function PerfilPanel() {
   const [loadingPerfil, setLoadingPerfil] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [promos, setPromos] = useState([]);
+  const [subdominioActivo, setSubdominioActivo] = useState(false);
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [temaElegido, setTemaElegido] = useState(TEMA_DEFAULT_ID);
   const [guardandoTema, setGuardandoTema] = useState(false);
@@ -87,6 +91,9 @@ export default function PerfilPanel() {
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
         setLogoUrl(data.logoUrl || null);
+        setPromos(sanearPromoImagenes(data.promoImagenes));
+        // Las promociones solo se muestran en la página con subdominio: la sección aparece solo si lo tiene activo.
+        setSubdominioActivo(Boolean(data.subdominio) && data.subdominioActivo !== false);
         // Marca el tema que coincida con los colores actuales; si no tiene branding o tiene
         // colores personalizados que no calzan con ningún tema, se muestra Azul Mecanix
         // resaltado SOLO como default visual — no se guarda nada hasta que el yonke elija.
@@ -380,6 +387,13 @@ export default function PerfilPanel() {
         {/* Condiciones de garantía — se usan como default en cada nota nueva (panel/venta-manual
             y panel/ventas, ver NotaGarantiaModal.js). Editar aquí NO cambia notas ya generadas:
             cada nota guarda su propia copia de estos textos al momento de generarse. */}
+        {subdominioActivo && (
+          <div style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>Promociones de tu página ({promos.length}/{PROMOS_MAX})</h2>
+            <PromoImagenesEditor yonkeId={yonkeId} promos={promos} onChange={setPromos} />
+          </div>
+        )}
+
         <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Condiciones de garantía</h2>
           <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>

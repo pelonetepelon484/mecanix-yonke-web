@@ -1,5 +1,6 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from './firebase';
+import { comprimirImagen } from './comprimirImagen';
 
 const TIPOS_PERMITIDOS = ['image/png', 'image/jpeg', 'image/webp'];
 const TAMANO_MAXIMO_BYTES = 2 * 1024 * 1024;
@@ -15,31 +16,11 @@ export function validarArchivoLogo(file) {
   return null;
 }
 
-// Redimensiona a máx 400x400px manteniendo proporción, vía canvas (sin librerías externas).
-// Si la imagen ya es más chica, no la agranda. Devuelve un Blob PNG listo para subir.
+// Redimensiona a máx 400x400px manteniendo proporción y devuelve un Blob PNG listo para subir. Si
+// la imagen ya es más chica, no la agranda. Usa la compresión compartida (comprimirImagen.js), la
+// misma que las promociones, con los parámetros originales del logo.
 function redimensionarImagen(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-      if (width > LADO_MAXIMO_PX || height > LADO_MAXIMO_PX) {
-        const escala = Math.min(LADO_MAXIMO_PX / width, LADO_MAXIMO_PX / height);
-        width = Math.round(width * escala);
-        height = Math.round(height * escala);
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      canvas.toBlob((blob) => {
-        if (blob) resolve(blob); else reject(new Error('No se pudo procesar la imagen'));
-      }, 'image/png');
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen')); };
-    img.src = url;
-  });
+  return comprimirImagen(file, { maxAncho: LADO_MAXIMO_PX, maxAlto: LADO_MAXIMO_PX, tipo: 'image/png' });
 }
 
 // Sube el logo a Storage en logos/{yonkeId}.png — ruta de ID fijo: cada subida sobrescribe
