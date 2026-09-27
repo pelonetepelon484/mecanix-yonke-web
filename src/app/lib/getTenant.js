@@ -2,6 +2,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { dbServer } from './firebase-server';
 import { esPrecioValido } from '../../lib/precio';
 import { sanearPromoImagenes } from '../../lib/promos';
+import { sanearSobreNosotros } from '../../lib/sobreNosotros';
 
 const DEFAULT_BRANDING = {
   logoUrl: '/mecanix-logo.webp',
