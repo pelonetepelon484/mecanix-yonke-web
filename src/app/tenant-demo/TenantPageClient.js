@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { esPrecioValido, formatPrecio } from '../../lib/precio';
 import { VERSION_LEGAL } from '../../lib/versionesLegales';
 import { whatsappHrefPromo } from '../../lib/promos';
+import { anchorVehiculo, hrefContactoVehiculo, idVehiculoDesdeHash, urlVehiculo } from '../../lib/contactoVehiculo';
+import { whatsappHref } from '../../lib/whatsapp';
+import { registrarContactoVehiculo } from '../lib/registrarContactoVehiculo';
 import { conFallbackDePermisos } from '../../lib/conFallbackDePermisos';
 import AvisoPrivacidadReserva from '../lib/AvisoPrivacidadReserva';
 
@@ -109,6 +112,20 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
   const [filtroTransmision, setFiltroTransmision] = useState('');
   const [soloDisponibles, setSoloDisponibles] = useState(false);
   const [expandidos, setExpandidos] = useState(new Set());
+
+  // Ancla #vehiculo-{id} (la usa el mensaje de WhatsApp para "compartir" un vehículo): al cargar,
+  // si el hash trae un id de vehículo, lo expande y hace scroll hacia él. Si el hash no existe o
+  // no corresponde a ningún vehículo, la carga sigue normal, sin error.
+  useEffect(() => {
+    const id = idVehiculoDesdeHash(window.location.hash);
+    if (!id) return;
+    setExpandidos((prev) => new Set(prev).add(id));
+    const intento = setTimeout(() => {
+      document.getElementById(anchorVehiculo(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150); // deja que el DOM pinte las tarjetas antes de buscar el elemento
+    return () => clearTimeout(intento);
+  }, []);
+
 
   const [reservaVisible, setReservaVisible] = useState(false);
   const [reservaContexto, setReservaContexto] = useState(null);
@@ -265,6 +282,22 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
     }
   }
 
+  // Enlace + registro de "toque" para el botón de WhatsApp de un vehículo — compartido entre la
+  // tarjeta y el panel expandido. null si el yonke no tiene WhatsApp válido (el botón se oculta).
+  // Botón flotante general — mensaje genérico (no ligado a un vehículo en particular).
+  const whatsappHrefGeneral = whatsappHref(negocio.whatsapp, `Hola, encontré ${branding.nombre} en Mecanix Yonke Virtual y tengo una pregunta.`);
+
+  function hrefWhatsappVehiculo(v) {
+    if (typeof window === 'undefined') return null;
+    const url = urlVehiculo(`${window.location.origin}${window.location.pathname}`, v.id);
+    return hrefContactoVehiculo(negocio.whatsapp, v.marca, v.modelo, v.ano, url);
+  }
+
+  function alTocarWhatsappVehiculo(e, vehiculoId) {
+    e.stopPropagation();
+    registrarContactoVehiculo(negocio.id, vehiculoId);
+  }
+
   return (
     <main style={{ minHeight: '100vh', backgroundColor: branding.colorFondo, fontFamily: "'Inter', sans-serif" }}>
       <div style={{ backgroundColor: branding.colorPrimario, padding: '28px 16px' }}>
@@ -330,6 +363,31 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           )}
           </div>
         </div>
+
+        {/* Sobre nosotros — texto plano (nunca HTML), oculto si el yonke nunca lo capturó. */}
+        {branding.sobreNosotros && (
+          <section aria-label="Sobre nosotros" style={sobreNosotrosStyle}>
+            {branding.sobreNosotros.fotoUrl && (
+              <img
+                src={branding.sobreNosotros.fotoUrl}
+                alt=""
+                loading="lazy"
+                style={{ width: '100%', maxHeight: '260px', objectFit: 'cover', borderRadius: '12px', marginBottom: '12px', display: 'block' }}
+              />
+            )}
+            <p style={sobreNosotrosTituloStyle(branding.colorPrimario)}>Sobre nosotros</p>
+            <p style={sobreNosotrosTextoStyle}>{branding.sobreNosotros.texto}</p>
+            {(branding.sobreNosotros.aniosExperiencia || branding.sobreNosotros.direccion || branding.sobreNosotros.horario) && (
+              <p style={sobreNosotrosDetalleStyle}>
+                {[
+                  branding.sobreNosotros.aniosExperiencia ? `${branding.sobreNosotros.aniosExperiencia} años de experiencia` : null,
+                  branding.sobreNosotros.direccion,
+                  branding.sobreNosotros.horario,
+                ].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </section>
+        )}
 
         {/* Promociones del yonke (máx. 3) — cada imagen abre su WhatsApp con un mensaje que
             menciona la promoción; sin número válido se muestra la imagen sin enlace. Si no hay
@@ -428,12 +486,25 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           <>
             {vehiculosFiltrados.map((v) => {
               const expandido = expandidos.has(v.id);
+              const hrefWhatsapp = hrefWhatsappVehiculo(v);
               return (
-                <div key={v.id} style={cardStyle}>
+                <div key={v.id} id={anchorVehiculo(v.id)} style={cardStyle}>
                   <p style={itemTituloStyle(branding.colorPrimario)}>🚗 {v.marca} {v.modelo} {v.ano}</p>
                   <p style={itemSubStyle}>
                     {[v.transmision, v.traccion, v.configuracionMotor, v.cilindrada].filter(Boolean).join(' · ')}
                   </p>
+
+                  {hrefWhatsapp && (
+                    <a
+                      href={hrefWhatsapp}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => alTocarWhatsappVehiculo(e, v.id)}
+                      style={whatsappVehiculoBtnStyle}
+                    >
+                      💬 Preguntar por este vehículo
+                    </a>
+                  )}
 
                   {v.piezas.length > 0 && (
                     <>
@@ -446,6 +517,22 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
 
                       {expandido && (
                         <div style={{ marginTop: '8px' }}>
+                          {hrefWhatsapp && (
+                            <a
+                              href={hrefWhatsapp}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => alTocarWhatsappVehiculo(e, v.id)}
+                              style={{ ...whatsappVehiculoBtnStyle, marginBottom: '10px' }}
+                            >
+                              💬 Preguntar por este vehículo completo
+                            </a>
+                          )}
+                          {negocio.tienePoliticas && (
+                            <a href="/politicas" style={{ ...footerEnlaceStyle(branding.colorPrimario), display: 'inline-block', marginBottom: '10px' }}>
+                              Políticas y garantía →
+                            </a>
+                          )}
                           {v.piezas.map((p) => (
                             <div key={p.id} style={piezaRowStyle(p._match)}>
                               <div style={{ minWidth: 0, paddingRight: '8px' }}>
@@ -506,7 +593,27 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
             ))}
           </>
         )}
+
+        {negocio.tienePoliticas && (
+          <footer style={footerStyle}>
+            <a href="/politicas" style={footerEnlaceStyle(branding.colorPrimario)}>
+              Políticas y garantía →
+            </a>
+          </footer>
+        )}
       </div>
+
+      {negocio.whatsapp && whatsappHrefGeneral && (
+        <a
+          href={whatsappHrefGeneral}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Preguntar por WhatsApp"
+          style={whatsappFlotanteStyle(branding.colorAcento)}
+        >
+          💬
+        </a>
+      )}
 
       {reservaVisible && (
         <div style={overlayStyle}>
@@ -596,8 +703,25 @@ const piezaRowStyle = (destacada) => ({
   padding: '8px 0', borderBottom: '1px solid #F4F5F5',
   backgroundColor: destacada ? '#FFF9E6' : 'transparent',
 });
+const footerStyle = { textAlign: 'center', marginTop: '28px', paddingTop: '18px', borderTop: '1px solid #E5E8EC' };
+const footerEnlaceStyle = (color) => ({ color, fontSize: '13px', fontWeight: '700', textDecoration: 'none' });
+const whatsappVehiculoBtnStyle = {
+  display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '10px',
+  padding: '10px 14px', borderRadius: '10px', backgroundColor: '#25D366', color: '#fff',
+  fontWeight: '700', fontSize: '13px',
+};
+const whatsappFlotanteStyle = (color) => ({
+  position: 'fixed', bottom: '20px', right: '20px', width: '56px', height: '56px',
+  borderRadius: '50%', backgroundColor: color, color: '#fff', display: 'flex',
+  alignItems: 'center', justifyContent: 'center', fontSize: '26px', textDecoration: 'none',
+  boxShadow: '0 4px 14px rgba(0,0,0,0.25)', zIndex: 500,
+});
 const precioPiezaStyle = { display: 'block', color: '#2E7D32', fontSize: '13px', fontWeight: '700', marginTop: '2px' };
 const consultarPrecioStyle = { display: 'block', color: '#999', fontSize: '11px', marginTop: '2px' };
+const sobreNosotrosStyle = { backgroundColor: '#fff', borderRadius: '14px', padding: '16px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(26,60,94,0.06)' };
+const sobreNosotrosTituloStyle = (color) => ({ fontSize: '15px', fontWeight: '700', color, margin: '0 0 8px' });
+const sobreNosotrosTextoStyle = { fontSize: '14px', color: '#333', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' };
+const sobreNosotrosDetalleStyle = { fontSize: '12px', color: '#888', margin: '10px 0 0' };
 const promosTituloStyle = (color) => ({ fontSize: '15px', fontWeight: '700', color, margin: '0 0 10px' });
 const promosGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' };
 const promoCardStyle = {

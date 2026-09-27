@@ -25,6 +25,7 @@ export default function VentasPanel() {
   const [generandoPDF, setGenerandoPDF] = useState(false);
   const [nombreYonke, setNombreYonke] = useState('');
   const [logoUrl, setLogoUrl] = useState(null);
+  const [subdominioPublico, setSubdominioPublico] = useState(null);
   const [ventaParaNota, setVentaParaNota] = useState(null);
 
   useEffect(() => {
@@ -51,8 +52,12 @@ export default function VentasPanel() {
     if (!yonkeId) return;
     getDoc(doc(db, 'yonkes', yonkeId)).then((snap) => {
       if (snap.exists()) {
-        setNombreYonke(snap.data().nombre || '');
-        setLogoUrl(snap.data().logoUrl || null);
+        const data = snap.data();
+        setNombreYonke(data.nombre || '');
+        setLogoUrl(data.logoUrl || null);
+        // Solo si el subdominio existe Y está activo -- la nota de garantía enlaza a /politicas
+        // de ese subdominio; sin un sitio público que lo muestre, no tiene caso enlazarlo.
+        setSubdominioPublico(data.subdominio && data.subdominioActivo !== false ? data.subdominio : null);
       }
     }).catch((e) => console.error(e));
   }, [yonkeId]);
@@ -471,6 +476,7 @@ export default function VentasPanel() {
           yonkeId={yonkeId}
           nombreYonke={nombreYonke}
           logoUrl={logoUrl}
+          subdominio={subdominioPublico}
           onClose={() => setVentaParaNota(null)}
         />
       )}

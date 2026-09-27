@@ -18,7 +18,10 @@ export function middleware(req) {
   }
 
   const url = req.nextUrl.clone();
-  url.pathname = '/tenant-demo';
+  // Todas las rutas de un tenant caen en la misma página (/tenant-demo) — la única sub-ruta real
+  // hoy es /politicas (garantía y políticas del yonke, ver tenant-demo/politicas/page.js).
+  // Cualquier otra ruta bajo el subdominio (incluida la raíz) sigue yendo al sitio principal.
+  url.pathname = url.pathname === '/politicas' ? '/tenant-demo/politicas' : '/tenant-demo';
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-tenant-sub', sub);

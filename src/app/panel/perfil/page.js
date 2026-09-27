@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
@@ -12,6 +12,8 @@ import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 import PromoImagenesEditor from '../PromoImagenesEditor';
 import { sanearPromoImagenes, PROMOS_MAX } from '../../../lib/promos';
 import { GARANTIA_DIAS_DEFAULT, GARANTIA_QUE_CUBRE_DEFAULT, GARANTIA_QUE_NO_CUBRE_DEFAULT } from '../../lib/garantiaDefault';
+import { normalizarWhatsapp } from '../../../lib/whatsapp';
+import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 import { IVA_PORCENTAJE_DEFAULT, IVA_RETENIDO_PORCENTAJE_DEFAULT, ISR_PORCENTAJE_DEFAULT, INCLUIR_AVISO_FACTURA_DEFAULT } from '../../lib/fiscalReciclajeDefault';
 
 const METODOS_PAGO = [
@@ -51,6 +53,7 @@ export default function PerfilPanel() {
   const [nombre, setNombre] = useState('');
   const [direccion, setDireccion] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [metodosPago, setMetodosPago] = useState([]);
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
   const [loadingPerfil, setLoadingPerfil] = useState(true);
@@ -88,6 +91,7 @@ export default function PerfilPanel() {
         setNombre(data.nombre || '');
         setDireccion(data.direccion || '');
         setTelefono(data.telefono || '');
+        setWhatsapp(data.whatsapp || '');
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
         setLogoUrl(data.logoUrl || null);
@@ -197,13 +201,15 @@ export default function PerfilPanel() {
     if (!garantiaQueCubre.trim() || !garantiaQueNoCubre.trim()) { alert('Completa los dos textos de condiciones'); return; }
     setGuardandoGarantia(true);
     try {
-      await setDoc(doc(db, 'yonkes', yonkeId), {
-        garantia: {
-          diasDefault: dias,
-          queCubre: garantiaQueCubre.trim(),
-          queNoCubre: garantiaQueNoCubre.trim(),
-        },
-      }, { merge: true });
+      const garantiaRef = doc(db, 'yonkes', yonkeId);
+      const datosGarantia = { diasDefault: dias, queCubre: garantiaQueCubre.trim(), queNoCubre: garantiaQueNoCubre.trim() };
+      // actualizadoAt: fecha real que se muestra en /politicas del tenant (nunca inventada). Si
+      // las reglas de Firestore aún no permiten ese campo, se guarda igual sin él.
+      await conFallbackDePermisos(
+        () => setDoc(garantiaRef, { garantia: { ...datosGarantia, actualizadoAt: serverTimestamp() } }, { merge: true }),
+        () => setDoc(garantiaRef, { garantia: datosGarantia }, { merge: true }),
+        'garantía + actualizadoAt',
+      );
       alert('Tus condiciones de garantía se guardaron correctamente');
     } catch (error) {
       console.error(error);
@@ -276,6 +282,7 @@ export default function PerfilPanel() {
         nombre: nombre.trim(),
         direccion: direccion.trim(),
         telefono: telefono.trim(),
+        whatsapp: whatsapp.trim(),
         metodosPago,
         horario,
       }, { merge: true });
@@ -485,6 +492,20 @@ export default function PerfilPanel() {
 
           <p style={labelStyle}>Teléfono</p>
           <input type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="664 000 0000" style={inputStyle} />
+
+          <p style={labelStyle}>WhatsApp</p>
+          <input
+            type="tel"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            placeholder="664 000 0000 (si no lo llenas, se usa el teléfono)"
+            style={{ ...inputStyle, borderColor: whatsapp.trim() && !normalizarWhatsapp(whatsapp) ? '#C0392B' : '#ddd' }}
+          />
+          {whatsapp.trim() && !normalizarWhatsapp(whatsapp) && (
+            <p style={{ fontSize: '12px', color: '#C0392B', margin: '-4px 0 12px' }}>
+              Ese número no se ve válido — usa 10 dígitos (con o sin espacios/guiones). Mientras no sea válido, los botones de WhatsApp de tu página no se mostrarán.
+            </p>
+          )}
         </div>
 
         {/* Horarios */}

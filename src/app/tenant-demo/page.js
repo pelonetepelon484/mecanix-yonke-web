@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { getTenantBySub, getInventarioDeTenant, resolveBranding, subdominioEstaActivo } from '../lib/getTenant';
+import { politicasDesdeGarantia } from '../../lib/politicasYonke';
 import TenantPageClient from './TenantPageClient';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +49,9 @@ export default async function TenantDemoPage() {
     whatsapp: tenant.whatsapp || '',
     horario: tenant.horario || null,
     verificado: tenant.verificado === true,
+    // Solo un booleano: si /politicas existe de verdad para este yonke (ver esa página, misma
+    // función pura politicasDesdeGarantia -- nunca se desincronizan).
+    tienePoliticas: politicasDesdeGarantia(tenant.garantia) !== null,
   };
 
   return <TenantPageClient negocio={negocio} branding={branding} inventario={inventario} />;

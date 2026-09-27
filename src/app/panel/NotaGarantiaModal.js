@@ -8,10 +8,11 @@
 
 import { useState, useEffect } from 'react';
 import {
-  collection, query, where, limit, getDocs, addDoc, updateDoc, doc, getDoc, Timestamp,
+  collection, query, where, limit, getDocs, addDoc, updateDoc, doc, Timestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { GARANTIA_DIAS_DEFAULT, GARANTIA_QUE_CUBRE_DEFAULT, GARANTIA_QUE_NO_CUBRE_DEFAULT } from '../lib/garantiaDefault';
+import { obtenerPoliticasYonke } from '../lib/obtenerPoliticasYonke';
 
 function getFechaDe(valor) {
   return valor?.toDate ? valor.toDate() : new Date(valor);
@@ -26,7 +27,7 @@ function formatoMoneda(n) {
 }
 
 // venta: { id, numeroPedido, piezaVendida, vehiculo:{marca,modelo,ano}, monto, fecha, nombreCliente? }
-export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl, onClose }) {
+export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl, subdominio, onClose }) {
   const [cargando, setCargando] = useState(true);
   const [modo, setModo] = useState('formulario'); // 'formulario' | 'ticket'
   const [notaId, setNotaId] = useState(null);
@@ -37,6 +38,7 @@ export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl
   const [queCubre, setQueCubre] = useState(GARANTIA_QUE_CUBRE_DEFAULT);
   const [queNoCubre, setQueNoCubre] = useState(GARANTIA_QUE_NO_CUBRE_DEFAULT);
   const [fechaVencimiento, setFechaVencimiento] = useState(null);
+  const [tienePoliticasPublicas, setTienePoliticasPublicas] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   // Carga, EN PARALELO: (a) la configuración de garantía del yonke, para precargar días/textos
@@ -46,8 +48,12 @@ export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl
     let activo = true;
     async function cargar() {
       try {
-        const [yonkeSnap, notasSnap] = await Promise.all([
-          getDoc(doc(db, 'yonkes', yonkeId)),
+        // obtenerPoliticasYonke: misma lectura que usa la página pública /politicas del tenant
+        // (src/lib/politicasYonke.ts) — null si el yonke nunca capturó queCubre/queNoCubre, en
+        // cuyo caso aquí SÍ se cae a los defaults genéricos (a diferencia de /politicas, que en
+        // ese caso se oculta) porque este formulario necesita un texto de arranque para editar.
+        const [politicas, notasSnap] = await Promise.all([
+          obtenerPoliticasYonke(db, yonkeId),
           getDocs(query(
             collection(db, 'yonkes', yonkeId, 'notasGarantia'),
             where('ventaId', '==', venta.id),
@@ -55,10 +61,10 @@ export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl
           )),
         ]);
         if (!activo) return;
-        const g = yonkeSnap.exists() ? (yonkeSnap.data().garantia || {}) : {};
-        const diasDefault = g.diasDefault || GARANTIA_DIAS_DEFAULT;
-        const cubreDefault = g.queCubre || GARANTIA_QUE_CUBRE_DEFAULT;
-        const noCubreDefault = g.queNoCubre || GARANTIA_QUE_NO_CUBRE_DEFAULT;
+        setTienePoliticasPublicas(politicas !== null);
+        const diasDefault = politicas?.diasDefault || GARANTIA_DIAS_DEFAULT;
+        const cubreDefault = politicas?.queCubre || GARANTIA_QUE_CUBRE_DEFAULT;
+        const noCubreDefault = politicas?.queNoCubre || GARANTIA_QUE_NO_CUBRE_DEFAULT;
 
         if (!notasSnap.empty) {
           const notaDoc = notasSnap.docs[0];
@@ -85,6 +91,13 @@ export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl
     cargar();
     return () => { activo = false; };
   }, [yonkeId, venta.id]);
+
+  // Enlace público a /politicas del subdominio del yonke -- solo si tiene subdominio activo Y
+  // políticas reales capturadas (mismo criterio que oculta la página en el tenant, ver
+  // src/lib/politicasYonke.ts).
+  const urlPoliticas = subdominio && tienePoliticasPublicas
+    ? `https://${subdominio}.mecanixyonkevirtual.com/politicas`
+    : null;
 
   async function generarNota() {
     const diasNum = parseInt(dias, 10);
@@ -181,6 +194,7 @@ export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl
               nombreCliente={nombreCliente} telefonoCliente={telefonoCliente}
               dias={dias} fechaVencimiento={fechaVencimiento}
               queCubre={queCubre} queNoCubre={queNoCubre}
+              urlPoliticas={urlPoliticas}
             />
             <div className="no-imprimir" style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
               <button onClick={onClose} style={secondaryButtonStyle}>Cerrar</button>
@@ -198,7 +212,7 @@ export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl
 // validez legal/comercial para el cliente, no un comprobante rápido) pero con el mismo espíritu:
 // fuente clara, sin depender de imágenes que no sean el logo, y `id="ticket-imprimible"` para
 // que el CSS de impresión del modal la aísle del resto de la pantalla.
-function NotaImprimible({ venta, nombreYonke, logoUrl, nombreCliente, telefonoCliente, dias, fechaVencimiento, queCubre, queNoCubre }) {
+function NotaImprimible({ venta, nombreYonke, logoUrl, nombreCliente, telefonoCliente, dias, fechaVencimiento, queCubre, queNoCubre, urlPoliticas }) {
   const fechaVenta = getFechaDe(venta.fecha);
   const vehiculoTexto = [venta.vehiculo?.marca, venta.vehiculo?.modelo, venta.vehiculo?.ano].filter(Boolean).join(' ');
   return (
@@ -230,6 +244,13 @@ function NotaImprimible({ venta, nombreYonke, logoUrl, nombreCliente, telefonoCl
 
       <p style={{ margin: '10px 0 2px', fontWeight: 'bold', fontSize: '12px', color: '#1A3C5E' }}>Qué NO cubre</p>
       <p style={{ margin: 0, fontSize: '12px', color: '#333', lineHeight: '1.5' }}>{queNoCubre}</p>
+
+      {urlPoliticas && (
+        <p style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed #ccc', fontSize: '10px', color: '#666', lineHeight: '1.4' }}>
+          Consulta nuestras políticas y condiciones de garantía completas en:<br />
+          <span style={{ fontWeight: 'bold' }}>{urlPoliticas.replace('https://', '')}</span>
+        </p>
+      )}
 
       <div style={{ display: 'flex', gap: '24px', marginTop: '36px' }}>
         <div style={{ flex: 1, textAlign: 'center' }}>

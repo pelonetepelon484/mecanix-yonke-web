@@ -78,5 +78,8 @@ export function resolveBranding(tenant) {
     // Imágenes de promociones (yonkes/{id}.promoImagenes, máx. 3, [{url, titulo}]). Se sanea el dato
     // leído: si falta o está corrupto queda [] y la sección simplemente no se muestra.
     promoImagenes: sanearPromoImagenes(tenant.promoImagenes),
+    // Sobre nosotros (yonkes/{id}.sitio.sobreNosotros): null si el yonke nunca lo llenó de
+    // verdad (no un texto generico) -- la seccion publica se oculta en ese caso.
+    sobreNosotros: sanearSobreNosotros(tenant.sitio?.sobreNosotros),
   };
 }
