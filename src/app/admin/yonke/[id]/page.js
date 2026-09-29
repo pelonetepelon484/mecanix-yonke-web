@@ -11,6 +11,8 @@ import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../lib/estados';
 import { generarSubdominioUnico } from '../../../lib/generarSubdominio';
 import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../../lib/subirLogoYonke';
+import FondoTenantEditor from '../../../panel/FondoTenantEditor';
+import { sanearFondoUrl } from '../../../../lib/fondoTenant';
 
 // Mismos textos que "Reenviar recuperación" en la app (UsuariosYonkeScreen.js en
 // mecanix-yonke-virtual2) para que la experiencia sea idéntica en web y app.
@@ -102,6 +104,8 @@ export default function EditarYonkePage() {
   const [horario, setHorario] = useState(HORARIO_DEFAULT);
 
   const [logoUrl, setLogoUrl] = useState(null);
+  const [fondoUrl, setFondoUrl] = useState(null);
+  const [colorPrimario, setColorPrimario] = useState('#1A3C5E');
   const [subiendoLogo, setSubiendoLogo] = useState(false);
 
   const [usuarios, setUsuarios] = useState([]);
@@ -221,6 +225,8 @@ export default function EditarYonkePage() {
         setMetodosPago(data.metodosPago || []);
         setHorario(data.horario || HORARIO_DEFAULT);
         setLogoUrl(data.logoUrl || null);
+        setFondoUrl(sanearFondoUrl(data.branding?.fondoUrl));
+        setColorPrimario(data.branding?.colorPrimario || '#1A3C5E');
       }
       setLoading(false);
     }
@@ -460,6 +466,15 @@ export default function EditarYonkePage() {
             </div>
           </div>
         </div>
+
+        {/* Fondo de la franja superior del sitio con subdominio — solo tiene efecto si el yonke
+            tiene subdominio configurado y activo; si no, esta sección no tiene dónde mostrarse. */}
+        {Boolean(subdominio) && subdominioActivo && (
+          <div style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>Fondo de su página</h2>
+            <FondoTenantEditor yonkeId={id} fondoUrl={fondoUrl} colorPrimario={colorPrimario} onChange={setFondoUrl} />
+          </div>
+        )}
 
         {/* Accesos / Usuarios */}
         <div style={sectionStyle}>

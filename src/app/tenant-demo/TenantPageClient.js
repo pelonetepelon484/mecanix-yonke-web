@@ -300,7 +300,18 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: branding.colorFondo, fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ backgroundColor: branding.colorPrimario, padding: '28px 16px' }}>
+      {/* backgroundColor se pinta de inmediato (colorPrimario); si hay fondoUrl, la imagen se
+          dibuja encima en cuanto termina de cargar — nunca hay un parpadeo blanco porque el color
+          ya está ahí desde el primer frame, sin esperar ningún estado de carga. Si no hay
+          fondoUrl, el comportamiento es EXACTAMENTE el de antes (solo color). */}
+      <div style={{
+        backgroundColor: branding.colorPrimario,
+        ...(branding.fondoUrl ? {
+          backgroundImage: `url(${branding.fondoUrl})`,
+          backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+        } : {}),
+        padding: '28px 16px',
+      }}>
         <div style={{ maxWidth: '820px', margin: '0 auto', textAlign: 'center' }}>
           <div style={logoMarcoStyle}>
             <img

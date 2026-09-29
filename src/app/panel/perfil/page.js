@@ -10,7 +10,11 @@ import BottomNav from '../BottomNav';
 import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 import PromoImagenesEditor from '../PromoImagenesEditor';
+import FondoTenantEditor from '../FondoTenantEditor';
+import SobreNosotrosEditor from '../SobreNosotrosEditor';
 import { sanearPromoImagenes, PROMOS_MAX } from '../../../lib/promos';
+import { sanearFondoUrl } from '../../../lib/fondoTenant';
+import { sanearSobreNosotros } from '../../../lib/sobreNosotros';
 import { GARANTIA_DIAS_DEFAULT, GARANTIA_QUE_CUBRE_DEFAULT, GARANTIA_QUE_NO_CUBRE_DEFAULT } from '../../lib/garantiaDefault';
 import { normalizarWhatsapp } from '../../../lib/whatsapp';
 import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
@@ -60,6 +64,8 @@ export default function PerfilPanel() {
   const [guardando, setGuardando] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
   const [promos, setPromos] = useState([]);
+  const [fondoUrl, setFondoUrl] = useState(null);
+  const [sobreNosotros, setSobreNosotros] = useState(null);
   const [subdominioActivo, setSubdominioActivo] = useState(false);
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [temaElegido, setTemaElegido] = useState(TEMA_DEFAULT_ID);
@@ -96,6 +102,8 @@ export default function PerfilPanel() {
         setHorario(data.horario || HORARIO_DEFAULT);
         setLogoUrl(data.logoUrl || null);
         setPromos(sanearPromoImagenes(data.promoImagenes));
+        setFondoUrl(sanearFondoUrl(data.branding?.fondoUrl));
+        setSobreNosotros(sanearSobreNosotros(data.sitio?.sobreNosotros));
         // Las promociones solo se muestran en la página con subdominio: la sección aparece solo si lo tiene activo.
         setSubdominioActivo(Boolean(data.subdominio) && data.subdominioActivo !== false);
         // Marca el tema que coincida con los colores actuales; si no tiene branding o tiene
@@ -398,6 +406,25 @@ export default function PerfilPanel() {
           <div style={sectionStyle}>
             <h2 style={sectionTitleStyle}>Promociones de tu página ({promos.length}/{PROMOS_MAX})</h2>
             <PromoImagenesEditor yonkeId={yonkeId} promos={promos} onChange={setPromos} />
+          </div>
+        )}
+
+        {subdominioActivo && (
+          <div style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>Fondo de tu página</h2>
+            <FondoTenantEditor
+              yonkeId={yonkeId}
+              fondoUrl={fondoUrl}
+              colorPrimario={(TEMAS_COLOR.find((t) => t.id === temaElegido) || TEMAS_COLOR.find((t) => t.id === TEMA_DEFAULT_ID)).colorPrimario}
+              onChange={setFondoUrl}
+            />
+          </div>
+        )}
+
+        {subdominioActivo && (
+          <div style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>Sobre nosotros</h2>
+            <SobreNosotrosEditor yonkeId={yonkeId} sobreNosotros={sobreNosotros} onChange={setSobreNosotros} />
           </div>
         )}
 

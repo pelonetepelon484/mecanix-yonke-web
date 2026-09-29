@@ -3,6 +3,7 @@ import { dbServer } from './firebase-server';
 import { esPrecioValido } from '../../lib/precio';
 import { sanearPromoImagenes } from '../../lib/promos';
 import { sanearSobreNosotros } from '../../lib/sobreNosotros';
+import { sanearFondoUrl } from '../../lib/fondoTenant';
 
 const DEFAULT_BRANDING = {
   logoUrl: '/mecanix-logo.webp',
@@ -76,6 +77,9 @@ export function resolveBranding(tenant) {
     colorPrimario: b.colorPrimario || DEFAULT_BRANDING.colorPrimario,
     colorAcento: b.colorAcento || DEFAULT_BRANDING.colorAcento,
     colorFondo: b.colorFondo || DEFAULT_BRANDING.colorFondo,
+    // Imagen de fondo de la franja superior (yonkes/{id}.branding.fondoUrl) — null si el yonke
+    // nunca subió una; en ese caso la franja sigue usando colorPrimario, sin ningún cambio.
+    fondoUrl: sanearFondoUrl(b.fondoUrl),
     // Imágenes de promociones (yonkes/{id}.promoImagenes, máx. 3, [{url, titulo}]). Se sanea el dato
     // leído: si falta o está corrupto queda [] y la sección simplemente no se muestra.
     promoImagenes: sanearPromoImagenes(tenant.promoImagenes),
