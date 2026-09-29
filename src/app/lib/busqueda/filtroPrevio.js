@@ -2,6 +2,7 @@ import { CATALOGO_BASE } from '../catalogoBase';
 import { extraerCilindradaDeTexto } from './cilindrada';
 import { tieneSenialExplicitaNumeroDeParte } from './numeroDeParte';
 import { vocabularioCapa0, aplicarSinonimosFrases } from './sinonimosPiezas';
+import { EJEMPLO_BUSQUEDA_CORRECTA } from './ejemploBusqueda';
 
 const PATRONES_BASURA = [
   /^(.)\1{4,}$/, // un solo carácter repetido 5+ veces (aaaaaa)
@@ -83,4 +84,4 @@ export function filtrarPrevio(textoOriginal, sinonimos) {
 }
 
 export const MENSAJE_RECHAZO_CAPA0 =
-  "No identifiqué qué pieza buscas, ¿puedes intentar de otra forma? Ej: 'defensa delantera para tsuru 2010'";
+  `No identifiqué qué pieza buscas, ¿puedes intentar de otra forma? Ej: '${EJEMPLO_BUSQUEDA_CORRECTA}'`;

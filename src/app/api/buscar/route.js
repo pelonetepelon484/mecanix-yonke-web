@@ -12,6 +12,8 @@ import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLim
 import { MENSAJE_NUMERO_DE_PARTE } from '../../lib/busqueda/numeroDeParte';
 import { obtenerEstadosCombinado } from '../../lib/busqueda/estadosServer';
 import { notificarAdmin } from '../../lib/notificarAdmin';
+import { debeMostrarAvisoPiezaSinVehiculo } from '../../../lib/piezaSinVehiculo';
+import { EJEMPLO_BUSQUEDA_CORRECTA } from '../../lib/busqueda/ejemploBusqueda';
 
 // Nota de nombres: en este archivo `estado` (minúscula, sin más calificación) siempre significa
 // el ESTADO DE LA BÚSQUEDA ('ok', 'sin_inventario', 'fuera_de_catalogo', etc. — ver
@@ -25,6 +27,20 @@ async function mensajeSinYonkesEnEstado(estadoFiltro) {
   return `Aún no tenemos yonkes registrados en ${nombre} — muy pronto estaremos ahí. Prueba buscando en "Todos los estados".`;
 }
 
+// Registra y responde el aviso de "pieza sin vehículo" — usado tanto en el flujo normal (recién
+// interpretado) como en el de "confirmado" (cuando el cliente ya venía de aclarar un typo o una
+// cilindrada), para que ninguno de los dos pueda colarse a una búsqueda sin vehículo suficiente.
+async function responderPiezaSinVehiculo({ texto, pieza, marca, anio, contacto, origen, tieneContacto, estadoGeografico, ciudad, pais }) {
+  await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo: null, anio, estado: 'pieza_sin_vehiculo' });
+  await registrarBusqueda({
+    texto, estado: 'pieza_sin_vehiculo', pieza, marca, modelo: null, anio, origen, tieneContacto,
+    estadoGeografico, ciudad, pais, sinVehiculo: true,
+  });
+  return NextResponse.json({
+    estado: 'pieza_sin_vehiculo', mensaje: MENSAJE_PIEZA_SIN_VEHICULO, pieza, ejemplo: EJEMPLO_BUSQUEDA_CORRECTA,
+  });
+}
+
 const MENSAJE_NO_CATALOGADO =
   'No identificamos ese modelo todavía — ¿nos confirmas la marca y el año? o cuéntanos qué modelo es y lo agregamos a la plataforma.';
 const MENSAJE_SIN_INVENTARIO =
@@ -34,7 +50,12 @@ const MENSAJE_VEHICULO_SIN_INVENTARIO =
 const MENSAJE_FUERA_DE_GIRO =
   'Este buscador es solo para encontrar autopartes usadas en yonkes — no identificamos una búsqueda de pieza o vehículo en tu mensaje.';
 const MENSAJE_PARSEO_PARCIAL =
-  'Detectamos qué pieza buscas, pero no la marca/modelo del vehículo — cuéntanos eso también. Ej: "defensa delantera para tsuru 2010"';
+  `Detectamos qué pieza buscas, pero no la marca/modelo del vehículo — cuéntanos eso también. Ej: "${EJEMPLO_BUSQUEDA_CORRECTA}"`;
+// Aviso llamativo (auditoría 2026-09-28): pieza reconocida pero sin vehículo lo bastante
+// específico (ni modelo ni cilindrada) para saber qué versión aplica — ver
+// src/lib/piezaSinVehiculo.ts. Nunca se intenta la búsqueda en este caso, se pide el vehículo.
+const MENSAJE_PIEZA_SIN_VEHICULO =
+  'Las piezas cambian según el carro. Dinos marca, modelo y año para mostrarte solo lo que le queda a tu vehículo.';
 
 // Modelo de ejemplo por marca para el mensaje de "búsqueda muy general" (ver
 // mensajeMarcaMuyGeneral) — solo para armar un ejemplo más cercano a lo que buscó el cliente;
@@ -395,6 +416,12 @@ export async function POST(request) {
       anio: typeof confirmado.anio === 'number' ? confirmado.anio : null,
       cilindrada: typeof confirmado.cilindrada === 'number' ? confirmado.cilindrada : null,
     };
+    if (debeMostrarAvisoPiezaSinVehiculo({ pieza: datos.pieza, modelo: datos.modelo, cilindrada: datos.cilindrada })) {
+      return responderPiezaSinVehiculo({
+        texto, pieza: datos.pieza, marca: datos.marca, anio: datos.anio, contacto, origen,
+        tieneContacto: Boolean(contacto), estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
+      });
+    }
     return datos.pieza
       ? resolverBusqueda(datos, texto, contacto, origen, estadoFiltro, geo)
       : resolverBusquedaVehiculo(datos, texto, contacto, origen, estadoFiltro, geo);
@@ -447,6 +474,17 @@ export async function POST(request) {
       ? `¿Buscas el motor ${cilindradaSug} de ${marcaSug}${anioSug ? ` ${anioSug}` : ''}?`
       : `¿Buscas un motor o transmisión de ${cilindradaSug} litros?`;
     return NextResponse.json({ estado: 'confirmar', mensaje, sugerencia: intencion.sugerenciaCilindrada });
+  }
+
+  // Pieza reconocida pero sin vehículo lo bastante específico (ni modelo ni cilindrada) — ver
+  // src/lib/piezaSinVehiculo.ts. Va ANTES que cualquier otra rama que decida qué hacer con
+  // marca/vehiculoReconocido, porque ninguna de ellas debe poder ofrecer un fallback ("buscar
+  // toda la marca", "modelo desconocido"...) cuando lo que falta es precisamente el vehículo.
+  if (intencion.piezaSinVehiculo) {
+    return responderPiezaSinVehiculo({
+      texto, pieza: intencion.pieza, marca: intencion.marca, anio: intencion.anio, contacto, origen,
+      tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
+    });
   }
 
   if (!intencion.reconocido && !intencion.vehiculoReconocido) {

@@ -9,8 +9,12 @@ import { dbServer } from '../firebase-server';
 // nuevos: confirmar con David que la regla ya los incluye.
 const ESTADOS_VALIDOS = new Set([
   'no_interpretada', 'fuera_de_giro', 'parseo_parcial', 'fuera_de_catalogo', 'sin_inventario', 'ok',
-  'numero_de_parte', 'marca_muy_general',
+  'numero_de_parte', 'marca_muy_general', 'pieza_sin_vehiculo',
 ]);
+// IMPORTANTE (auditoría 2026-09-28): 'pieza_sin_vehiculo' es nuevo — confirmar que la regla de
+// Firestore para /busquedas/{docId} ya incluye este valor en su enum antes de desplegar, o estas
+// escrituras fallarán en silencio (permission-denied, atrapado abajo) igual que cualquier otro
+// estado no sincronizado con la regla.
 
 // Nombres de campo EXACTOS exigidos por la regla de Firestore (match /busquedas/{docId}):
 // textoOriginal (string, 1-299 chars), estado (enum), numResultados (int >= 0, nunca null),
@@ -32,6 +36,11 @@ export async function registrarBusqueda({
   tipoResultado = null, totalResultados = 0, piezaNoEncontrada = null,
   subtipo = null, origen = 'web', tieneContacto = false,
   estadoGeografico = null, ciudad = null, yonkeIds = [], pais = null,
+  // sinVehiculo: SOLO true para el caso "pieza sin vehículo detectado" (banner en vez de
+  // resultados, ver src/lib/piezaSinVehiculo.ts) — se usa para excluir estas búsquedas del
+  // reporte "Piezas/vehículos más buscados" y del conteo "Con resultado" (admin/busquedas/mapa),
+  // sin dejar de guardarlas (el % de sinVehiculo es en sí un indicador útil).
+  sinVehiculo = false,
 }) {
   if (!ESTADOS_VALIDOS.has(estado)) {
     console.error(`[registrarBusqueda] estado inválido, no se guarda: "${estado}"`);
@@ -61,6 +70,7 @@ export async function registrarBusqueda({
     pais,
     yonkeIds: Array.isArray(yonkeIds) ? yonkeIds : [],
     conResultado: estado === 'ok',
+    sinVehiculo: Boolean(sinVehiculo),
     fecha: Timestamp.now(),
   };
 

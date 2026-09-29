@@ -99,10 +99,18 @@ export default function MapaBusquedasPage() {
     cargar();
   }, [rango]);
 
+  // sinVehiculo:true (aviso "dinos tu vehículo", ver src/lib/piezaSinVehiculo.ts) nunca intentó una
+  // búsqueda real -- se excluye de TODO lo de abajo (mapa, tabla de piezas/vehículos, conteo
+  // Con/Sin resultado); solo se usa para el indicador propio "Búsquedas sin vehículo" de aquí abajo,
+  // calculado sobre `docs` completo (el periodo elegido), no sobre docsFiltrados.
+  const docsConVehiculo = useMemo(() => docs.filter((d) => !d.sinVehiculo), [docs]);
+  const totalSinVehiculo = docs.length - docsConVehiculo.length;
+  const porcentajeSinVehiculo = docs.length > 0 ? Math.round((totalSinVehiculo / docs.length) * 100) : 0;
+
   const docsFiltrados = useMemo(() => {
-    if (filtroResultado === 'todos') return docs;
-    return docs.filter((d) => (filtroResultado === 'con') === tieneResultado(d));
-  }, [docs, filtroResultado]);
+    if (filtroResultado === 'todos') return docsConVehiculo;
+    return docsConVehiculo.filter((d) => (filtroResultado === 'con') === tieneResultado(d));
+  }, [docsConVehiculo, filtroResultado]);
 
   const { conteoPorEstado, maximo, sinUbicacion } = useMemo(() => {
     const mapa = new Map();
@@ -138,9 +146,18 @@ export default function MapaBusquedasPage() {
           </button>
           <h1 style={{ color: '#fff', fontSize: '18px', margin: '4px 0 0', fontWeight: '700' }}>Mapa de búsquedas</h1>
           <p style={{ color: '#cdd9e4', fontSize: '12px', margin: '2px 0 0' }}>
-            Qué piezas se buscan y en dónde — {docsFiltrados.length} búsqueda{docsFiltrados.length === 1 ? '' : 's'}
+            Qué piezas se buscan y en dónde — {docsFiltrados.length} búsqueda{docsFiltrados.length === 1 ? '' : 's'} con vehículo detectado
             {sinUbicacion > 0 ? `, ${sinUbicacion} sin ubicación identificada` : ''}
           </p>
+          {/* Indicador siempre visible, sin importar el filtro de resultado o el estado activo:
+              qué proporción de las búsquedas del periodo trajeron una pieza sin vehículo lo
+              bastante específico (banner en vez de resultados, ver piezaSinVehiculo.ts). Excluidas
+              del resto de esta página (mapa, tabla, conteo Con/Sin resultado). */}
+          {docs.length > 0 && (
+            <p style={{ color: '#FFD54F', fontSize: '12px', margin: '4px 0 0', fontWeight: '700' }}>
+              ⚠️ Búsquedas sin vehículo: {totalSinVehiculo} ({porcentajeSinVehiculo}%)
+            </p>
+          )}
         </div>
       </div>
 

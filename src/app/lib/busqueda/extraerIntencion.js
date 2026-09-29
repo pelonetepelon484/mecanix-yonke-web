@@ -5,6 +5,7 @@ import { tieneSenialExplicitaNumeroDeParte, tieneNumeroSospechoso } from './nume
 import { PIEZAS_CATALOGO } from '../piezasCatalogo';
 import { distanciaLevenshtein, umbralMaximo, MIN_LARGO_PARA_DIFUSO, PALABRAS_EXCLUIDAS_DIFUSO } from './fuzzy';
 import { SINONIMOS_PALABRA, obtenerSinonimosCombinados, aplicarSinonimosFrases, tokenizar } from './sinonimosPiezas';
+import { debeMostrarAvisoPiezaSinVehiculo, piezaExentaDeVehiculo } from '../../../lib/piezaSinVehiculo';
 
 // Alias comunes de marcas — mismo espíritu que el mapa MARCAS de admin/page.js (migrarInventario).
 const ALIAS_MARCA = {
@@ -423,7 +424,21 @@ export async function extraerIntencion(textoOriginal) {
   // solo evita exigir marca/modelo cuando ya hay cilindrada (route.js/consultarInventario.js
   // hacen el cruce real contra vehiculo.cilindrada).
   const esBusquedaPiezaPorCilindrada = Boolean(cilindrada != null && pieza && !esBusquedaMotorPorCilindrada);
-  const reconocido = Boolean(pieza && (marca || modelo || esBusquedaMotorPorCilindrada || esBusquedaPiezaPorCilindrada));
+  // Auditoría 2026-09-28: antes bastaba con CUALQUIER marca (incluida una resuelta solo por
+  // alias de plataforma como "mk6", que nunca identifica un modelo real) para dar una pieza por
+  // "reconocida" -- eso disparaba búsquedas del tipo "facia trasera" contra TODO Volkswagen, sin
+  // poder garantizar compatibilidad. Ahora, para una pieza normal, hace falta el MODELO real (o
+  // cilindrada, que si cruza de verdad — ver esBusquedaMotorPorCilindrada/esBusquedaPiezaPorCilindrada
+  // arriba), salvo que la pieza esté en la lista de exentas (aceite, batería..., ver
+  // src/lib/piezaSinVehiculo.ts) — esas sí se buscan con marca sola o sin marca, igual que antes.
+  const piezaExenta = piezaExentaDeVehiculo(pieza);
+  const reconocido = Boolean(pieza && (modelo || esBusquedaMotorPorCilindrada || esBusquedaPiezaPorCilindrada || piezaExenta));
+  // true = mostrar el aviso "dinos tu vehículo" EN VEZ de buscar — cubre tanto una pieza sin
+  // ningún dato de marca ("calavera") como una pieza con marca pero sin modelo específico
+  // ("facia trasera de mk6"). Nunca se activa para una pieza exenta ni para una búsqueda por
+  // cilindrada (esas ya tienen suficiente para filtrar). Quien llama (route.js) debe revisar
+  // esto ANTES de cualquier fallback a "buscar toda la marca".
+  const piezaSinVehiculo = debeMostrarAvisoPiezaSinVehiculo({ pieza, modelo, cilindrada });
 
   // Cilindrada mencionada pero AMBIGUA: hay un decimal tipo cilindrada (ej. "chevrolet 3.6",
   // "3.6" solo) pero el usuario nunca dijo "motor"/"transmisión" (pieza null) ni resolvió un
@@ -462,7 +477,7 @@ export async function extraerIntencion(textoOriginal) {
 
   return {
     pieza, marca, modelo, anio, cilindrada, reconocido, vehiculoReconocido, modeloDesconocido,
-    sugerenciaCilindrada, numeroDeParteExplicito, numeroDeParteSospechoso,
+    sugerenciaCilindrada, numeroDeParteExplicito, numeroDeParteSospechoso, piezaSinVehiculo,
     requiereConfirmacion: (reconocido || vehiculoReconocido) && difuso,
   };
 }

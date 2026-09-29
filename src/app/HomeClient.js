@@ -189,6 +189,11 @@ export default function HomeClient({ textoSeoEstados }) {
   const [catalogoVehiculos, setCatalogoVehiculos] = useState({});
   const [marcaSel, setMarcaSel] = useState('');
   const [modeloSel, setModeloSel] = useState('');
+  // Selectores del aviso "pieza sin vehículo" (banner del buscador inteligente) — independientes
+  // de marcaSel/modeloSel (esos son del buscador avanzado) para que abrir uno no pise al otro.
+  const [avisoMarcaSel, setAvisoMarcaSel] = useState('');
+  const [avisoModeloSel, setAvisoModeloSel] = useState('');
+  const [avisoAnio, setAvisoAnio] = useState('');
 
   // Rediseño: pestañas cliente/yonke + acordeón de búsqueda avanzada (colapsado por
   // defecto para que el buscador inteligente sea el protagonista). Ninguna de las dos
@@ -792,6 +797,19 @@ export default function HomeClient({ textoSeoEstados }) {
         resultados: data.resultados.length + (data.resultadosMotores?.length || 0) + (data.resultadosTransmisiones?.length || 0)
           + (data.resultadosCercanos?.length || 0) + (data.resultadosMotoresCercanos?.length || 0) + (data.resultadosTransmisionesCercanos?.length || 0),
       });
+    } else if (data.estado === 'pieza_sin_vehiculo') {
+      setResultados([]);
+      setResultadosMotoresLibre([]);
+      setResultadosTransmisionesLibre([]);
+      setResultadosCercanosLibre([]);
+      setResultadosMotoresCercanosLibre([]);
+      setResultadosTransmisionesCercanosLibre([]);
+      setBusquedaHecha(false);
+      setEncabezadoVehiculo(null);
+      setMensajeLibre({ tipo: 'pieza_sin_vehiculo', texto: data.mensaje, pieza: data.pieza || null, ejemplo: data.ejemplo || '' });
+      // Selectores del banner en blanco para una elección fresca en cada aviso nuevo.
+      setAvisoMarcaSel(''); setAvisoModeloSel(''); setAvisoAnio('');
+      registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
     } else if (data.estado === 'confirmar') {
       setResultados([]);
       setResultadosMotoresLibre([]);
@@ -870,6 +888,40 @@ export default function HomeClient({ textoSeoEstados }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim(), confirmado: sugerencia, estado: estadoBusqueda }),
+      });
+      const data = await res.json();
+      aplicarRespuestaBusquedaLibre(data);
+    } catch (error) {
+      console.error(error);
+      setMensajeLibre({ tipo: 'error', texto: 'Hubo un error al buscar, intenta de nuevo.' });
+    } finally {
+      setBuscandoLibre(false);
+    }
+  }
+
+  // Reenvía la búsqueda con el vehículo elegido en el banner "pieza sin vehículo", conservando
+  // la pieza ya reconocida (mensajeLibre.pieza, el nombre canónico que devolvió el servidor —
+  // no el texto libre original). Usa el mismo mecanismo de "confirmado" que ya existe para
+  // typos/cilindrada, en vez de re-armar texto libre: marca/modelo ya vienen exactos de los
+  // selectores, no hace falta volver a interpretarlos.
+  async function buscarConVehiculoDesdeAviso() {
+    if (!avisoMarcaSel.trim() || !avisoModeloSel.trim()) { alert('Elige marca y modelo'); return; }
+    setBuscandoLibre(true);
+    try {
+      const res = await fetch('/api/buscar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          texto: textoLibre.trim(),
+          contacto: contactoLibre.trim(),
+          estado: estadoBusqueda,
+          confirmado: {
+            pieza: mensajeLibre?.pieza || null,
+            marca: avisoMarcaSel.trim(),
+            modelo: avisoModeloSel.trim(),
+            anio: avisoAnio ? parseInt(avisoAnio, 10) : null,
+          },
+        }),
       });
       const data = await res.json();
       aplicarRespuestaBusquedaLibre(data);
@@ -1394,7 +1446,68 @@ function obtenerEstadoAbierto(horario) {
                 {buscandoLibre ? 'Buscando...' : '✨ Buscar con IA'}
               </button>
 
-              {mensajeLibre && (
+              {/* Aviso llamativo "pieza sin vehículo" — REEMPLAZA resultados en vez de acompañarlos,
+                  con selectores de marca/modelo/año dentro del propio banner para completar la
+                  búsqueda sin perder la pieza ya reconocida (mensajeLibre.pieza). Mucho más
+                  prominente (borde grueso, ícono, texto grande) que el resto de los avisos. */}
+              {mensajeLibre && mensajeLibre.tipo === 'pieza_sin_vehiculo' && (
+                <div style={{
+                  marginTop: '14px', padding: '20px 18px', borderRadius: '14px',
+                  backgroundColor: '#FFF3CD', border: '3px solid #E8720C',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '30px', lineHeight: 1, flexShrink: 0 }} aria-hidden="true">⚠️</span>
+                    <p style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#7A4A00', lineHeight: '1.35' }}>
+                      {mensajeLibre.texto}
+                    </p>
+                  </div>
+                  {mensajeLibre.ejemplo && (
+                    <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#8A5A00' }}>
+                      Ejemplo de búsqueda completa: <strong>&ldquo;{mensajeLibre.ejemplo}&rdquo;</strong>
+                    </p>
+                  )}
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {Object.keys(catalogoVehiculos).length > 0 ? (
+                      <>
+                        <select
+                          className="mecanix-select"
+                          value={avisoMarcaSel}
+                          onChange={(e) => { setAvisoMarcaSel(e.target.value); setAvisoModeloSel(''); }}
+                        >
+                          <option value="">Marca</option>
+                          {Object.keys(catalogoVehiculos).sort((a, b) => a.localeCompare(b, 'es')).map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        {avisoMarcaSel && (
+                          <select className="mecanix-select" value={avisoModeloSel} onChange={(e) => setAvisoModeloSel(e.target.value)}>
+                            <option value="">Modelo</option>
+                            {[...(catalogoVehiculos[avisoMarcaSel] || [])].sort((a, b) => a.localeCompare(b, 'es')).map((mo) => (
+                              <option key={mo} value={mo}>{mo}</option>
+                            ))}
+                          </select>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <input className="mecanix-input" type="text" placeholder="Marca (ej. Nissan)" value={avisoMarcaSel} onChange={(e) => setAvisoMarcaSel(e.target.value)} />
+                        <input className="mecanix-input" type="text" placeholder="Modelo (ej. Sentra)" value={avisoModeloSel} onChange={(e) => setAvisoModeloSel(e.target.value)} />
+                      </>
+                    )}
+                    <input className="mecanix-input" type="number" placeholder="Año (opcional, ej. 2015)" value={avisoAnio} onChange={(e) => setAvisoAnio(e.target.value)} />
+                  </div>
+                  <button
+                    onClick={buscarConVehiculoDesdeAviso}
+                    disabled={buscandoLibre || !avisoMarcaSel.trim() || !avisoModeloSel.trim()}
+                    className="mecanix-btn-primary"
+                    style={{ marginTop: '12px', fontSize: '16px', padding: '16px' }}
+                  >
+                    {buscandoLibre ? 'Buscando...' : '🔍 Buscar con mi vehículo'}
+                  </button>
+                </div>
+              )}
+
+              {mensajeLibre && mensajeLibre.tipo !== 'pieza_sin_vehiculo' && (
                 <div style={{
                   marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
                   backgroundColor: ['sin_inventario', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) ? '#EEF4FA' : '#FFF8E1',
