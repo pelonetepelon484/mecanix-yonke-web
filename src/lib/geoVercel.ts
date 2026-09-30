@@ -7,7 +7,9 @@
 // estadoGeografico y el mapa de búsquedas (@svg-maps/mexico), así que los datos nuevos son
 // compatibles con los históricos.
 
-const REGIONES_VALIDAS = new Set([
+// Exportado para que estadoGeoMapping.ts (y sus tests) puedan validarse contra la misma lista,
+// sin duplicar los 32 códigos en dos archivos.
+export const REGIONES_VALIDAS = new Set([
   'agu', 'bcn', 'bcs', 'cam', 'chp', 'chh', 'coa', 'col', 'cmx', 'dur',
   'gua', 'gro', 'hid', 'jal', 'mex', 'mic', 'mor', 'nay', 'nle', 'oax',
   'pue', 'que', 'roo', 'slp', 'sin', 'son', 'tab', 'tam', 'tla', 'ver', 'yuc', 'zac',
