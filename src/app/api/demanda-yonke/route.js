@@ -5,6 +5,10 @@ import { codigoGeoDeEstado } from '../../../lib/estadoGeoMapping';
 import { construirReporteDemanda } from '../../../lib/reporteDemandaYonke';
 import { CORTE_BUSQUEDAS_CONFIABLES } from '../../lib/busqueda/corteBusquedasConfiables';
 
+// firebase-admin usa APIs nativas de Node (no soportadas en el runtime Edge) -- forzarlo explícito
+// evita que el build lo trate como Edge en algún escenario y rompa la carga del módulo.
+export const runtime = 'nodejs';
+
 // Versión reducida del "Mapa de búsquedas" de admin, para el panel del yonke: solo su propio
 // estado, sin ningún número (ni totales, ni conteos, ni porcentajes — ver reporteDemandaYonke.ts).
 // Por eso usa Admin SDK en vez de abrir las reglas de Firestore de `busquedas` a los yonkes: el
