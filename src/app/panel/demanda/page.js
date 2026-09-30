@@ -78,8 +78,11 @@ export default function DemandaPanel() {
         desde.setDate(desde.getDate() - dias);
         const corteEfectivo = desde > CORTE_BUSQUEDAS_CONFIABLES ? desde : CORTE_BUSQUEDAS_CONFIABLES;
 
+        // busquedasResumen (NO 'busquedas'): copia reducida sin textoOriginal ni yonkeIds -- ver
+        // registrarBusqueda.js. El yonke lee esto directo desde el navegador (SDK de cliente),
+        // así que nunca debe apuntar a la colección completa, aunque las reglas se lo permitan.
         const snap = await getDocs(query(
-          collection(db, 'busquedas'),
+          collection(db, 'busquedasResumen'),
           where('estadoGeografico', '==', codigoGeo),
           where('fecha', '>=', Timestamp.fromDate(corteEfectivo)),
         ));

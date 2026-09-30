@@ -83,4 +83,25 @@ export async function registrarBusqueda({
       documento: datos,
     });
   }
+
+  // Copia reducida para que el panel "Demanda" del yonke (panel/demanda/page.js) pueda leerla
+  // directo desde el navegador sin exponer nunca textoOriginal (lo que escribió el cliente) ni
+  // yonkeIds (qué otros yonkes/competidores se consideraron) -- ver auditoría de privacidad
+  // 2026-09-30. Sin estadoGeografico no hay bajo qué estado agruparla, así que no se escribe.
+  if (estadoGeografico) {
+    const datosResumen = {
+      estadoGeografico, pieza, marca, modelo, anio,
+      estado, conResultado: datos.conResultado, sinVehiculo: datos.sinVehiculo,
+      fecha: datos.fecha,
+    };
+    try {
+      await addDoc(collection(dbServer, 'busquedasResumen'), datosResumen);
+    } catch (error) {
+      console.error('[registrarBusqueda] Rechazado por Firestore al guardar en "busquedasResumen"', {
+        code: error?.code,
+        message: error?.message,
+        documento: datosResumen,
+      });
+    }
+  }
 }
