@@ -3,22 +3,32 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
+import { doc, getDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { auth, db } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import { codigoGeoDeEstado } from '../../../lib/estadoGeoMapping';
+import { construirReporteDemanda } from '../../../lib/reporteDemandaYonke';
+import { CORTE_BUSQUEDAS_CONFIABLES } from '../../lib/busqueda/corteBusquedasConfiables';
 
 const PERIODOS = [
   { key: '7', label: '7 días' },
   { key: '30', label: '30 días' },
 ];
+const PERIODOS_VALIDOS = { '7': 7, '30': 30 };
+const PERIODO_DEFAULT_DIAS = 7;
+const INCLUIR_ANIO = false;
 
 // Pestaña "Demanda": versión reducida del Mapa de búsquedas de admin, solo para el estado del
-// propio yonke (ver /api/demanda-yonke, commit 4). A propósito NUNCA calcula ni muestra ningún
-// número — ni conteos, ni porcentajes, ni un badge de posición (1º, 2º...): el ORDEN de la lista
-// ya comunica qué se busca más, tal como lo entrega el endpoint.
+// propio yonke. Lee Firestore directo con el SDK de cliente (igual que admin/busquedas/mapa) en
+// vez de pasar por un endpoint con Admin SDK -- las reglas de seguridad (Firestore Console) son
+// las que garantizan que un yonke solo pueda leer `busquedas` de SU propio estado; ver la función
+// `esYonkeDeEseEstado` en las reglas. A propósito NUNCA calcula ni muestra ningún número -- ni
+// conteos, ni porcentajes, ni un badge de posición (1º, 2º...): el ORDEN de la lista ya comunica
+// qué se busca más, tal como lo arma construirReporteDemanda().
 export default function DemandaPanel() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, userRole, yonkeId, loading } = useAuth();
 
   const [periodo, setPeriodo] = useState('7');
   const [intento, setIntento] = useState(0);
@@ -38,40 +48,63 @@ export default function DemandaPanel() {
   }, [user, loading]);
 
   useEffect(() => {
-    if (!user) return;
+    if (loading || !user) return;
     const idPeticion = ++peticionVigente.current;
     setEstadoCarga('cargando');
 
     (async () => {
       try {
-        const token = await user.getIdToken();
-        const res = await fetch(`/api/demanda-yonke?periodo=${periodo}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (idPeticion !== peticionVigente.current) return; // llegó tarde, ya no aplica
+        if (userRole !== 'yonke' || !yonkeId) {
+          if (idPeticion === peticionVigente.current) setEstadoCarga('no-autorizado');
+          return;
+        }
 
-        if (res.status === 401 || res.status === 403) {
+        const yonkeSnap = await getDoc(doc(db, 'yonkes', yonkeId));
+        if (idPeticion !== peticionVigente.current) return;
+        if (!yonkeSnap.exists() || yonkeSnap.data().activo === false) {
           setEstadoCarga('no-autorizado');
           return;
         }
-        if (!res.ok) {
-          setEstadoCarga('error');
+
+        const codigoGeo = codigoGeoDeEstado(yonkeSnap.data().estado);
+        if (!codigoGeo) {
+          setFilas([]);
+          setEstadoCarga('vacio');
           return;
         }
 
-        const data = await res.json();
+        const dias = PERIODOS_VALIDOS[periodo] ?? PERIODO_DEFAULT_DIAS;
+        const desde = new Date();
+        desde.setDate(desde.getDate() - dias);
+        const corteEfectivo = desde > CORTE_BUSQUEDAS_CONFIABLES ? desde : CORTE_BUSQUEDAS_CONFIABLES;
+
+        const snap = await getDocs(query(
+          collection(db, 'busquedas'),
+          where('estadoGeografico', '==', codigoGeo),
+          where('fecha', '>=', Timestamp.fromDate(corteEfectivo)),
+        ));
         if (idPeticion !== peticionVigente.current) return;
 
-        const filasRecibidas = Array.isArray(data?.filas) ? data.filas : [];
-        setFilas(filasRecibidas);
-        setEstadoCarga(filasRecibidas.length > 0 ? 'ok' : 'vacio');
+        const busquedas = snap.docs
+          .map((d) => d.data())
+          .filter((d) => d.estado !== 'pieza_sin_vehiculo' && d.sinVehiculo !== true)
+          .map((d) => ({
+            pieza: typeof d.pieza === 'string' ? d.pieza : null,
+            marca: typeof d.marca === 'string' ? d.marca : null,
+            modelo: typeof d.modelo === 'string' ? d.modelo : null,
+            anio: typeof d.anio === 'number' ? d.anio : null,
+            conResultado: d.conResultado === true,
+          }));
+        const filasCalculadas = construirReporteDemanda(busquedas, { incluirAnio: INCLUIR_ANIO });
+        setFilas(filasCalculadas);
+        setEstadoCarga(filasCalculadas.length > 0 ? 'ok' : 'vacio');
       } catch (error) {
         if (idPeticion !== peticionVigente.current) return;
-        console.error('[panel/demanda] Error consultando /api/demanda-yonke', error);
+        console.error('[panel/demanda] Error consultando Firestore', error);
         setEstadoCarga('error');
       }
     })();
-  }, [user, periodo, intento]);
+  }, [user, loading, userRole, yonkeId, periodo, intento]);
 
   async function handleLogout() {
     await signOut(auth);

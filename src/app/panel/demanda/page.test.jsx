@@ -12,10 +12,23 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('../../lib/firebase', () => ({
   auth: {},
+  db: {},
 }));
 
 vi.mock('firebase/auth', () => ({
   signOut: vi.fn(),
+}));
+
+const getDocMock = vi.fn();
+const getDocsMock = vi.fn();
+vi.mock('firebase/firestore', () => ({
+  doc: (...args) => ({ __tipo: 'doc', args }),
+  collection: (...args) => ({ __tipo: 'collection', args }),
+  query: (...args) => ({ __tipo: 'query', args }),
+  where: (...args) => ({ __tipo: 'where', args }),
+  getDoc: (...args) => getDocMock(...args),
+  getDocs: (...args) => getDocsMock(...args),
+  Timestamp: { fromDate: (fecha) => ({ __tipo: 'timestamp', fecha }) },
 }));
 
 const useAuthMock = vi.fn();
@@ -25,22 +38,27 @@ vi.mock('../AuthContext', () => ({
 
 const { default: DemandaPanel } = await import('./page.js');
 
-function usuarioFake(token = 'token-valido') {
-  return { uid: 'u1', getIdToken: vi.fn().mockResolvedValue(token) };
+function usuarioFake() {
+  return { uid: 'u1' };
 }
 
-function respuestaJson(body, status = 200) {
-  return Promise.resolve({
-    ok: status >= 200 && status < 300,
-    status,
-    json: () => Promise.resolve(body),
-  });
+function authFake({ userRole = 'yonke', yonkeId = 'y1' } = {}) {
+  return { user: usuarioFake(), userRole, yonkeId, loading: false };
+}
+
+function yonkeDocFake(existe, data) {
+  return { exists: () => existe, data: () => data };
+}
+
+function busquedasSnapFake(docs) {
+  return { docs: docs.map((d) => ({ data: () => d })) };
 }
 
 beforeEach(() => {
   pushMock.mockClear();
-  useAuthMock.mockReturnValue({ user: usuarioFake(), loading: false });
-  global.fetch = vi.fn();
+  getDocMock.mockReset();
+  getDocsMock.mockReset();
+  useAuthMock.mockReturnValue(authFake());
 });
 
 afterEach(() => {
@@ -50,18 +68,19 @@ afterEach(() => {
 
 describe('DemandaPanel — estados de la interfaz', () => {
   it('muestra "Cargando..." mientras espera la respuesta', async () => {
-    global.fetch.mockReturnValue(new Promise(() => {})); // nunca resuelve
+    getDocMock.mockReturnValue(new Promise(() => {})); // nunca resuelve
     render(<DemandaPanel />);
     expect(await screen.findByText('Cargando...')).toBeInTheDocument();
   });
 
-  it('con datos: muestra las filas tal como las devuelve el endpoint', async () => {
-    global.fetch.mockReturnValue(respuestaJson({
-      filas: [
-        { clave: 'Calavera — Dodge Stratus', estado: 'Con resultado' },
-        { clave: 'Facia trasera — Volkswagen Jetta', estado: 'Demanda sin cubrir' },
-      ],
-    }));
+  it('con datos: muestra las filas tal como las arma construirReporteDemanda', async () => {
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
+    getDocsMock.mockResolvedValue(busquedasSnapFake([
+      { pieza: 'Calavera', marca: 'Dodge', modelo: 'Stratus', anio: 2002, conResultado: true, estado: 'ok' },
+      { pieza: 'Calavera', marca: 'Dodge', modelo: 'Stratus', anio: 2003, conResultado: true, estado: 'ok' },
+      { pieza: 'Facia trasera', marca: 'Volkswagen', modelo: 'Jetta', anio: 2015, conResultado: false, estado: 'sin_inventario' },
+      { pieza: 'Facia trasera', marca: 'Volkswagen', modelo: 'Jetta', anio: 2016, conResultado: false, estado: 'sin_inventario' },
+    ]));
     render(<DemandaPanel />);
     expect(await screen.findByText('Calavera — Dodge Stratus')).toBeInTheDocument();
     expect(screen.getByText('Facia trasera — Volkswagen Jetta')).toBeInTheDocument();
@@ -70,129 +89,150 @@ describe('DemandaPanel — estados de la interfaz', () => {
   });
 
   it('sin filas: mensaje amable, nunca una tabla vacía', async () => {
-    global.fetch.mockReturnValue(respuestaJson({ filas: [] }));
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
+    getDocsMock.mockResolvedValue(busquedasSnapFake([]));
     render(<DemandaPanel />);
     expect(await screen.findByText(/Aún no hay suficiente demanda en tu estado/)).toBeInTheDocument();
   });
 
-  it('401: mensaje claro de que no se pudo verificar la cuenta', async () => {
-    global.fetch.mockReturnValue(respuestaJson({ error: 'No autenticado' }, 401));
+  it('rol distinto de "yonke": mensaje de no autorizado', async () => {
+    useAuthMock.mockReturnValue(authFake({ userRole: 'admin' }));
     render(<DemandaPanel />);
     expect(await screen.findByText(/No pudimos verificar tu cuenta o tu yonke/)).toBeInTheDocument();
   });
 
-  it('403: mismo mensaje de no autorizado', async () => {
-    global.fetch.mockReturnValue(respuestaJson({ error: 'No autorizado' }, 403));
+  it('sin yonkeId: mensaje de no autorizado', async () => {
+    useAuthMock.mockReturnValue(authFake({ yonkeId: null }));
     render(<DemandaPanel />);
     expect(await screen.findByText(/No pudimos verificar tu cuenta o tu yonke/)).toBeInTheDocument();
   });
 
-  it('error de red: mensaje genérico con botón Reintentar', async () => {
-    global.fetch.mockRejectedValue(new TypeError('Failed to fetch'));
+  it('yonke desactivado (activo:false): mismo mensaje de no autorizado', async () => {
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: false, estado: 'baja-california' }));
+    render(<DemandaPanel />);
+    expect(await screen.findByText(/No pudimos verificar tu cuenta o tu yonke/)).toBeInTheDocument();
+  });
+
+  it('yonke inexistente (borrado): mismo mensaje de no autorizado', async () => {
+    getDocMock.mockResolvedValue(yonkeDocFake(false, undefined));
+    render(<DemandaPanel />);
+    expect(await screen.findByText(/No pudimos verificar tu cuenta o tu yonke/)).toBeInTheDocument();
+  });
+
+  it('error de Firestore (ej. reglas no desplegadas): mensaje genérico con botón Reintentar', async () => {
+    getDocMock.mockRejectedValue(new Error('permission-denied'));
     render(<DemandaPanel />);
     expect(await screen.findByText(/Hubo un problema al cargar la demanda/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   });
 
-  it('error 5xx: mismo mensaje genérico con botón Reintentar', async () => {
-    global.fetch.mockReturnValue(respuestaJson({ error: 'boom' }, 500));
-    render(<DemandaPanel />);
-    expect(await screen.findByText(/Hubo un problema al cargar la demanda/)).toBeInTheDocument();
-  });
-
-  it('Reintentar vuelve a llamar al endpoint', async () => {
-    global.fetch.mockReturnValueOnce(respuestaJson({ error: 'boom' }, 500));
+  it('Reintentar vuelve a consultar Firestore', async () => {
+    getDocMock.mockRejectedValueOnce(new Error('boom'));
     render(<DemandaPanel />);
     const boton = await screen.findByRole('button', { name: 'Reintentar' });
 
-    global.fetch.mockReturnValueOnce(respuestaJson({ filas: [{ clave: 'Faro — Honda Civic', estado: 'Con resultado' }] }));
+    getDocMock.mockResolvedValueOnce(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
+    getDocsMock.mockResolvedValueOnce(busquedasSnapFake([
+      { pieza: 'Faro', marca: 'Honda', modelo: 'Civic', anio: 2010, conResultado: true, estado: 'ok' },
+      { pieza: 'Faro', marca: 'Honda', modelo: 'Civic', anio: 2011, conResultado: true, estado: 'ok' },
+    ]));
     await userEvent.click(boton);
 
     expect(await screen.findByText('Faro — Honda Civic')).toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(getDocMock).toHaveBeenCalledTimes(2);
   });
 });
 
 describe('DemandaPanel — selector de período', () => {
   it('arranca en 7 días', async () => {
-    global.fetch.mockReturnValue(respuestaJson({ filas: [] }));
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
+    getDocsMock.mockResolvedValue(busquedasSnapFake([]));
     render(<DemandaPanel />);
-    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-    expect(global.fetch.mock.calls[0][0]).toBe('/api/demanda-yonke?periodo=7');
+    await waitFor(() => expect(getDocsMock).toHaveBeenCalled());
     const boton7 = screen.getByRole('button', { name: '7 días' });
     expect(boton7).toHaveStyle({ backgroundColor: '#1A3C5E' });
   });
 
-  it('cambiar a 30 días llama al endpoint con ese periodo', async () => {
-    global.fetch.mockReturnValue(respuestaJson({ filas: [] }));
+  it('cambiar a 30 días vuelve a consultar Firestore', async () => {
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
+    getDocsMock.mockResolvedValue(busquedasSnapFake([]));
     render(<DemandaPanel />);
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getDocsMock).toHaveBeenCalledTimes(1));
 
     await userEvent.click(screen.getByRole('button', { name: '30 días' }));
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
-    expect(global.fetch.mock.calls[1][0]).toBe('/api/demanda-yonke?periodo=30');
+    await waitFor(() => expect(getDocsMock).toHaveBeenCalledTimes(2));
   });
 
-  it('manda el token real de getIdToken() en el header Authorization', async () => {
-    useAuthMock.mockReturnValue({ user: usuarioFake('mi-token-123'), loading: false });
-    global.fetch.mockReturnValue(respuestaJson({ filas: [] }));
+  it('nunca manda el estado real al servidor -- el código de geo lo deriva del yonke autenticado', async () => {
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'nuevo-leon' }));
+    getDocsMock.mockResolvedValue(busquedasSnapFake([]));
     render(<DemandaPanel />);
-    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-    const [, opciones] = global.fetch.mock.calls[0];
-    expect(opciones.headers.Authorization).toBe('Bearer mi-token-123');
+    await waitFor(() => expect(getDocsMock).toHaveBeenCalled());
+    const [consulta] = getDocsMock.mock.calls[0];
+    const clausulaEstado = consulta.args.find((a) => a?.args?.[0] === 'estadoGeografico');
+    expect(clausulaEstado.args).toEqual(['estadoGeografico', '==', 'nle']);
   });
 
   it('ignora la respuesta vieja si el periodo cambia antes de que responda', async () => {
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
     let resolverPrimera;
     const primera = new Promise((resolve) => { resolverPrimera = resolve; });
-    global.fetch.mockReturnValueOnce(primera);
+    getDocsMock.mockReturnValueOnce(primera);
     render(<DemandaPanel />);
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getDocsMock).toHaveBeenCalledTimes(1));
 
-    // Cambia de periodo ANTES de que la primera petición (7 días) resuelva.
-    global.fetch.mockReturnValueOnce(respuestaJson({ filas: [{ clave: 'Puerta — Nissan Sentra', estado: 'Con resultado' }] }));
+    // Cambia de periodo ANTES de que la primera consulta (7 días) resuelva.
+    getDocsMock.mockReturnValueOnce(Promise.resolve(busquedasSnapFake([
+      { pieza: 'Puerta', marca: 'Nissan', modelo: 'Sentra', anio: 2015, conResultado: true, estado: 'ok' },
+      { pieza: 'Puerta', marca: 'Nissan', modelo: 'Sentra', anio: 2016, conResultado: true, estado: 'ok' },
+    ])));
     await userEvent.click(screen.getByRole('button', { name: '30 días' }));
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(getDocsMock).toHaveBeenCalledTimes(2));
 
     expect(await screen.findByText('Puerta — Nissan Sentra')).toBeInTheDocument();
 
-    // Ahora resuelve la petición vieja (de 7 días) con datos DISTINTOS -- no debe pisar la vista.
-    resolverPrimera(respuestaJson({ filas: [{ clave: 'NO DEBERÍA VERSE', estado: 'Con resultado' }] }).then((r) => r));
+    // Ahora resuelve la consulta vieja (de 7 días) con datos DISTINTOS -- no debe pisar la vista.
+    resolverPrimera(busquedasSnapFake([
+      { pieza: 'NO', marca: 'DEBERÍA', modelo: 'VERSE', anio: 2020, conResultado: true, estado: 'ok' },
+      { pieza: 'NO', marca: 'DEBERÍA', modelo: 'VERSE', anio: 2021, conResultado: true, estado: 'ok' },
+    ]));
     await new Promise((r) => setTimeout(r, 0));
 
     expect(screen.getByText('Puerta — Nissan Sentra')).toBeInTheDocument();
-    expect(screen.queryByText('NO DEBERÍA VERSE')).not.toBeInTheDocument();
+    expect(screen.queryByText(/NO DEBERÍA VERSE/)).not.toBeInTheDocument();
   });
 });
 
 describe('DemandaPanel — nunca muestra números', () => {
   it('ningún texto renderizado contiene un dígito', async () => {
-    global.fetch.mockReturnValue(respuestaJson({
-      filas: [
-        { clave: 'Calavera — Dodge Stratus 2002', estado: 'Con resultado' },
-        { clave: 'Faro — Honda Civic 2010', estado: 'Demanda sin cubrir' },
-      ],
-    }));
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
+    getDocsMock.mockResolvedValue(busquedasSnapFake([
+      { pieza: 'Calavera', marca: 'Dodge', modelo: 'Stratus', anio: 2002, conResultado: true, estado: 'ok' },
+      { pieza: 'Calavera', marca: 'Dodge', modelo: 'Stratus', anio: 2003, conResultado: true, estado: 'ok' },
+      { pieza: 'Faro', marca: 'Honda', modelo: 'Civic', anio: 2010, conResultado: false, estado: 'sin_inventario' },
+      { pieza: 'Faro', marca: 'Honda', modelo: 'Civic', anio: 2011, conResultado: false, estado: 'sin_inventario' },
+    ]));
     const { container } = render(<DemandaPanel />);
-    await screen.findByText('Calavera — Dodge Stratus 2002');
+    await screen.findByText('Calavera — Dodge Stratus');
 
-    // El único lugar donde dígitos son legítimos es dentro de la propia `clave` que ya trae el
-    // endpoint (ej. el año de un vehículo, "2002") -- eso no es un número CALCULADO por la
-    // interfaz, es texto que el servidor ya arma. Lo que se prueba aquí es que la interfaz misma
-    // no agrega ningún dígito propio (conteos, badges de posición, porcentajes): quitamos el
-    // texto de cada `clave` y confirmamos que no queda ningún dígito en el resto de la pantalla.
+    // El único lugar donde dígitos son legítimos es dentro de la propia `clave` que ya arma
+    // construirReporteDemanda() (ej. el año de un vehículo) -- eso no es un número CALCULADO por
+    // la interfaz. Lo que se prueba aquí es que la interfaz misma no agrega ningún dígito propio
+    // (conteos, badges de posición, porcentajes): quitamos el texto de cada `clave` y confirmamos
+    // que no queda ningún dígito en el resto de la pantalla.
     let textoSinClaves = container.textContent;
     // "7 días"/"30 días" son etiquetas fijas del selector de período, no números calculados por
-    // la interfaz -- se excluyen del chequeo igual que las claves que ya trae el servidor.
-    for (const textoFijo of ['Calavera — Dodge Stratus 2002', 'Faro — Honda Civic 2010', '7 días', '30 días']) {
+    // la interfaz -- se excluyen del chequeo igual que las claves que ya arma el reporte.
+    for (const textoFijo of ['Calavera — Dodge Stratus', 'Faro — Honda Civic', '7 días', '30 días']) {
       textoSinClaves = textoSinClaves.split(textoFijo).join('');
     }
     expect(textoSinClaves).not.toMatch(/[0-9]/);
   });
 
   it('el selector de período tampoco imprime números fuera de la etiqueta fija "7 días"/"30 días"', async () => {
-    global.fetch.mockReturnValue(respuestaJson({ filas: [] }));
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
+    getDocsMock.mockResolvedValue(busquedasSnapFake([]));
     render(<DemandaPanel />);
     await screen.findByText(/Aún no hay suficiente demanda/);
     expect(screen.getByRole('button', { name: '7 días' })).toBeInTheDocument();
