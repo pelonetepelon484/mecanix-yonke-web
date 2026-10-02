@@ -55,7 +55,10 @@ export default async function VerificadosPage() {
             src="/sello_verificado.png"
             alt=""
             aria-hidden="true"
-            style={{ width: '64px', height: '64px', objectFit: 'contain', marginBottom: '12px' }}
+            style={{
+              width: '220px', maxWidth: '90%', height: 'auto', display: 'block', margin: '0 auto 12px',
+              border: '3px solid #1A1A1A', borderRadius: '8px', backgroundColor: '#fff',
+            }}
           />
           <h1 style={{ color: '#1A3C5E', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>
             Yonkes Verificados por Mecanix
