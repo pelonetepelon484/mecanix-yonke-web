@@ -102,6 +102,7 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
   const { fechaIngreso, ...vehiculo } = vDoc.data();
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
+    subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false,
     verificado: yonkeData.verificado === true,
     entregaInmediata: yonkeData.entregaInmediata === true,
     enviosNacionales: yonkeData.enviosNacionales === true,
@@ -125,6 +126,7 @@ function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
   const { marca, modelo, ano, pieza, precio } = pDoc.data();
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
+    subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false,
     verificado: yonkeData.verificado === true,
     entregaInmediata: yonkeData.entregaInmediata === true,
     enviosNacionales: yonkeData.enviosNacionales === true,
@@ -144,6 +146,7 @@ function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
   const { fechaIngreso, ...motor } = mDoc.data();
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
+    subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false,
     verificado: yonkeData.verificado === true,
     entregaInmediata: yonkeData.entregaInmediata === true,
     enviosNacionales: yonkeData.enviosNacionales === true,

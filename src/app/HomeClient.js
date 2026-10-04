@@ -385,6 +385,8 @@ export default function HomeClient({ textoSeoEstados }) {
           motor: mDoc.data(),
           yonkeNombre: yonkeData.nombre,
           logoUrl: yonkeData.logoUrl || null,
+          subdominio: yonkeData.subdominio || null,
+          subdominioActivo: yonkeData.subdominioActivo !== false,
           verificado: yonkeData.verificado === true,
           entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true,
           direccion: yonkeData.direccion,
@@ -464,7 +466,7 @@ export default function HomeClient({ textoSeoEstados }) {
         const calificacion = await obtenerCalificacion(yonkeDoc.id);
         return {
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
+          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
           metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
           ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
@@ -533,7 +535,7 @@ export default function HomeClient({ textoSeoEstados }) {
       const calificacion = await obtenerCalificacion(yonkeDoc.id);
       return {
         yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
+        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
         metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
         ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
@@ -580,7 +582,7 @@ export default function HomeClient({ textoSeoEstados }) {
       const calificacion = await obtenerCalificacion(yonkeDoc.id);
       return {
         yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
+        yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
         metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
         ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
@@ -670,7 +672,7 @@ export default function HomeClient({ textoSeoEstados }) {
         const calificacion = await obtenerCalificacion(yonkeDoc.id);
         const resultadoBase = {
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
-          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
+          yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
           metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
           ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
@@ -1203,6 +1205,18 @@ function obtenerEstadoAbierto(horario) {
 
         {formatearHorario(r.horario) && (
           <p style={{ color: '#555', fontSize: '13px', margin: '4px 0' }}>🕐 {formatearHorario(r.horario)}</p>
+        )}
+
+        {r.subdominio && r.subdominioActivo && (
+          <a
+            href={`https://${r.subdominio}.mecanixyonkevirtual.com`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#1A3C5E', fontSize: '13px', fontWeight: '600', margin: '4px 0', display: 'inline-block', textDecoration: 'underline' }}
+            onClick={() => registrarEvento('visita_subdominio', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, ciudad: r.ciudad || 'sin_ciudad' })}
+          >
+            🌐 Ver sitio de {r.yonkeNombre}
+          </a>
         )}
       </>
     );
@@ -2019,47 +2033,6 @@ function obtenerEstadoAbierto(horario) {
                 de ANUNCIARLOS aquí. Ver también src/app/panel/registro/page.js. */}
             <div style={{ marginTop: '32px' }}>
 
-              {/* Banner de bienvenida — oferta de una sola vez al registrarse por primera vez
-                  (NO permanente). Va arriba de todo para que sea lo primero que vea un yonke
-                  nuevo que llega a esta sección. */}
-              <div style={{
-                background: 'linear-gradient(135deg, #1A3C5E 0%, #234b73 100%)',
-                borderRadius: '20px', padding: '28px 24px', marginBottom: '28px',
-                textAlign: 'center', boxShadow: '0 8px 24px rgba(26,60,94,0.25)',
-                border: '2px solid #E8720C',
-              }}>
-                <p style={{ fontSize: '11px', fontWeight: '700', color: '#FFC98C', letterSpacing: '1px', margin: '0 0 8px', textTransform: 'uppercase' }}>
-                  Oferta de bienvenida — solo la primera vez
-                </p>
-                <h2 style={{ fontSize: '21px', fontWeight: '700', color: '#fff', margin: '0 0 16px' }}>
-                  🎁 Bienvenida para yonkes nuevos
-                </h2>
-                <div style={{ textAlign: 'left', maxWidth: '420px', margin: '0 auto 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {tieneVisitasPlanes && (
-                    <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-                      ✅ Tu primera captura de inventario corre por nuestra cuenta — vamos a tu yonke
-                      y cargamos todos tus vehículos <strong style={{ color: '#E8720C' }}>GRATIS</strong>.
-                    </p>
-                  )}
-                  <p style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-                    ✅ Tu yonke queda visible en Mecanix <strong style={{ color: '#E8720C' }}>GRATIS</strong> —
-                    actualmente sin mensualidades.
-                  </p>
-                </div>
-                <a
-                  href={`https://wa.me/5216611034260?text=Hola%2C%20quiero%20aprovechar%20la%20bienvenida%20para%20yonkes%20nuevos%20de%20Mecanix%20Yonke%20Virtual%20(${tieneVisitasPlanes ? 'primera%20captura%20gratis' : 'registro%20gratis'})`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={yonkeCtaButtonStyle}
-                  onClick={() => registrarEvento('clic_bienvenida_yonke_nuevo', {
-                    ubicacion: 'seccion_planes',
-                    plan_actual: 'visitante',
-                  })}
-                >
-                  🎁 Empezar gratis
-                </a>
-              </div>
-
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 8px' }}>
                   Así funciona para tu yonke
@@ -2095,14 +2068,31 @@ function obtenerEstadoAbierto(horario) {
                 margin: tieneVisitasPlanes ? undefined : '0 auto',
               }}>
 
-                {/* Plan Gratuito — única oferta pública hoy. */}
+                {/* Plan Gratuito — única oferta pública hoy. Sin precio aparte ("Gratis"): sería
+                    redundante con el nombre del plan y le resta formalidad a la tarjeta. */}
                 <div style={planCardStyle}>
                   <p style={planNombreStyle}>Plan Gratuito</p>
-                  <p style={planPrecioStyle}>Gratis</p>
                   <p style={planDescStyle}>
-                    Tu yonke aparece en el buscador de Mecanix, subes tu inventario, y los
-                    clientes te encuentran y te contactan directo por WhatsApp. Sin costo.
+                    Tu yonke aparece en el buscador de Mecanix y los clientes te contactan
+                    directo por WhatsApp. Incluye:
                   </p>
+                  <ul style={{ margin: '0 0 16px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {[
+                      'Tu yonke visible en el buscador público de Mecanix',
+                      'Inventario sin límite: vehículos, motores y piezas sueltas',
+                      'Reservaciones de clientes desde la plataforma',
+                      'Contacto directo por WhatsApp',
+                      'Demanda: qué buscan los clientes en tu estado',
+                      'Registro de compras de reciclaje',
+                      'Notas de garantía en PDF para tus ventas',
+                      'Calificaciones de tus clientes',
+                    ].map((item) => (
+                      <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
+                        <span style={{ color: '#2E7D32', fontWeight: '700' }}>✓</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
                   <div style={planNotaAzulStyle}>
                     Actualmente sin costo. Solo dejas la plataforma si tú decides darte de baja.
                   </div>
