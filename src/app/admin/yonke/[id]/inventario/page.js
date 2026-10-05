@@ -17,6 +17,7 @@ import PrecioInput, { PiezaPrecioInput } from '../../../../lib/PrecioInput';
 import { parsePrecio, esPrecioValido, formatPrecio } from '../../../../../lib/precio';
 import VehiculoFotosEditor from '../../../../panel/VehiculoFotosEditor';
 import FotoPiezaEditor from '../../../../panel/FotoPiezaEditor';
+import { borrarFotoPieza } from '../../../../lib/piezaFotoStorage';
 
 // vendidoAt es un Timestamp de Firestore — mismo patrón usado en panel/inventario/page.js.
 function timestampComoDate(valor) {
@@ -247,6 +248,10 @@ export default function InventarioAdminPage() {
 
   async function eliminarPiezaSuelta(piezaSueltaId) {
     if (!confirm('¿Eliminar esta pieza suelta?')) return;
+    const piezaSuelta = piezasSueltas.find((p) => p.id === piezaSueltaId);
+    if (piezaSuelta?.foto?.path) {
+      await borrarFotoPieza(piezaSuelta.foto.path).catch((err) => console.error('No se pudo borrar la foto de la pieza suelta', err));
+    }
     await deleteDoc(doc(db, 'yonkes', id, 'piezasSueltas', piezaSueltaId));
   }
 
@@ -288,6 +293,10 @@ export default function InventarioAdminPage() {
 
   async function eliminarMotor(motorId) {
     if (!confirm('¿Eliminar este motor/transmisión?')) return;
+    const motor = motores.find((m) => m.id === motorId);
+    if (motor?.foto?.path) {
+      await borrarFotoPieza(motor.foto.path).catch((err) => console.error('No se pudo borrar la foto del motor', err));
+    }
     await deleteDoc(doc(db, 'yonkes', id, 'motores', motorId));
   }
 

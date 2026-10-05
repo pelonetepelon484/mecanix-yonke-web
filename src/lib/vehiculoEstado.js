@@ -1,4 +1,5 @@
 import { doc, updateDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { borrarCarpetaStorage } from '../app/lib/borrarCarpetaStorage';
 
 // Compartido por panel/inventario/page.js (el yonke) y admin/yonke/[id]/inventario/page.js
 // (el mismo panel para el admin) — un solo lugar para no duplicar esta lógica entre los dos.
@@ -40,7 +41,15 @@ export async function reactivarVehiculo(db, yonkeId, vehiculoId) {
 
 // Borrado real y permanente — solo para errores de captura (vehículo duplicado, datos mal
 // cargados). El caller debe confirmar con el usuario ANTES de invocar esto.
+//
+// Borra también sus fotos en Storage (las 4 del vehículo + las de todas sus piezas, que viven en
+// la subcarpeta piezas/ bajo el mismo prefijo) por borrado recursivo, ANTES de borrar el
+// documento -- si la limpieza de Storage falla, se loguea pero no bloquea el borrado del
+// documento en sí, que es lo que el usuario está esperando.
 export async function eliminarVehiculoPorError(db, yonkeId, vehiculoId) {
+  await borrarCarpetaStorage(`yonkes/${yonkeId}/vehiculos/${vehiculoId}`).catch((error) => {
+    console.error('No se pudieron borrar las fotos del vehículo en Storage', error);
+  });
   const ref = doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoId);
   await deleteDoc(ref);
 }

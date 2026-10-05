@@ -6,6 +6,7 @@ import { collection, onSnapshot, query, orderBy, where, doc, updateDoc, setDoc, 
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import { borrarLogoYonke } from '../lib/subirLogoYonke';
+import { borrarCarpetaStorage } from '../lib/borrarCarpetaStorage';
 import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from '../lib/estados';
 import YonkeActividadBadge from '../lib/YonkeActividadBadge';
 import { ventaPublicaParaEscribir } from '../../lib/ventaPublicaRef';
@@ -298,6 +299,19 @@ export default function AdminPage() {
     } catch (e) {
       console.error(e);
       pasos.push({ nombre: 'Logo (Storage)', ok: false, detalle: e.message });
+    }
+
+    // Borrado por prefijo, recursivo: yonkes/{id}/** cubre de un jalón las fotos de vehículos,
+    // sus piezas, motores y piezas sueltas (todas viven bajo ese mismo prefijo). branding/{id}/**
+    // son promos/fondo/sobre-nosotros -- antes de esto se quedaban huérfanas en Storage al borrar
+    // un yonke (nunca se limpiaban, solo el logo); se cierra ese hueco aquí de paso.
+    try {
+      const nInventario = await borrarCarpetaStorage(`yonkes/${yonke.id}`);
+      const nBranding = await borrarCarpetaStorage(`branding/${yonke.id}`);
+      pasos.push({ nombre: 'Fotos de inventario y branding (Storage)', ok: true, detalle: `${nInventario + nBranding} archivo(s)` });
+    } catch (e) {
+      console.error(e);
+      pasos.push({ nombre: 'Fotos de inventario y branding (Storage)', ok: false, detalle: e.message });
     }
 
     try {
