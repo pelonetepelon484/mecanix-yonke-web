@@ -161,6 +161,12 @@ function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
     ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
+    // esMotor: true -- faltaba. Era inofensivo mientras nada leyera esta bandera (renderTarjetaMotor
+    // en HomeClient.js siempre asumió "es motor" solo por venir en resultadosMotores/Transmisiones,
+    // sin checarla), pero el código nuevo de fotos SÍ la revisa para decidir qué foto mostrar
+    // (r.motor.foto vs r.vehiculo.fotos.frontal) -- sin esto, caía al branch de vehículo y tronaba
+    // en r.vehiculo.marca porque este resultado nunca tuvo .vehiculo. Bug real, no solo de fotos.
+    esMotor: true,
     motorId: mDoc.id, motor, calificacion,
   };
 }
