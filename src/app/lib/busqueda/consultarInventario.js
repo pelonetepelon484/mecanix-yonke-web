@@ -123,7 +123,7 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
 // funcionan sin ningún cambio, porque solo leen esos mismos campos genéricos.
 function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
   const yonkeData = yonkeDoc.data();
-  const { marca, modelo, ano, pieza, precio } = pDoc.data();
+  const { marca, modelo, ano, pieza, precio, foto } = pDoc.data();
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
     subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false,
@@ -136,8 +136,14 @@ function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
     ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
     vehiculoId: pDoc.id, vehiculo: { marca, modelo, ano }, calificacion,
-    // Pieza confirmada + su precio opcional (null = "Consultar precio con el yonke" en la UI).
-    piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null },
+    // esPiezaSuelta: true -- a diferencia de un vehículo real con una pieza coincidente (que
+    // TAMBIÉN trae piezaResultado, ver buscarConSplitDePieza), aquí r.vehiculo es sintético (no
+    // hay documento de vehículo real detrás), así que la tarjeta debe mostrar la foto de la
+    // PIEZA, no una foto de vehículo que no existe.
+    esPiezaSuelta: true,
+    // Pieza confirmada + su precio opcional (null = "Consultar precio con el yonke" en la UI) y
+    // su foto opcional ({url, path} | null).
+    piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null, foto: foto || null },
   };
 }
 

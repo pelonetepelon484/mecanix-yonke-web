@@ -12,6 +12,25 @@ import AvisoPrivacidadReserva from './lib/AvisoPrivacidadReserva';
 import { VERSION_LEGAL } from '../lib/versionesLegales';
 import { conFallbackDePermisos } from '../lib/conFallbackDePermisos';
 import { elegirPiezaParaPrecio, esPrecioValido, formatPrecio } from '../lib/precio';
+import FotoTarjeta from './lib/FotoTarjeta';
+import VisorFotosVehiculo from './lib/VisorFotosVehiculo';
+
+// Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
+// propia foto, una pieza suelta la suya (r.vehiculo es sintético ahí, ver esPiezaSuelta en
+// consultarInventario.js/buscarPiezasSueltasManual), y cualquier otro resultado (vehículo real,
+// con o sin una pieza específica coincidente) muestra la foto frontal del vehículo.
+function fotoPrincipalDeResultado(r) {
+  if (r.esMotor) return r.motor?.foto?.url || null;
+  if (r.esPiezaSuelta) return r.piezaResultado?.foto?.url || null;
+  return r.vehiculo?.fotos?.frontal?.url || null;
+}
+
+function altFotoPrincipalDeResultado(r) {
+  if (r.esMotor) return `${r.motor.tipo} ${r.motor.marca} ${r.motor.modelo} ${r.motor.ano}`.trim();
+  if (r.esPiezaSuelta) return r.piezaResultado?.nombre || 'Pieza';
+  return `${r.vehiculo.marca} ${r.vehiculo.modelo} ${r.vehiculo.ano}`.trim();
+}
+
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', nombre, params);
@@ -151,6 +170,10 @@ function AvisoCompraSeguraCorto() {
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
 export default function HomeClient({ textoSeoEstados }) {
+  // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
+  // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
+  // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
+  const [visorVehiculo, setVisorVehiculo] = useState(null);
   const [ciudad, setCiudad] = useState('');
   const [tipoBusqueda, setTipoBusqueda] = useState('vehiculo');
   const [marca, setMarca] = useState('');
@@ -462,7 +485,7 @@ export default function HomeClient({ textoSeoEstados }) {
       });
       return await Promise.all(pares.map(async ({ yonkeDoc, vDoc }) => {
         const yonkeData = yonkeDoc.data();
-        const { marca: m, modelo: mo, ano: a, pieza, precio } = vDoc.data();
+        const { marca: m, modelo: mo, ano: a, pieza, precio, foto } = vDoc.data();
         const calificacion = await obtenerCalificacion(yonkeDoc.id);
         return {
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
@@ -471,7 +494,12 @@ export default function HomeClient({ textoSeoEstados }) {
           metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
           ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
           vehiculo: { marca: m, modelo: mo, ano: a }, calificacion,
-          piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null },
+          // esPiezaSuelta: true -- r.vehiculo es sintético aquí (sin documento real detrás), a
+          // diferencia de un vehículo real con una pieza coincidente (que también trae
+          // piezaResultado); la tarjeta debe mostrar la foto de la PIEZA, no la de un vehículo
+          // que no existe.
+          esPiezaSuelta: true,
+          piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null, foto: foto || null },
         };
       }));
     } catch (error) {
@@ -1254,45 +1282,57 @@ function obtenerEstadoAbierto(horario) {
 
         {renderInfoNegocio(r)}
 
-        {/* Resultado de motor/transmisión */}
-        {r.esMotor && (
-          <div style={{ backgroundColor: '#F0F4F8', borderRadius: '10px', padding: '12px', margin: '10px 0' }}>
-            <span style={{ backgroundColor: r.motor.tipo === 'Motor' ? '#E8720C' : '#1A3C5E', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '12px' }}>
-              {r.motor.tipo === 'Motor' ? '🔧 Motor' : '⚙️ Transmisión'}
-            </span>
-            <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: '8px 0 2px' }}>
-              {r.motor.marca} {r.motor.modelo} {r.motor.ano}
-            </p>
-            {r.motor.cilindrada && (
-              <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', margin: '10px 0' }}>
+          <FotoTarjeta
+            url={fotoPrincipalDeResultado(r)}
+            alt={altFotoPrincipalDeResultado(r)}
+            icono={r.esMotor ? '🔧' : '🚗'}
+            onClick={(!r.esMotor && !r.esPiezaSuelta && r.vehiculo?.fotos?.frontal)
+              ? () => setVisorVehiculo({ fotos: r.vehiculo.fotos, nombre: `${r.vehiculo.marca} ${r.vehiculo.modelo} ${r.vehiculo.ano}`.trim(), slotInicial: 'frontal' })
+              : undefined}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Resultado de motor/transmisión */}
+            {r.esMotor && (
+              <div style={{ backgroundColor: '#F0F4F8', borderRadius: '10px', padding: '12px' }}>
+                <span style={{ backgroundColor: r.motor.tipo === 'Motor' ? '#E8720C' : '#1A3C5E', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '12px' }}>
+                  {r.motor.tipo === 'Motor' ? '🔧 Motor' : '⚙️ Transmisión'}
+                </span>
+                <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: '8px 0 2px' }}>
+                  {r.motor.marca} {r.motor.modelo} {r.motor.ano}
+                </p>
+                {r.motor.cilindrada && (
+                  <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
+                )}
+                {renderPrecioMotor(r.motor)}
+              </div>
             )}
-            {renderPrecioMotor(r.motor)}
-          </div>
-        )}
 
-        {/* Resultado de vehículo */}
-        {!r.esMotor && (
-          <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 6px', fontWeight: '600' }}>
-            🚗 {r.vehiculo.marca} {r.vehiculo.modelo} {r.vehiculo.ano}
-            {r.vehiculo.ano !== parseInt(ano) && (
-              <span style={{ fontSize: '11px', color: '#E8720C', fontWeight: 'normal', marginLeft: '6px' }}>
-                (confirma compatibilidad con tu {ano})
+            {/* Resultado de vehículo */}
+            {!r.esMotor && (
+              <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '0 0 6px', fontWeight: '600' }}>
+                🚗 {r.vehiculo.marca} {r.vehiculo.modelo} {r.vehiculo.ano}
+                {r.vehiculo.ano !== parseInt(ano) && (
+                  <span style={{ fontSize: '11px', color: '#E8720C', fontWeight: 'normal', marginLeft: '6px' }}>
+                    (confirma compatibilidad con tu {ano})
+                  </span>
+                )}
+              </p>
+            )}
+
+            {/* Pieza encontrada por la cilindrada del vehículo (no por marca/modelo exacto de la
+                pieza) — ej. "arranque 3.6": el cliente debe saber que el match vino del tamaño de
+                motor de este vehículo, no de una búsqueda normal. Ver coincidePorCilindrada en
+                consultarInventario.js (lib/busqueda). */}
+            {!r.esMotor && r.coincidePorCilindrada && (
+              <span style={{ display: 'inline-block', backgroundColor: '#FFF3E0', color: '#E8720C', fontSize: '11px', fontWeight: 'bold', padding: '3px 9px', borderRadius: '12px', margin: '0 0 8px' }}>
+                🔧 Coincide por cilindrada {r.vehiculo.cilindrada}
               </span>
             )}
-          </p>
-        )}
 
-        {/* Pieza encontrada por la cilindrada del vehículo (no por marca/modelo exacto de la
-            pieza) — ej. "arranque 3.6": el cliente debe saber que el match vino del tamaño de
-            motor de este vehículo, no de una búsqueda normal. Ver coincidePorCilindrada en
-            consultarInventario.js (lib/busqueda). */}
-        {!r.esMotor && r.coincidePorCilindrada && (
-          <span style={{ display: 'inline-block', backgroundColor: '#FFF3E0', color: '#E8720C', fontSize: '11px', fontWeight: 'bold', padding: '3px 9px', borderRadius: '12px', margin: '0 0 8px' }}>
-            🔧 Coincide por cilindrada {r.vehiculo.cilindrada}
-          </span>
-        )}
-
-        {!r.esMotor && renderPrecioPieza(r)}
+            {!r.esMotor && renderPrecioPieza(r)}
+          </div>
+        </div>
 
         {r.metodosPago.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', marginBottom: '14px' }}>
@@ -1356,13 +1396,18 @@ function obtenerEstadoAbierto(horario) {
 
         {renderInfoNegocio(r)}
 
-        <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '10px 0 2px', fontWeight: '600' }}>
-          {icono} {r.motor.marca} {r.motor.modelo} {r.motor.ano}
-        </p>
-        {r.motor.cilindrada && (
-          <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
-        )}
-        {renderPrecioMotor(r.motor)}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', margin: '10px 0' }}>
+          <FotoTarjeta url={fotoPrincipalDeResultado(r)} alt={altFotoPrincipalDeResultado(r)} icono="🔧" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '0 0 2px', fontWeight: '600' }}>
+              {icono} {r.motor.marca} {r.motor.modelo} {r.motor.ano}
+            </p>
+            {r.motor.cilindrada && (
+              <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
+            )}
+            {renderPrecioMotor(r.motor)}
+          </div>
+        </div>
         {r.whatsapp && (
           <a
             href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp({ ...r, esMotor: true }))}`}
@@ -2215,6 +2260,15 @@ function obtenerEstadoAbierto(horario) {
             ))}
           </div>
         </div>
+      )}
+
+      {visorVehiculo && (
+        <VisorFotosVehiculo
+          fotos={visorVehiculo.fotos}
+          nombreVehiculo={visorVehiculo.nombre}
+          slotInicial={visorVehiculo.slotInicial}
+          onClose={() => setVisorVehiculo(null)}
+        />
       )}
 
       {modalVisible && (

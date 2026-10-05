@@ -12,6 +12,8 @@ import { whatsappHref } from '../../lib/whatsapp';
 import { registrarContactoVehiculo } from '../lib/registrarContactoVehiculo';
 import { conFallbackDePermisos } from '../../lib/conFallbackDePermisos';
 import AvisoPrivacidadReserva from '../lib/AvisoPrivacidadReserva';
+import FotoTarjeta from '../lib/FotoTarjeta';
+import VisorFotosVehiculo from '../lib/VisorFotosVehiculo';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -107,6 +109,9 @@ function BadgeVerificado() {
 }
 
 export default function TenantPageClient({ negocio, branding, inventario }) {
+  // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Las otras 3 fotos no se
+  // piden al navegador hasta que esto deja de ser null.
+  const [visorVehiculo, setVisorVehiculo] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const [filtroMarca, setFiltroMarca] = useState('');
   const [filtroTransmision, setFiltroTransmision] = useState('');
@@ -500,10 +505,19 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
               const hrefWhatsapp = hrefWhatsappVehiculo(v);
               return (
                 <div key={v.id} id={anchorVehiculo(v.id)} style={cardStyle}>
-                  <p style={itemTituloStyle(branding.colorPrimario)}>🚗 {v.marca} {v.modelo} {v.ano}</p>
-                  <p style={itemSubStyle}>
-                    {[v.transmision, v.traccion, v.configuracionMotor, v.cilindrada].filter(Boolean).join(' · ')}
-                  </p>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <FotoTarjeta
+                      url={v.fotos?.frontal?.url}
+                      alt={`${v.marca} ${v.modelo} ${v.ano}`.trim()}
+                      onClick={v.fotos?.frontal ? () => setVisorVehiculo({ fotos: v.fotos, nombre: `${v.marca} ${v.modelo} ${v.ano}`.trim(), slotInicial: 'frontal' }) : undefined}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={itemTituloStyle(branding.colorPrimario)}>🚗 {v.marca} {v.modelo} {v.ano}</p>
+                      <p style={itemSubStyle}>
+                        {[v.transmision, v.traccion, v.configuracionMotor, v.cilindrada].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                  </div>
 
                   {hrefWhatsapp && (
                     <a
@@ -578,18 +592,23 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
 
             {motoresFiltrados.map((m) => (
               <div key={m.id} style={cardStyle}>
-                <span style={tipoBadgeStyle(branding.colorAcento)}>
-                  {m.tipo === 'Motor' ? '🔧 Motor' : '⚙️ Transmisión'}
-                </span>
-                <p style={itemTituloStyle(branding.colorPrimario)}>
-                  {m.marca} {m.modelo} {m.ano}
-                </p>
-                <p style={itemSubStyle}>
-                  {[m.configuracionMotor, m.transmision, m.cilindrada].filter(Boolean).join(' · ')}
-                </p>
-                {esPrecioValido(m.precio)
-                  ? <p style={{ ...precioPiezaStyle, display: 'block', margin: '6px 0 0', fontSize: '15px', marginLeft: 0 }}>{formatPrecio(m.precio)}</p>
-                  : <p style={{ ...consultarPrecioStyle, display: 'block', margin: '6px 0 0', marginLeft: 0 }}>Consultar precio</p>}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <FotoTarjeta url={m.foto?.url} alt={`${m.tipo} ${m.marca} ${m.modelo} ${m.ano}`.trim()} icono="🔧" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={tipoBadgeStyle(branding.colorAcento)}>
+                      {m.tipo === 'Motor' ? '🔧 Motor' : '⚙️ Transmisión'}
+                    </span>
+                    <p style={itemTituloStyle(branding.colorPrimario)}>
+                      {m.marca} {m.modelo} {m.ano}
+                    </p>
+                    <p style={itemSubStyle}>
+                      {[m.configuracionMotor, m.transmision, m.cilindrada].filter(Boolean).join(' · ')}
+                    </p>
+                    {esPrecioValido(m.precio)
+                      ? <p style={{ ...precioPiezaStyle, display: 'block', margin: '6px 0 0', fontSize: '15px', marginLeft: 0 }}>{formatPrecio(m.precio)}</p>
+                      : <p style={{ ...consultarPrecioStyle, display: 'block', margin: '6px 0 0', marginLeft: 0 }}>Consultar precio</p>}
+                  </div>
+                </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
                   {whatsappHrefMotor(m) && (
                     <a href={whatsappHrefMotor(m)} target="_blank" rel="noopener noreferrer" style={whatsappBotonStyle}>
@@ -624,6 +643,15 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
         >
           💬
         </a>
+      )}
+
+      {visorVehiculo && (
+        <VisorFotosVehiculo
+          fotos={visorVehiculo.fotos}
+          nombreVehiculo={visorVehiculo.nombre}
+          slotInicial={visorVehiculo.slotInicial}
+          onClose={() => setVisorVehiculo(null)}
+        />
       )}
 
       {reservaVisible && (
