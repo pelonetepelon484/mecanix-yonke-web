@@ -15,6 +15,8 @@ import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPo
 import ItemFreshnessBadge from '../../../../lib/ItemFreshnessBadge';
 import PrecioInput, { PiezaPrecioInput } from '../../../../lib/PrecioInput';
 import { parsePrecio, esPrecioValido, formatPrecio } from '../../../../../lib/precio';
+import VehiculoFotosEditor from '../../../../panel/VehiculoFotosEditor';
+import FotoPiezaEditor from '../../../../panel/FotoPiezaEditor';
 
 // vendidoAt es un Timestamp de Firestore — mismo patrón usado en panel/inventario/page.js.
 function timestampComoDate(valor) {
@@ -71,6 +73,7 @@ export default function InventarioAdminPage() {
   // Modal pieza suelta — pieza sin vehículo registrado (yonkes/{id}/piezasSueltas). Igual que
   // Motores aquí en admin: solo agregar/eliminar, sin editar ni toggle de disponibilidad.
   const [piezaSueltaModalVisible, setPiezaSueltaModalVisible] = useState(false);
+  const [piezaSueltaEditando, setPiezaSueltaEditando] = useState(null);
   const [piezaSueltaNombre, setPiezaSueltaNombre] = useState(PIEZAS_CATALOGO_SUELTAS[0]);
   const [piezaSueltaMarca, setPiezaSueltaMarca] = useState('');
   const [piezaSueltaModelo, setPiezaSueltaModelo] = useState('');
@@ -155,6 +158,8 @@ export default function InventarioAdminPage() {
           marca: marca.trim(), modelo: modelo.trim(), ano: parseInt(ano),
           transmision, traccion, configuracionMotor, cilindrada: cilindrada.trim() || null,
         });
+        await registrarEnCatalogo(marca.trim(), modelo.trim());
+        setModalVisible(false);
       } else {
         const vehiculoRef = await addDoc(collection(db, 'yonkes', id, 'vehiculos'), {
           marca: marca.trim(), modelo: modelo.trim(), ano: parseInt(ano),
@@ -162,9 +167,12 @@ export default function InventarioAdminPage() {
           disponible: true, fechaIngreso: new Date(),
         });
         await crearPiezasComunes(vehiculoRef);
+        await registrarEnCatalogo(marca.trim(), modelo.trim());
+        // El vehículo ya quedó guardado -- se cambia el modal a modo "editar" (sin cerrarlo) para
+        // poder agregar las fotos en la misma interacción; el path de cada foto necesita el id
+        // del vehículo, que recién se generó aquí.
+        setVehiculoEditando({ id: vehiculoRef.id, fotos: {} });
       }
-      await registrarEnCatalogo(marca.trim(), modelo.trim());
-      setModalVisible(false);
     } catch (error) {
       console.error(error); alert('No se pudo guardar');
     } finally { setGuardando(false); }
@@ -186,8 +194,10 @@ export default function InventarioAdminPage() {
           configuracionMotor: motorTipo === 'Motor' ? motorConfiguracionMotor : deleteField(),
           transmision: motorTipo === 'Transmisión' ? motorTransmision : deleteField(),
         });
+        await registrarEnCatalogo(motorMarca.trim(), motorModelo.trim());
+        setMotorModalVisible(false);
       } else {
-        await addDoc(collection(db, 'yonkes', id, 'motores'), {
+        const motorRef = await addDoc(collection(db, 'yonkes', id, 'motores'), {
           tipo: motorTipo, marca: motorMarca.trim(), modelo: motorModelo.trim(),
           ano: parseInt(motorAno), cilindrada: motorCilindrada.trim() || null,
           disponible: true, fechaIngreso: new Date(),
@@ -195,15 +205,16 @@ export default function InventarioAdminPage() {
           ...(motorTipo === 'Motor' ? { configuracionMotor: motorConfiguracionMotor } : {}),
           ...(motorTipo === 'Transmisión' ? { transmision: motorTransmision } : {}),
         });
+        await registrarEnCatalogo(motorMarca.trim(), motorModelo.trim());
+        setMotorEditando({ id: motorRef.id, foto: null });
       }
-      await registrarEnCatalogo(motorMarca.trim(), motorModelo.trim());
-      setMotorModalVisible(false);
     } catch (error) {
       console.error(error); alert('No se pudo guardar');
     } finally { setGuardandoMotor(false); }
   }
 
   function abrirModalPiezaSuelta() {
+    setPiezaSueltaEditando(null);
     setPiezaSueltaNombre(PIEZAS_CATALOGO_SUELTAS[0]);
     setPiezaSueltaMarca(''); setPiezaSueltaModelo(''); setPiezaSueltaAno(''); setPiezaSueltaPrecio('');
     setPiezaSueltaModalVisible(true);
@@ -218,13 +229,15 @@ export default function InventarioAdminPage() {
     const precio = precioParsed.value;
     setGuardandoPiezaSuelta(true);
     try {
-      await addDoc(collection(db, 'yonkes', id, 'piezasSueltas'), {
+      const piezaSueltaRef = await addDoc(collection(db, 'yonkes', id, 'piezasSueltas'), {
         pieza: piezaSueltaNombre, marca: piezaSueltaMarca.trim(), modelo: piezaSueltaModelo.trim(),
         ano: parseInt(piezaSueltaAno), disponible: true, fechaIngreso: new Date(),
         ...(precio !== null ? { precio } : {}),
       });
       await registrarEnCatalogo(piezaSueltaMarca.trim(), piezaSueltaModelo.trim());
-      setPiezaSueltaModalVisible(false);
+      // Igual que vehículo/motor: ya quedó guardada, se cambia a modo "editar" sin cerrar para
+      // poder agregar la foto (opcional) en la misma interacción.
+      setPiezaSueltaEditando({ id: piezaSueltaRef.id, foto: null });
     } catch (error) {
       console.error('[guardarPiezaSuelta]', error?.code, error?.message, error);
       // Se muestra el código real (ej. permission-denied) para poder diagnosticar sin abrir la consola.
@@ -304,6 +317,28 @@ export default function InventarioAdminPage() {
   async function togglePieza(piezaId, disponibleActual) {
     const piezaRef = doc(db, 'yonkes', id, 'vehiculos', vehiculoSeleccionado.id, 'piezas', piezaId);
     await updateDoc(piezaRef, { disponible: !disponibleActual });
+  }
+
+  // Foto de una pieza del vehículo (dentro del modal de piezas) -- la lista `piezas` ya se
+  // actualiza sola vía onSnapshot, no hace falta sincronizar estado local aquí.
+  async function guardarFotoPieza(piezaId, nuevaFoto) {
+    const piezaRef = doc(db, 'yonkes', id, 'vehiculos', vehiculoSeleccionado.id, 'piezas', piezaId);
+    await updateDoc(piezaRef, { foto: nuevaFoto === null ? deleteField() : nuevaFoto });
+  }
+
+  // Foto de un motor/transmisión o de una pieza suelta -- motorEditando/piezaSueltaEditando son
+  // una foto local del modal (no reactiva a la lista completa), hay que sincronizarla a mano tras
+  // guardar en Firestore. Mismo patrón que panel/inventario/page.js.
+  async function guardarFotoMotor(motorId, nuevaFoto) {
+    const ref = doc(db, 'yonkes', id, 'motores', motorId);
+    await updateDoc(ref, { foto: nuevaFoto === null ? deleteField() : nuevaFoto });
+    setMotorEditando((prev) => (prev && prev.id === motorId ? { ...prev, foto: nuevaFoto } : prev));
+  }
+
+  async function guardarFotoPiezaSuelta(piezaSueltaId, nuevaFoto) {
+    const ref = doc(db, 'yonkes', id, 'piezasSueltas', piezaSueltaId);
+    await updateDoc(ref, { foto: nuevaFoto === null ? deleteField() : nuevaFoto });
+    setPiezaSueltaEditando((prev) => (prev && prev.id === piezaSueltaId ? { ...prev, foto: nuevaFoto } : prev));
   }
 
   const vehiculosActivos = vehiculos.filter((v) => v.disponible !== false);
@@ -483,7 +518,7 @@ export default function InventarioAdminPage() {
       {/* Modal vehículo */}
       {modalVisible && (
         <div style={overlayStyle}>
-          <div style={modalStyle}>
+          <div style={{ ...modalStyle, maxHeight: '85vh', overflowY: 'auto' }}>
             <h2 style={{ color: '#1A3C5E', fontSize: '18px', marginBottom: '16px' }}>
               {vehiculoEditando ? 'Editar vehículo' : 'Agregar vehículo'}
             </h2>
@@ -500,8 +535,18 @@ export default function InventarioAdminPage() {
             <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '6px' }}>Tracción</p>
             <SelectorOpciones opciones={OPCIONES_TRACCION} valor={traccion} onChange={setTraccion} />
             <input type="text" placeholder="Cilindrada (ej. 2.0L)" value={cilindrada} onChange={(e) => setCilindrada(e.target.value)} style={inputStyle} />
+            {vehiculoEditando && (
+              <VehiculoFotosEditor
+                yonkeId={id}
+                vehiculoId={vehiculoEditando.id}
+                fotos={vehiculoEditando.fotos || {}}
+                onChange={(nuevasFotos) => setVehiculoEditando((prev) => ({ ...prev, fotos: nuevasFotos }))}
+              />
+            )}
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-              <button onClick={() => setModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
+              <button onClick={() => setModalVisible(false)} style={cancelButtonStyle}>
+                {vehiculoEditando ? 'Listo' : 'Cancelar'}
+              </button>
               <button onClick={guardarVehiculo} disabled={guardando} style={confirmButtonStyle}>
                 {guardando ? 'Guardando...' : 'Guardar'}
               </button>
@@ -544,8 +589,23 @@ export default function InventarioAdminPage() {
             )}
             <input type="text" placeholder="Cilindrada (ej. 1.8L)" value={motorCilindrada} onChange={(e) => setMotorCilindrada(e.target.value)} style={inputStyle} />
             <PrecioInput value={motorPrecio} onChange={setMotorPrecio} inputStyle={inputStyle} />
+            {motorEditando && (
+              <>
+                <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '6px' }}>Foto (opcional)</p>
+                <div style={{ marginBottom: '12px' }}>
+                  <FotoPiezaEditor
+                    carpeta={`yonkes/${id}/motores`}
+                    id={motorEditando.id}
+                    foto={motorEditando.foto}
+                    onGuardar={(nuevaFoto) => guardarFotoMotor(motorEditando.id, nuevaFoto)}
+                  />
+                </div>
+              </>
+            )}
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-              <button onClick={() => setMotorModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
+              <button onClick={() => setMotorModalVisible(false)} style={cancelButtonStyle}>
+                {motorEditando ? 'Listo' : 'Cancelar'}
+              </button>
               <button onClick={guardarMotor} disabled={guardandoMotor} style={confirmButtonStyle}>
                 {guardandoMotor ? 'Guardando...' : 'Guardar'}
               </button>
@@ -578,8 +638,23 @@ export default function InventarioAdminPage() {
             />
             <input type="number" placeholder="Año" value={piezaSueltaAno} onChange={(e) => setPiezaSueltaAno(e.target.value)} style={inputStyle} />
             <PrecioInput value={piezaSueltaPrecio} onChange={setPiezaSueltaPrecio} inputStyle={inputStyle} />
+            {piezaSueltaEditando && (
+              <>
+                <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '6px' }}>Foto (opcional)</p>
+                <div style={{ marginBottom: '12px' }}>
+                  <FotoPiezaEditor
+                    carpeta={`yonkes/${id}/piezasSueltas`}
+                    id={piezaSueltaEditando.id}
+                    foto={piezaSueltaEditando.foto}
+                    onGuardar={(nuevaFoto) => guardarFotoPiezaSuelta(piezaSueltaEditando.id, nuevaFoto)}
+                  />
+                </div>
+              </>
+            )}
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-              <button onClick={() => setPiezaSueltaModalVisible(false)} style={cancelButtonStyle}>Cancelar</button>
+              <button onClick={() => setPiezaSueltaModalVisible(false)} style={cancelButtonStyle}>
+                {piezaSueltaEditando ? 'Listo' : 'Cancelar'}
+              </button>
               <button onClick={guardarPiezaSuelta} disabled={guardandoPiezaSuelta} style={confirmButtonStyle}>
                 {guardandoPiezaSuelta ? 'Guardando...' : 'Guardar'}
               </button>
@@ -600,10 +675,18 @@ export default function InventarioAdminPage() {
               <p style={{ textAlign: 'center', color: '#888' }}>Cargando...</p>
             ) : (
               piezas.map((p) => (
-                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #F4F5F5' }}>
-                  <span style={{ color: p.disponible ? '#333' : '#bbb', textDecoration: p.disponible ? 'none' : 'line-through', fontSize: '15px', flex: 1, minWidth: 0 }}>
-                    {p.nombre}
-                  </span>
+                <div key={p.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '8px', padding: '12px 0', borderBottom: '1px solid #F4F5F5' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '140px' }}>
+                    <FotoPiezaEditor
+                      carpeta={`yonkes/${id}/vehiculos/${vehiculoSeleccionado.id}/piezas`}
+                      id={p.id}
+                      foto={p.foto}
+                      onGuardar={(nuevaFoto) => guardarFotoPieza(p.id, nuevaFoto)}
+                    />
+                    <span style={{ color: p.disponible ? '#333' : '#bbb', textDecoration: p.disponible ? 'none' : 'line-through', fontSize: '15px', minWidth: 0 }}>
+                      {p.nombre}
+                    </span>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <PiezaPrecioInput key={p.id} precio={p.precio} onCommit={(precio) => guardarPrecioPieza(p.id, precio)} />
                     <input type="checkbox" checked={!!p.disponible} onChange={() => togglePieza(p.id, p.disponible)}

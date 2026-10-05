@@ -1,5 +1,18 @@
 import { dimensionesEscaladas } from '../../lib/imagenes';
 
+// Detecta una sola vez si el navegador sabe codificar WebP (Safari viejo no). Si se pide WebP y
+// no hay soporte, se sustituye por JPEG -- antes caía al default de canvas.toBlob() para un tipo
+// no soportado, que es SIEMPRE PNG (mucho más pesado, nunca lo que el llamador esperaba).
+let soportaWebPCache = null;
+function soportaWebP() {
+  if (soportaWebPCache !== null) return soportaWebPCache;
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  soportaWebPCache = canvas.toDataURL('image/webp').startsWith('data:image/webp');
+  return soportaWebPCache;
+}
+
 function cargarImagen(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -21,14 +34,16 @@ function aBlob(canvas, tipo, calidad) {
 // (ancho máx. 1200, WebP, tope de peso).
 //
 //  - maxAncho / maxAlto: límites de tamaño; nunca agranda.
-//  - tipo: formato de salida ('image/png', 'image/webp', …). Si el navegador no sabe codificar ese
-//    formato (Safari viejo no codifica WebP) devuelve otro; el llamador debe usar blob.type.
+//  - tipo: formato de salida ('image/png', 'image/webp', …). Si se pide WebP y el navegador no
+//    sabe codificarlo, se sustituye por JPEG antes de la primera pasada (ver soportaWebP arriba)
+//    -- el llamador de todas formas debe usar blob.type, nunca asumir que es lo que pidió.
 //  - calidad / maxBytes: con maxBytes, baja la calidad (de `calidad` a `calidadMinima`, de 0.1 en
 //    0.1) y, si aun así pesa de más, reduce el tamaño un 15% y repite (hasta 4 veces). Sin
 //    maxBytes hace una sola pasada.
 export async function comprimirImagen(file, {
   maxAncho, maxAlto, tipo = 'image/png', calidad = 0.85, calidadMinima = 0.4, maxBytes = null,
 } = {}) {
+  const tipoReal = tipo === 'image/webp' && !soportaWebP() ? 'image/jpeg' : tipo;
   const img = await cargarImagen(file);
   let { ancho, alto } = dimensionesEscaladas(img.width, img.height, { maxAncho, maxAlto });
 
@@ -38,10 +53,10 @@ export async function comprimirImagen(file, {
     canvas.height = alto;
     canvas.getContext('2d').drawImage(img, 0, 0, ancho, alto);
 
-    if (!maxBytes) return aBlob(canvas, tipo, calidad);
+    if (!maxBytes) return aBlob(canvas, tipoReal, calidad);
 
     for (let q = calidad; q >= calidadMinima - 1e-9; q -= 0.1) {
-      const blob = await aBlob(canvas, tipo, q);
+      const blob = await aBlob(canvas, tipoReal, q);
       if (blob.size <= maxBytes) return blob;
     }
     ancho = Math.max(1, Math.round(ancho * 0.85));
