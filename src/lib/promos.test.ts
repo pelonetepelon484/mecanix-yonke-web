@@ -48,7 +48,7 @@ describe('sanearPromoImagenes', () => {
 describe('mensaje y enlace de WhatsApp', () => {
   it('mensaje exacto de la especificación', () => {
     expect(mensajePromoWhatsapp('20% en alternadores', 'Yonke El Camino'))
-      .toBe('Hola, vi la promoción «20% en alternadores» de Yonke El Camino en Mecanix Yonke Virtual y me interesa. ¿Sigue disponible?');
+      .toBe('Hola, vi la promoción «20% en alternadores» de Yonke El Camino y me interesa. ¿Sigue disponible?');
   });
   it('enlace wa.me con el texto codificado', () => {
     const href = whatsappHrefPromo('664 123 4567', '20% en alternadores', 'Yonke El Camino');

@@ -32,6 +32,22 @@ function normalizar(texto) {
   return (texto ?? '').toString().toLowerCase().normalize('NFD').replace(DIACRITICOS_COMBINABLES, '');
 }
 
+// Luminancia percibida simplificada (no necesita precisión WCAG, solo decidir si el crédito de
+// Mecanix en el footer debe usar el logo blanco o el azul normal) -- branding.colorFondo lo
+// personaliza cada yonke, así que un fondo oscuro es un caso real, no hipotético.
+function esColorOscuro(hex) {
+  if (!hex || typeof hex !== 'string') return false;
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (h.length !== 6) return false;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) return false;
+  const luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminancia < 0.5;
+}
+
 function obtenerEstadoAbierto(horario) {
   if (!horario) return null;
   const ahora = new Date();
@@ -290,7 +306,7 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
   // Enlace + registro de "toque" para el botón de WhatsApp de un vehículo — compartido entre la
   // tarjeta y el panel expandido. null si el yonke no tiene WhatsApp válido (el botón se oculta).
   // Botón flotante general — mensaje genérico (no ligado a un vehículo en particular).
-  const whatsappHrefGeneral = whatsappHref(negocio.whatsapp, `Hola, encontré ${branding.nombre} en Mecanix Yonke Virtual y tengo una pregunta.`);
+  const whatsappHrefGeneral = whatsappHref(negocio.whatsapp, 'Hola, vi su página y tengo una pregunta.');
 
   function hrefWhatsappVehiculo(v) {
     if (typeof window === 'undefined') return null;
@@ -318,17 +334,24 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
         padding: '28px 16px',
       }}>
         <div style={{ maxWidth: '820px', margin: '0 auto', textAlign: 'center' }}>
-          <div style={logoMarcoStyle}>
-            <img
-              src={branding.logoUrl}
-              alt={branding.nombre}
-              style={{
-                width: '100%', maxWidth: 'min(770px, 90vw)',
-                height: 'auto', maxHeight: '252px',
-                objectFit: 'contain', display: 'block',
-              }}
-            />
-          </div>
+          {/* El logo es opcional (branding.logoUrl es null si el yonke nunca subió uno -- ya NO
+              cae al logo de Mecanix, ver getTenant.js). El nombre SIEMPRE se muestra como texto,
+              además del logo cuando existe -- nunca solo el logo, para que el header identifique
+              al yonke incluso sin imagen. */}
+          {branding.logoUrl && (
+            <div style={logoMarcoStyle}>
+              <img
+                src={branding.logoUrl}
+                alt={branding.nombre}
+                style={{
+                  width: '100%', maxWidth: 'min(770px, 90vw)',
+                  height: 'auto', maxHeight: '252px',
+                  objectFit: 'contain', display: 'block',
+                }}
+              />
+            </div>
+          )}
+          <p style={nombreHeaderStyle}>{branding.nombre}</p>
         </div>
       </div>
 
@@ -624,13 +647,30 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           </>
         )}
 
-        {negocio.tienePoliticas && (
-          <footer style={footerStyle}>
+        <footer style={footerStyle}>
+          {negocio.tienePoliticas && (
             <a href="/politicas" style={footerEnlaceStyle(branding.colorPrimario)}>
               Políticas y garantía →
             </a>
-          </footer>
-        )}
+          )}
+          {/* Crédito discreto de Mecanix -- nunca debe competir visualmente con el contenido del
+              yonke ni con "Políticas y garantía" de arriba, por eso va aparte, chico y gris. Logo
+              blanco si el fondo del yonke es oscuro (colorFondo personalizable por el yonke),
+              si no la versión normal (azul) del wordmark. */}
+          <a
+            href="https://mecanixyonkevirtual.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={creditoMecanixStyle}
+          >
+            Con tecnología
+            <img
+              src={esColorOscuro(branding.colorFondo) ? '/logo-mecanix-blanco.webp' : '/logo-mecanix-palabra.webp'}
+              alt="Mecanix"
+              style={{ height: '17px', width: 'auto', verticalAlign: 'middle' }}
+            />
+          </a>
+        </footer>
       </div>
 
       {negocio.whatsapp && whatsappHrefGeneral && (
@@ -694,6 +734,10 @@ const logoMarcoStyle = {
   backgroundColor: '#fff', borderRadius: '16px', padding: '18px 28px',
   marginBottom: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
 };
+const nombreHeaderStyle = {
+  color: '#fff', fontSize: '22px', fontWeight: '700', margin: 0,
+  textShadow: '0 1px 3px rgba(0,0,0,0.25)',
+};
 const infoCardStyle = {
   backgroundColor: '#fff', borderRadius: '16px', padding: '16px', marginBottom: '18px',
   boxShadow: '0 4px 16px rgba(0,0,0,0.08)', position: 'relative', overflow: 'hidden',
@@ -744,6 +788,10 @@ const piezaRowStyle = (destacada) => ({
 });
 const footerStyle = { textAlign: 'center', marginTop: '28px', paddingTop: '18px', borderTop: '1px solid #E5E8EC' };
 const footerEnlaceStyle = (color) => ({ color, fontSize: '13px', fontWeight: '700', textDecoration: 'none' });
+const creditoMecanixStyle = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+  color: '#999', fontSize: '12px', textDecoration: 'none', marginTop: '10px',
+};
 const whatsappVehiculoBtnStyle = {
   display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '10px',
   padding: '10px 14px', borderRadius: '10px', backgroundColor: '#25D366', color: '#fff',

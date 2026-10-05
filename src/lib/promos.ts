@@ -41,7 +41,7 @@ export function sanearPromoImagenes(valor: unknown): PromoImagen[] {
 }
 
 export function mensajePromoWhatsapp(titulo: string, nombreComercial: string): string {
-  return `Hola, vi la promoción «${titulo}» de ${nombreComercial} en Mecanix Yonke Virtual y me interesa. ¿Sigue disponible?`;
+  return `Hola, vi la promoción «${titulo}» de ${nombreComercial} y me interesa. ¿Sigue disponible?`;
 }
 
 // Enlace wa.me para tocar una promoción; null si el yonke no tiene WhatsApp válido.

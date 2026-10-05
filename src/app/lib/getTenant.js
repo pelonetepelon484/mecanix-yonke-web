@@ -6,7 +6,6 @@ import { sanearSobreNosotros } from '../../lib/sobreNosotros';
 import { sanearFondoUrl } from '../../lib/fondoTenant';
 
 const DEFAULT_BRANDING = {
-  logoUrl: '/mecanix-logo.webp',
   colorPrimario: '#1A3C5E',
   colorAcento: '#E8720C',
   colorFondo: '#F0F2F5',
@@ -72,8 +71,10 @@ export function resolveBranding(tenant) {
   return {
     nombre: b.nombreComercial || tenant.nombre || 'Yonke Demo',
     // El logo puede vivir en branding.logoUrl (registro) o en logoUrl de nivel superior
-    // (panel/perfil, que solo escribe ahí) — se revisan ambos antes de caer al default.
-    logoUrl: b.logoUrl || tenant.logoUrl || DEFAULT_BRANDING.logoUrl,
+    // (panel/perfil, que solo escribe ahí). A propósito SIN fallback al logo de Mecanix: si el
+    // yonke no subió uno, null -- la pantalla debe mostrar su nombre como texto, nunca el logo
+    // de Mecanix como si fuera el del yonke (ver TenantPageClient.js).
+    logoUrl: b.logoUrl || tenant.logoUrl || null,
     colorPrimario: b.colorPrimario || DEFAULT_BRANDING.colorPrimario,
     colorAcento: b.colorAcento || DEFAULT_BRANDING.colorAcento,
     colorFondo: b.colorFondo || DEFAULT_BRANDING.colorFondo,

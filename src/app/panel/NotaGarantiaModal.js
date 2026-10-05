@@ -261,7 +261,7 @@ function NotaImprimible({ venta, nombreYonke, logoUrl, nombreCliente, telefonoCl
         </div>
       </div>
 
-      <p style={{ textAlign: 'center', fontSize: '10px', color: '#aaa', marginTop: '20px' }}>Generado con Mecanix Yonke Virtual</p>
+      <p style={{ textAlign: 'center', fontSize: '10px', color: '#aaa', marginTop: '20px' }}>Con tecnología Mecanix</p>
     </div>
   );
 }

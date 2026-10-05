@@ -1436,9 +1436,9 @@ function obtenerEstadoAbierto(horario) {
         {/* Header de marca — compartido entre las dos pestañas, no se repite ni desaparece
             al cambiar de una a otra. */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img src="/mecanix-logo.webp" alt="Mecanix" style={{ width: '220px', maxWidth: '100%', margin: '0 auto', display: 'block' }} />
-          <p style={{ fontSize: '13px', color: '#E8720C', letterSpacing: '3px', marginTop: '8px', fontWeight: '700' }}>
-            YONKE VIRTUAL
+          <img src="/logo-mecanix-v2.webp" alt="Mecanix" style={{ width: '220px', maxWidth: '100%', margin: '0 auto', display: 'block' }} />
+          <p style={{ fontSize: '14px', color: '#E8720C', letterSpacing: '1.5px', marginTop: '8px', fontWeight: '700', maxWidth: '280px', marginLeft: 'auto', marginRight: 'auto' }}>
+            MOTOR DE BÚSQUEDA DE AUTOPARTES
           </p>
         </div>
 
@@ -1456,7 +1456,7 @@ function obtenerEstadoAbierto(horario) {
         {pestanaActiva === 'cliente' && (
           <>
             <p style={{ textAlign: 'center', fontSize: '16px', color: '#1A3C5E', fontWeight: '600', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 20px' }}>
-              Encuentra tu autoparte usada entre nuestros yonkes registrados y contáctalos directo.
+              Encuentra la autoparte usada que necesitas y contacta directo al yonke.
             </p>
 
             {/* Selector de estado — aplica tanto al buscador inteligente como al avanzado (mismo
@@ -2062,7 +2062,7 @@ function obtenerEstadoAbierto(horario) {
                 ¿Administras un yonke?
               </h3>
               <p style={{ fontSize: '14px', color: '#555', margin: '0 0 6px', lineHeight: '1.6' }}>
-                Únete a nuestra red y conecta con miles de compradores.
+                Tu inventario, tu nombre, tus clientes. Mecanix solo hace que te encuentren.
               </p>
               <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 20px', lineHeight: '1.6' }}>
                 ⚠️ Tu perfil será verificado por nuestro equipo en un plazo de 24 horas antes de aparecer en la plataforma.
@@ -2083,7 +2083,7 @@ function obtenerEstadoAbierto(horario) {
                   Así funciona para tu yonke
                 </h2>
                 <p style={{ fontSize: '14px', color: '#666', margin: 0, lineHeight: '1.5' }}>
-                  Pon tu inventario en línea y recibe clientes listos para comprar.
+                  Los clientes te contactan directo a tu WhatsApp.
                 </p>
               </div>
 
