@@ -20,15 +20,15 @@ import VisorFotosVehiculo from './lib/VisorFotosVehiculo';
 // consultarInventario.js/buscarPiezasSueltasManual), y cualquier otro resultado (vehículo real,
 // con o sin una pieza específica coincidente) muestra la foto frontal del vehículo.
 function fotoPrincipalDeResultado(r) {
-  if (r.esMotor) return r.motor?.foto?.url || null;
-  if (r.esPiezaSuelta) return r.piezaResultado?.foto?.url || null;
-  return r.vehiculo?.fotos?.frontal?.url || null;
+  if (r?.esMotor) return r.motor?.foto?.url || null;
+  if (r?.esPiezaSuelta) return r.piezaResultado?.foto?.url || null;
+  return r?.vehiculo?.fotos?.frontal?.url || null;
 }
 
 function altFotoPrincipalDeResultado(r) {
-  if (r.esMotor) return `${r.motor.tipo} ${r.motor.marca} ${r.motor.modelo} ${r.motor.ano}`.trim();
-  if (r.esPiezaSuelta) return r.piezaResultado?.nombre || 'Pieza';
-  return `${r.vehiculo.marca} ${r.vehiculo.modelo} ${r.vehiculo.ano}`.trim();
+  if (r?.esMotor) return `${r.motor?.tipo || ''} ${r.motor?.marca || ''} ${r.motor?.modelo || ''} ${r.motor?.ano || ''}`.replace(/\s+/g, ' ').trim();
+  if (r?.esPiezaSuelta) return r.piezaResultado?.nombre || 'Pieza';
+  return `${r?.vehiculo?.marca || ''} ${r?.vehiculo?.modelo || ''} ${r?.vehiculo?.ano || ''}`.replace(/\s+/g, ' ').trim();
 }
 
 function registrarEvento(nombre, params = {}) {
@@ -1311,8 +1311,8 @@ function obtenerEstadoAbierto(horario) {
             {/* Resultado de vehículo */}
             {!r.esMotor && (
               <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '0 0 6px', fontWeight: '600' }}>
-                🚗 {r.vehiculo.marca} {r.vehiculo.modelo} {r.vehiculo.ano}
-                {r.vehiculo.ano !== parseInt(ano) && (
+                🚗 {r.vehiculo?.marca} {r.vehiculo?.modelo} {r.vehiculo?.ano}
+                {r.vehiculo?.ano !== parseInt(ano) && (
                   <span style={{ fontSize: '11px', color: '#E8720C', fontWeight: 'normal', marginLeft: '6px' }}>
                     (confirma compatibilidad con tu {ano})
                   </span>
@@ -1326,7 +1326,7 @@ function obtenerEstadoAbierto(horario) {
                 consultarInventario.js (lib/busqueda). */}
             {!r.esMotor && r.coincidePorCilindrada && (
               <span style={{ display: 'inline-block', backgroundColor: '#FFF3E0', color: '#E8720C', fontSize: '11px', fontWeight: 'bold', padding: '3px 9px', borderRadius: '12px', margin: '0 0 8px' }}>
-                🔧 Coincide por cilindrada {r.vehiculo.cilindrada}
+                🔧 Coincide por cilindrada {r.vehiculo?.cilindrada}
               </span>
             )}
 
