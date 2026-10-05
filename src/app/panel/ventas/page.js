@@ -131,10 +131,12 @@ export default function VentasPanel() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('Mecanix Yonke Virtual', 14, 14);
+      // Título principal: el nombre del yonke (es SU reporte), no "Mecanix Yonke Virtual" -- antes
+      // el PDF nunca mostraba el nombre del yonke en ningún lado.
+      doc.text(nombreYonke || 'Reporte de Ventas', 14, 14);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text('Reporte de Ventas', 14, 22);
+      doc.text(nombreYonke ? 'Reporte de Ventas · Con tecnología Mecanix' : 'Con tecnología Mecanix', 14, 22);
       doc.text(`Generado: ${new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}`, 14, 29);
 
       let y = 42;

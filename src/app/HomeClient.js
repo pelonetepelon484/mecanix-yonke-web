@@ -2027,8 +2027,8 @@ function obtenerEstadoAbierto(horario) {
               </h2>
               <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.8', margin: 0 }}>
                 Mecanix Yonke Virtual es el buscador de <strong>refacciones y autopartes usadas</strong> de
-                México — el <strong>deshuesadero virtual</strong> que conecta compradores con <strong>yonkes</strong> y
-                deshuesaderos confiables. Encuentra motores, transmisiones, puertas, faroles, defensas y más
+                México: la plataforma que conecta compradores con <strong>yonkes</strong> y
+                deshuesaderos confiables en todo el país. Encuentra motores, transmisiones, puertas, faroles, defensas y más
                 piezas de carro a precios accesibles, de las marcas Nissan, Toyota, Chevrolet, Honda, Ford y
                 muchas más. {textoSeoEstados}
               </p>

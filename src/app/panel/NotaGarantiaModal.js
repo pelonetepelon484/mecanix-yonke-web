@@ -220,7 +220,13 @@ function NotaImprimible({ venta, nombreYonke, logoUrl, nombreCliente, telefonoCl
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '2px solid #1A3C5E', paddingBottom: '10px', marginBottom: '14px' }}>
         {logoUrl && <img src={logoUrl} alt={nombreYonke} style={{ width: '48px', height: '48px', objectFit: 'contain' }} />}
         <div>
-          <p style={{ margin: 0, fontWeight: 'bold', fontSize: '17px', color: '#1A3C5E' }}>{nombreYonke || 'Mecanix Yonke Virtual'}</p>
+          {/* Fallback a 'Tu yonke' (no a "Mecanix Yonke Virtual"): este nombre encabeza una nota de
+              garantía que emite el YONKE, no Mecanix (que explícitamente no es el vendedor, ver
+              terminos/page.js) -- mostrar el nombre de Mecanix ahí sería incorrecto, no solo una
+              cuestión de marca. nombreYonke carga async desde Firestore y arranca en '', así que
+              este fallback sí es alcanzable en un ticket real mientras carga o si al doc le falta
+              el campo nombre. */}
+          <p style={{ margin: 0, fontWeight: 'bold', fontSize: '17px', color: '#1A3C5E' }}>{nombreYonke || 'Tu yonke'}</p>
           <p style={{ margin: '2px 0 0', fontWeight: 'bold', fontSize: '13px', letterSpacing: '1px', color: '#555' }}>NOTA DE GARANTÍA</p>
         </div>
       </div>
