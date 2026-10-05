@@ -346,22 +346,24 @@ export default function InventarioPanel() {
     await eliminarVehiculoPorError(db, yonkeId, vehiculoId);
   }
 
+  // Orden a propósito: primero el documento (lo que el usuario espera), después la foto en
+  // Storage -- si la limpieza de Storage falla, se loguea pero nunca se revierte el borrado.
   async function eliminarMotor(motorId) {
     if (!confirm('¿Seguro que quieres eliminarlo?')) return;
     const motor = motores.find((m) => m.id === motorId);
-    if (motor?.foto?.path) {
-      await borrarFotoPieza(motor.foto.path).catch((err) => console.error('No se pudo borrar la foto del motor', err));
-    }
     await deleteDoc(doc(db, 'yonkes', yonkeId, 'motores', motorId));
+    if (motor?.foto?.path) {
+      await borrarFotoPieza(motor.foto.path).catch((err) => console.error('No se pudo borrar la foto del motor (ya se borró el motor)', err));
+    }
   }
 
   async function eliminarPiezaSuelta(piezaSueltaId) {
     if (!confirm('¿Seguro que quieres eliminarla?')) return;
     const piezaSuelta = piezasSueltas.find((p) => p.id === piezaSueltaId);
-    if (piezaSuelta?.foto?.path) {
-      await borrarFotoPieza(piezaSuelta.foto.path).catch((err) => console.error('No se pudo borrar la foto de la pieza suelta', err));
-    }
     await deleteDoc(doc(db, 'yonkes', yonkeId, 'piezasSueltas', piezaSueltaId));
+    if (piezaSuelta?.foto?.path) {
+      await borrarFotoPieza(piezaSuelta.foto.path).catch((err) => console.error('No se pudo borrar la foto de la pieza suelta (ya se borró)', err));
+    }
   }
 
   async function toggleDisponibilidadMotor(motor) {

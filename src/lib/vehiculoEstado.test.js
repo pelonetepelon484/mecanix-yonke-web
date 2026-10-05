@@ -24,21 +24,27 @@ beforeEach(() => {
 });
 
 describe('eliminarVehiculoPorError', () => {
-  it('borra las fotos en Storage (prefijo del vehículo) antes de borrar el documento', async () => {
+  it('borra primero el documento de Firestore y DESPUÉS las fotos en Storage', async () => {
     const orden = [];
-    borrarCarpetaStorageMock.mockImplementation(async () => { orden.push('storage'); return 3; });
     deleteDocMock.mockImplementation(async () => { orden.push('firestore'); });
+    borrarCarpetaStorageMock.mockImplementation(async () => { orden.push('storage'); return 3; });
 
     await eliminarVehiculoPorError({}, 'y1', 'v1');
 
     expect(borrarCarpetaStorageMock).toHaveBeenCalledWith('yonkes/y1/vehiculos/v1');
-    expect(orden).toEqual(['storage', 'firestore']);
+    expect(orden).toEqual(['firestore', 'storage']);
   });
 
-  it('si falla la limpieza de Storage, igual borra el documento (no se bloquea el borrado)', async () => {
+  it('si falla la limpieza de Storage, el documento ya se había borrado (no se revierte)', async () => {
     borrarCarpetaStorageMock.mockRejectedValue(new Error('permission-denied'));
     await expect(eliminarVehiculoPorError({}, 'y1', 'v1')).resolves.toBeUndefined();
     expect(deleteDocMock).toHaveBeenCalled();
+  });
+
+  it('si falla el borrado del documento, NUNCA intenta limpiar Storage', async () => {
+    deleteDocMock.mockRejectedValue(new Error('permission-denied'));
+    await expect(eliminarVehiculoPorError({}, 'y1', 'v1')).rejects.toThrow('permission-denied');
+    expect(borrarCarpetaStorageMock).not.toHaveBeenCalled();
   });
 });
 

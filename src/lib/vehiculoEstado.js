@@ -42,14 +42,16 @@ export async function reactivarVehiculo(db, yonkeId, vehiculoId) {
 // Borrado real y permanente — solo para errores de captura (vehículo duplicado, datos mal
 // cargados). El caller debe confirmar con el usuario ANTES de invocar esto.
 //
-// Borra también sus fotos en Storage (las 4 del vehículo + las de todas sus piezas, que viven en
-// la subcarpeta piezas/ bajo el mismo prefijo) por borrado recursivo, ANTES de borrar el
-// documento -- si la limpieza de Storage falla, se loguea pero no bloquea el borrado del
-// documento en sí, que es lo que el usuario está esperando.
+// Orden a propósito: PRIMERO el documento de Firestore (es lo que el usuario está esperando y lo
+// que de verdad importa que desaparezca), DESPUÉS sus fotos en Storage (las 4 del vehículo + las
+// de todas sus piezas, que viven en la subcarpeta piezas/ bajo el mismo prefijo, por borrado
+// recursivo). Si la limpieza de Storage falla, se loguea pero NUNCA se revierte el borrado del
+// documento -- unas fotos huérfanas en Storage son un problema menor comparado con dejar el
+// vehículo sin poder borrarse por un error de Storage.
 export async function eliminarVehiculoPorError(db, yonkeId, vehiculoId) {
-  await borrarCarpetaStorage(`yonkes/${yonkeId}/vehiculos/${vehiculoId}`).catch((error) => {
-    console.error('No se pudieron borrar las fotos del vehículo en Storage', error);
-  });
   const ref = doc(db, 'yonkes', yonkeId, 'vehiculos', vehiculoId);
   await deleteDoc(ref);
+  await borrarCarpetaStorage(`yonkes/${yonkeId}/vehiculos/${vehiculoId}`).catch((error) => {
+    console.error('No se pudieron borrar las fotos del vehículo en Storage (el vehículo ya se borró)', error);
+  });
 }

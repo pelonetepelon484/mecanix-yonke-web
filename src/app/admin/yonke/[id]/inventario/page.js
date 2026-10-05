@@ -246,13 +246,15 @@ export default function InventarioAdminPage() {
     } finally { setGuardandoPiezaSuelta(false); }
   }
 
+  // Orden a propósito: primero el documento, después la foto en Storage -- si la limpieza de
+  // Storage falla, se loguea pero nunca se revierte el borrado.
   async function eliminarPiezaSuelta(piezaSueltaId) {
     if (!confirm('¿Eliminar esta pieza suelta?')) return;
     const piezaSuelta = piezasSueltas.find((p) => p.id === piezaSueltaId);
-    if (piezaSuelta?.foto?.path) {
-      await borrarFotoPieza(piezaSuelta.foto.path).catch((err) => console.error('No se pudo borrar la foto de la pieza suelta', err));
-    }
     await deleteDoc(doc(db, 'yonkes', id, 'piezasSueltas', piezaSueltaId));
+    if (piezaSuelta?.foto?.path) {
+      await borrarFotoPieza(piezaSuelta.foto.path).catch((err) => console.error('No se pudo borrar la foto de la pieza suelta (ya se borró)', err));
+    }
   }
 
   function abrirModalSacarDelInventario(vehiculo) {
@@ -291,13 +293,15 @@ export default function InventarioAdminPage() {
     await eliminarVehiculoPorError(db, id, vehiculoId);
   }
 
+  // Orden a propósito: primero el documento, después la foto en Storage -- si la limpieza de
+  // Storage falla, se loguea pero nunca se revierte el borrado.
   async function eliminarMotor(motorId) {
     if (!confirm('¿Eliminar este motor/transmisión?')) return;
     const motor = motores.find((m) => m.id === motorId);
-    if (motor?.foto?.path) {
-      await borrarFotoPieza(motor.foto.path).catch((err) => console.error('No se pudo borrar la foto del motor', err));
-    }
     await deleteDoc(doc(db, 'yonkes', id, 'motores', motorId));
+    if (motor?.foto?.path) {
+      await borrarFotoPieza(motor.foto.path).catch((err) => console.error('No se pudo borrar la foto del motor (ya se borró)', err));
+    }
   }
 
   function abrirPiezas(vehiculo) {

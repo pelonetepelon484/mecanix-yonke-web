@@ -85,4 +85,25 @@ describe('borrarCarpetaStorage', () => {
     listAllMock.mockResolvedValue({ items: [], prefixes: [] });
     await expect(borrarCarpetaStorage('yonkes/y1/vacio')).resolves.toBe(0);
   });
+
+  it('borra en lotes de 10 -- nunca más de 10 deleteObject() en vuelo a la vez', async () => {
+    const items = Array.from({ length: 25 }, (_, i) => item(`yonkes/y1/vehiculos/v1/p${i}.webp`));
+    listAllMock.mockResolvedValue({ items, prefixes: [] });
+
+    let enVuelo = 0;
+    let picoMaximo = 0;
+    deleteObjectMock.mockImplementation(() => {
+      enVuelo += 1;
+      picoMaximo = Math.max(picoMaximo, enVuelo);
+      return new Promise((resolve) => {
+        setTimeout(() => { enVuelo -= 1; resolve(); }, 0);
+      });
+    });
+
+    const n = await borrarCarpetaStorage('yonkes/y1/vehiculos/v1');
+
+    expect(n).toBe(25);
+    expect(deleteObjectMock).toHaveBeenCalledTimes(25);
+    expect(picoMaximo).toBeLessThanOrEqual(10);
+  });
 });
