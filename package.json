@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:rules": "npm --prefix tests/rules test"
   },
   "dependencies": {
     "@svg-maps/mexico": "^2.0.0",

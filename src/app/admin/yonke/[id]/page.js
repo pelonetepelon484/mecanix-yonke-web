@@ -165,13 +165,34 @@ export default function EditarYonkePage() {
   async function revocarAcceso(usuario) {
     if (!confirm(`¿Revocar el acceso de ${usuario.email}?\n\nEsto quita su acceso a la plataforma de inmediato. La cuenta de Firebase Authentication NO se elimina — deberás borrarla aparte en la consola de Firebase si ya no la quieres.`)) return;
     setRevocandoId(usuario.id);
+    // Dos pasos en orden: 1) si este usuario es el dueño que se registró solo, se le quita
+    // ownerUid del yonke (si no, podría volver a reclamarlo); 2) se borra su acceso. Si el paso
+    // 2 falla, el reintento es seguro: el paso 1 ya no vuelve a aplicar.
+    // Yonkes viejos sin ownerUid: el paso 1 no hace nada.
+    let paso = 'leer';
+    let quitoDueno = false;
     try {
+      const snapYonke = await getDoc(doc(db, 'yonkes', id));
+      const esDueno = snapYonke.exists() && snapYonke.data().ownerUid === usuario.id;
+      if (esDueno) {
+        paso = 'quitar-dueno';
+        await updateDoc(doc(db, 'yonkes', id), { ownerUid: deleteField() });
+        quitoDueno = true;
+      }
+      paso = 'borrar-acceso';
       await deleteDoc(doc(db, 'usuarios', usuario.id));
       await cargarUsuarios();
       alert(`Acceso revocado.\n\nRecuerda eliminar manualmente la cuenta de Firebase Authentication de ${usuario.email} en la consola de Firebase para evitar una cuenta huérfana.`);
     } catch (error) {
       console.error(error);
-      alert('No se pudo revocar el acceso. Intenta de nuevo.');
+      if (paso === 'borrar-acceso') {
+        await cargarUsuarios();
+        alert(quitoDueno
+          ? 'Se quitó la propiedad de este yonke, pero el acceso NO se borró por un error. Vuelve a presionar "Revocar" para terminar.'
+          : 'No se pudo borrar el acceso por un error. Vuelve a presionar "Revocar" para intentarlo de nuevo.');
+      } else {
+        alert('No se pudo revocar el acceso. No se hizo ningún cambio; intenta de nuevo.');
+      }
     } finally {
       setRevocandoId(null);
     }
