@@ -62,12 +62,15 @@ export default function SobreNosotrosEditor({ yonkeId, sobreNosotros, onChange }
     setError('');
     setGuardando(true);
     try {
+      // direccion y horario se omiten cuando están vacíos, no se mandan como null: la regla de
+      // Firestore (sitioValido) exige que, si la llave existe, sea string -- un null la hace fallar
+      // con permission-denied. sanearSobreNosotros lee la llave ausente como null igual.
       const guardado = {
         texto: texto.trim(),
         aniosExperiencia: aniosExperiencia === '' ? null : Number(aniosExperiencia),
-        direccion: direccion.trim() || null,
-        horario: horario.trim() || null,
         fotoUrl: fotoUrl || null,
+        ...(direccion.trim() ? { direccion: direccion.trim() } : {}),
+        ...(horario.trim() ? { horario: horario.trim() } : {}),
       };
       await updateDoc(doc(db, 'yonkes', yonkeId), { 'sitio.sobreNosotros': guardado });
       onChange(guardado);
