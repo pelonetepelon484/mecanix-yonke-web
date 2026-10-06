@@ -37,6 +37,8 @@ export default function PanelLogin() {
   if (!loading && user) {
     if (userRole === 'admin') {
       router.push('/admin');
+    } else if (userRole === 'taller') {
+      router.push('/panel/taller');
     } else {
       router.push('/panel/inventario');
     }
@@ -129,6 +131,13 @@ export default function PanelLogin() {
               style={registerButtonStyle}
             >
               🆓 Regístrate gratis
+            </button>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <p style={{ fontSize: '13px', color: '#888', marginBottom: '6px' }}>¿Tienes un taller mecánico?</p>
+            <button onClick={() => router.push('/panel/taller/registro')} style={olvideButtonStyle}>
+              Regístrate como taller
             </button>
           </div>
         </div>

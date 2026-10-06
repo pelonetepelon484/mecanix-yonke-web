@@ -156,16 +156,59 @@ service cloud.firestore {
                         && request.auth.uid == userId
                         && request.resource.data.rol == 'yonke'
                         && request.resource.data.keys().hasOnly(['rol', 'yonkeId', 'email', 'fechaRegistro'])
-                        && get(/databases/$(database)/documents/yonkes/$(request.resource.data.yonkeId)).data.ownerUid == request.auth.uid);
+                        && get(/databases/$(database)/documents/yonkes/$(request.resource.data.yonkeId)).data.ownerUid == request.auth.uid)
+                    // Alta propia de taller: solo rol 'taller', con 4 campos, apuntando a un taller cuyo dueño es este uid
+                    || (request.auth != null
+                        && request.auth.uid == userId
+                        && request.resource.data.rol == 'taller'
+                        && request.resource.data.keys().hasOnly(['rol', 'tallerId', 'email', 'fechaRegistro'])
+                        && request.resource.data.tallerId is string
+                        && get(/databases/$(database)/documents/talleres/$(request.resource.data.tallerId)).data.ownerUid == request.auth.uid);
       allow update: if esAdmin();
       allow delete: if esAdmin();
+    }
+    // ---------- Talleres (cuenta de taller, separada de yonkes) ----------
+    match /talleres/{tallerId} {
+      function tallerValido() {
+        return request.resource.data.keys().hasOnly(['nombre', 'whatsapp', 'ciudad', 'logoUrl', 'ownerUid', 'activo', 'creadoAt'])
+          && request.resource.data.nombre is string
+          && request.resource.data.nombre.size() >= 2 && request.resource.data.nombre.size() <= 100
+          && request.resource.data.whatsapp is string
+          && request.resource.data.whatsapp.matches('^[0-9]{10}$')
+          && request.resource.data.ciudad is string
+          && request.resource.data.ciudad.size() >= 2 && request.resource.data.ciudad.size() <= 100
+          && request.resource.data.logoUrl is string;
+      }
+      allow read: if request.auth != null && (resource.data.ownerUid == request.auth.uid || esAdmin());
+      // Solo un usuario SIN cuenta de rol (todavía no registrado) puede crear su taller
+      allow create: if request.auth != null
+                    && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.activo == true
+                    && request.resource.data.creadoAt == request.time
+                    && tallerValido();
+      allow update: if esAdmin()
+                    || (request.auth != null
+                        && resource.data.ownerUid == request.auth.uid
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.activo == resource.data.activo
+                        && request.resource.data.creadoAt == resource.data.creadoAt
+                        && tallerValido());
+      // Dueño: solo borra mientras su usuario no exista (rollback de un registro fallido). Admin siempre.
+      allow delete: if esAdmin()
+                    || (request.auth != null
+                        && resource.data.ownerUid == request.auth.uid
+                        && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
     }
     // ---------- Yonkes e inventario ----------
     match /yonkes/{yonkeId} {
       allow read: if true;
-      // Alta: admin, o un usuario que se registra y queda como dueño (ownerUid = su uid)
+      // Alta: admin, o un usuario que se registra y queda como dueño (ownerUid = su uid).
+      // Un usuario que ya tiene cuenta de rol (yonke o taller) no puede crear yonkes nuevos.
       allow create: if esAdmin()
-                    || (request.auth != null && request.resource.data.ownerUid == request.auth.uid);
+                    || (request.auth != null
+                        && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+                        && request.resource.data.ownerUid == request.auth.uid);
       allow update: if esAdmin()
                     || (esDuenoDelYonke(yonkeId)
                         && !request.resource.data.diff(resource.data).affectedKeys()

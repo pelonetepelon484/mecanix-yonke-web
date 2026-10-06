@@ -33,7 +33,7 @@ const reclamo = (uid, yonkeId) => setDoc(doc(como(uid), 'usuarios', uid), {
 
 before(async () => {
   env = await initializeTestEnvironment({
-    projectId: 'demo-mecanix',
+    projectId: 'demo-yonkes',
     firestore: { rules: reglas, host: '127.0.0.1', port: 8181 },
   });
 });
@@ -55,6 +55,10 @@ describe('cuenta nueva que intenta reclamar un yonke ajeno', () => {
   it('no puede crear un yonke con ownerUid de otra persona', async () => {
     await sembrar();
     await assertFails(setDoc(doc(como('x7'), 'yonkes', 'Y7'), { nombre: 'Ajeno', ownerUid: 'o1' }));
+  });
+  it('una cuenta que ya tiene usuario (yonke) no puede crear otro yonke', async () => {
+    await sembrar();
+    await assertFails(setDoc(doc(como('o1'), 'yonkes', 'Y10'), { nombre: 'Otro yonke', ownerUid: 'o1' }));
   });
   it('no puede poner ownerUid en un yonke viejo que ya existe', async () => {
     await sembrar();
