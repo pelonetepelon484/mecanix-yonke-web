@@ -9,6 +9,7 @@ import { MENSAJES_TALLER, validarRegistroTaller } from '../../../../lib/taller';
 import { VERSION_LEGAL, URL_TERMINOS, URL_PRIVACIDAD } from '../../../../lib/versionesLegales';
 import { ErrorRegistro, registrarTaller } from '../../../../lib/registrarTaller';
 import { useAuth } from '../../AuthContext';
+import { talleresHabilitados } from '../../../../lib/talleresHabilitados';
 
 // Dependencias reales de Firebase para el registro en pasos (ver src/lib/registrarTaller.ts).
 const dependenciasFirebase = {
@@ -88,6 +89,18 @@ export default function RegistroTaller() {
     } finally {
       setRegistrando(false);
     }
+  }
+
+  if (!talleresHabilitados()) {
+    return (
+      <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ maxWidth: '420px', width: '100%', backgroundColor: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '20px', color: '#1A3C5E', margin: '0 0 12px' }}>Registro de talleres: próximamente</h1>
+          <p style={{ fontSize: '15px', color: '#555', margin: '0 0 20px' }}>Todavía no estamos recibiendo nuevos talleres. Gracias por tu interés.</p>
+          <button onClick={() => router.push('/panel')} style={linkStyle}>Volver al inicio de sesión</button>
+        </div>
+      </main>
+    );
   }
 
   return (
