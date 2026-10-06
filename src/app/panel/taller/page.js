@@ -39,7 +39,8 @@ export default function PanelTaller() {
     return () => { cancelado = true; };
   }, [tallerId, recarga]);
 
-  const hayCambios = versionVigente !== null && versionAceptada !== null && versionAceptada !== versionVigente;
+  // Con la bandera apagada no hay aviso de términos, aunque exista config/cotizaciones.
+  const hayCambios = talleresHabilitados() && versionVigente !== null && versionAceptada !== null && versionAceptada !== versionVigente;
 
   async function cerrarSesion() {
     await signOut(auth);
