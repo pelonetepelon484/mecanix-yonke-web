@@ -1,89 +1,103 @@
 // Pruebas de reglas de Firestore para cotizaciones del taller.
-// Estructura: talleres/{id}/cotizaciones/{folio} (datos y total en centavos)
-//             talleres/{id}/cotizaciones/{folio}/renglones/{0..19} (cada renglón)
+// Estructura: talleres/{id}/cotizaciones/{folio} (datos, total en centavos, expiraAt, avisoVersion)
+//             talleres/{id}/cotizaciones/{folio}/renglones/{0..19} (cada renglón con el mismo expiraAt)
+// Versión de términos y bandera de datos del cliente: config/cotizaciones.
 // Corren contra el emulador con el archivo real ../../firestore.rules.
 // Comando (desde la raíz del repo):  npm run test:rules
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, collection, setDoc, updateDoc, getDoc, getDocs, deleteDoc, query, where, orderBy, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, setDoc, updateDoc, getDoc, getDocs, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 const reglas = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
 let env;
+const DIA = 86400000;
+const ahora = () => Date.now();
+const expiraNueva = () => new Date(ahora() + 88 * DIA);      // lo que pone la app al crear
+const expiraVencida = () => new Date(ahora() - DIA);
+const expiraFutura = () => new Date(ahora() + 80 * DIA);     // cotización ya existente en el seed
+const C = 'C251006-7KQ4';
+const C2 = 'C251006-BBBB';
 
-const FOLIO = 'C251006-7KQ4';
-
-async function sembrar() {
+async function sembrar({ config = true, versionTaller = 'v1' } = {}) {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
-    const aceptacion = { version: 'prueba', fecha: new Date() };
-    await setDoc(doc(db, 'usuarios', 'adm'), { rol: 'admin', email: 'admin@prueba.mx' });
-    await setDoc(doc(db, 'yonkes', 'Y1'), { nombre: 'Yonke uno', activo: true, ownerUid: 'y1' });
-    await setDoc(doc(db, 'usuarios', 'y1'), { rol: 'yonke', yonkeId: 'Y1', email: 'y1@prueba.mx', fechaRegistro: new Date() });
-    await setDoc(doc(db, 'talleres', 'T1'), { nombre: 'Taller uno', whatsapp: '6641234567', ciudad: 'Tijuana', logoUrl: '', ownerUid: 't1', activo: true, creadoAt: new Date(), aceptacionLegal: aceptacion });
-    await setDoc(doc(db, 'usuarios', 't1'), { rol: 'taller', tallerId: 'T1', email: 't1@prueba.mx', fechaRegistro: new Date() });
-    await setDoc(doc(db, 'talleres', 'T2'), { nombre: 'Taller dos', whatsapp: '6649999999', ciudad: 'Ensenada', logoUrl: '', ownerUid: 't2', activo: true, creadoAt: new Date(), aceptacionLegal: aceptacion });
-    await setDoc(doc(db, 'usuarios', 't2'), { rol: 'taller', tallerId: 'T2', email: 't2@prueba.mx', fechaRegistro: new Date() });
-    await setDoc(doc(db, 'talleres', 'T3'), { nombre: 'Taller desactivado', whatsapp: '6648888888', ciudad: 'Mexicali', logoUrl: '', ownerUid: 't3', activo: false, creadoAt: new Date(), aceptacionLegal: aceptacion });
-    await setDoc(doc(db, 'usuarios', 't3'), { rol: 'taller', tallerId: 'T3', email: 't3@prueba.mx', fechaRegistro: new Date() });
-    // Cotización existente de T1 con 3 renglones, y una de T3 (taller desactivado)
-    await escribirCotizacionConRenglones(db, 'T1', 'C251006-AAAA', 3);
-    await escribirCotizacionConRenglones(db, 'T3', 'C251006-BBBB', 1);
+    if (config) await setDoc(doc(db, 'config', 'cotizaciones'), { terminosVersion: 'v1', avisoTallerVersion: 'aviso-1', datosClienteHabilitados: true, resumenCambios: 'x' });
+    await setDoc(doc(db, 'usuarios', 'adm'), { rol: 'admin', email: 'a@x.mx' });
+    await setDoc(doc(db, 'usuarios', 'y1'), { rol: 'yonke', yonkeId: 'Y1', email: 'y@x.mx' });
+    await setDoc(doc(db, 'yonkes', 'Y1'), { nombre: 'Yonke', activo: true, ownerUid: 'y1' });
+    await setDoc(doc(db, 'talleres', 'T1'), taller('t1', true, versionTaller));
+    await setDoc(doc(db, 'usuarios', 't1'), { rol: 'taller', tallerId: 'T1', email: 't1@x.mx' });
+    await setDoc(doc(db, 'talleres', 'T2'), taller('t2', true, versionTaller));
+    await setDoc(doc(db, 'usuarios', 't2'), { rol: 'taller', tallerId: 'T2', email: 't2@x.mx' });
+    await setDoc(doc(db, 'talleres', 'T3'), taller('t3', false, versionTaller));
+    await setDoc(doc(db, 'usuarios', 't3'), { rol: 'taller', tallerId: 'T3', email: 't3@x.mx' });
+    await escribirCotizacion(db, 'T1', C, 2);
+    await escribirCotizacion(db, 'T3', C2, 1);
   });
 }
 
-function cotizacion(tallerId, extra = {}) {
+function taller(owner, activo, version) {
   return {
-    tallerId,
-    estado: 'borrador',
-    archivada: false,
+    nombre: 'Taller', whatsapp: '6641234567', ciudad: 'Tijuana', logoUrl: '', ownerUid: owner, activo,
+    creadoAt: new Date(), aceptacionVersion: version,
+    avisoPrivacidad: { modo: 'generado', versionPlantilla: 'aviso-1', fecha: new Date() },
+  };
+}
+
+function cot(tallerId, extra = {}) {
+  return {
+    tallerId, estado: 'borrador', archivada: false,
     cliente: { nombre: 'Juan Pérez', telefono: '6641234567' },
     vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001, placas: 'ABC123', kilometraje: 150000 },
-    observaciones: 'Incluye mano de obra',
-    vigenciaDias: 15,
-    totalCentavos: 0,
-    numRenglones: 1,
-    creadoAt: serverTimestamp(),
-    actualizadoAt: serverTimestamp(),
+    observaciones: 'Incluye mano de obra', vigenciaDias: 15,
+    totalCentavos: 100000, numRenglones: 1,
+    creadoAt: serverTimestamp(), actualizadoAt: serverTimestamp(),
+    expiraAt: expiraNueva(), avisoVersion: 'aviso-1',
     ...extra,
   };
 }
-const renglon = (extra = {}) => ({ tipo: 'manoObra', descripcion: 'Cambio de balatas', cantidad: 1, precioUnitario: 500, ...extra });
-const renglones = (n) => Array.from({ length: n }, (_, i) => renglon({ descripcion: `Renglón ${i + 1}` }));
+const renglon = (exp, extra = {}) => ({ tipo: 'manoObra', descripcion: 'Cambio de balatas', cantidad: 1, precioUnitario: 500, expiraAt: exp, ...extra });
 
-async function escribirCotizacionConRenglones(db, tallerId, folio, n) {
+async function escribirCotizacion(db, tallerId, folio, n) {
+  const exp = expiraFutura();
   await setDoc(doc(db, 'talleres', tallerId, 'cotizaciones', folio), {
     tallerId, estado: 'borrador', archivada: false, cliente: { nombre: 'Ana' },
     vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, observaciones: '', vigenciaDias: 15,
-    totalCentavos: 50000 * n, numRenglones: n, creadoAt: new Date(), actualizadoAt: new Date(),
+    totalCentavos: 50000 * n, numRenglones: n, creadoAt: new Date(ahora() - 5 * DIA), actualizadoAt: new Date(),
+    expiraAt: exp, avisoVersion: 'aviso-1',
   });
   for (let i = 0; i < n; i++) {
-    await setDoc(doc(db, 'talleres', tallerId, 'cotizaciones', folio, 'renglones', String(i)), renglon());
+    await setDoc(doc(db, 'talleres', tallerId, 'cotizaciones', folio, 'renglones', String(i)), renglon(exp));
   }
 }
 
 const como = (uid) => (uid ? env.authenticatedContext(uid).firestore() : env.unauthenticatedContext().firestore());
-const cot = (uid, tallerId, folio = FOLIO) => doc(como(uid), 'talleres', tallerId, 'cotizaciones', folio);
-const ren = (uid, tallerId, numero, folio = FOLIO) => doc(como(uid), 'talleres', tallerId, 'cotizaciones', folio, 'renglones', String(numero));
-const colRenglones = (uid, tallerId, folio = FOLIO) => collection(como(uid), 'talleres', tallerId, 'cotizaciones', folio, 'renglones');
+const cref = (uid, folio = C, tallerId = 'T1') => doc(como(uid), 'talleres', tallerId, 'cotizaciones', folio);
+const rref = (uid, n, folio = C, tallerId = 'T1') => doc(como(uid), 'talleres', tallerId, 'cotizaciones', folio, 'renglones', String(n));
+const expiraDe = async (uid, folio = C, tallerId = 'T1') => (await getDoc(doc(como(uid), 'talleres', tallerId, 'cotizaciones', folio))).data().expiraAt;
+const colRenglones = (uid, folio = C, tallerId = 'T1') => collection(como(uid), 'talleres', tallerId, 'cotizaciones', folio, 'renglones');
 
-// Una edición debe conservar el creadoAt original (la regla lo compara). La app hace lo mismo.
-async function creadoAtDe(uid, tallerId, folio = FOLIO) {
-  const snap = await getDoc(cot(uid, tallerId, folio));
-  return snap.data().creadoAt;
+// Lote como lo hace la app: cotización + renglones (+ borrado de sobrantes)
+async function lote(uid, tallerId, folio, datos, renglones, expira, borrar = []) {
+  const db = como(uid);
+  const b = writeBatch(db);
+  b.set(doc(db, 'talleres', tallerId, 'cotizaciones', folio), datos);
+  renglones.forEach((r, i) => b.set(doc(db, 'talleres', tallerId, 'cotizaciones', folio, 'renglones', String(i)), renglon(expira, r)));
+  borrar.forEach((i) => b.delete(doc(db, 'talleres', tallerId, 'cotizaciones', folio, 'renglones', String(i))));
+  await b.commit();
 }
 
-// Guarda una cotización con sus renglones en UN lote, como hace la app.
-// borrar = números de renglón a eliminar (los que sobran al editar).
-async function guardarLote(uid, tallerId, folio, datosCot, lista, borrar = []) {
-  const db = como(uid);
-  const lote = writeBatch(db);
-  lote.set(doc(db, 'talleres', tallerId, 'cotizaciones', folio), datosCot);
-  lista.forEach((r, i) => lote.set(doc(db, 'talleres', tallerId, 'cotizaciones', folio, 'renglones', String(i)), r));
-  borrar.forEach((i) => lote.delete(doc(db, 'talleres', tallerId, 'cotizaciones', folio, 'renglones', String(i))));
-  await lote.commit();
+async function conVersion(v) {
+  await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), 'config', 'cotizaciones'), { terminosVersion: v }); });
+}
+async function conBandera(valor) {
+  await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), 'config', 'cotizaciones'), { datosClienteHabilitados: valor }); });
+}
+async function conActivo(tallerId, valor) {
+  await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), 'talleres', tallerId), { activo: valor }); });
 }
 
 before(async () => {
@@ -94,213 +108,319 @@ before(async () => {
 });
 after(async () => { await env.cleanup(); });
 
-describe('guardado en lote (cotización + renglones)', () => {
-  it('guarda una cotización con 1 renglón en un lote', async () => {
+describe('taller activo y con versión vigente', () => {
+  it('crea una cotización válida', async () => {
     await sembrar();
-    await assertSucceeds(guardarLote('t1', 'T1', 'C251006-NUEV', cotizacion('T1', { totalCentavos: 50000, numRenglones: 1 }), renglones(1)));
+    await assertSucceeds(setDoc(cref('t1', 'C251006-NEW1'), cot('T1')));
   });
-  it('lote REAL de 21 documentos (cotización + 20 renglones) con el dueño', async () => {
+  it('edita una cotización propia (cambia observaciones y fecha de actualización)', async () => {
     await sembrar();
-    await assertSucceeds(guardarLote('t1', 'T1', 'C251006-V20A', cotizacion('T1', { totalCentavos: 1000000, numRenglones: 20 }), renglones(20)));
-    const snap = await getDocs(colRenglones('t1', 'T1', 'C251006-V20A'));
+    await assertSucceeds(updateDoc(cref('t1'), { observaciones: 'nueva', actualizadoAt: serverTimestamp() }));
+  });
+  it('archiva una cotización propia (la marca, no la borra)', async () => {
+    await sembrar();
+    await assertSucceeds(updateDoc(cref('t1'), { archivada: true, actualizadoAt: serverTimestamp() }));
+  });
+  it('lee sus cotizaciones', async () => {
+    await sembrar();
+    await assertSucceeds(getDoc(cref('t1')));
+  });
+  it('lote REAL de 21 documentos (cotización + 20 renglones) pasa', async () => {
+    await sembrar();
+    const exp = expiraNueva();
+    const renglones20 = Array.from({ length: 20 }, (_, i) => ({ descripcion: `Renglón ${i + 1}` }));
+    await assertSucceeds(lote('t1', 'T1', 'C251006-L21A', cot('T1', { numRenglones: 20, totalCentavos: 1000000, expiraAt: exp }), renglones20, exp));
+    const snap = await getDocs(colRenglones('t1', 'C251006-L21A'));
     assert.equal(snap.size, 20);
   });
-  it('editar con MENOS renglones borra los sobrantes (3 -> 1)', async () => {
+  it('quitar 19 renglones en un lote (de 20 a 1) pasa', async () => {
     await sembrar();
-    const creadoAt = await creadoAtDe('t1', 'T1', 'C251006-AAAA');
-    await assertSucceeds(guardarLote('t1', 'T1', 'C251006-AAAA', cotizacion('T1', { totalCentavos: 50000, numRenglones: 1, creadoAt }), renglones(1), [1, 2]));
-    const snap = await getDocs(colRenglones('t1', 'T1', 'C251006-AAAA'));
+    const exp = await expiraDe('t1');
+    const creadoAt = (await getDoc(cref('t1'))).data().creadoAt;
+    await assertSucceeds(lote('t1', 'T1', C, cot('T1', { numRenglones: 1, totalCentavos: 500, expiraAt: exp, creadoAt }), [{}], exp, [1]));
+    const snap = await getDocs(colRenglones('t1'));
     assert.equal(snap.size, 1);
   });
-  it('editar con MÁS renglones agrega los nuevos (3 -> 8)', async () => {
+  it('un lote con un renglón inválido no escribe nada (todo o nada)', async () => {
     await sembrar();
-    const creadoAt = await creadoAtDe('t1', 'T1', 'C251006-AAAA');
-    await assertSucceeds(guardarLote('t1', 'T1', 'C251006-AAAA', cotizacion('T1', { totalCentavos: 400000, numRenglones: 8, creadoAt }), renglones(8)));
-    const snap = await getDocs(colRenglones('t1', 'T1', 'C251006-AAAA'));
-    assert.equal(snap.size, 8);
-  });
-  it('si UN renglón del lote es inválido, no se escribe nada (todo o nada)', async () => {
-    await sembrar();
-    const malo = [...renglones(20)];
-    malo[7] = renglon({ precioUnitario: -5 });
-    await assertFails(guardarLote('t1', 'T1', 'C251006-ATOM', cotizacion('T1', { totalCentavos: 0, numRenglones: 20 }), malo));
-    const existe = await getDoc(cot('t1', 'T1', 'C251006-ATOM'));
+    const exp = expiraNueva();
+    const mal = Array.from({ length: 5 }, () => ({}));
+    mal[3] = { precioUnitario: -5 };
+    await assertFails(lote('t1', 'T1', 'C251006-ATOM', cot('T1', { numRenglones: 5, expiraAt: exp }), mal, exp));
+    const existe = await getDoc(cref('t1', 'C251006-ATOM'));
     assert.equal(existe.exists(), false);
-  });
-  it('un lote de edición nunca supera 21 operaciones (20 renglones + 1 cotización)', async () => {
-    await sembrar();
-    // 20 renglones a 1: se escriben 1 + cotización y se borran 19 sobrantes => 21 operaciones
-    const creadoAt = await creadoAtDe('t1', 'T1', 'C251006-AAAA');
-    await assertSucceeds(guardarLote('t1', 'T1', 'C251006-AAAA', cotizacion('T1', { totalCentavos: 1, numRenglones: 1, creadoAt }), renglones(1), Array.from({ length: 19 }, (_, i) => i + 1)));
   });
 });
 
-describe('renglones: nombres y límites', () => {
-  it('acepta nombres 0 y 19', async () => {
+describe('taller desactivado', () => {
+  it('no puede crear una cotización', async () => {
     await sembrar();
-    await assertSucceeds(setDoc(ren('t1', 'T1', 0), renglon()));
-    await assertSucceeds(setDoc(ren('t1', 'T1', 19), renglon()));
+    await assertFails(setDoc(cref('t3', 'C251006-NUEV', 'T3'), cot('T3')));
+  });
+  it('no puede editar una cotización ni sus renglones', async () => {
+    await sembrar();
+    await assertFails(updateDoc(cref('t3', C2, 'T3'), { observaciones: 'x', actualizadoAt: serverTimestamp() }));
+    await assertFails(setDoc(rref('t3', 0, C2, 'T3'), renglon(expiraFutura(), { precioUnitario: 1 })));
+  });
+  it('sí puede leer sus cotizaciones', async () => {
+    await sembrar();
+    await assertSucceeds(getDoc(cref('t3', C2, 'T3')));
+  });
+  it('sí puede quitar datos del cliente (excepción)', async () => {
+    await sembrar();
+    await assertSucceeds(updateDoc(cref('t3', C2, 'T3'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+  });
+});
+
+describe('versión vieja: solo lectura, con la excepción de quitar datos', () => {
+  it('crear y editar quedan bloqueados', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(setDoc(cref('t1', 'C251006-OLD1'), cot('T1')));
+    await assertFails(updateDoc(cref('t1'), { observaciones: 'nueva', actualizadoAt: serverTimestamp() }));
+  });
+  it('crear o editar renglones quedan bloqueados', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(setDoc(rref('t1', 5), renglon(expiraFutura())));
+    await assertFails(setDoc(rref('t1', 0), renglon(expiraFutura(), { precioUnitario: 9 })));
+  });
+  it('borrar renglones queda bloqueado', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(deleteDoc(rref('t1', 1)));
+  });
+  it('quitar datos (vaciar cliente y placas) SÍ', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertSucceeds(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+  });
+  it('quitar datos + cambiar observaciones NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, observaciones: 'x', actualizadoAt: serverTimestamp() }));
+  });
+  it('quitar datos + cambiar total NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, totalCentavos: 1, actualizadoAt: serverTimestamp() }));
+  });
+  it('quitar datos + cambiar estado NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, estado: 'cerrada', actualizadoAt: serverTimestamp() }));
+  });
+  it('quitar datos + cambiar fecha de creación o de expiración NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, creadoAt: serverTimestamp(), actualizadoAt: serverTimestamp() }));
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, expiraAt: expiraNueva(), actualizadoAt: serverTimestamp() }));
+  });
+  it('dejar un nombre de cliente NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(updateDoc(cref('t1'), { cliente: { nombre: 'Juan' }, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+  });
+  it('dejar las placas NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001, placas: 'ABC123' }, actualizadoAt: serverTimestamp() }));
+  });
+  it('cambiar la marca al quitar datos NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Ford', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+  });
+  it('borrar la cotización completa (taller) NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(deleteDoc(cref('t1')));
+  });
+  it('quitar datos de una cotización ajena NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(updateDoc(cref('t2'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+  });
+  it('sin config/cotizaciones, quitar datos sigue permitido (la excepción no lee config)', async () => {
+    await sembrar({ config: false });
+    await assertSucceeds(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+  });
+});
+
+describe('falla cerrada: falta config/cotizaciones', () => {
+  it('crear una cotización NO', async () => {
+    await sembrar({ config: false });
+    await assertFails(setDoc(cref('t1', 'C251006-NOCF'), cot('T1')));
+  });
+  it('editar una cotización (normal) NO', async () => {
+    await sembrar({ config: false });
+    await assertFails(updateDoc(cref('t1'), { observaciones: 'x', actualizadoAt: serverTimestamp() }));
+  });
+});
+
+describe('expiración de 88 días', () => {
+  it('crear con expiración de 10 días NO', async () => {
+    await sembrar();
+    await assertFails(setDoc(cref('t1', 'C251006-EXP1'), cot('T1', { expiraAt: new Date(ahora() + 10 * DIA) })));
+  });
+  it('crear con expiración de 88 días SÍ (tolerancia de ±5 minutos)', async () => {
+    await sembrar();
+    await assertSucceeds(setDoc(cref('t1', 'C251006-EXP2'), cot('T1', { expiraAt: new Date(ahora() + 88 * DIA + 60000) })));
+  });
+  it('editar la expiración NO', async () => {
+    await sembrar();
+    await assertFails(updateDoc(cref('t1'), { expiraAt: expiraNueva(), actualizadoAt: serverTimestamp() }));
+  });
+  it('una cotización vencida no se puede editar', async () => {
+    await env.clearFirestore();
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'config', 'cotizaciones'), { terminosVersion: 'v1', avisoTallerVersion: 'aviso-1', datosClienteHabilitados: true });
+      await setDoc(doc(db, 'talleres', 'T1'), taller('t1', true, 'v1'));
+      await setDoc(doc(db, 'usuarios', 't1'), { rol: 'taller', tallerId: 'T1', email: 't1@x.mx' });
+      await setDoc(doc(db, 'talleres', 'T1', 'cotizaciones', C), cot('T1', { expiraAt: expiraVencida() }));
+    });
+    await assertFails(updateDoc(cref('t1'), { observaciones: 'x', actualizadoAt: serverTimestamp() }));
+  });
+  it('un renglón con expiraAt distinto al de su cotización NO', async () => {
+    await sembrar();
+    await assertFails(setDoc(rref('t1', 5), renglon(new Date(ahora() + 3 * DIA))));
+  });
+  it('un renglón con expiraAt igual al de la cotización SÍ', async () => {
+    await sembrar();
+    const exp = (await getDoc(cref('t1'))).data().expiraAt;
+    await assertSucceeds(setDoc(rref('t1', 5), renglon(exp)));
+  });
+});
+
+describe('renglones: nombres, valores y límites', () => {
+  it('acepta los nombres 0 y 19', async () => {
+    await sembrar();
+    const exp = await expiraDe('t1');
+    await assertSucceeds(setDoc(rref('t1', 0), renglon(exp)));
+    await assertSucceeds(setDoc(rref('t1', 19), renglon(exp)));
   });
   for (const nombre of ['20', '-1', '01', '100', 'a', '1a']) {
     it(`rechaza el renglón con nombre "${nombre}"`, async () => {
       await sembrar();
-      await assertFails(setDoc(doc(como('t1'), 'talleres', 'T1', 'cotizaciones', FOLIO, 'renglones', nombre), renglon()));
+      await assertFails(setDoc(doc(como('t1'), 'talleres', 'T1', 'cotizaciones', C, 'renglones', nombre), renglon(expiraFutura())));
     });
   }
-  it('rechaza precio negativo', async () => {
+  it('rechaza precio negativo, precio por encima del tope, cantidad 0 y con decimales', async () => {
     await sembrar();
-    await assertFails(setDoc(ren('t1', 'T1', 0), renglon({ precioUnitario: -1 })));
+    await assertFails(setDoc(rref('t1', 0), renglon(expiraFutura(), { precioUnitario: -1 })));
+    await assertFails(setDoc(rref('t1', 0), renglon(expiraFutura(), { precioUnitario: 1000001 })));
+    await assertFails(setDoc(rref('t1', 0), renglon(expiraFutura(), { cantidad: 0 })));
+    await assertFails(setDoc(rref('t1', 0), renglon(expiraFutura(), { cantidad: 1.5 })));
   });
-  it('rechaza precio por encima del tope', async () => {
+  it('rechaza descripción vacía y campos extra en el renglón', async () => {
     await sembrar();
-    await assertFails(setDoc(ren('t1', 'T1', 0), renglon({ precioUnitario: 1000001 })));
+    await assertFails(setDoc(rref('t1', 0), renglon(expiraFutura(), { descripcion: '' })));
+    await assertFails(setDoc(rref('t1', 0), renglon(expiraFutura(), { yonkeId: 'Y1' })));
   });
-  it('rechaza cantidad cero y con decimales', async () => {
+  it('acepta precios con decimales (0.1 y 0.3)', async () => {
     await sembrar();
-    await assertFails(setDoc(ren('t1', 'T1', 0), renglon({ cantidad: 0 })));
-    await assertFails(setDoc(ren('t1', 'T1', 0), renglon({ cantidad: 1.5 })));
+    const exp = await expiraDe('t1');
+    await assertSucceeds(setDoc(rref('t1', 0), renglon(exp, { precioUnitario: 0.1 })));
+    await assertSucceeds(setDoc(rref('t1', 1), renglon(exp, { precioUnitario: 0.3 })));
   });
-  it('rechaza descripción vacía o de 201 letras', async () => {
+  it('el dueño puede borrar sus renglones (taller activo y versión vigente)', async () => {
     await sembrar();
-    await assertFails(setDoc(ren('t1', 'T1', 0), renglon({ descripcion: '' })));
-    await assertFails(setDoc(ren('t1', 'T1', 0), renglon({ descripcion: 'a'.repeat(201) })));
-  });
-  it('rechaza tipo inválido y campos extra', async () => {
-    await sembrar();
-    await assertFails(setDoc(ren('t1', 'T1', 0), renglon({ tipo: 'otro' })));
-    await assertFails(setDoc(ren('t1', 'T1', 0), renglon({ yonkeId: 'Y1' })));
-  });
-  it('acepta precios con decimales (la app los redondea a centavos)', async () => {
-    await sembrar();
-    await assertSucceeds(setDoc(ren('t1', 'T1', 0), renglon({ precioUnitario: 0.3 })));
-  });
-  it('el dueño puede borrar sus renglones', async () => {
-    await sembrar();
-    await assertSucceeds(deleteDoc(ren('t1', 'T1', 0, 'C251006-AAAA')));
+    await assertSucceeds(deleteDoc(rref('t1', 1)));
   });
 });
 
-describe('cotización: datos y total', () => {
-  it('crea una cotización válida', async () => {
+describe('datos de la cotización', () => {
+  const casos = [
+    ['vigencia de 61 días', { vigenciaDias: 61 }],
+    ['vigencia de 0 días', { vigenciaDias: 0 }],
+    ['estado inválido', { estado: 'pagada' }],
+    ['año fuera de rango', { vehiculo: { marca: 'N', modelo: 'S', anio: 1800 } }],
+    ['campo extra en el vehículo', { vehiculo: { marca: 'N', modelo: 'S', anio: 2001, color: 'rojo' } }],
+    ['campo extra en el cliente', { cliente: { nombre: 'x', correo: 'x@x.mx' } }],
+    ['teléfono con letras', { cliente: { telefono: 'abc' } }],
+    ['placas de más de 12 caracteres', { vehiculo: { marca: 'N', modelo: 'S', anio: 2001, placas: 'ABCDEFGHIJKLM' } }],
+    ['kilometraje negativo', { vehiculo: { marca: 'N', modelo: 'S', anio: 2001, kilometraje: -1 } }],
+    ['total con decimales', { totalCentavos: 10.5 }],
+    ['observaciones de 1001 caracteres', { observaciones: 'a'.repeat(1001) }],
+    ['campo de la lista de renglones antigua', { renglones: [{}] }],
+    ['avisoVersion distinto del aviso del taller', { avisoVersion: 'aviso-viejo' }],
+    ['cambiar tallerId', { tallerId: 'T2' }],
+  ];
+  for (const [nombre, extra] of casos) {
+    it(`rechaza: ${nombre}`, async () => {
+      await sembrar();
+      await assertFails(setDoc(cref('t1', 'C251006-BAD1'), cot('T1', extra)));
+    });
+  }
+  it('rechaza un folio en minúsculas y un folio repetido', async () => {
     await sembrar();
-    await assertSucceeds(setDoc(cot('t1', 'T1', 'C251006-OK01'), cotizacion('T1')));
+    await assertFails(setDoc(cref('t1', 'c251006-min1'), cot('T1')));
+    await assertSucceeds(setDoc(cref('t1', 'C251006-SAME'), cot('T1')));
+    await assertFails(setDoc(cref('t1', 'C251006-SAME'), cot('T1')));
   });
-  it('rechaza total negativo y número de renglones fuera de 1 a 20', async () => {
+  it('acepta vigencia de 60 días', async () => {
     await sembrar();
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-BAD1'), cotizacion('T1', { totalCentavos: -1 })));
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-BAD2'), cotizacion('T1', { numRenglones: 0 })));
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-BAD3'), cotizacion('T1', { numRenglones: 21 })));
-  });
-  it('rechaza un total con decimales (se guarda en centavos enteros)', async () => {
-    await sembrar();
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-BAD4'), cotizacion('T1', { totalCentavos: 10.5 })));
-  });
-  it('rechaza campos extra, como la lista de renglones antigua', async () => {
-    await sembrar();
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-BAD5'), cotizacion('T1', { renglones: [renglon()] })));
-  });
-  it('rechaza estado, año, vigencia y observaciones inválidos', async () => {
-    await sembrar();
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-BAD6'), cotizacion('T1', { estado: 'pagada' })));
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-BAD7'), cotizacion('T1', { vehiculo: { marca: 'N', modelo: 'S', anio: 1800 } })));
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-BAD8'), cotizacion('T1', { vigenciaDias: 91 })));
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-BAD9'), cotizacion('T1', { observaciones: 'a'.repeat(1001) })));
-  });
-  it('rechaza un folio en minúsculas', async () => {
-    await sembrar();
-    await assertFails(setDoc(cot('t1', 'T1', 'c251006-min1'), cotizacion('T1')));
-  });
-  it('rechaza un segundo documento con el mismo folio', async () => {
-    await sembrar();
-    await assertSucceeds(setDoc(cot('t1', 'T1', 'C251006-SAME'), cotizacion('T1')));
-    await assertFails(setDoc(cot('t1', 'T1', 'C251006-SAME'), cotizacion('T1')));
-  });
-  it('archiva (no borra)', async () => {
-    await sembrar();
-    await assertSucceeds(updateDoc(cot('t1', 'T1', 'C251006-AAAA'), { archivada: true, actualizadoAt: serverTimestamp() }));
-  });
-  it('quita los datos del cliente y las placas', async () => {
-    await sembrar();
-    await assertSucceeds(updateDoc(cot('t1', 'T1', 'C251006-AAAA'), {
-      cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp(),
-    }));
-  });
-  it('no puede cambiar tallerId ni la fecha de creación', async () => {
-    await sembrar();
-    await assertFails(updateDoc(cot('t1', 'T1', 'C251006-AAAA'), { tallerId: 'T2', actualizadoAt: serverTimestamp() }));
-    await assertFails(updateDoc(cot('t1', 'T1', 'C251006-AAAA'), { creadoAt: serverTimestamp(), actualizadoAt: serverTimestamp() }));
-  });
-  it('la lista de activas (20 por página) funciona y usa el total guardado', async () => {
-    await sembrar();
-    const q = query(collection(como('t1'), 'talleres', 'T1', 'cotizaciones'), where('archivada', '==', false), orderBy('actualizadoAt', 'desc'), limit(20));
-    const snap = await getDocs(q);
-    assert.ok(snap.size >= 1);
-    assert.equal(typeof snap.docs[0].data().totalCentavos, 'number');
+    await assertSucceeds(setDoc(cref('t1', 'C251006-V60A'), cot('T1', { vigenciaDias: 60 })));
   });
 });
 
-describe('ajenos, roles y taller desactivado', () => {
+describe('bandera de datos del cliente', () => {
+  it('apagada: nombre NO, placas NO, sin datos SÍ', async () => {
+    await sembrar();
+    await conBandera(false);
+    await assertFails(setDoc(cref('t1', 'C251006-BF01'), cot('T1')));
+    await assertFails(setDoc(cref('t1', 'C251006-BF02'), cot('T1', { cliente: {} })));
+    await assertSucceeds(setDoc(cref('t1', 'C251006-BF03'), cot('T1', { cliente: {}, vehiculo: { marca: 'N', modelo: 'S', anio: 2001 } })));
+  });
+  it('encendida: nombre SÍ', async () => {
+    await sembrar();
+    await conBandera(true);
+    await assertSucceeds(setDoc(cref('t1', 'C251006-BF04'), cot('T1')));
+  });
+});
+
+describe('ajenos, roles y lectura', () => {
   it('otro taller no lee cotizaciones ni renglones de T1', async () => {
     await sembrar();
-    await assertFails(getDoc(cot('t2', 'T1', 'C251006-AAAA')));
-    await assertFails(getDoc(ren('t2', 'T1', 0, 'C251006-AAAA')));
+    await assertFails(getDoc(cref('t2')));
+    await assertFails(getDoc(rref('t2', 0)));
   });
-  it('otro taller no escribe ni borra renglones de T1', async () => {
+  it('otro taller no crea ni edita en T1', async () => {
     await sembrar();
-    await assertFails(setDoc(ren('t2', 'T1', 5, 'C251006-AAAA'), renglon()));
-    await assertFails(deleteDoc(ren('t2', 'T1', 0, 'C251006-AAAA')));
+    await assertFails(setDoc(cref('t2', 'C251006-XXXX'), cot('T1')));
+    await assertFails(updateDoc(cref('t2'), { observaciones: 'x', actualizadoAt: serverTimestamp() }));
   });
-  it('otro taller no crea cotizaciones en T1', async () => {
+  it('un yonke no lee ni escribe cotizaciones', async () => {
     await sembrar();
-    await assertFails(setDoc(cot('t2', 'T1', 'C251006-XXXX'), cotizacion('T1')));
+    await assertFails(getDoc(cref('y1')));
+    await assertFails(setDoc(cref('y1', 'C251006-XXXX'), cot('T1')));
   });
-  it('yonke no lee, no escribe y no borra renglones ni cotizaciones de un taller', async () => {
+  it('un visitante no lee ni escribe', async () => {
     await sembrar();
-    await assertFails(getDoc(cot('y1', 'T1', 'C251006-AAAA')));
-    await assertFails(getDoc(ren('y1', 'T1', 0, 'C251006-AAAA')));
-    await assertFails(setDoc(ren('y1', 'T1', 0, 'C251006-AAAA'), renglon()));
-    await assertFails(deleteDoc(ren('y1', 'T1', 0, 'C251006-AAAA')));
+    await assertFails(getDoc(cref(null)));
+    await assertFails(setDoc(cref(null, 'C251006-XXXX'), cot('T1')));
   });
-  it('visitante sin sesión no lee ni escribe', async () => {
+  it('el admin lee cotizaciones y renglones de cualquier taller', async () => {
     await sembrar();
-    await assertFails(getDoc(cot(null, 'T1', 'C251006-AAAA')));
-    await assertFails(setDoc(cot(null, 'T1', 'C251006-XXXX'), cotizacion('T1')));
+    await assertSucceeds(getDoc(cref('adm')));
+    await assertSucceeds(getDoc(rref('adm', 0)));
   });
-  it('taller desactivado no crea cotizaciones ni renglones', async () => {
+  it('el admin borra una cotización completa en un lote (renglones primero)', async () => {
     await sembrar();
-    await assertFails(setDoc(cot('t3', 'T3', 'C251006-NUEV'), cotizacion('T3')));
-    await assertFails(setDoc(ren('t3', 'T3', 0, 'C251006-BBBB'), renglon()));
-  });
-  it('taller desactivado no edita cotizaciones ni renglones', async () => {
-    await sembrar();
-    await assertFails(updateDoc(cot('t3', 'T3', 'C251006-BBBB'), { observaciones: 'x', actualizadoAt: serverTimestamp() }));
-    await assertFails(setDoc(ren('t3', 'T3', 0, 'C251006-BBBB'), renglon({ precioUnitario: 1 })));
-  });
-  it('taller desactivado sí lee sus cotizaciones y renglones', async () => {
-    await sembrar();
-    await assertSucceeds(getDoc(cot('t3', 'T3', 'C251006-BBBB')));
-    await assertSucceeds(getDoc(ren('t3', 'T3', 0, 'C251006-BBBB')));
-  });
-  it('el taller no puede borrar la cotización completa', async () => {
-    await sembrar();
-    await assertFails(deleteDoc(cot('t1', 'T1', 'C251006-AAAA')));
+    const db = como('adm');
+    const b = writeBatch(db);
+    for (let i = 0; i < 2; i++) b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', C, 'renglones', String(i)));
+    b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', C));
+    await assertSucceeds(b.commit());
   });
 });
 
-describe('admin', () => {
-  it('lee cotizaciones y renglones de cualquier taller', async () => {
+describe('taller activo: la app no debe mostrar vencidas, pero las reglas solo impiden editarlas', () => {
+  it('la lista ordenada por expiración y filtrada por vigencia se puede consultar', async () => {
     await sembrar();
-    await assertSucceeds(getDoc(cot('adm', 'T1', 'C251006-AAAA')));
-    await assertSucceeds(getDoc(ren('adm', 'T1', 2, 'C251006-AAAA')));
-  });
-  it('borra una cotización completa en un lote: primero sus renglones, luego la cotización', async () => {
-    await sembrar();
-    const db = como('adm');
-    const lote = writeBatch(db);
-    for (let i = 0; i < 3; i++) lote.delete(doc(db, 'talleres', 'T1', 'cotizaciones', 'C251006-AAAA', 'renglones', String(i)));
-    lote.delete(doc(db, 'talleres', 'T1', 'cotizaciones', 'C251006-AAAA'));
-    await assertSucceeds(lote.commit());
-    const restos = await getDocs(colRenglones('adm', 'T1', 'C251006-AAAA'));
-    assert.equal(restos.size, 0);
+    const { query, where, orderBy, limit } = await import('firebase/firestore');
+    const q = query(collection(como('t1'), 'talleres', 'T1', 'cotizaciones'), where('archivada', '==', false), where('expiraAt', '>', new Date()), orderBy('expiraAt', 'desc'), limit(20));
+    await assertSucceeds(getDocs(q));
   });
 });

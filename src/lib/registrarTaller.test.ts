@@ -11,6 +11,7 @@ function depsOk(): DependenciasRegistroTaller {
     crearUsuario: vi.fn(async () => {}),
     borrarTaller: vi.fn(async () => {}),
     borrarCuenta: vi.fn(async () => {}),
+    aceptarVersion: vi.fn(async () => {}),
   };
 }
 
@@ -27,7 +28,8 @@ describe('registrarTaller', () => {
   it('crea cuenta, taller y usuario, en ese orden, y devuelve los ids', async () => {
     const dep = depsOk();
     const r = await registrarTaller(datos, dep);
-    expect(r).toEqual({ uid: 'uid-1', tallerId: 'T-1' });
+    expect(r).toEqual({ uid: 'uid-1', tallerId: 'T-1', aceptada: true });
+    expect(dep.aceptarVersion).toHaveBeenCalledWith('T-1');
     expect(dep.crearTaller).toHaveBeenCalledWith('T-1', 'uid-1');
     expect(dep.crearUsuario).toHaveBeenCalledWith('uid-1', 'T-1', 'pepe@taller.mx');
     expect(dep.borrarCuenta).not.toHaveBeenCalled();
@@ -76,5 +78,14 @@ describe('registrarTaller', () => {
     dep.borrarCuenta = vi.fn(async () => { throw new Error('sesión vencida'); });
     const e = await errorDe(registrarTaller(datos, dep));
     expect(e.codigo).toBe('a-medias');
+  });
+
+  it('si la primera aceptación falla, la cuenta se queda y se avisa como no aceptada', async () => {
+    const dep = depsOk();
+    dep.aceptarVersion = vi.fn(async () => { throw new Error('red'); });
+    const r = await registrarTaller(datos, dep);
+    expect(r.aceptada).toBe(false);
+    expect(dep.borrarCuenta).not.toHaveBeenCalled();
+    expect(dep.borrarTaller).not.toHaveBeenCalled();
   });
 });

@@ -6,7 +6,8 @@ import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
 import { collection, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../../lib/firebase';
 import { MENSAJES_TALLER, validarRegistroTaller } from '../../../../lib/taller';
-import { VERSION_LEGAL, URL_TERMINOS, URL_PRIVACIDAD } from '../../../../lib/versionesLegales';
+import { URL_TERMINOS, URL_PRIVACIDAD } from '../../../../lib/versionesLegales';
+import { aceptarVersion, leerConfigCotizaciones } from '../cotizaciones/datos';
 import { ErrorRegistro, registrarTaller } from '../../../../lib/registrarTaller';
 import { useAuth } from '../../AuthContext';
 import { talleresHabilitados } from '../../../../lib/talleresHabilitados';
@@ -61,8 +62,12 @@ export default function RegistroTaller() {
 
     setRegistrando(true);
     try {
+      // Sin configuración de cotizaciones no se registra: la regla de talleres la necesita.
+      const config = await leerConfigCotizaciones();
+      if (!config) throw new ErrorRegistro('general');
+
       const datos = validacion.datos;
-      // El taller guarda los datos del formulario; el usuario solo guarda rol, tallerId y correo.
+      // El taller nace SIN aceptar; la primera aceptación se registra justo después (con su historial).
       const deps = {
         ...dependenciasFirebase,
         crearTaller: (tallerId, uid) => setDoc(doc(db, 'talleres', tallerId), {
@@ -73,9 +78,10 @@ export default function RegistroTaller() {
           ownerUid: uid,
           activo: true,
           creadoAt: serverTimestamp(),
-          // Qué versión de términos y aviso aceptó el taller, y cuándo (la regla lo exige).
-          aceptacionLegal: { version: VERSION_LEGAL, fecha: new Date() },
+          aceptacionVersion: '',
+          avisoPrivacidad: { modo: 'generado', versionPlantilla: config.avisoTallerVersion, fecha: serverTimestamp() },
         }),
+        aceptarVersion: (tallerId) => aceptarVersion(tallerId, config.terminosVersion),
       };
       await registrarTaller(datos, deps);
       // El contexto leyó el rol cuando la cuenta todavía no tenía documento: lo volvemos a leer

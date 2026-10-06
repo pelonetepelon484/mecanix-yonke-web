@@ -2,19 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../AuthContext';
 import { listarCotizaciones } from './datos';
+import { useCotizaciones } from './contexto';
 import { ESTADOS_COTIZACION, formatearPesos } from '../../../../lib/cotizaciones';
 
 const MENSAJE_INDICE = 'Falta un índice de Firestore para esta lista. Avisa al equipo técnico (el enlace para crearlo aparece en la consola del navegador).';
 
-function fechaCorta(ts) {
+function fecha(ts) {
   return ts?.toDate ? ts.toDate().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 }
 
 export default function ListaCotizaciones() {
   const router = useRouter();
-  const { tallerId } = useAuth();
+  const { tallerId, puedeEditar } = useCotizaciones();
   const [pestana, setPestana] = useState('activas');
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [items, setItems] = useState([]);
@@ -25,7 +25,6 @@ export default function ListaCotizaciones() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!tallerId) return;
     let cancelado = false;
     listarCotizaciones(tallerId, { archivada: pestana === 'archivadas' })
       .then((r) => {
@@ -76,9 +75,13 @@ export default function ListaCotizaciones() {
         </button>
         <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '4px 0 14px' }}>Cotizaciones</h1>
 
-        <button onClick={() => router.push('/panel/taller/cotizaciones/nueva')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '14px' }}>
-          + Nueva cotización
-        </button>
+        {puedeEditar ? (
+          <button onClick={() => router.push('/panel/taller/cotizaciones/nueva')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '14px' }}>
+            + Nueva cotización
+          </button>
+        ) : (
+          <p style={{ fontSize: '14px', color: '#8A2A1A', margin: '0 0 14px' }}>Solo lectura: no puedes crear ni editar cotizaciones ahora.</p>
+        )}
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           {[['activas', 'Activas'], ['archivadas', 'Archivadas']].map(([valor, texto]) => (
@@ -120,7 +123,7 @@ export default function ListaCotizaciones() {
               {[c.vehiculo?.marca, c.vehiculo?.modelo, c.vehiculo?.anio].filter(Boolean).join(' ')}
             </p>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-              <span style={{ color: '#888' }}>{fechaCorta(c.actualizadoAt)}</span>
+              <span style={{ color: '#888' }}>Se eliminará el {fecha(c.expiraAt)}</span>
               <strong style={{ color: '#1A3C5E', fontSize: '16px' }}>{formatearPesos(c.totalCentavos ?? 0)}</strong>
             </div>
           </button>

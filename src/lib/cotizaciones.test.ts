@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_RENGLONES, MENSAJES_COTIZACION, aCentavos, formatearPesos, generarFolio, quitarDatosCliente,
+  MAX_RENGLONES, MENSAJES_COTIZACION, aCentavos, calcularExpiraAt, copiaSinDatosCliente, formatearPesos, generarFolio, quitarDatosCliente,
   redondearCentavos, subtotalCentavos, totalCentavos, validarCotizacion, validarRenglon, type DatosCotizacion,
 } from './cotizaciones';
 
@@ -107,7 +107,8 @@ describe('validar cotización completa', () => {
   });
   it('rechaza año fuera de rango y vigencia fuera de 1 a 90', () => {
     expect(validarCotizacion(datosBase({ vehiculo: { marca: 'N', modelo: 'S', anio: 1800 } }))).toBe(MENSAJES_COTIZACION.anio);
-    expect(validarCotizacion(datosBase({ vigenciaDias: 91 }))).toBe(MENSAJES_COTIZACION.vigencia);
+    expect(validarCotizacion(datosBase({ vigenciaDias: 61 }))).toBe(MENSAJES_COTIZACION.vigencia);
+    expect(validarCotizacion(datosBase({ vigenciaDias: 60 }))).toBeNull();
     expect(validarCotizacion(datosBase({ vigenciaDias: 0 }))).toBe(MENSAJES_COTIZACION.vigencia);
   });
   it('rechaza placas de más de 12 caracteres y kilometraje fuera de rango', () => {
@@ -139,5 +140,23 @@ describe('quitar datos del cliente', () => {
     quitarDatosCliente(original);
     expect(original.cliente).toEqual({ nombre: 'Ana' });
     expect(original.vehiculo).toHaveProperty('placas', 'P1');
+  });
+});
+
+describe('retención y duplicado', () => {
+  it('la fecha de eliminación es 88 días después de la creación', () => {
+    const creada = new Date(Date.UTC(2026, 9, 6, 12, 0, 0));
+    const expira = calcularExpiraAt(creada);
+    expect((expira.getTime() - creada.getTime()) / 86400000).toBe(88);
+  });
+  it('la copia para duplicar no lleva nombre, teléfono, placas ni kilometraje', () => {
+    const copia = copiaSinDatosCliente({
+      cliente: { nombre: 'Juan', telefono: '6641234567' },
+      vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001, placas: 'ABC123', kilometraje: 150000 },
+      renglones: [renglon()],
+    });
+    expect(copia.cliente).toEqual({});
+    expect(copia.vehiculo).toEqual({ marca: 'Nissan', modelo: 'Sentra', anio: 2001 });
+    expect(copia.renglones).toHaveLength(1);
   });
 });

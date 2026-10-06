@@ -2,6 +2,10 @@
 // Los montos se calculan en centavos (enteros) para que 0.1 + 0.2 dé 0.30 y no 0.30000000000000004.
 
 export const MAX_RENGLONES = 20;
+export const MAX_VIGENCIA_DIAS = 60;
+// Retención técnica: 88 días desde creadoAt (margen para el retraso del TTL). Tolerancia de la regla: ±5 min.
+export const DIAS_RETENCION = 88;
+export const TOLERANCIA_EXPIRA_MINUTOS = 5;
 export const MAX_PRECIO_RENGLON = 1000000;
 export const ESTADOS_COTIZACION = ['borrador', 'enviada', 'cerrada'] as const;
 
@@ -21,7 +25,7 @@ export const MENSAJES_COTIZACION = {
   nombreCliente: 'El nombre del cliente es muy largo (máximo 100 letras).',
   telefono: 'El teléfono solo puede tener números, espacios, + y guiones (máximo 20 caracteres).',
   observaciones: 'Las observaciones son muy largas (máximo 1000 letras).',
-  vigencia: 'La vigencia debe ser de 1 a 90 días.',
+  vigencia: 'La vigencia debe ser de 1 a 60 días.',
   tallerDesactivado: 'Tu taller está desactivado, por eso no puedes guardar cambios. Escríbenos para revisarlo.',
   guardarFallo: 'No pudimos guardar la cotización. Revisa tu conexión e intenta de nuevo. Lo que escribiste sigue en pantalla.',
   folioOcupado: 'No pudimos asignar un número a la cotización. Intenta de nuevo.',
@@ -100,7 +104,7 @@ export function validarCotizacion(d: DatosCotizacion): string | null {
   if (d.vehiculo.placas !== undefined && d.vehiculo.placas.length > 12) return MENSAJES_COTIZACION.placas;
   if (d.vehiculo.kilometraje !== undefined && (!Number.isInteger(d.vehiculo.kilometraje) || d.vehiculo.kilometraje < 0 || d.vehiculo.kilometraje > 2000000)) return MENSAJES_COTIZACION.kilometraje;
   if (d.observaciones.length > 1000) return MENSAJES_COTIZACION.observaciones;
-  if (!Number.isInteger(d.vigenciaDias) || d.vigenciaDias < 1 || d.vigenciaDias > 90) return MENSAJES_COTIZACION.vigencia;
+  if (!Number.isInteger(d.vigenciaDias) || d.vigenciaDias < 1 || d.vigenciaDias > MAX_VIGENCIA_DIAS) return MENSAJES_COTIZACION.vigencia;
   return null;
 }
 
@@ -108,4 +112,15 @@ export function validarCotizacion(d: DatosCotizacion): string | null {
 export function quitarDatosCliente<T extends { cliente: object; vehiculo: object }>(c: T): T {
   const { placas: _placas, ...vehiculoSinPlacas } = c.vehiculo as { placas?: string };
   return { ...c, cliente: {}, vehiculo: vehiculoSinPlacas };
+}
+
+// Fecha de eliminación de una cotización creada en "desde": desde + 88 días.
+export function calcularExpiraAt(desde: Date): Date {
+  return new Date(desde.getTime() + DIAS_RETENCION * 24 * 60 * 60 * 1000);
+}
+
+// Copia para duplicar: sin nombre, teléfono, placas ni kilometraje del cliente/vehículo.
+export function copiaSinDatosCliente<T extends { cliente: object; vehiculo: object }>(c: T): T {
+  const { placas: _placas, kilometraje: _km, ...vehiculo } = c.vehiculo as { placas?: string; kilometraje?: number };
+  return { ...c, cliente: {}, vehiculo };
 }

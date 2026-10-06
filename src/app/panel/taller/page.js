@@ -7,22 +7,39 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import { talleresHabilitados } from '../../../lib/talleresHabilitados';
+import { leerConfigCotizaciones } from './cotizaciones/datos';
+import AvisoVersion from './AvisoVersion';
 
 export default function PanelTaller() {
   const router = useRouter();
   const { tallerId } = useAuth();
   const [nombre, setNombre] = useState('');
   const [errorCarga, setErrorCarga] = useState('');
+  const [versionAceptada, setVersionAceptada] = useState(null);
+  const [versionVigente, setVersionVigente] = useState(null);
+  const [resumen, setResumen] = useState('');
+  const [recarga, setRecarga] = useState(0);
 
   useEffect(() => {
     if (!tallerId) return;
-    getDoc(doc(db, 'talleres', tallerId))
-      .then((snap) => {
-        if (snap.exists()) setNombre(snap.data().nombre || '');
-        else setErrorCarga('No encontramos los datos de tu taller.');
+    let cancelado = false;
+    Promise.all([getDoc(doc(db, 'talleres', tallerId)), leerConfigCotizaciones()])
+      .then(([snap, config]) => {
+        if (cancelado) return;
+        if (snap.exists()) {
+          setNombre(snap.data().nombre || '');
+          setVersionAceptada(snap.data().aceptacionVersion ?? '');
+        } else {
+          setErrorCarga('No encontramos los datos de tu taller.');
+        }
+        setVersionVigente(config?.terminosVersion ?? null);
+        setResumen(config?.resumenCambios ?? '');
       })
-      .catch(() => setErrorCarga('No pudimos cargar los datos de tu taller. Intenta recargar la página.'));
-  }, [tallerId]);
+      .catch(() => { if (!cancelado) setErrorCarga('No pudimos cargar los datos de tu taller. Intenta recargar la página.'); });
+    return () => { cancelado = true; };
+  }, [tallerId, recarga]);
+
+  const hayCambios = versionVigente !== null && versionAceptada !== null && versionAceptada !== versionVigente;
 
   async function cerrarSesion() {
     await signOut(auth);
@@ -35,6 +52,16 @@ export default function PanelTaller() {
         <p style={{ fontSize: '13px', color: '#E8720C', letterSpacing: '2px', fontWeight: 'bold', marginBottom: '8px' }}>PANEL DEL TALLER</p>
         <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '0 0 16px' }}>{nombre || 'Tu taller'}</h1>
         {errorCarga && <p role="alert" style={{ color: '#D85A30', fontSize: '13px' }}>{errorCarga}</p>}
+        {hayCambios && (
+          <div style={{ textAlign: 'left' }}>
+            <AvisoVersion
+              tallerId={tallerId}
+              versionVigente={{ version: versionVigente }}
+              resumen={resumen}
+              onAceptada={() => setRecarga((n) => n + 1)}
+            />
+          </div>
+        )}
         {talleresHabilitados() && (
           <button onClick={() => router.push('/panel/taller/cotizaciones')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: '16px 0 24px' }}>
             Cotizaciones
