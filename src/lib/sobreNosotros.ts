@@ -74,6 +74,8 @@ export function validarSobreNosotrosParaGuardar(datos: {
   if (datos.aniosExperiencia !== undefined && datos.aniosExperiencia !== null && datos.aniosExperiencia !== '') {
     const n = Number(datos.aniosExperiencia);
     if (!Number.isFinite(n) || n < 0) return { ok: false, error: 'Los años de experiencia deben ser un número positivo.' };
+    // La regla de Firestore exige entero (is int); un decimal como 2.5 la haría fallar con permission-denied.
+    if (!Number.isInteger(n)) return { ok: false, error: 'Los años de experiencia deben ser un número entero (sin decimales).' };
   }
   if (datos.fotoUrl && bucket && !esUrlDeNuestroStorage(datos.fotoUrl, bucket)) {
     return { ok: false, error: 'La foto no tiene una URL de nuestro almacenamiento.' };

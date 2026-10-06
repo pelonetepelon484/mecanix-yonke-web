@@ -47,6 +47,11 @@ describe('sanearSobreNosotros', () => {
 });
 
 describe('validarSobreNosotrosParaGuardar', () => {
+  it('rechaza años de experiencia decimales (la regla de Firestore exige entero)', () => {
+    expect(validarSobreNosotrosParaGuardar({ texto: 'Hola', aniosExperiencia: 2.5 }).ok).toBe(false);
+    expect(validarSobreNosotrosParaGuardar({ texto: 'Hola', aniosExperiencia: 3 }).ok).toBe(true);
+  });
+
   it('acepta texto válido, con o sin campos extra', () => {
     expect(validarSobreNosotrosParaGuardar({ texto: 'Hola' }).ok).toBe(true);
     expect(validarSobreNosotrosParaGuardar({ texto: 'Hola', aniosExperiencia: 5, direccion: 'x', horario: 'y', fotoUrl: URL_OK }, BUCKET).ok).toBe(true);
