@@ -1,3 +1,4 @@
+import textosTalleres from '../../lib/textosLegalesTalleres.json';
 export const metadata = {
   title: 'Términos y Condiciones',
   description: 'Términos y condiciones de uso de Mecanix Yonke Virtual — la plataforma que conecta clientes con yonkes afiliados en México.',
@@ -134,7 +135,12 @@ export default function Terminos() {
           <p style={parrafoStyle}>Estos Términos y Condiciones se rigen por las leyes de los Estados Unidos Mexicanos. Aunque la Plataforma opera en varios estados, para la interpretación y cumplimiento de estos términos las partes se someten expresamente a la jurisdicción de los tribunales competentes de <strong>Tijuana, Baja California</strong>, renunciando a cualquier otro fuero que pudiera corresponderles por su domicilio presente o futuro.</p>
         </Seccion>
 
-        <Seccion titulo="21. Contacto">
+        <Seccion titulo="21. Términos para Talleres (solo aplican a Talleres)" id="talleres">
+          <p style={{ ...parrafoStyle, fontSize: '13px', color: '#888' }}>Versión: {textosTalleres.version} · {textosTalleres.fecha}</p>
+          <BloquesTalleres items={textosTalleres.terminos} />
+        </Seccion>
+
+        <Seccion titulo="22. Contacto">
           Para cualquier pregunta relacionada con estos Términos y Condiciones puedes contactarnos en:
           <p style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '8px' }}>
             contacto@mecanixyonkevirtual.com
@@ -151,9 +157,9 @@ export default function Terminos() {
   );
 }
 
-function Seccion({ titulo, children }) {
+function Seccion({ titulo, id, children }) {
   return (
-    <div style={{ marginBottom: '28px' }}>
+    <div id={id} style={{ marginBottom: '28px' }}>
       <h2 style={{ color: '#1A3C5E', fontSize: '17px', marginBottom: '10px' }}>{titulo}</h2>
       <div style={{ color: '#555', fontSize: '15px', lineHeight: '1.6' }}>{children}</div>
     </div>
@@ -163,3 +169,9 @@ function Seccion({ titulo, children }) {
 const parrafoStyle = {
   marginBottom: '10px',
 };
+
+function BloquesTalleres({ items }) {
+  return items.map((it, i) => (it.tipo === 'subtitulo'
+    ? <p key={i} style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '14px' }}>{it.texto}</p>
+    : <p key={i} style={parrafoStyle}>{it.texto}</p>));
+}

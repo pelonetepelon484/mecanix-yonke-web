@@ -164,7 +164,7 @@ export async function aceptarVersion(tallerId, version) {
   await lote.commit();
 }
 
-// Solo admin. Borra primero los renglones y luego la cotización, en un lote.
+// Borra primero los renglones y luego la cotización, en un solo lote. Lo usan el dueño (con taller activo y versión vigente) y el admin.
 export async function borrarCotizacionCompleta(tallerId, folio) {
   const rs = await getDocs(renglonesRef(tallerId, folio));
   const lote = writeBatch(db);

@@ -92,13 +92,15 @@ describe('admin borra un taller completo', () => {
     await assert.rejects(borrarTallerCompleto({ db, fns }, ''));
   });
 
-  it('el taller no puede ejecutarla: las reglas lo bloquean', async () => {
+  it('el taller NO puede borrar el taller ni su usuario: la función falla al borrar el taller', async () => {
     await sembrar();
     const db = env.authenticatedContext('t1').firestore();
+    // El dueño activo sí puede borrar SUS cotizaciones (renglones y cotización), así que esas se borran
+    // antes de que las reglas bloqueen el borrado del taller. Por eso la función falla.
     await assert.rejects(borrarTallerCompleto({ db, fns }, 'T1'));
-    // Nada debe haberse borrado de la cuenta del taller
     const despues = await conteos('adm', 'T1');
     assert.equal(despues.taller, true);
-    assert.equal(despues.cotizaciones, 2);
+    assert.equal(despues.usuario, true);
+    assert.equal(despues.cotizaciones, 0);
   });
 });

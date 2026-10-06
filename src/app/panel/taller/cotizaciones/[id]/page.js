@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import CotizacionForm from '../CotizacionForm';
 import { useCotizaciones } from '../contexto';
-import { cambiarArchivada, duplicarCotizacion, guardarCotizacion, leerCotizacion, quitarDatosCliente } from '../datos';
+import { borrarCotizacionCompleta, cambiarArchivada, duplicarCotizacion, guardarCotizacion, leerCotizacion, quitarDatosCliente } from '../datos';
 
 export default function EditarCotizacion() {
   const router = useRouter();
@@ -66,6 +66,17 @@ export default function EditarCotizacion() {
           soloLectura={soloLectura}
           datosClienteHabilitados={datosClienteHabilitados}
           fechaEliminacion={fechaEliminacion}
+          puedeEliminar={puedeEditar}
+          onEliminar={async () => {
+            if (!window.confirm('¿Eliminar esta cotización y todos sus renglones? Esto no se puede deshacer.')) return;
+            try {
+              await borrarCotizacionCompleta(tallerId, folio);
+              router.push('/panel/taller/cotizaciones');
+            } catch (err) {
+              console.error(err);
+              setAviso('No pudimos eliminar la cotización. Intenta de nuevo.');
+            }
+          }}
           onCancelar={() => router.push('/panel/taller/cotizaciones')}
           onGuardar={async (datos) => {
             await guardarCotizacion({

@@ -69,10 +69,11 @@ export default function CotizacionesLayout({ children }) {
             versionVigente={{ version: config.terminosVersion }}
             resumen={config.resumenCambios}
             onAceptada={() => setRecarga((n) => n + 1)}
+            tallerActivo={taller?.activo === true}
           />
         )}
         {config && versionVigente && taller && taller.activo !== true && (
-          <p role="alert" style={{ color: '#8A2A1A', fontSize: '14px' }}>Tu taller está desactivado: solo puedes ver tus cotizaciones y quitar datos de tus clientes.</p>
+          <p role="alert" style={{ color: '#8A2A1A', fontSize: '14px' }}>Tu taller está desactivado: solo puedes ver tus cotizaciones.</p>
         )}
       </div>
       {children}

@@ -1,3 +1,4 @@
+import textosTalleres from '../../lib/textosLegalesTalleres.json';
 export const metadata = {
   title: 'Aviso de Privacidad',
   description: 'Cómo Mecanix Yonke Virtual recopila, usa y protege tus datos personales al buscar refacciones o registrar tu yonke.',
@@ -106,7 +107,12 @@ export default function Privacidad() {
           <p style={parrafoStyle}>Podemos actualizar este Aviso de Privacidad para reflejar cambios en la Plataforma, en nuestros proveedores o en la ley. Publicaremos la versión vigente en esta misma página con su fecha de actualización; si el cambio es importante, además lo avisaremos dentro de la Plataforma. El uso continuado de la Plataforma después de un cambio implica que lo conoces.</p>
         </Seccion>
 
-        <Seccion titulo="12. Contacto">
+        <Seccion titulo="12. Talleres y cotizaciones" id="talleres">
+          <p style={{ ...parrafoStyle, fontSize: '13px', color: '#888' }}>Versión: {textosTalleres.version} · {textosTalleres.fecha}</p>
+          <BloquesTalleres items={textosTalleres.privacidad} />
+        </Seccion>
+
+        <Seccion titulo="13. Contacto">
           <p style={parrafoStyle}>Para dudas sobre este aviso y para ejercer tus derechos ARCO puedes escribirnos a:</p>
           <p style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '8px' }}>
             contacto@mecanixyonkevirtual.com
@@ -123,9 +129,9 @@ export default function Privacidad() {
   );
 }
 
-function Seccion({ titulo, children }) {
+function Seccion({ titulo, id, children }) {
   return (
-    <div style={{ marginBottom: '28px' }}>
+    <div id={id} style={{ marginBottom: '28px' }}>
       <h2 style={{ color: '#1A3C5E', fontSize: '17px', marginBottom: '10px' }}>{titulo}</h2>
       <div style={{ color: '#555', fontSize: '15px', lineHeight: '1.6' }}>{children}</div>
     </div>
@@ -135,3 +141,9 @@ function Seccion({ titulo, children }) {
 const parrafoStyle = {
   marginBottom: '10px',
 };
+
+function BloquesTalleres({ items }) {
+  return items.map((it, i) => (it.tipo === 'subtitulo'
+    ? <p key={i} style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '14px' }}>{it.texto}</p>
+    : <p key={i} style={parrafoStyle}>{it.texto}</p>));
+}

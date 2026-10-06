@@ -63,7 +63,8 @@ const sinBorde = { border: 0, padding: 0, margin: 0, minWidth: 0 };
 
 export default function CotizacionForm({
   inicial = null, tallerActivo = true, soloLectura = false, datosClienteHabilitados = true, fechaEliminacion = null,
-  onGuardar, onQuitarDatos, onArchivar, onDuplicar, onCancelar,
+  puedeEliminar = false,
+  onGuardar, onQuitarDatos, onArchivar, onDuplicar, onEliminar, onCancelar,
 }) {
   const [f, setF] = useState(() => desdeInicial(inicial));
   const [archivada] = useState(inicial?.archivada ?? false);
@@ -209,7 +210,8 @@ export default function CotizacionForm({
 
         <div style={seccion}>
           <label style={etiqueta}>Observaciones</label>
-          <textarea rows={3} value={f.observaciones} onChange={set('observaciones')} style={{ ...inputBase, resize: 'vertical' }} />
+          <p style={{ fontSize: '13px', color: '#8A2A1A', margin: '0 0 6px' }}>Solo observaciones del vehículo. No escribas nombres, teléfonos ni datos personales o sensibles.</p>
+          <textarea rows={3} maxLength={1000} value={f.observaciones} onChange={set('observaciones')} style={{ ...inputBase, resize: 'vertical' }} />
           <label style={etiqueta}>Vigencia (días, de 1 a {MAX_VIGENCIA_DIAS})</label>
           <input type="number" inputMode="numeric" min="1" max={MAX_VIGENCIA_DIAS} value={f.vigenciaDias} onChange={set('vigenciaDias')} style={inputBase} />
           <label style={etiqueta}>Estado</label>
@@ -231,9 +233,16 @@ export default function CotizacionForm({
               </button>
             </>
           )}
-          <button type="button" onClick={onQuitarDatos} style={{ ...botonGrande, backgroundColor: '#fff', color: '#B3261E', border: '1px solid #E5B8B3' }}>
-            Quitar datos del cliente
-          </button>
+          {tallerActivo && (
+            <button type="button" onClick={onQuitarDatos} style={{ ...botonGrande, backgroundColor: '#fff', color: '#B3261E', border: '1px solid #E5B8B3' }}>
+              Quitar datos del cliente
+            </button>
+          )}
+          {puedeEliminar && onEliminar && (
+            <button type="button" onClick={onEliminar} style={{ ...botonGrande, backgroundColor: '#B3261E', color: '#fff' }}>
+              Eliminar cotización
+            </button>
+          )}
         </div>
       )}
 

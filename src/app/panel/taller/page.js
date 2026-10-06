@@ -19,6 +19,7 @@ export default function PanelTaller() {
   const [versionVigente, setVersionVigente] = useState(null);
   const [resumen, setResumen] = useState('');
   const [recarga, setRecarga] = useState(0);
+  const [activoTaller, setActivoTaller] = useState(false);
 
   useEffect(() => {
     if (!tallerId) return;
@@ -29,6 +30,7 @@ export default function PanelTaller() {
         if (snap.exists()) {
           setNombre(snap.data().nombre || '');
           setVersionAceptada(snap.data().aceptacionVersion ?? '');
+          setActivoTaller(snap.data().activo === true);
         } else {
           setErrorCarga('No encontramos los datos de tu taller.');
         }
@@ -59,6 +61,7 @@ export default function PanelTaller() {
               tallerId={tallerId}
               versionVigente={{ version: versionVigente }}
               resumen={resumen}
+              tallerActivo={activoTaller}
               onAceptada={() => setRecarga((n) => n + 1)}
             />
           </div>
