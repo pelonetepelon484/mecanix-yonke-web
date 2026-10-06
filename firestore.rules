@@ -301,8 +301,8 @@ service cloud.firestore {
                     && request.resource.data.avisoVersion == get(/databases/$(database)/documents/talleres/$(tallerId)).data.avisoPrivacidad.versionPlantilla;
 
       allow update: if (
-                        // A) EXCEPCIÓN: dueño con versión vieja o taller desactivado. SOLO vaciar cliente y quitar placas.
-                        (esDuenoDelTaller()
+                        // A) EXCEPCIÓN: dueño ACTIVO (con versión vieja o vigente). SOLO vaciar cliente y quitar placas.
+                        (tallerActivoDeDueno()
                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cliente', 'vehiculo', 'actualizadoAt'])
                          && request.resource.data.cliente == {}
                          && request.resource.data.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio', 'kilometraje'])
@@ -330,8 +330,9 @@ service cloud.firestore {
                             && request.resource.data.actualizadoAt == request.time)
                       );
 
-      // Solo admin borra la cotización completa (primero sus renglones)
-      allow delete: if esAdmin();
+      // Borrar la cotización completa (primero sus renglones): admin, o el dueño con taller activo y versión vigente
+      allow delete: if esAdmin()
+                    || (tallerActivoDeDueno() && versionVigente());
 
       match /renglones/{numero} {
         // Cotización padre tal como quedará después del lote (getAfter)
@@ -366,11 +367,9 @@ service cloud.firestore {
                       && request.resource.data.expiraAt == resource.data.expiraAt
                       && request.resource.data.expiraAt == padre().expiraAt;
 
-        // Quitar renglones (al editar) exige taller activo y versión vigente; el admin siempre puede
+        // Quitar renglones (al editar o al eliminar la cotización) exige taller activo y versión vigente; el admin siempre puede
         allow delete: if esAdmin()
-                      || (tallerActivoDeDueno()
-                          && versionVigente()
-                          && resource.data.expiraAt > request.time);
+                      || (tallerActivoDeDueno() && versionVigente());
       }
     }
 

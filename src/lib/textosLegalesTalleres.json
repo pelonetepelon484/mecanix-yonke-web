@@ -1,0 +1,178 @@
+{
+  "version": "talleres-2026-10-1",
+  "fecha": "6 de octubre de 2026",
+  "urls": {
+    "terminosTalleres": "https://mecanixyonkevirtual.com/terminos#talleres",
+    "privacidadTalleres": "https://mecanixyonkevirtual.com/privacidad#talleres"
+  },
+  "terminos": [
+    {
+      "tipo": "subtitulo",
+      "texto": "1.1 Definiciones"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Plataforma: el sitio y las herramientas de Mecanix Yonke Virtual. Mecanix: David Hernández Martínez, persona física, con domicilio en Calle Casiopea #1-C, Colonia Sánchez Taboada, Tijuana, Baja California, C.P. 22185; correo contacto@mecanixyonkevirtual.com; WhatsApp 661 103 4260. Taller: la persona física o moral que crea una cuenta de taller. Cliente del Taller: la persona cuyos datos el Taller captura al elaborar una cotización. Cotización: el documento que el Taller elabora en la Plataforma."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.2 Responsable y proveedor del servicio de almacenamiento"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller es el responsable del tratamiento de los datos personales de sus Clientes que capture en la Plataforma, y decide para qué y cómo se usan. Mecanix actúa únicamente como proveedor del servicio de almacenamiento de esos datos, por petición e instrucción del Taller. Mecanix no usa esos datos para fines propios y no los comparte con yonkes, con otros talleres ni con terceros, salvo con los proveedores de infraestructura tecnológica necesarios para prestar el servicio y cuando una obligación legal lo exija."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Mecanix utiliza servicios de terceros para almacenar y alojar la Plataforma: Google LLC (Firebase / Google Cloud) y Vercel Inc. Esos proveedores operan bajo sus propios términos y políticas, y Mecanix no es responsable de actividades que no le competen o que están fuera de su control. El uso de estos proveedores constituye una remisión de datos y no una transferencia."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.3 Aviso de privacidad del Taller"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller se obliga a poner a disposición de sus Clientes un aviso de privacidad y a entregárselo al firmar la cotización, ya sea uno propio o el que la Plataforma genera para su Taller. El Taller es responsable del contenido y del cumplimiento de ese aviso. El Cliente que firme la cotización acepta los términos del Taller, los cuales remiten a los Términos y Condiciones de Mecanix. Si el Cliente no acepta la cotización, el Taller deberá eliminarla de inmediato."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.4 Derechos de acceso, rectificación, cancelación y oposición"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Las solicitudes de los Clientes se presentan ante el Taller, que las atiende como responsable. Mecanix responde al Taller, como proveedor del servicio de almacenamiento, en los plazos que establezca la ley aplicable vigente. Cuando se active la captura de datos personales del Cliente, la Plataforma incluirá la función «Quitar datos del cliente», mediante la cual el Taller activo podrá eliminar nombre, teléfono y placas de una cotización. Si el Taller necesita la eliminación completa de una cotización, puede solicitarla a Mecanix en contacto@mecanixyonkevirtual.com."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.5 Conservación de la información"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Las cotizaciones y sus renglones se conservan en la Plataforma por un máximo de 90 días contados desde su creación y después se eliminan automáticamente. Por razones de seguridad y recuperación ante fallas, pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses, tras el cual se eliminan. Si Mecanix restaura una copia de seguridad, eliminará de inmediato la información vencida."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.6 Actualización de los Términos y reaceptación"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Cuando Mecanix actualice estos Términos o el Aviso de Privacidad de manera que afecte a los Talleres, mostrará un aviso de cambios al Taller al acceder a la Plataforma. Para seguir creando o editando cotizaciones, el Taller deberá aceptar la versión vigente. Mientras no la acepte, podrá consultar sus cotizaciones anteriores y quitar datos de sus Clientes, pero no podrá crear ni editar cotizaciones. Mecanix registrará la versión aceptada y la fecha de cada aceptación, y conservará ese historial mientras exista la cuenta del Taller y, como mínimo, mientras exista la última cotización elaborada bajo la versión aceptada, por razones de acreditación legal."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.7 Uso adecuado"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller se obliga a capturar únicamente los datos necesarios para elaborar la cotización. El campo de observaciones es exclusivamente para observaciones del vehículo; no debe usarse para datos personales, datos sensibles ni datos innecesarios. El incumplimiento faculta a Mecanix a suspender o desactivar la cuenta del Taller, revocándole de inmediato el acceso a la Plataforma."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.8 Limitación de responsabilidad e indemnidad"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "1.8.1 Deslinde y exclusión de responsabilidad operativa y comercial. Calidad de intermediario tecnológico. El Taller reconoce y acepta que Mecanix actúa única y exclusivamente como una plataforma de intermediación tecnológica y de software (SaaS), destinada a facilitar la gestión administrativa y el contacto y comunicación con Clientes finales. En lo relativo a datos personales de los Clientes, Mecanix actúa como proveedor del servicio de almacenamiento, conforme a la cláusula 1.2. Ausencia de relación de consumo o de servicio automotriz. Mecanix no presta servicios de reparación, mantenimiento, diagnóstico, mecánica ni hojalatería, ni comercializa autopartes o insumos automotrices. La relación derivada de esos servicios se constituye única y exclusivamente entre el Taller y el Cliente. Exclusión de daños. En ningún caso Mecanix, sus filiales, directivos, empleados, socios o licenciatarios serán responsables ante el Taller, el Cliente o cualquier tercero por: (a) daños directos, indirectos, incidentales, punitivos, especiales o consecuenciales, incluyendo pérdida de ganancias, interrupción del negocio, daño a la reputación o pérdida de datos; (b) daños materiales o siniestros ocurridos en los vehículos dentro de las instalaciones del Taller, durante pruebas de manejo, traslados o bajo custodia de su personal; (c) fallas mecánicas, vicios ocultos, mala praxis, defectos en refacciones o incumplimiento de garantías acordadas entre el Taller y el Cliente; (d) robo total o parcial, incendio, desastres naturales o vandalismo que afecten a las unidades bajo resguardo del Taller."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "1.8.2 Límite máximo de responsabilidad. Para el supuesto extremo en que una autoridad judicial o administrativa competente determine, mediante resolución firme, la responsabilidad de Mecanix por una falla directa atribuible al software, la responsabilidad total acumulada de Mecanix frente al Taller o cualquier tercero derivado del Servicio estará limitada a un monto fijo máximo. Mientras el servicio de talleres sea gratuito, el tope máximo de responsabilidad será de $5,000.00 MXN. Si Mecanix ofrece planes de pago, el tope será el establecido para el plan contratado al momento del evento: Plan Básico hasta $5,000.00 MXN, Plan Pro hasta $15,000.00 MXN y Plan Empresarial hasta $30,000.00 MXN."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "1.8.3 Obligación de indemnidad y paz a salvo. El Taller se obliga de manera irrevocable a defender, indemnizar y sacar en paz y a salvo a Mecanix, a sus representantes, empleados, agentes y cesionarios, respecto de cualquier reclamación, queja, denuncia, demanda o procedimiento administrativo, arbitral o judicial iniciado por cualquier Cliente, usuario o autoridad (incluida la autoridad de consumo, fiscal o laboral), y de todo daño, perjuicio, pérdida, multa, sanción, recargo, honorarios razonables de abogados y costas en que deba incurrir Mecanix a consecuencia de: (a) incumplimientos en plazos de entrega, costos, presupuestos o calidad de los trabajos del Taller; (b) lesiones personales o muerte a consecuencia de fallas o trabajos deficientes del Taller; (c) uso indebido o ilegal de los datos personales de los Clientes capturados en la Plataforma por el personal del Taller; (d) publicidad engañosa, información inexacta o presupuestos erróneos ingresados por el Taller."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "1.8.4 Procedimiento en caso de reclamación de terceros. Si Mecanix es notificada o emplazada por una reclamación de un Cliente del Taller: (a) Mecanix notificará al Taller, al correo registrado en su cuenta, en un plazo no mayor a cinco días hábiles tras la recepción formal de la notificación; (b) el Taller deberá asumir de inmediato la defensa legal a su exclusivo costo, con profesionales previamente aprobados por Mecanix; (c) el Taller no podrá celebrar convenio o transacción que imponga obligaciones o desembolsos a Mecanix, o afecte su reputación, sin su consentimiento previo y por escrito; (d) si el Taller no asume la defensa en el plazo requerido, Mecanix podrá defenderse directamente y exigir al Taller el reembolso total de cada costo, honorario o sanción erogada, deduciéndolo de cualquier saldo a favor del Taller en la Plataforma o ejerciendo las acciones legales correspondientes."
+    }
+  ],
+  "privacidad": [
+    {
+      "tipo": "parrafo",
+      "texto": "Responsable de los datos de la cuenta del Taller: David Hernández Martínez, con domicilio en Calle Casiopea #1-C, Colonia Sánchez Taboada, Tijuana, Baja California, C.P. 22185. Contacto: contacto@mecanixyonkevirtual.com · WhatsApp 661 103 4260."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "2.1 Datos de la cuenta del Taller"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Nombre del taller, número de WhatsApp, ciudad, correo electrónico, fecha de registro, y versión y fecha de aceptación de los Términos. Finalidades: crear y administrar la cuenta, prestar el servicio de cotizaciones, acreditar la aceptación de los Términos y mantener la seguridad de la Plataforma. Mecanix es el responsable de estos datos."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "2.2 Datos de las cotizaciones"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller captura datos de vehículos (marca, modelo, año, kilometraje), renglones, observaciones del vehículo y vigencia. Cuando se active la función, también el nombre y teléfono del Cliente y las placas del vehículo. Respecto de los datos personales de los Clientes, el responsable es el Taller y Mecanix actúa como proveedor del servicio de almacenamiento, conforme a los Términos."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "2.3 Con quién se comparten"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Los datos de las cotizaciones solo son visibles para el Taller que los capturó y para el administrador de Mecanix. No se comparten con yonkes, con otros talleres ni con terceros. Mecanix utiliza proveedores de infraestructura (Google LLC, mediante Firebase / Google Cloud, y Vercel Inc.) para almacenar y alojar la Plataforma, y no es responsable de actividades de esos proveedores que no le competan. El uso de estos proveedores constituye una remisión de datos y no una transferencia."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "2.4 Plazos de conservación"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Cotizaciones y renglones: hasta 90 días desde su creación, más el periodo adicional en copias de seguridad de hasta seis meses. Datos de la cuenta del Taller: mientras la cuenta esté activa. Historial de aceptaciones: mientras exista la cuenta del Taller y, como mínimo, mientras exista la última cotización elaborada bajo la versión aceptada, por razones de acreditación legal."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "2.5 Ejercicio de derechos"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Datos de la cuenta del Taller: ante Mecanix, en contacto@mecanixyonkevirtual.com o WhatsApp 661 103 4260. Datos de los Clientes del Taller: ante el Taller que los capturó; Mecanix apoya al Taller en la atención de la solicitud."
+    }
+  ],
+  "avisoTaller": {
+    "version": "aviso-taller-1",
+    "plantilla": [
+      {
+        "tipo": "parrafo",
+        "texto": "Aviso de privacidad"
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para elaborar esta cotización."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Datos y finalidad. Podemos recabar su nombre, teléfono, los datos de su vehículo (marca, modelo, año, placas y kilometraje) y las observaciones del vehículo que se anoten, con la única finalidad de elaborar y dar seguimiento a esta cotización."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Plazo. Sus datos se eliminan de la plataforma a los 90 días de elaborada la cotización y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. Si usted no acepta la cotización, esta se elimina de inmediato."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Aceptación. Al firmar esta cotización, usted acepta los términos y condiciones del taller, los cuales remiten a los de Mecanix Yonke Virtual, y declara haber recibido este aviso."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Versión del aviso: aviso-taller-1"
+      }
+    ]
+  },
+  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir las herramientas de taller. Ahora se aclara que tu taller es el responsable de los datos de sus clientes y que Mecanix los almacena por tu petición; que las cotizaciones se eliminan a los 90 días; y que debes entregar un aviso de privacidad a tus clientes. Para seguir creando cotizaciones, lee y acepta la nueva versión. Mientras tanto puedes consultar tus cotizaciones anteriores y quitar datos de tus clientes."
+}

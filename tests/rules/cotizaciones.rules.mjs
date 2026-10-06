@@ -166,9 +166,14 @@ describe('taller desactivado', () => {
     await sembrar();
     await assertSucceeds(getDoc(cref('t3', C2, 'T3')));
   });
-  it('sí puede quitar datos del cliente (excepción)', async () => {
+  it('NO puede quitar datos del cliente (la excepción exige taller activo)', async () => {
     await sembrar();
-    await assertSucceeds(updateDoc(cref('t3', C2, 'T3'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+    await assertFails(updateDoc(cref('t3', C2, 'T3'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+  });
+  it('NO puede borrar cotizaciones ni renglones', async () => {
+    await sembrar();
+    await assertFails(deleteDoc(cref('t3', C2, 'T3')));
+    await assertFails(deleteDoc(rref('t3', 0, C2, 'T3')));
   });
 });
 
@@ -424,3 +429,54 @@ describe('taller activo: la app no debe mostrar vencidas, pero las reglas solo i
     await assertSucceeds(getDocs(q));
   });
 });
+
+describe('el taller borra SUS cotizaciones (activo y versión vigente)', () => {
+  it('borra renglones y la cotización en un lote: SÍ', async () => {
+    await sembrar();
+    const db = como('t1');
+    const b = writeBatch(db);
+    b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', C, 'renglones', '0'));
+    b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', C, 'renglones', '1'));
+    b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', C));
+    await assertSucceeds(b.commit());
+    assert.equal((await getDoc(cref('t1'))).exists(), false);
+  });
+  it('borra una cotización vencida (renglones y cotización): SÍ', async () => {
+    await sembrar();
+    await env.withSecurityRulesDisabled(async (c) => {
+      const db = c.firestore();
+      await updateDoc(doc(db, 'talleres', 'T1', 'cotizaciones', C), { expiraAt: expiraVencida() });
+      await updateDoc(doc(db, 'talleres', 'T1', 'cotizaciones', C, 'renglones', '0'), { expiraAt: expiraVencida() });
+      await updateDoc(doc(db, 'talleres', 'T1', 'cotizaciones', C, 'renglones', '1'), { expiraAt: expiraVencida() });
+    });
+    const db = como('t1');
+    const b = writeBatch(db);
+    b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', C, 'renglones', '0'));
+    b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', C, 'renglones', '1'));
+    b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', C));
+    await assertSucceeds(b.commit());
+  });
+  it('taller DESACTIVADO no puede borrar cotizaciones ni renglones', async () => {
+    await sembrar();
+    await conActivo('T1', false);
+    await assertFails(deleteDoc(rref('t1', 0)));
+    await assertFails(deleteDoc(cref('t1')));
+  });
+  it('versión VIEJA no puede borrar cotizaciones ni renglones', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(deleteDoc(rref('t1', 0)));
+    await assertFails(deleteDoc(cref('t1')));
+  });
+  it('un taller AJENO no puede borrar cotizaciones ni renglones de otro', async () => {
+    await sembrar();
+    await assertFails(deleteDoc(rref('t2', 0)));
+    await assertFails(deleteDoc(cref('t2')));
+  });
+  it('el admin sigue pudiendo borrar', async () => {
+    await sembrar();
+    await assertSucceeds(deleteDoc(rref('adm', 0)));
+    await assertSucceeds(deleteDoc(cref('adm')));
+  });
+});
+

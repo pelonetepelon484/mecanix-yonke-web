@@ -6,7 +6,7 @@ import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
 import { collection, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../../lib/firebase';
 import { MENSAJES_TALLER, validarRegistroTaller } from '../../../../lib/taller';
-import { URL_TERMINOS, URL_PRIVACIDAD } from '../../../../lib/versionesLegales';
+import textosTalleres from '../../../../lib/textosLegalesTalleres.json';
 import { aceptarVersion, leerConfigCotizaciones } from '../cotizaciones/datos';
 import { ErrorRegistro, registrarTaller } from '../../../../lib/registrarTaller';
 import { useAuth } from '../../AuthContext';
@@ -147,9 +147,9 @@ export default function RegistroTaller() {
             />
             <span style={{ fontSize: '14px', color: '#555', lineHeight: '1.5' }}>
               He leído y acepto los{' '}
-              <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Términos y Condiciones</a>
+              <a href={textosTalleres.urls.terminosTalleres} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Términos y Condiciones</a>
               {' '}y el{' '}
-              <a href={URL_PRIVACIDAD} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Aviso de Privacidad</a>.
+              <a href={textosTalleres.urls.privacidadTalleres} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Aviso de Privacidad</a>.
             </span>
           </label>
 
