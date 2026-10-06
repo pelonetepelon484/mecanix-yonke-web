@@ -6,6 +6,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 import { enviarRecuperacionPassword } from '../lib/passwordReset';
+import { talleresHabilitados } from '../../lib/talleresHabilitados';
 
 // Mismos textos que la app (LoginScreen.js en mecanix-yonke-virtual2) para que la
 // experiencia de recuperación de contraseña sea idéntica en web y app.
@@ -134,12 +135,14 @@ export default function PanelLogin() {
             </button>
           </div>
 
-          <div style={{ textAlign: 'center', marginTop: '16px' }}>
-            <p style={{ fontSize: '13px', color: '#888', marginBottom: '6px' }}>¿Tienes un taller mecánico?</p>
-            <button onClick={() => router.push('/panel/taller/registro')} style={olvideButtonStyle}>
-              Regístrate como taller
-            </button>
-          </div>
+          {talleresHabilitados() && (
+            <div style={{ textAlign: 'center', marginTop: '16px' }}>
+              <p style={{ fontSize: '13px', color: '#888', marginBottom: '6px' }}>¿Tienes un taller mecánico?</p>
+              <button onClick={() => router.push('/panel/taller/registro')} style={olvideButtonStyle}>
+                Regístrate como taller
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

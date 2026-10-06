@@ -168,24 +168,36 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
     // ---------- Talleres (cuenta de taller, separada de yonkes) ----------
+    // Un taller nace SIN aceptar (aceptacionVersion vacía). Su primera aceptación se registra
+    // justo después, en un lote con su entrada del historial.
     match /talleres/{tallerId} {
       function tallerValido() {
-        return request.resource.data.keys().hasOnly(['nombre', 'whatsapp', 'ciudad', 'logoUrl', 'ownerUid', 'activo', 'creadoAt'])
+        return request.resource.data.keys().hasOnly(['nombre', 'whatsapp', 'ciudad', 'logoUrl', 'ownerUid', 'activo', 'creadoAt', 'aceptacionVersion', 'avisoPrivacidad'])
           && request.resource.data.nombre is string
           && request.resource.data.nombre.size() >= 2 && request.resource.data.nombre.size() <= 100
           && request.resource.data.whatsapp is string
           && request.resource.data.whatsapp.matches('^[0-9]{10}$')
           && request.resource.data.ciudad is string
           && request.resource.data.ciudad.size() >= 2 && request.resource.data.ciudad.size() <= 100
-          && request.resource.data.logoUrl is string;
+          && request.resource.data.logoUrl is string
+          && request.resource.data.aceptacionVersion is string
+          && request.resource.data.aceptacionVersion.size() <= 40
+          && request.resource.data.avisoPrivacidad is map
+          && request.resource.data.avisoPrivacidad.keys().hasOnly(['modo', 'versionPlantilla', 'fecha'])
+          && request.resource.data.avisoPrivacidad.modo == 'generado'
+          && request.resource.data.avisoPrivacidad.versionPlantilla is string
+          && request.resource.data.avisoPrivacidad.versionPlantilla.size() <= 40
+          && request.resource.data.avisoPrivacidad.fecha is timestamp;
       }
       allow read: if request.auth != null && (resource.data.ownerUid == request.auth.uid || esAdmin());
-      // Solo un usuario SIN cuenta de rol (todavía no registrado) puede crear su taller
       allow create: if request.auth != null
                     && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
                     && request.resource.data.ownerUid == request.auth.uid
                     && request.resource.data.activo == true
                     && request.resource.data.creadoAt == request.time
+                    && request.resource.data.aceptacionVersion == ''
+                    && request.resource.data.avisoPrivacidad.versionPlantilla == get(/databases/$(database)/documents/config/cotizaciones).data.avisoTallerVersion
+                    && request.resource.data.avisoPrivacidad.fecha == request.time
                     && tallerValido();
       allow update: if esAdmin()
                     || (request.auth != null
@@ -193,13 +205,175 @@ service cloud.firestore {
                         && request.resource.data.ownerUid == resource.data.ownerUid
                         && request.resource.data.activo == resource.data.activo
                         && request.resource.data.creadoAt == resource.data.creadoAt
-                        && tallerValido());
-      // Dueño: solo borra mientras su usuario no exista (rollback de un registro fallido). Admin siempre.
+                        // El dueño NO puede cambiar su aviso de privacidad
+                        && request.resource.data.avisoPrivacidad == resource.data.avisoPrivacidad
+                        && tallerValido()
+                        && (
+                          // Sin cambio de versión aceptada
+                          request.resource.data.aceptacionVersion == resource.data.aceptacionVersion
+                          // O aceptar la versión vigente, con su entrada en el historial en el mismo lote
+                          || (request.resource.data.aceptacionVersion == get(/databases/$(database)/documents/config/cotizaciones).data.terminosVersion
+                              && existsAfter(/databases/$(database)/documents/talleres/$(tallerId)/aceptaciones/$(request.resource.data.aceptacionVersion)))
+                        ));
+      // Dueño: solo borra mientras su usuario no exista (rollback). Admin siempre.
       allow delete: if esAdmin()
                     || (request.auth != null
                         && resource.data.ownerUid == request.auth.uid
                         && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
+
+      // Historial de aceptaciones: una entrada por versión. Nadie la modifica ni la borra desde las reglas.
+      match /aceptaciones/{version} {
+        allow read: if request.auth != null
+                    && (esAdmin() || get(/databases/$(database)/documents/talleres/$(tallerId)).data.ownerUid == request.auth.uid);
+        allow create: if request.auth != null
+                      && get(/databases/$(database)/documents/talleres/$(tallerId)).data.ownerUid == request.auth.uid
+                      && request.resource.data.keys().hasOnly(['version', 'fecha'])
+                      && request.resource.data.version == version
+                      && version == get(/databases/$(database)/documents/config/cotizaciones).data.terminosVersion
+                      && request.resource.data.fecha == request.time;
+        allow update: if false;
+        allow delete: if esAdmin();
+      }
     }
+
+    // ---------- Cotizaciones del taller (subcolección de cada taller) ----------
+    // Cotización = datos y total en centavos. Renglones = subcolección 0..19.
+    // Retención: expiraAt = creadoAt + 88 días (fijado por el sistema, no cambia).
+    // Config: config/cotizaciones (versión de términos y bandera de datos del cliente).
+    // Si ese documento no existe, get() falla y la regla DENIEGA crear y editar.
+    match /talleres/{tallerId}/cotizaciones/{cotizacionId} {
+      function esDuenoDelTaller() {
+        return request.auth != null
+          && get(/databases/$(database)/documents/talleres/$(tallerId)).data.ownerUid == request.auth.uid;
+      }
+      function tallerActivoDeDueno() {
+        let t = get(/databases/$(database)/documents/talleres/$(tallerId)).data;
+        return request.auth != null && t.ownerUid == request.auth.uid && t.activo == true;
+      }
+      function versionVigente() {
+        let t = get(/databases/$(database)/documents/talleres/$(tallerId)).data;
+        let c = get(/databases/$(database)/documents/config/cotizaciones).data;
+        return t.aceptacionVersion == c.terminosVersion;
+      }
+      // Datos del cliente solo si la bandera está encendida; si no, cliente vacío y sin placas
+      function datosClienteOk() {
+        let c = get(/databases/$(database)/documents/config/cotizaciones).data;
+        let d = request.resource.data;
+        return c.datosClienteHabilitados == true
+          || (d.cliente == {} && !('placas' in d.vehiculo));
+      }
+      function cotizacionValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['tallerId', 'estado', 'archivada', 'cliente', 'vehiculo', 'observaciones', 'vigenciaDias', 'totalCentavos', 'numRenglones', 'creadoAt', 'actualizadoAt', 'expiraAt', 'avisoVersion'])
+          && d.tallerId == tallerId
+          && d.estado in ['borrador', 'enviada', 'cerrada']
+          && d.archivada is bool
+          && d.cliente is map
+          && d.cliente.keys().hasOnly(['nombre', 'telefono'])
+          && (!('nombre' in d.cliente) || (d.cliente.nombre is string && d.cliente.nombre.size() <= 100))
+          && (!('telefono' in d.cliente) || (d.cliente.telefono is string && d.cliente.telefono.matches('^[0-9 +()-]{0,20}$')))
+          && d.vehiculo is map
+          && d.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio', 'placas', 'kilometraje'])
+          && d.vehiculo.marca is string && d.vehiculo.marca.size() >= 1 && d.vehiculo.marca.size() <= 60
+          && d.vehiculo.modelo is string && d.vehiculo.modelo.size() >= 1 && d.vehiculo.modelo.size() <= 60
+          && d.vehiculo.anio is int && d.vehiculo.anio >= 1950 && d.vehiculo.anio <= 2100
+          && (!('placas' in d.vehiculo) || (d.vehiculo.placas is string && d.vehiculo.placas.size() <= 12))
+          && (!('kilometraje' in d.vehiculo) || (d.vehiculo.kilometraje is int && d.vehiculo.kilometraje >= 0 && d.vehiculo.kilometraje <= 2000000))
+          && d.numRenglones is int && d.numRenglones >= 1 && d.numRenglones <= 20
+          && d.totalCentavos is int && d.totalCentavos >= 0 && d.totalCentavos <= 2000000000
+          && d.observaciones is string && d.observaciones.size() <= 1000
+          && d.vigenciaDias is int && d.vigenciaDias >= 1 && d.vigenciaDias <= 60
+          && d.expiraAt is timestamp
+          && d.avisoVersion is string && d.avisoVersion.size() <= 40
+          && datosClienteOk();
+      }
+
+      allow read: if esAdmin() || esDuenoDelTaller();
+
+      allow create: if tallerActivoDeDueno()
+                    && versionVigente()
+                    && cotizacionId.matches('^[A-Z0-9-]{8,20}$')
+                    && cotizacionValida()
+                    && request.resource.data.creadoAt == request.time
+                    && request.resource.data.actualizadoAt == request.time
+                    && request.resource.data.expiraAt - request.time >= duration.value(88, 'd') - duration.value(5, 'm')
+                    && request.resource.data.expiraAt - request.time <= duration.value(88, 'd') + duration.value(5, 'm')
+                    && request.resource.data.avisoVersion == get(/databases/$(database)/documents/talleres/$(tallerId)).data.avisoPrivacidad.versionPlantilla;
+
+      allow update: if (
+                        // A) EXCEPCIÓN: dueño con versión vieja o taller desactivado. SOLO vaciar cliente y quitar placas.
+                        (esDuenoDelTaller()
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cliente', 'vehiculo', 'actualizadoAt'])
+                         && request.resource.data.cliente == {}
+                         && request.resource.data.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio', 'kilometraje'])
+                         && request.resource.data.vehiculo.marca == resource.data.vehiculo.marca
+                         && request.resource.data.vehiculo.modelo == resource.data.vehiculo.modelo
+                         && request.resource.data.vehiculo.anio == resource.data.vehiculo.anio
+                         && request.resource.data.vehiculo.get('kilometraje', null) == resource.data.vehiculo.get('kilometraje', null)
+                         && request.resource.data.tallerId == resource.data.tallerId
+                         && request.resource.data.estado == resource.data.estado
+                         && request.resource.data.archivada == resource.data.archivada
+                         && request.resource.data.totalCentavos == resource.data.totalCentavos
+                         && request.resource.data.numRenglones == resource.data.numRenglones
+                         && request.resource.data.creadoAt == resource.data.creadoAt
+                         && request.resource.data.expiraAt == resource.data.expiraAt
+                         && request.resource.data.avisoVersion == resource.data.avisoVersion
+                         && request.resource.data.actualizadoAt == request.time)
+                        // B) EDICIÓN NORMAL: taller activo, versión vigente, cotización no vencida
+                        || (tallerActivoDeDueno()
+                            && versionVigente()
+                            && cotizacionValida()
+                            && resource.data.expiraAt > request.time
+                            && request.resource.data.creadoAt == resource.data.creadoAt
+                            && request.resource.data.expiraAt == resource.data.expiraAt
+                            && request.resource.data.avisoVersion == resource.data.avisoVersion
+                            && request.resource.data.actualizadoAt == request.time)
+                      );
+
+      // Solo admin borra la cotización completa (primero sus renglones)
+      allow delete: if esAdmin();
+
+      match /renglones/{numero} {
+        // Cotización padre tal como quedará después del lote (getAfter)
+        function padre() {
+          return getAfter(/databases/$(database)/documents/talleres/$(tallerId)/cotizaciones/$(cotizacionId)).data;
+        }
+        function renglonValido() {
+          let r = request.resource.data;
+          return r.keys().hasOnly(['tipo', 'descripcion', 'cantidad', 'precioUnitario', 'expiraAt'])
+            && r.tipo in ['pieza', 'manoObra']
+            && r.descripcion is string && r.descripcion.size() >= 1 && r.descripcion.size() <= 200
+            && r.cantidad is int && r.cantidad >= 1 && r.cantidad <= 999
+            && (r.precioUnitario is int || r.precioUnitario is float)
+            && r.precioUnitario >= 0 && r.precioUnitario <= 1000000
+            && r.expiraAt is timestamp;
+        }
+
+        allow read: if esAdmin() || esDuenoDelTaller();
+
+        allow create: if tallerActivoDeDueno()
+                      && versionVigente()
+                      && numero.matches('^([0-9]|1[0-9])$')
+                      && renglonValido()
+                      && padre().expiraAt > request.time
+                      && request.resource.data.expiraAt == padre().expiraAt;
+
+        allow update: if tallerActivoDeDueno()
+                      && versionVigente()
+                      && numero.matches('^([0-9]|1[0-9])$')
+                      && renglonValido()
+                      && resource.data.expiraAt > request.time
+                      && request.resource.data.expiraAt == resource.data.expiraAt
+                      && request.resource.data.expiraAt == padre().expiraAt;
+
+        // Quitar renglones (al editar) exige taller activo y versión vigente; el admin siempre puede
+        allow delete: if esAdmin()
+                      || (tallerActivoDeDueno()
+                          && versionVigente()
+                          && resource.data.expiraAt > request.time);
+      }
+    }
+
     // ---------- Yonkes e inventario ----------
     match /yonkes/{yonkeId} {
       allow read: if true;

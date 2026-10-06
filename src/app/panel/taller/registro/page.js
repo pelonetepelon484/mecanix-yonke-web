@@ -6,8 +6,11 @@ import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
 import { collection, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../../lib/firebase';
 import { MENSAJES_TALLER, validarRegistroTaller } from '../../../../lib/taller';
+import { URL_TERMINOS, URL_PRIVACIDAD } from '../../../../lib/versionesLegales';
+import { aceptarVersion, leerConfigCotizaciones } from '../cotizaciones/datos';
 import { ErrorRegistro, registrarTaller } from '../../../../lib/registrarTaller';
 import { useAuth } from '../../AuthContext';
+import { talleresHabilitados } from '../../../../lib/talleresHabilitados';
 
 // Dependencias reales de Firebase para el registro en pasos (ver src/lib/registrarTaller.ts).
 const dependenciasFirebase = {
@@ -43,6 +46,7 @@ export default function RegistroTaller() {
   const [confirmarPassword, setConfirmarPassword] = useState('');
   const [error, setError] = useState('');
   const [registrando, setRegistrando] = useState(false);
+  const [aceptaLegal, setAceptaLegal] = useState(false);
 
   async function handleRegistro() {
     setError('');
@@ -51,11 +55,19 @@ export default function RegistroTaller() {
       setError(validacion.mensaje);
       return;
     }
+    if (!aceptaLegal) {
+      setError(MENSAJES_TALLER.aceptacionLegal);
+      return;
+    }
 
     setRegistrando(true);
     try {
+      // Sin configuración de cotizaciones no se registra: la regla de talleres la necesita.
+      const config = await leerConfigCotizaciones();
+      if (!config) throw new ErrorRegistro('general');
+
       const datos = validacion.datos;
-      // El taller guarda los datos del formulario; el usuario solo guarda rol, tallerId y correo.
+      // El taller nace SIN aceptar; la primera aceptación se registra justo después (con su historial).
       const deps = {
         ...dependenciasFirebase,
         crearTaller: (tallerId, uid) => setDoc(doc(db, 'talleres', tallerId), {
@@ -66,7 +78,10 @@ export default function RegistroTaller() {
           ownerUid: uid,
           activo: true,
           creadoAt: serverTimestamp(),
+          aceptacionVersion: '',
+          avisoPrivacidad: { modo: 'generado', versionPlantilla: config.avisoTallerVersion, fecha: serverTimestamp() },
         }),
+        aceptarVersion: (tallerId) => aceptarVersion(tallerId, config.terminosVersion),
       };
       await registrarTaller(datos, deps);
       // El contexto leyó el rol cuando la cuenta todavía no tenía documento: lo volvemos a leer
@@ -80,6 +95,18 @@ export default function RegistroTaller() {
     } finally {
       setRegistrando(false);
     }
+  }
+
+  if (!talleresHabilitados()) {
+    return (
+      <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ maxWidth: '420px', width: '100%', backgroundColor: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '20px', color: '#1A3C5E', margin: '0 0 12px' }}>Registro de talleres: próximamente</h1>
+          <p style={{ fontSize: '15px', color: '#555', margin: '0 0 20px' }}>Todavía no estamos recibiendo nuevos talleres. Gracias por tu interés.</p>
+          <button onClick={() => router.push('/panel')} style={linkStyle}>Volver al inicio de sesión</button>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -110,6 +137,21 @@ export default function RegistroTaller() {
 
           <label style={labelStyle}>Confirmar contraseña</label>
           <input type="password" value={confirmarPassword} onChange={(e) => setConfirmarPassword(e.target.value)} style={inputStyle} />
+
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', margin: '12px 0 14px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={aceptaLegal}
+              onChange={(e) => setAceptaLegal(e.target.checked)}
+              style={{ marginTop: '3px', width: '18px', height: '18px', accentColor: '#E8720C', cursor: 'pointer', flexShrink: 0 }}
+            />
+            <span style={{ fontSize: '14px', color: '#555', lineHeight: '1.5' }}>
+              He leído y acepto los{' '}
+              <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Términos y Condiciones</a>
+              {' '}y el{' '}
+              <a href={URL_PRIVACIDAD} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Aviso de Privacidad</a>.
+            </span>
+          </label>
 
           {error && (
             <p role="alert" style={{ color: '#D85A30', fontSize: '13px', marginTop: '4px', marginBottom: '12px' }}>

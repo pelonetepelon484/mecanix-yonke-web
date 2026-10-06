@@ -18,12 +18,15 @@ export type DependenciasRegistroTaller = {
   crearUsuario: (uid: string, tallerId: string, email: string) => Promise<void>;
   borrarTaller: (tallerId: string) => Promise<void>;
   borrarCuenta: () => Promise<void>;
+  // Primera aceptación de términos (historial + taller en un lote). Si falla, la cuenta se queda:
+  // el taller verá el aviso de aceptación al entrar y no podrá crear cotizaciones hasta aceptar.
+  aceptarVersion: (tallerId: string) => Promise<void>;
 };
 
 export async function registrarTaller(
   datos: { email: string; password: string; nombre: string; whatsapp: string; ciudad: string },
   dep: DependenciasRegistroTaller,
-): Promise<{ uid: string; tallerId: string }> {
+): Promise<{ uid: string; tallerId: string; aceptada: boolean }> {
   let uid: string;
   try {
     uid = await dep.crearCuenta(datos.email, datos.password);
@@ -49,7 +52,15 @@ export async function registrarTaller(
     throw new ErrorRegistro('usuario');
   }
 
-  return { uid, tallerId };
+  // La aceptación no revierte el registro: si falla, el taller la hará al entrar.
+  let aceptada = true;
+  try {
+    await dep.aceptarVersion(tallerId);
+  } catch {
+    aceptada = false;
+  }
+
+  return { uid, tallerId, aceptada };
 }
 
 async function intentarRollbackCuenta(dep: DependenciasRegistroTaller): Promise<boolean> {
