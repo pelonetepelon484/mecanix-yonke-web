@@ -1,0 +1,264 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function esAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+    }
+    function esDuenoDelYonke(yonkeId) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'yonke' &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId == yonkeId;
+    }
+    // ---------- NUEVO: demanda por estado para el panel del yonke ----------
+    // Traduce el slug en español de yonkes/{id}.estado al código de 3 letras que usa
+    // busquedasResumen.estadoGeografico -- debe mantenerse sincronizado a mano con
+    // src/lib/estadoGeoMapping.ts si se agregan o cambian estados.
+    function estadoGeoDe(estado) {
+      return {
+        'aguascalientes': 'agu', 'baja-california': 'bcn', 'baja-california-sur': 'bcs',
+        'campeche': 'cam', 'cdmx': 'cmx', 'chiapas': 'chp', 'chihuahua': 'chh',
+        'coahuila': 'coa', 'colima': 'col', 'durango': 'dur', 'estado-de-mexico': 'mex',
+        'guanajuato': 'gua', 'guerrero': 'gro', 'hidalgo': 'hid', 'jalisco': 'jal',
+        'michoacan': 'mic', 'morelos': 'mor', 'nayarit': 'nay', 'nuevo-leon': 'nle',
+        'oaxaca': 'oax', 'puebla': 'pue', 'queretaro': 'que', 'quintana-roo': 'roo',
+        'san-luis-potosi': 'slp', 'sinaloa': 'sin', 'sonora': 'son', 'tabasco': 'tab',
+        'tamaulipas': 'tam', 'tlaxcala': 'tla', 'veracruz': 'ver', 'yucatan': 'yuc',
+        'zacatecas': 'zac',
+      }.get(estado, null);
+    }
+    // Un yonke solo puede leer busquedasResumen de SU propio estado -- nunca de otro, ni aunque
+    // arme la query a mano: yonkeId sale de usuarios/{uid} (nunca del cliente) y estado sale de
+    // yonkes/{id}, ambos leídos server-side por la propia regla, no por lo que mande el request.
+    function esYonkeDeEseEstado(estadoGeografico) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'yonke' &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId != null &&
+        exists(/databases/$(database)/documents/yonkes/$(get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId)) &&
+        estadoGeoDe(get(/databases/$(database)/documents/yonkes/$(get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId)).data.estado) == estadoGeografico;
+    }
+    // ---------- NUEVO: validación de promociones ----------
+    function promoOk(x, yonkeId) {
+      return x is map
+        && x.keys().hasOnly(['url', 'titulo'])
+        && x.url is string
+        && x.url.matches('https://firebasestorage\\.googleapis\\.com/.*')
+        && x.url.matches('.*branding%2F' + yonkeId + '%2Fpromos%2F.*')
+        && x.titulo is string
+        && x.titulo.size() <= 60
+        && x.titulo.matches('.*\\S.*');
+    }
+    function promosValidas(p, yonkeId) {
+      return p is list
+        && p.size() <= 3
+        && (p.size() < 1 || promoOk(p[0], yonkeId))
+        && (p.size() < 2 || promoOk(p[1], yonkeId))
+        && (p.size() < 3 || promoOk(p[2], yonkeId));
+    }
+    // ---------- NUEVO: validación de "Sobre nosotros" ----------
+    function sobreNosotrosValido(s, yonkeId) {
+      return s is map
+        && s.keys().hasOnly(['texto', 'aniosExperiencia', 'direccion', 'horario', 'fotoUrl'])
+        && s.texto is string && s.texto.size() <= 800
+        && (!('aniosExperiencia' in s) || s.aniosExperiencia == null || s.aniosExperiencia is int)
+        && (!('direccion' in s) || s.direccion is string)
+        && (!('horario' in s) || s.horario is string)
+        && (!('fotoUrl' in s) || s.fotoUrl == null ||
+            (s.fotoUrl is string
+             && s.fotoUrl.matches('https://firebasestorage\\.googleapis\\.com/.*')
+             && s.fotoUrl.matches('.*branding%2F' + yonkeId + '%2Fsobre-nosotros%2F.*')));
+    }
+    function sitioValido(x, yonkeId) {
+      return x is map
+        && x.keys().hasOnly(['sobreNosotros'])
+        && sobreNosotrosValido(x.sobreNosotros, yonkeId);
+    }
+    // ---------- NUEVO: validación de branding (fondo de la página) ----------
+    function brandingValido(b, yonkeId) {
+      return b == null
+        || (b is map
+            && (!('fondoUrl' in b) || b.fondoUrl == null
+                || (b.fondoUrl is string
+                    && b.fondoUrl.matches('https://firebasestorage\\.googleapis\\.com/.*')
+                    && b.fondoUrl.matches('.*branding%2F' + yonkeId + '%2Ffondo%2F.*'))));
+    }
+    // ---------- Logs de búsqueda ----------
+    match /busquedas/{docId} {
+      allow create: if request.resource.data.keys().hasAll([
+                         'textoOriginal', 'estado', 'numResultados', 'origen', 'fecha'
+                       ])
+                    && request.resource.data.textoOriginal is string
+                    && request.resource.data.textoOriginal.size() > 0
+                    && request.resource.data.textoOriginal.size() < 300
+                    && request.resource.data.estado in [
+                         'ok', 'sin_inventario', 'fuera_de_catalogo',
+                         'parseo_parcial', 'no_interpretada', 'fuera_de_giro',
+                         'numero_de_parte', 'marca_muy_general',
+                         'pieza_sin_vehiculo'
+                       ]
+                    && request.resource.data.numResultados is int
+                    && request.resource.data.numResultados >= 0
+                    && request.resource.data.origen in ['web', 'whatsapp'];
+      allow read, update, delete: if esAdmin();
+    }
+    // ---------- NUEVO: copia reducida de busquedas para el panel "Demanda" del yonke ----------
+    // Solo campos sin datos de clientes ni de competencia (sin textoOriginal, sin yonkeIds) --
+    // ver registrarBusqueda.js. El yonke lee esta colección directo desde el navegador; busquedas
+    // (la completa) sigue siendo solo-admin arriba.
+    match /busquedasResumen/{docId} {
+      allow create: if request.resource.data.keys().hasOnly([
+                         'estadoGeografico', 'pieza', 'marca', 'modelo', 'anio',
+                         'estado', 'conResultado', 'sinVehiculo', 'fecha'
+                       ])
+                    && request.resource.data.estadoGeografico is string
+                    && request.resource.data.conResultado is bool
+                    && request.resource.data.sinVehiculo is bool;
+      allow read: if esAdmin() || esYonkeDeEseEstado(resource.data.estadoGeografico);
+      allow update, delete: if esAdmin();
+    }
+    // Colecciones viejas: escritura pública (código legado), lectura solo admin
+    match /busquedas_no_interpretadas/{docId} {
+      allow read: if esAdmin();
+      allow write: if true;
+    }
+    match /modelos_no_reconocidos/{docId} {
+      allow read: if esAdmin();
+      allow write: if true;
+    }
+    match /busquedas_pendientes/{docId} {
+      allow read, update, delete: if esAdmin();
+      allow write: if true;
+    }
+    match /busqueda_rate_limit/{docId} {
+      allow read: if false;
+      allow write: if true;
+    }
+    // ---------- Config ----------
+    match /config/{documento} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+    // ---------- Estados (expansión por estado) ----------
+    match /estados/{estadoId} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+    // ---------- Usuarios ----------
+    match /usuarios/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || esAdmin());
+      // Alta propia de yonke: solo rol 'yonke', con los 4 campos del registro, y solo si el
+      // yonke al que apunta tiene como dueño a este mismo uid (ownerUid lo pone el registro).
+      allow create: if esAdmin()
+                    || (request.auth != null
+                        && request.auth.uid == userId
+                        && request.resource.data.rol == 'yonke'
+                        && request.resource.data.keys().hasOnly(['rol', 'yonkeId', 'email', 'fechaRegistro'])
+                        && get(/databases/$(database)/documents/yonkes/$(request.resource.data.yonkeId)).data.ownerUid == request.auth.uid);
+      allow update: if esAdmin();
+      allow delete: if esAdmin();
+    }
+    // ---------- Yonkes e inventario ----------
+    match /yonkes/{yonkeId} {
+      allow read: if true;
+      // Alta: admin, o un usuario que se registra y queda como dueño (ownerUid = su uid)
+      allow create: if esAdmin()
+                    || (request.auth != null && request.resource.data.ownerUid == request.auth.uid);
+      allow update: if esAdmin()
+                    || (esDuenoDelYonke(yonkeId)
+                        && !request.resource.data.diff(resource.data).affectedKeys()
+                             .hasAny(['verificado', 'entregaInmediata', 'capturaADomicilio', 'ultimaVisitaCaptura', 'subdominio', 'subdominioActivo', 'enviosNacionales', 'ownerUid'])
+                        // si cambia promoImagenes, debe ser válido
+                        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['promoImagenes'])
+                            || promosValidas(request.resource.data.get('promoImagenes', []), yonkeId))
+                        // si cambia sitio, debe ser válido
+                        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['sitio'])
+                            || sitioValido(request.resource.data.get('sitio', {}), yonkeId))
+                        // NUEVO: si cambia branding, el fondo debe ser válido
+                        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['branding'])
+                            || brandingValido(request.resource.data.get('branding', null), yonkeId)));
+      // Dueño que se registró: puede borrar su yonke solo mientras su usuario no exista (rollback)
+      allow delete: if esAdmin()
+                    || (request.auth != null
+                        && resource.data.ownerUid == request.auth.uid
+                        && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
+      match /vehiculos/{vehiculoId} {
+        allow read: if true;
+        allow create, delete: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow update: if esAdmin()
+                      || (esDuenoDelYonke(yonkeId) && (
+                            // no se toca vendidoAt (incluye vehículos que nunca lo tuvieron)
+                            request.resource.data.get('vendidoAt', null) == resource.data.get('vendidoAt', null)
+                            // reactivar: el campo se elimina
+                            || !('vendidoAt' in request.resource.data)
+                            // sacar del inventario: debe ser la hora del servidor
+                            || request.resource.data.vendidoAt == request.time
+                         ));
+        match /piezas/{piezaId} {
+          allow read: if true;
+          allow write: if esAdmin() || esDuenoDelYonke(yonkeId);
+        }
+      }
+      match /motores/{motorId} {
+        allow read: if true;
+        allow write: if esAdmin() || esDuenoDelYonke(yonkeId);
+      }
+      match /piezasSueltas/{piezaId} {
+        allow read: if true;
+        allow write: if esAdmin() || esDuenoDelYonke(yonkeId);
+      }
+      match /materialesReciclaje/{materialId} {
+        allow read, write: if esAdmin() || esDuenoDelYonke(yonkeId);
+      }
+      match /comprasReciclaje/{compraId} {
+        allow read, write: if esAdmin() || esDuenoDelYonke(yonkeId);
+      }
+      match /notasGarantia/{notaId} {
+        allow read, write: if esAdmin() || esDuenoDelYonke(yonkeId);
+      }
+      // ---------- NUEVO: contador de toques al botón de WhatsApp ----------
+      match /contactosVehiculo/{docId} {
+        allow read: if false;
+        allow create: if request.resource.data.keys().hasOnly(['clics'])
+                     && request.resource.data.clics == 1;
+        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clics'])
+                     && request.resource.data.clics == resource.data.clics + 1;
+        allow delete: if esAdmin();
+      }
+    }
+    // ---------- Operación ----------
+    match /reservaciones/{reservaId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if esAdmin() || esDuenoDelYonke(resource.data.yonkeId);
+      allow delete: if esAdmin();
+    }
+    match /ventas/{ventaId} {
+      allow read: if true;
+      allow create: if esAdmin() || esDuenoDelYonke(request.resource.data.yonkeId);
+      // CAMBIO: el dueño solo puede cancelar (cancelada + canceladaAt), sin borrar
+      allow update: if esAdmin()
+                    || (esDuenoDelYonke(resource.data.yonkeId)
+                        && resource.data.get('cancelada', false) != true
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['cancelada', 'canceladaAt'])
+                        && request.resource.data.cancelada == true
+                        && request.resource.data.canceladaAt == request.time);
+      allow delete: if esAdmin();
+    }
+    match /calificaciones/{calificacionId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if false;
+      allow delete: if esAdmin();
+    }
+    match /resenasPlataforma/{resenaId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if esAdmin();
+      allow delete: if esAdmin();
+    }
+  }
+}

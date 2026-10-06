@@ -1,0 +1,14 @@
+{
+  "name": "mecanix-reglas-tests",
+  "private": true,
+  "description": "Pruebas de reglas de Firestore con el emulador. No se instala ni se usa en el build de la app.",
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-mecanix \"node --test yonkes.rules.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^13.35.1"
+  }
+}

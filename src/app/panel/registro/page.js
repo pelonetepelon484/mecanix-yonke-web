@@ -101,6 +101,8 @@ export default function RegistroYonke() {
         plan: 'freemium',
         activo: true,
         fechaRegistro: new Date(),
+        // Dueño del yonke: solo este uid podrá crear después su usuario de yonke (reglas de Firestore).
+        ownerUid: uid,
       };
       // Aceptación de Términos y Aviso de Privacidad: qué versión y cuándo. Si las reglas de
       // Firestore aún no permiten ese campo, el registro sigue sin él (no se bloquea al yonke).
