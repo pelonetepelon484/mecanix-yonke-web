@@ -6,6 +6,7 @@ import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
 import { collection, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../../lib/firebase';
 import { MENSAJES_TALLER, validarRegistroTaller } from '../../../../lib/taller';
+import { VERSION_LEGAL, URL_TERMINOS, URL_PRIVACIDAD } from '../../../../lib/versionesLegales';
 import { ErrorRegistro, registrarTaller } from '../../../../lib/registrarTaller';
 import { useAuth } from '../../AuthContext';
 
@@ -43,12 +44,17 @@ export default function RegistroTaller() {
   const [confirmarPassword, setConfirmarPassword] = useState('');
   const [error, setError] = useState('');
   const [registrando, setRegistrando] = useState(false);
+  const [aceptaLegal, setAceptaLegal] = useState(false);
 
   async function handleRegistro() {
     setError('');
     const validacion = validarRegistroTaller({ nombre, whatsapp, ciudad, email, password, confirmarPassword });
     if (!validacion.ok) {
       setError(validacion.mensaje);
+      return;
+    }
+    if (!aceptaLegal) {
+      setError(MENSAJES_TALLER.aceptacionLegal);
       return;
     }
 
@@ -66,6 +72,8 @@ export default function RegistroTaller() {
           ownerUid: uid,
           activo: true,
           creadoAt: serverTimestamp(),
+          // Qué versión de términos y aviso aceptó el taller, y cuándo (la regla lo exige).
+          aceptacionLegal: { version: VERSION_LEGAL, fecha: new Date() },
         }),
       };
       await registrarTaller(datos, deps);
@@ -110,6 +118,21 @@ export default function RegistroTaller() {
 
           <label style={labelStyle}>Confirmar contraseña</label>
           <input type="password" value={confirmarPassword} onChange={(e) => setConfirmarPassword(e.target.value)} style={inputStyle} />
+
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', margin: '12px 0 14px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={aceptaLegal}
+              onChange={(e) => setAceptaLegal(e.target.checked)}
+              style={{ marginTop: '3px', width: '18px', height: '18px', accentColor: '#E8720C', cursor: 'pointer', flexShrink: 0 }}
+            />
+            <span style={{ fontSize: '14px', color: '#555', lineHeight: '1.5' }}>
+              He leído y acepto los{' '}
+              <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Términos y Condiciones</a>
+              {' '}y el{' '}
+              <a href={URL_PRIVACIDAD} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Aviso de Privacidad</a>.
+            </span>
+          </label>
 
           {error && (
             <p role="alert" style={{ color: '#D85A30', fontSize: '13px', marginTop: '4px', marginBottom: '12px' }}>

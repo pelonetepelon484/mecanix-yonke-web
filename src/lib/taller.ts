@@ -13,6 +13,7 @@ export const MENSAJES_TALLER = {
   errorGeneral: 'No pudimos crear tu cuenta de taller. Intenta de nuevo.',
   cuentaAMedias: 'Tu cuenta quedó a medias. Escríbenos para revisarla antes de volver a intentar: WhatsApp 661 103 4260 o contacto@mecanixyonkevirtual.com.',
   sinAccesoTaller: 'Esta cuenta no tiene acceso al panel de taller.',
+  aceptacionLegal: 'Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para registrarte.',
 } as const;
 
 // Quita espacios y guiones antes de validar (el formulario lo hace al guardar).

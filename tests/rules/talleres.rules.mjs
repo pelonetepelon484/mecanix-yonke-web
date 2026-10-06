@@ -25,7 +25,7 @@ async function sembrar() {
 const como = (uid) => (uid ? env.authenticatedContext(uid).firestore() : env.unauthenticatedContext().firestore());
 const tallerNuevo = (extra = {}) => ({
   nombre: 'Taller nuevo', whatsapp: '6649876543', ciudad: 'Ensenada', logoUrl: '', ownerUid: 't0',
-  activo: true, creadoAt: serverTimestamp(), ...extra,
+  activo: true, creadoAt: serverTimestamp(), aceptacionLegal: { version: 'prueba', fecha: new Date() }, ...extra,
 });
 const usuarioTaller = (extra = {}) => ({
   rol: 'taller', tallerId: 'T0', email: 't0@prueba.mx', fechaRegistro: serverTimestamp(), ...extra,
@@ -48,6 +48,11 @@ describe('registro de taller (en el mismo orden que el código)', () => {
     await sembrar();
     await setDoc(doc(como('t0'), 'talleres', 'T0'), tallerNuevo());
     await assertSucceeds(setDoc(doc(como('t0'), 'usuarios', 't0'), usuarioTaller()));
+  });
+  it('no puede crear el taller sin aceptar términos y aviso', async () => {
+    await sembrar();
+    const { aceptacionLegal, ...sinAceptacion } = tallerNuevo();
+    await assertFails(setDoc(doc(como('t0'), 'talleres', 'T0'), sinAceptacion));
   });
   it('no puede crear el taller si ya tiene usuario de rol', async () => {
     await sembrar();

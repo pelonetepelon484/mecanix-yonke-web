@@ -170,7 +170,11 @@ service cloud.firestore {
     // ---------- Talleres (cuenta de taller, separada de yonkes) ----------
     match /talleres/{tallerId} {
       function tallerValido() {
-        return request.resource.data.keys().hasOnly(['nombre', 'whatsapp', 'ciudad', 'logoUrl', 'ownerUid', 'activo', 'creadoAt'])
+        return request.resource.data.keys().hasOnly(['nombre', 'whatsapp', 'ciudad', 'logoUrl', 'ownerUid', 'activo', 'creadoAt', 'aceptacionLegal'])
+          && (!('aceptacionLegal' in request.resource.data) || (request.resource.data.aceptacionLegal is map
+              && request.resource.data.aceptacionLegal.keys().hasOnly(['version', 'fecha'])
+              && request.resource.data.aceptacionLegal.version is string
+              && request.resource.data.aceptacionLegal.fecha is timestamp))
           && request.resource.data.nombre is string
           && request.resource.data.nombre.size() >= 2 && request.resource.data.nombre.size() <= 100
           && request.resource.data.whatsapp is string
@@ -186,6 +190,7 @@ service cloud.firestore {
                     && request.resource.data.ownerUid == request.auth.uid
                     && request.resource.data.activo == true
                     && request.resource.data.creadoAt == request.time
+                    && 'aceptacionLegal' in request.resource.data
                     && tallerValido();
       allow update: if esAdmin()
                     || (request.auth != null
@@ -193,12 +198,81 @@ service cloud.firestore {
                         && request.resource.data.ownerUid == resource.data.ownerUid
                         && request.resource.data.activo == resource.data.activo
                         && request.resource.data.creadoAt == resource.data.creadoAt
+                        && request.resource.data.get('aceptacionLegal', null) == resource.data.get('aceptacionLegal', null)
                         && tallerValido());
       // Dueño: solo borra mientras su usuario no exista (rollback de un registro fallido). Admin siempre.
       allow delete: if esAdmin()
                     || (request.auth != null
                         && resource.data.ownerUid == request.auth.uid
                         && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
+    }
+    // ---------- Cotizaciones del taller (subcolección de cada taller) ----------
+    // La cotización guarda los datos generales y el total en centavos. Sus renglones van en la
+    // subcolección "renglones" con nombre 0..19 (máximo 20). Solo el dueño del taller lee y
+    // escribe; crear o editar exige taller activo. Borrar la cotización completa es solo de admin.
+    match /talleres/{tallerId}/cotizaciones/{cotizacionId} {
+      function esDuenoDelTaller() {
+        return request.auth != null
+          && get(/databases/$(database)/documents/talleres/$(tallerId)).data.ownerUid == request.auth.uid;
+      }
+      // Una sola lectura del taller: dueño y activo a la vez
+      function tallerActivoDeDueno() {
+        let t = get(/databases/$(database)/documents/talleres/$(tallerId)).data;
+        return request.auth != null && t.ownerUid == request.auth.uid && t.activo == true;
+      }
+      function cotizacionValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['tallerId', 'estado', 'archivada', 'cliente', 'vehiculo', 'observaciones', 'vigenciaDias', 'totalCentavos', 'numRenglones', 'creadoAt', 'actualizadoAt'])
+          && d.tallerId == tallerId
+          && d.estado in ['borrador', 'enviada', 'cerrada']
+          && d.archivada is bool
+          && d.cliente is map
+          && d.cliente.keys().hasOnly(['nombre', 'telefono'])
+          && (!('nombre' in d.cliente) || (d.cliente.nombre is string && d.cliente.nombre.size() <= 100))
+          && (!('telefono' in d.cliente) || (d.cliente.telefono is string && d.cliente.telefono.matches('^[0-9 +()-]{0,20}$')))
+          && d.vehiculo is map
+          && d.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio', 'placas', 'kilometraje'])
+          && d.vehiculo.marca is string && d.vehiculo.marca.size() >= 1 && d.vehiculo.marca.size() <= 60
+          && d.vehiculo.modelo is string && d.vehiculo.modelo.size() >= 1 && d.vehiculo.modelo.size() <= 60
+          && d.vehiculo.anio is int && d.vehiculo.anio >= 1950 && d.vehiculo.anio <= 2100
+          && (!('placas' in d.vehiculo) || (d.vehiculo.placas is string && d.vehiculo.placas.size() <= 12))
+          && (!('kilometraje' in d.vehiculo) || (d.vehiculo.kilometraje is int && d.vehiculo.kilometraje >= 0 && d.vehiculo.kilometraje <= 2000000))
+          && d.numRenglones is int && d.numRenglones >= 1 && d.numRenglones <= 20
+          && d.totalCentavos is int && d.totalCentavos >= 0 && d.totalCentavos <= 2000000000
+          && d.observaciones is string && d.observaciones.size() <= 1000
+          && d.vigenciaDias is int && d.vigenciaDias >= 1 && d.vigenciaDias <= 90;
+      }
+      allow read: if esAdmin() || esDuenoDelTaller();
+      allow create: if tallerActivoDeDueno()
+                    && cotizacionId.matches('^[A-Z0-9-]{8,20}$')
+                    && cotizacionValida()
+                    && request.resource.data.creadoAt == request.time
+                    && request.resource.data.actualizadoAt == request.time;
+      allow update: if tallerActivoDeDueno()
+                    && cotizacionValida()
+                    && request.resource.data.creadoAt == resource.data.creadoAt
+                    && request.resource.data.actualizadoAt == request.time;
+      // Solo admin borra la cotización completa (primero debe borrar sus renglones)
+      allow delete: if esAdmin();
+
+      match /renglones/{numero} {
+        function renglonValido() {
+          let r = request.resource.data;
+          return r.keys().hasOnly(['tipo', 'descripcion', 'cantidad', 'precioUnitario'])
+            && r.tipo in ['pieza', 'manoObra']
+            && r.descripcion is string && r.descripcion.size() >= 1 && r.descripcion.size() <= 200
+            && r.cantidad is int && r.cantidad >= 1 && r.cantidad <= 999
+            && (r.precioUnitario is int || r.precioUnitario is float)
+            && r.precioUnitario >= 0 && r.precioUnitario <= 1000000;
+        }
+        allow read: if esAdmin() || esDuenoDelTaller();
+        // Crear y editar: taller activo y nombre de documento de 0 a 19
+        allow create, update: if tallerActivoDeDueno()
+                              && numero.matches('^([0-9]|1[0-9])$')
+                              && renglonValido();
+        // Borrar un renglón (para quitar líneas al editar): el dueño o el admin
+        allow delete: if esAdmin() || esDuenoDelTaller();
+      }
     }
     // ---------- Yonkes e inventario ----------
     match /yonkes/{yonkeId} {

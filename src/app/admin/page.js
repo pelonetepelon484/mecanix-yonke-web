@@ -466,6 +466,16 @@ export default function AdminPage() {
             🚗 Captura a domicilio
           </button>
           <button
+            onClick={() => router.push('/admin/uso')}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            📊 Uso de talleres
+          </button>
+          <button
             onClick={() => router.push('/admin/estados')}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: 'none',
