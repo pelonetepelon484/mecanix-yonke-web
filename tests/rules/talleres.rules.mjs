@@ -189,3 +189,22 @@ describe('yonkes no cambian', () => {
     await assertFails(setDoc(tref('y1', 'TY'), tallerNuevo('y1')));
   });
 });
+
+describe('sin config/cotizaciones: no se puede registrar taller ni aceptar términos', () => {
+  async function sinConfig() {
+    await sembrar();
+    await env.withSecurityRulesDisabled(async (c) => { await deleteDoc(doc(c.firestore(), 'config', 'cotizaciones')); });
+  }
+  it('llamada directa: crear un taller nuevo NO', async () => {
+    await sinConfig();
+    await assertFails(setDoc(tref('t9', 'T9'), tallerNuevo('t9')));
+  });
+  it('llamada directa: aceptar una versión (historial + taller) NO', async () => {
+    await sinConfig();
+    await assertFails(aceptar('t1', 'T1', 'v2'));
+  });
+  it('llamada directa: crear una entrada del historial sola NO', async () => {
+    await sinConfig();
+    await assertFails(setDoc(aref('t1', 'T1', 'v3'), { version: 'v3', fecha: serverTimestamp() }));
+  });
+});
