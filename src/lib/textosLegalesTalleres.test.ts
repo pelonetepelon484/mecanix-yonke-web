@@ -1,24 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import textos from './textosLegalesTalleres.json';
 
-describe('textos legales de talleres (publicados tal cual del documento del abogado)', () => {
+describe('textos legales de talleres (borrador en revisión por el abogado: base del documento aprobado + solicitudes de piezas a yonkes)', () => {
   it('versión y fecha visibles', () => {
-    expect(textos.version).toBe('talleres-2026-10-1');
-    expect(textos.fecha).toBe('6 de octubre de 2026');
+    expect(textos.version).toBe('talleres-2026-10-2');
+    expect(textos.fecha).toBe('7 de octubre de 2026');
   });
-  it('términos: 8 subtítulos (1.1 a 1.8) y 12 párrafos', () => {
+  it('términos: 9 subtítulos (1.1 a 1.9) y 14 párrafos', () => {
     const subtitulos = textos.terminos.filter((i) => i.tipo === 'subtitulo');
-    expect(subtitulos.map((s) => s.texto.slice(0, 3))).toEqual(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8']);
-    expect(textos.terminos.filter((i) => i.tipo === 'parrafo')).toHaveLength(12);
+    expect(subtitulos.map((s) => s.texto.slice(0, 3))).toEqual(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9']);
+    expect(textos.terminos.filter((i) => i.tipo === 'parrafo')).toHaveLength(14);
   });
   it('cláusula 1.4 en futuro y 1.8.2 con el tope del Plan Básico', () => {
     const t = textos.terminos.map((i) => i.texto).join('\n');
     expect(t).toContain('Cuando se active la captura de datos personales del Cliente, la Plataforma incluirá la función «Quitar datos del cliente»');
     expect(t).toContain('Mientras el servicio de talleres sea gratuito, el tope máximo de responsabilidad será de $5,000.00 MXN.');
   });
-  it('privacidad: 11 párrafos (encabezado de responsable, 2.1 a 2.5)', () => {
-    expect(textos.privacidad).toHaveLength(11);
+  it('1.9: solicitudes de piezas a yonkes, sin datos del Cliente del Taller', () => {
+    const t = textos.terminos.map((i) => i.texto).join('\n');
+    expect(t).toContain('1.9 Solicitudes de piezas a yonkes');
+    expect(t).toContain('sin incluir datos personales del Cliente del Taller');
+    expect(t).toContain('no garantiza que algún yonke tenga la pieza, su estado, su precio ni su disponibilidad');
+  });
+  it('privacidad: 13 párrafos (encabezado de responsable, 2.1 a 2.6)', () => {
+    expect(textos.privacidad).toHaveLength(13);
     expect(textos.privacidad[0].texto.startsWith('Responsable de los datos de la cuenta del Taller')).toBe(true);
+  });
+  it('2.6: comparte con yonkes los datos de la solicitud, nunca los del Cliente del Taller', () => {
+    const p = textos.privacidad.map((i) => i.texto).join('\n');
+    expect(p).toContain('2.6 Solicitudes de piezas a yonkes');
+    expect(p).toContain('Mecanix no comparte con esos yonkes datos personales del Cliente del Taller');
   });
   it('plantilla aviso-taller-1 completa y con sus marcadores sin llenar', () => {
     expect(textos.avisoTaller.version).toBe('aviso-taller-1');

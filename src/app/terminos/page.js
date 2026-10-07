@@ -21,7 +21,7 @@ export default function Terminos() {
           Términos y Condiciones de Uso
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 26 de septiembre de 2026
+          Última actualización: 7 de octubre de 2026
         </p>
 
         <Seccion titulo="1. Aceptación de los términos">
@@ -30,7 +30,7 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="2. Descripción del servicio y alcance geográfico">
-          <p style={parrafoStyle}>Mecanix Yonke Virtual es una plataforma digital, con sede en Tijuana, Baja California, México, que actúa como intermediario entre clientes que buscan autopartes usadas y yonkes (deshuesaderos) registrados. La Plataforma opera en varios estados de México: cada yonke elige su estado al registrarse, y la cobertura puede crecer o cambiar con el tiempo. La cobertura vigente puede consultarse en la propia Plataforma.</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual es una plataforma digital, con sede en Tijuana, Baja California, México, que actúa como intermediario entre clientes que buscan autopartes usadas y yonkes (deshuesaderos) registrados, y que además permite a talleres registrados solicitar piezas a esos yonkes (ver sección 21). La Plataforma opera en varios estados de México: cada yonke elige su estado al registrarse, y la cobertura puede crecer o cambiar con el tiempo. La cobertura vigente puede consultarse en la propia Plataforma.</p>
           <p style={parrafoStyle}>Mecanix Yonke Virtual <strong>no es vendedor</strong> de autopartes. No compramos, almacenamos ni enviamos piezas. Solo conectamos a compradores con yonkes; las transacciones se realizan directamente entre el cliente y el yonke, y Mecanix no es parte de la compraventa ni de ningún acuerdo entre ellos.</p>
         </Seccion>
 
@@ -108,7 +108,7 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="15. Contenido prohibido">
-          <p style={parrafoStyle}>Está prohibido usar la Plataforma para publicar información falsa o engañosa; registrar negocios inexistentes o que no sean yonkes; realizar actividades ilegales; intentar acceder sin autorización a cuentas o datos de otros usuarios; extraer información de la Plataforma de forma automatizada o masiva sin autorización; o publicar piezas de procedencia ilícita o robada.</p>
+          <p style={parrafoStyle}>Está prohibido usar la Plataforma para publicar información falsa o engañosa; registrar negocios inexistentes o que no sean yonkes o talleres; realizar actividades ilegales; intentar acceder sin autorización a cuentas o datos de otros usuarios; extraer información de la Plataforma de forma automatizada o masiva sin autorización; publicar piezas de procedencia ilícita o robada; o enviar solicitudes de piezas falsas o sin intención real de contratar.</p>
         </Seccion>
 
         <Seccion titulo="16. Propiedad del contenido">
@@ -135,12 +135,18 @@ export default function Terminos() {
           <p style={parrafoStyle}>Estos Términos y Condiciones se rigen por las leyes de los Estados Unidos Mexicanos. Aunque la Plataforma opera en varios estados, para la interpretación y cumplimiento de estos términos las partes se someten expresamente a la jurisdicción de los tribunales competentes de <strong>Tijuana, Baja California</strong>, renunciando a cualquier otro fuero que pudiera corresponderles por su domicilio presente o futuro.</p>
         </Seccion>
 
-        <Seccion titulo="21. Términos para Talleres (solo aplican a Talleres)" id="talleres">
+        <Seccion titulo="21. Solicitudes de piezas de talleres">
+          <p style={parrafoStyle}>Los talleres registrados en la Plataforma pueden solicitar una pieza indicando los datos de un vehículo. Mecanix notifica esa solicitud a los yonkes que podrían tenerla, por WhatsApp u otros medios, compartiendo con ellos los datos del taller y los datos del vehículo y la pieza solicitados. El primer yonke que confirme a Mecanix que tiene la pieza queda asignado a esa solicitud.</p>
+          <p style={parrafoStyle}>El yonke solo puede usar los datos de una solicitud para atender esa solicitud, y es el único responsable de la veracidad de su respuesta al confirmar que tiene la pieza. La entrega, el pago y cualquier garantía de la pieza se acuerdan directamente entre el taller y el yonke asignado; Mecanix no es parte de ese acuerdo ni garantiza la disponibilidad, el estado o el precio de la pieza.</p>
+          <p style={parrafoStyle}>Esta sección aplica a los yonkes. Los talleres se rigen, además, por la sección 22.</p>
+        </Seccion>
+
+        <Seccion titulo="22. Términos para Talleres (solo aplican a Talleres)" id="talleres">
           <p style={{ ...parrafoStyle, fontSize: '13px', color: '#888' }}>Versión: {textosTalleres.version} · {textosTalleres.fecha}</p>
           <BloquesTalleres items={textosTalleres.terminos} />
         </Seccion>
 
-        <Seccion titulo="22. Contacto">
+        <Seccion titulo="23. Contacto">
           Para cualquier pregunta relacionada con estos Términos y Condiciones puedes contactarnos en:
           <p style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '8px' }}>
             contacto@mecanixyonkevirtual.com
