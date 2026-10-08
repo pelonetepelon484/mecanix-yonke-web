@@ -5,10 +5,11 @@
 import { useEffect, useState } from 'react';
 import { MENSAJES_RESPUESTA, PRECIO_MAX, validarRespuesta } from '../../lib/solicitudesPiezas';
 import {
-  escucharSolicitudesAbiertas, escucharSolicitudesGanadas, leerContactoTaller, leerYonkeEstadoActivo, responder, yaRespondio,
+  escucharSolicitudesAbiertas, escucharSolicitudesGanadas, leerConfigSolicitudesPiezas, leerContactoTaller, leerYonkeEstadoActivo, responder, yaRespondio,
 } from './solicitudesPiezasDatos';
 
 export default function SolicitudesPiezasYonke({ yonkeId }) {
+  const [habilitado, setHabilitado] = useState(false);
   const [estadoActivo, setEstadoActivo] = useState(null);
   const [abiertas, setAbiertas] = useState([]);
   const [respondidas, setRespondidas] = useState({}); // { [solicitudId]: true }
@@ -16,15 +17,24 @@ export default function SolicitudesPiezasYonke({ yonkeId }) {
   const [contactos, setContactos] = useState({}); // { [solicitudId]: whatsapp del taller }
   const [abierta, setAbierta] = useState(null); // solicitud que se está respondiendo
 
+  // Sin config/solicitudesPiezas (función apagada), esta pantalla no hace NINGUNA otra lectura
+  // de Firestore de este módulo: ni el documento del yonke, ni los listeners de abajo.
   useEffect(() => {
     if (!yonkeId) return;
     let cancelado = false;
-    leerYonkeEstadoActivo(yonkeId).then((d) => { if (!cancelado) setEstadoActivo(d); });
+    leerConfigSolicitudesPiezas().then((config) => { if (!cancelado) setHabilitado(config?.habilitado === true); });
     return () => { cancelado = true; };
   }, [yonkeId]);
 
   useEffect(() => {
-    if (!yonkeId || !estadoActivo?.activo || !estadoActivo?.estado) return;
+    if (!yonkeId || !habilitado) return;
+    let cancelado = false;
+    leerYonkeEstadoActivo(yonkeId).then((d) => { if (!cancelado) setEstadoActivo(d); });
+    return () => { cancelado = true; };
+  }, [yonkeId, habilitado]);
+
+  useEffect(() => {
+    if (!yonkeId || !habilitado || !estadoActivo?.activo || !estadoActivo?.estado) return;
     const dejarAbiertas = escucharSolicitudesAbiertas(estadoActivo.estado, async (lista) => {
       setAbiertas(lista);
       const marcas = await Promise.all(lista.map((s) => yaRespondio(s.id, yonkeId)));
@@ -39,11 +49,11 @@ export default function SolicitudesPiezasYonke({ yonkeId }) {
     });
     return () => { dejarAbiertas(); dejarGanadas(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [yonkeId, estadoActivo?.activo, estadoActivo?.estado]);
+  }, [yonkeId, habilitado, estadoActivo?.activo, estadoActivo?.estado]);
 
   const pendientes = abiertas.filter((s) => !respondidas[s.id]);
 
-  if (!estadoActivo?.activo) return null;
+  if (!habilitado || !estadoActivo?.activo) return null;
   if (pendientes.length === 0 && ganadas.length === 0) return null;
 
   return (

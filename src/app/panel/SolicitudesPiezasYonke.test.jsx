@@ -4,12 +4,15 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import '@testing-library/jest-dom/vitest';
 
 const responder = vi.fn(async () => {});
+const leerYonkeEstadoActivo = vi.fn(async () => ({ estado: 'baja-california', activo: true, nombre: 'Yonke Prueba', whatsapp: '6641234567' }));
+const leerConfigSolicitudesPiezas = vi.fn(async () => ({ habilitado: true }));
 let abiertas = [];
 let ganadas = [];
 let yaRespondioMock = vi.fn(async () => null);
 
 vi.mock('./solicitudesPiezasDatos', () => ({
-  leerYonkeEstadoActivo: vi.fn(async () => ({ estado: 'baja-california', activo: true, nombre: 'Yonke Prueba', whatsapp: '6641234567' })),
+  leerYonkeEstadoActivo: (...args) => leerYonkeEstadoActivo(...args),
+  leerConfigSolicitudesPiezas: (...args) => leerConfigSolicitudesPiezas(...args),
   escucharSolicitudesAbiertas: (estado, cb) => { cb(abiertas); return () => {}; },
   escucharSolicitudesGanadas: (yonkeId, cb) => { cb(ganadas); return () => {}; },
   yaRespondio: (...args) => yaRespondioMock(...args),
@@ -19,7 +22,12 @@ vi.mock('./solicitudesPiezasDatos', () => ({
 
 const { default: SolicitudesPiezasYonke } = await import('./SolicitudesPiezasYonke.js');
 
-afterEach(() => { cleanup(); abiertas = []; ganadas = []; responder.mockClear(); yaRespondioMock = vi.fn(async () => null); });
+afterEach(() => {
+  cleanup(); abiertas = []; ganadas = []; responder.mockClear(); yaRespondioMock = vi.fn(async () => null);
+  leerYonkeEstadoActivo.mockClear();
+  leerConfigSolicitudesPiezas.mockReset();
+  leerConfigSolicitudesPiezas.mockResolvedValue({ habilitado: true });
+});
 
 describe('Piezas en pedido (lado del yonke)', () => {
   it('no muestra nada si no hay abiertas ni ganadas', async () => {
@@ -79,10 +87,25 @@ describe('Piezas en pedido (lado del yonke)', () => {
   });
 
   it('yonke inactivo: no muestra nada aunque haya solicitudes abiertas', async () => {
-    const mod = await import('./solicitudesPiezasDatos.js');
-    mod.leerYonkeEstadoActivo.mockResolvedValueOnce({ estado: 'baja-california', activo: false, nombre: '', whatsapp: '' });
+    leerYonkeEstadoActivo.mockResolvedValueOnce({ estado: 'baja-california', activo: false, nombre: '', whatsapp: '' });
     abiertas = [{ id: 'S1', pieza: 'Defensa', vehiculo: { marca: 'N', modelo: 'S', anio: 2001 }, tallerNombre: 'T1' }];
     render(<SolicitudesPiezasYonke yonkeId="Y1" />);
     await waitFor(() => expect(screen.queryByText(/Piezas en pedido/)).not.toBeInTheDocument());
+  });
+
+  it('sin config/solicitudesPiezas: no muestra nada y no lee el yonke ni las solicitudes', async () => {
+    leerConfigSolicitudesPiezas.mockResolvedValue(null);
+    abiertas = [{ id: 'S1', pieza: 'Defensa', vehiculo: { marca: 'N', modelo: 'S', anio: 2001 }, tallerNombre: 'T1' }];
+    render(<SolicitudesPiezasYonke yonkeId="Y1" />);
+    await waitFor(() => expect(leerConfigSolicitudesPiezas).toHaveBeenCalled());
+    expect(screen.queryByText(/Piezas en pedido/)).not.toBeInTheDocument();
+    expect(leerYonkeEstadoActivo).not.toHaveBeenCalled();
+  });
+
+  it('con habilitado=false: lo mismo', async () => {
+    leerConfigSolicitudesPiezas.mockResolvedValue({ habilitado: false });
+    render(<SolicitudesPiezasYonke yonkeId="Y1" />);
+    await waitFor(() => expect(leerConfigSolicitudesPiezas).toHaveBeenCalled());
+    expect(leerYonkeEstadoActivo).not.toHaveBeenCalled();
   });
 });

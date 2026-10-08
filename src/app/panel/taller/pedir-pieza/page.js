@@ -2,26 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../AuthContext';
-import { leerTaller } from '../cotizaciones/datos';
+import { usePedirPieza } from './contexto';
 import { escucharMisSolicitudes } from './datos';
-import { talleresHabilitados } from '../../../../lib/talleresHabilitados';
 
 const ETIQUETA_ESTADO = { abierta: 'Abierta', cerrada: 'Cerrada', cancelada: 'Cancelada' };
 const COLOR_ESTADO = { abierta: '#E8720C', cerrada: '#2E7D32', cancelada: '#888' };
 
 export default function ListaSolicitudesPiezas() {
   const router = useRouter();
-  const { tallerId } = useAuth();
-  const [taller, setTaller] = useState(null);
+  const { tallerId, taller } = usePedirPieza();
   const [items, setItems] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!tallerId) return;
-    leerTaller(tallerId).then(setTaller).catch(() => {});
-  }, [tallerId]);
 
   useEffect(() => {
     if (!tallerId) return;
@@ -32,8 +24,6 @@ export default function ListaSolicitudesPiezas() {
     });
     return dejarDeEscuchar;
   }, [tallerId]);
-
-  if (!talleresHabilitados()) return null;
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '16px' }}>

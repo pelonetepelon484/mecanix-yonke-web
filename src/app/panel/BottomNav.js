@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './AuthContext';
-import { escucharSolicitudesAbiertas, leerYonkeEstadoActivo } from './solicitudesPiezasDatos';
+import { escucharSolicitudesAbiertas, leerConfigSolicitudesPiezas, leerYonkeEstadoActivo } from './solicitudesPiezasDatos';
 
 const TABS = [
   { path: '/panel/inventario', icon: '🚗', label: 'Inventario' },
@@ -16,16 +16,21 @@ const TABS = [
 ];
 
 // Conteo de solicitudes de piezas abiertas del estado del yonke, para el badge de "Pedidos".
-// Un yonke inactivo o sin estado no ve ninguna (mismas reglas que protegen la lectura real).
+// Sin config/solicitudesPiezas (función apagada), no se hace NINGUNA otra lectura de Firestore
+// de este módulo -- ni el documento del yonke ni el listener. Un yonke inactivo o sin estado
+// tampoco ve ninguna (mismas reglas que protegen la lectura real).
 function useConteoSolicitudes(yonkeId) {
   const [conteo, setConteo] = useState(0);
   useEffect(() => {
     if (!yonkeId) return;
     let cancelado = false;
     let dejarDeEscuchar = null;
-    leerYonkeEstadoActivo(yonkeId).then(({ estado, activo }) => {
-      if (cancelado || !activo || !estado) return;
-      dejarDeEscuchar = escucharSolicitudesAbiertas(estado, (lista) => { if (!cancelado) setConteo(lista.length); });
+    leerConfigSolicitudesPiezas().then((config) => {
+      if (cancelado || config?.habilitado !== true) return;
+      leerYonkeEstadoActivo(yonkeId).then(({ estado, activo }) => {
+        if (cancelado || !activo || !estado) return;
+        dejarDeEscuchar = escucharSolicitudesAbiertas(estado, (lista) => { if (!cancelado) setConteo(lista.length); });
+      });
     });
     return () => { cancelado = true; if (dejarDeEscuchar) dejarDeEscuchar(); };
   }, [yonkeId]);

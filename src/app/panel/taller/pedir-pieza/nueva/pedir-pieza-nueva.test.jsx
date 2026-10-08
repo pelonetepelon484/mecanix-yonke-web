@@ -6,12 +6,10 @@ import '@testing-library/jest-dom/vitest';
 const push = vi.fn();
 const replace = vi.fn();
 const crearSolicitud = vi.fn(async () => 'SNEW');
+let contextoActual = { tallerId: 'T1', taller: { nombre: 'Taller Uno', whatsapp: '6641110000', activo: true } };
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace }) }));
-vi.mock('../../../AuthContext', () => ({ useAuth: () => ({ tallerId: 'T1' }) }));
-vi.mock('../../cotizaciones/datos', () => ({
-  leerTaller: vi.fn(async () => ({ nombre: 'Taller Uno', whatsapp: '6641110000', activo: true })),
-}));
+vi.mock('../contexto', () => ({ usePedirPieza: () => contextoActual }));
 vi.mock('../datos', () => ({ crearSolicitud: (...args) => crearSolicitud(...args) }));
 vi.mock('../../../../lib/estados', () => ({
   ESTADO_DEFAULT: 'baja-california',
@@ -28,7 +26,10 @@ vi.mock('../../../../lib/SelectorMarcaModelo', () => ({
 
 const { default: NuevaSolicitudPieza } = await import('./page.js');
 
-afterEach(() => { cleanup(); crearSolicitud.mockClear(); push.mockClear(); replace.mockClear(); });
+afterEach(() => {
+  cleanup(); crearSolicitud.mockClear(); push.mockClear(); replace.mockClear();
+  contextoActual = { tallerId: 'T1', taller: { nombre: 'Taller Uno', whatsapp: '6641110000', activo: true } };
+});
 
 describe('Pedir una pieza: formulario nuevo', () => {
   it('sin marca/modelo/pieza, muestra el primer error y no envía', async () => {
@@ -54,8 +55,7 @@ describe('Pedir una pieza: formulario nuevo', () => {
   });
 
   it('con el taller desactivado, no muestra el formulario', async () => {
-    const mod = await import('../../cotizaciones/datos.js');
-    mod.leerTaller.mockResolvedValueOnce({ nombre: 'Taller Uno', whatsapp: '6641110000', activo: false });
+    contextoActual = { tallerId: 'T1', taller: { nombre: 'Taller Uno', whatsapp: '6641110000', activo: false } };
     render(<NuevaSolicitudPieza />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Tu taller está desactivado: no puedes pedir piezas nuevas.');
     expect(screen.queryByText('Enviar pedido')).not.toBeInTheDocument();

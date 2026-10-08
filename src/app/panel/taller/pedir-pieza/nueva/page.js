@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../AuthContext';
-import { leerTaller } from '../../cotizaciones/datos';
+import { usePedirPieza } from '../contexto';
 import { crearSolicitud } from '../datos';
 import SelectorMarcaModelo from '../../../../lib/SelectorMarcaModelo';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../../lib/estados';
@@ -19,8 +18,7 @@ const botonGrande = { minHeight: '52px', padding: '0 18px', borderRadius: '12px'
 
 export default function NuevaSolicitudPieza() {
   const router = useRouter();
-  const { tallerId } = useAuth();
-  const [taller, setTaller] = useState(null);
+  const { tallerId, taller } = usePedirPieza();
   const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [estado, setEstado] = useState(ESTADO_DEFAULT);
   const [marca, setMarca] = useState('');
@@ -32,10 +30,8 @@ export default function NuevaSolicitudPieza() {
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    if (!tallerId) return;
-    leerTaller(tallerId).then(setTaller).catch(() => {});
     cargarEstados().then(setEstados).catch(() => {});
-  }, [tallerId]);
+  }, []);
 
   async function enviar() {
     setError('');

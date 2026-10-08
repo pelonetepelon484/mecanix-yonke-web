@@ -5,6 +5,14 @@
 import { collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
+// Bandera de la función (igual que config/cotizaciones para talleres): sin este documento, o
+// con habilitado != true, la función queda totalmente apagada -- quien la llama no debe hacer
+// ninguna otra lectura de Firestore de este módulo si config?.habilitado !== true.
+export async function leerConfigSolicitudesPiezas() {
+  const snap = await getDoc(doc(db, 'config', 'solicitudesPiezas'));
+  return snap.exists() ? snap.data() : null;
+}
+
 // El panel de yonke (AuthContext) no trae `estado`, `activo`, `nombre` ni `whatsapp` del yonke
 // -- se leen aparte, una sola vez, aquí. Un yonke inactivo o sin estado no ve ni responde
 // solicitudes; nombre y whatsapp son los que se mandan al responder (los exige la regla).
