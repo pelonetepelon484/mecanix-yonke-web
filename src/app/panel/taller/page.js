@@ -8,6 +8,7 @@ import { auth, db } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import { talleresHabilitados } from '../../../lib/talleresHabilitados';
 import { leerConfigCotizaciones } from './cotizaciones/datos';
+import { leerConfigSolicitudesPiezas } from '../solicitudesPiezasDatos';
 import AvisoVersion from './AvisoVersion';
 
 export default function PanelTaller() {
@@ -20,12 +21,13 @@ export default function PanelTaller() {
   const [resumen, setResumen] = useState('');
   const [recarga, setRecarga] = useState(0);
   const [activoTaller, setActivoTaller] = useState(false);
+  const [pedirPiezaHabilitado, setPedirPiezaHabilitado] = useState(false);
 
   useEffect(() => {
     if (!tallerId) return;
     let cancelado = false;
-    Promise.all([getDoc(doc(db, 'talleres', tallerId)), leerConfigCotizaciones()])
-      .then(([snap, config]) => {
+    Promise.all([getDoc(doc(db, 'talleres', tallerId)), leerConfigCotizaciones(), leerConfigSolicitudesPiezas()])
+      .then(([snap, config, configPiezas]) => {
         if (cancelado) return;
         if (snap.exists()) {
           setNombre(snap.data().nombre || '');
@@ -36,6 +38,7 @@ export default function PanelTaller() {
         }
         setVersionVigente(config?.terminosVersion ?? null);
         setResumen(config?.resumenCambios ?? '');
+        setPedirPiezaHabilitado(configPiezas?.habilitado === true);
       })
       .catch(() => { if (!cancelado) setErrorCarga('No pudimos cargar los datos de tu taller. Intenta recargar la página.'); });
     return () => { cancelado = true; };
@@ -67,9 +70,16 @@ export default function PanelTaller() {
           </div>
         )}
         {talleresHabilitados() && (
-          <button onClick={() => router.push('/panel/taller/cotizaciones')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: '16px 0 24px' }}>
-            Cotizaciones
-          </button>
+          <>
+            <button onClick={() => router.push('/panel/taller/cotizaciones')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado ? '16px 0 10px' : '16px 0 24px' }}>
+              Cotizaciones
+            </button>
+            {pedirPiezaHabilitado && (
+              <button onClick={() => router.push('/panel/taller/pedir-pieza')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: '2px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: '0 0 24px' }}>
+                Pedir una pieza
+              </button>
+            )}
+          </>
         )}
         <button onClick={cerrarSesion} style={{ background: 'none', border: '1px solid #DDD', borderRadius: '10px', padding: '10px 18px', fontSize: '14px', color: '#555', cursor: 'pointer' }}>
           Cerrar sesión

@@ -36,6 +36,14 @@ vi.mock('../AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+// Esta pantalla renderiza <BottomNav />, que desde el pedido de piezas lee Firestore aparte
+// (badge de "Pedidos"). Nada que ver con demanda: se corta aquí para no tocar la red real.
+vi.mock('../solicitudesPiezasDatos', () => ({
+  leerConfigSolicitudesPiezas: vi.fn(async () => null),
+  leerYonkeEstadoActivo: vi.fn(async () => ({ estado: null, activo: false, nombre: '', whatsapp: '' })),
+  escucharSolicitudesAbiertas: vi.fn(() => () => {}),
+}));
+
 const { default: DemandaPanel } = await import('./page.js');
 
 function usuarioFake() {
