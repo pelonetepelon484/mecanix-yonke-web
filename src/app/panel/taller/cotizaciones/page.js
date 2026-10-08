@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { listarCotizaciones } from './datos';
 import { useCotizaciones } from './contexto';
-import { ESTADOS_COTIZACION, formatearPesos } from '../../../../lib/cotizaciones';
+import { ESTADOS_COTIZACION, formatearPesos, totalConIvaCentavos } from '../../../../lib/cotizaciones';
 
 const MENSAJE_INDICE = 'Falta un índice de Firestore para esta lista. Avisa al equipo técnico (el enlace para crearlo aparece en la consola del navegador).';
 
@@ -124,7 +124,11 @@ export default function ListaCotizaciones() {
             </p>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
               <span style={{ color: '#888' }}>Se eliminará el {fecha(c.expiraAt)}</span>
-              <strong style={{ color: '#1A3C5E', fontSize: '16px' }}>{formatearPesos(c.totalCentavos ?? 0)}</strong>
+              {/* totalCentavos se guarda sin IVA; aquí se muestra con IVA */}
+              <span style={{ textAlign: 'right' }}>
+                <strong style={{ color: '#1A3C5E', fontSize: '16px' }}>{formatearPesos(totalConIvaCentavos(c.totalCentavos ?? 0))}</strong>
+                <span style={{ display: 'block', fontSize: '12px', color: '#888' }}>IVA incluido</span>
+              </span>
             </div>
           </button>
         ))}

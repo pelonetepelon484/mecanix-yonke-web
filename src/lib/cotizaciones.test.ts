@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_RENGLONES, MENSAJES_COTIZACION, aCentavos, calcularExpiraAt, copiaSinDatosCliente, formatearPesos, generarFolio, quitarDatosCliente,
+  IVA_PORCENTAJE, MAX_RENGLONES, MENSAJES_COTIZACION, aCentavos, ivaCentavos, totalConIvaCentavos, calcularExpiraAt, copiaSinDatosCliente, formatearPesos, generarFolio, quitarDatosCliente,
   redondearCentavos, subtotalCentavos, totalCentavos, validarCotizacion, validarRenglon, type DatosCotizacion,
 } from './cotizaciones';
 
@@ -46,6 +46,47 @@ describe('montos en centavos', () => {
   });
   it('lista vacía suma cero', () => {
     expect(totalCentavos([])).toBe(0);
+  });
+});
+
+describe('IVA (16 %, precios sin IVA)', () => {
+  it('la tasa es 16', () => {
+    expect(IVA_PORCENTAJE).toBe(16);
+  });
+  it('montos redondos', () => {
+    expect(ivaCentavos(50000)).toBe(8000); // $500.00 -> $80.00
+    expect(totalConIvaCentavos(50000)).toBe(58000);
+    expect(ivaCentavos(0)).toBe(0);
+    expect(totalConIvaCentavos(0)).toBe(0);
+  });
+  it('precios con centavos y cantidades mayores a 1', () => {
+    const subtotal = totalCentavos([
+      { cantidad: 3, precioUnitario: 19.99 }, // 59.97
+      { cantidad: 2, precioUnitario: 350.55 }, // 701.10
+    ]);
+    expect(subtotal).toBe(76107);
+    expect(ivaCentavos(subtotal)).toBe(12177); // 121.7712 -> 121.77
+    expect(totalConIvaCentavos(subtotal)).toBe(88284);
+    expect(formatearPesos(totalConIvaCentavos(subtotal))).toBe('$882.84');
+  });
+  it('redondea al centavo más cercano', () => {
+    expect(ivaCentavos(3)).toBe(0); // 0.48 -> 0
+    expect(ivaCentavos(4)).toBe(1); // 0.64 -> 1
+    expect(ivaCentavos(1999)).toBe(320); // 319.84 -> 320
+    expect(ivaCentavos(1234567)).toBe(197531); // 197530.72 -> 197531
+  });
+  it('se redondea sobre el subtotal total, no por renglón', () => {
+    // Tres renglones de $0.03: por renglón daría 0 + 0 + 0 = 0; sobre el subtotal ($0.09) da $0.01.
+    const renglones = [1, 2, 3].map(() => ({ cantidad: 1, precioUnitario: 0.03 }));
+    const porRenglon = renglones.reduce((s, r) => s + ivaCentavos(subtotalCentavos(r)), 0);
+    expect(porRenglon).toBe(0);
+    expect(ivaCentavos(totalCentavos(renglones))).toBe(1);
+  });
+  it('total con IVA = subtotal + IVA para muchos subtotales', () => {
+    for (let s = 0; s < 5000; s += 7) {
+      expect(totalConIvaCentavos(s)).toBe(s + ivaCentavos(s));
+      expect(Number.isInteger(ivaCentavos(s))).toBe(true);
+    }
   });
 });
 

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import CotizacionForm from '../CotizacionForm';
 import { useCotizaciones } from '../contexto';
 import { borrarCotizacionCompleta, cambiarArchivada, duplicarCotizacion, guardarCotizacion, leerCotizacion, quitarDatosCliente } from '../datos';
+import { descargarPdfCotizacion } from '../pdf';
 
 export default function EditarCotizacion() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function EditarCotizacion() {
   const [version, setVersion] = useState(0);
   const [aviso, setAviso] = useState('');
   const [vencida, setVencida] = useState(false);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -34,6 +36,19 @@ export default function EditarCotizacion() {
 
   function recargarTodo() {
     setVersion((v) => v + 1);
+  }
+
+  // El PDF se arma con lo GUARDADO (cot), no con lo que esté a medio editar en el formulario.
+  async function descargarPdf() {
+    setGenerandoPdf(true);
+    try {
+      await descargarPdfCotizacion({ cotizacion: cot, taller });
+    } catch (err) {
+      console.error(err);
+      setAviso('No pudimos generar el PDF. Intenta de nuevo.');
+    } finally {
+      setGenerandoPdf(false);
+    }
   }
 
   if (noExiste) {
@@ -58,6 +73,15 @@ export default function EditarCotizacion() {
         <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '0 0 14px' }}>{soloLectura ? 'Ver cotización' : 'Editar cotización'}</h1>
         {vencida && <p role="alert" style={{ color: '#8A2A1A', fontSize: '14px' }}>Esta cotización ya venció y está en solo lectura.</p>}
         {aviso && <p role="status" style={{ color: '#1A3C5E', fontSize: '14px' }}>{aviso}</p>}
+
+        {cot.folio && (
+          <div style={{ marginBottom: '14px' }}>
+            <button type="button" onClick={descargarPdf} disabled={generandoPdf} style={{ width: '100%', minHeight: '52px', borderRadius: '12px', border: '1px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', opacity: generandoPdf ? 0.6 : 1 }}>
+              {generandoPdf ? 'Generando PDF...' : 'Descargar PDF'}
+            </button>
+            <p style={{ fontSize: '13px', color: '#555', margin: '6px 0 0' }}>El PDF usa lo último que guardaste e incluye el aviso de privacidad para que el cliente lo firme.</p>
+          </div>
+        )}
 
         <CotizacionForm
           key={version}

@@ -40,4 +40,23 @@ describe('formulario de cotización', () => {
     render(<CotizacionForm inicial={inicial} tallerActivo soloLectura onGuardar={() => {}} onCancelar={() => {}} />);
     expect(screen.queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument();
   });
+  it('muestra subtotal, IVA (16 %) y total con IVA', () => {
+    const conCentavos = {
+      ...inicial,
+      renglones: [
+        { tipo: 'pieza', descripcion: 'Balata', cantidad: 3, precioUnitario: 19.99 },
+        { tipo: 'manoObra', descripcion: 'Instalación', cantidad: 2, precioUnitario: 350.55 },
+      ],
+    };
+    render(<CotizacionForm inicial={conCentavos} onGuardar={() => {}} onCancelar={() => {}} />);
+    expect(screen.getByText('Subtotal: $761.07')).toBeInTheDocument();
+    expect(screen.getByText('IVA (16 %): $121.77')).toBeInTheDocument();
+    expect(screen.getByText('Total: $882.84')).toBeInTheDocument();
+  });
+  it('con un renglón inválido no muestra montos, pide revisar', () => {
+    const sinDescripcion = { ...inicial, renglones: [{ tipo: 'pieza', descripcion: '', cantidad: 1, precioUnitario: 500 }] };
+    render(<CotizacionForm inicial={sinDescripcion} onGuardar={() => {}} onCancelar={() => {}} />);
+    expect(screen.getByText('Revisa los renglones')).toBeInTheDocument();
+    expect(screen.queryByText(/^IVA/)).not.toBeInTheDocument();
+  });
 });
