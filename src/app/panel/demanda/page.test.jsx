@@ -43,6 +43,11 @@ vi.mock('../solicitudesPiezasDatos', () => ({
   leerYonkeEstadoActivo: vi.fn(async () => ({ estado: null, activo: false, nombre: '', whatsapp: '' })),
   escucharSolicitudesAbiertas: vi.fn(() => () => {}),
 }));
+// Igual para el badge de pedidos de clientes sin cuenta (pedidosClientes).
+vi.mock('../pedidosClientesDatos', () => ({
+  leerConfigPedidosClientes: vi.fn(async () => null),
+  escucharPedidosClientesAbiertos: vi.fn(() => () => {}),
+}));
 
 const { default: DemandaPanel } = await import('./page.js');
 

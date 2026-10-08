@@ -1,0 +1,30 @@
+'use client';
+
+// Bandera config/pedidosClientes.habilitado, leída UNA vez por carga de página en el navegador
+// y compartida por todo lo que la necesita (campo viejo de WhatsApp del buscador y botón
+// "Avisar a los yonkes"). Mientras no se sabe, o si la lectura falla, vale false: la página se
+// comporta exactamente como antes de esta función.
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from './firebase';
+
+let bandera = null;
+
+export function leerBanderaPedidosClientes() {
+  if (!bandera) {
+    bandera = getDoc(doc(db, 'config', 'pedidosClientes'))
+      .then((snap) => snap.exists() && snap.data().habilitado === true)
+      .catch(() => false);
+  }
+  return bandera;
+}
+
+export function useBanderaPedidosClientes() {
+  const [activa, setActiva] = useState(false);
+  useEffect(() => {
+    let cancelado = false;
+    leerBanderaPedidosClientes().then((v) => { if (!cancelado) setActiva(v); });
+    return () => { cancelado = true; };
+  }, []);
+  return activa;
+}

@@ -10,6 +10,7 @@ import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import SolicitudesPiezasYonke from '../SolicitudesPiezasYonke';
+import PedidosClientesYonke from '../PedidosClientesYonke';
 import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
 import { ventaPublicaParaEscribir } from '../../../lib/ventaPublicaRef';
 import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
@@ -167,6 +168,7 @@ export default function ReservacionesPanel() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
         <SolicitudesPiezasYonke yonkeId={yonkeId} />
+        <PedidosClientesYonke yonkeId={yonkeId} />
         {loadingReservas ? (
           <p style={{ textAlign: 'center', color: '#888', marginTop: '32px' }}>Cargando...</p>
         ) : reservaciones.length === 0 ? (

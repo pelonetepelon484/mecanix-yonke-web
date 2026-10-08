@@ -14,6 +14,8 @@ import { obtenerEstadosCombinado } from '../../lib/busqueda/estadosServer';
 import { notificarAdmin } from '../../lib/notificarAdmin';
 import { debeMostrarAvisoPiezaSinVehiculo } from '../../../lib/piezaSinVehiculo';
 import { EJEMPLO_BUSQUEDA_CORRECTA } from '../../lib/busqueda/ejemploBusqueda';
+import { crearPersistirContacto, mensajeSinInventario } from '../../lib/busqueda/contactoPendiente';
+import { pedidosClientesActivos } from '../../lib/busqueda/banderaPedidosClientesServer';
 
 // Nota de nombres: en este archivo `estado` (minúscula, sin más calificación) siempre significa
 // el ESTADO DE LA BÚSQUEDA ('ok', 'sin_inventario', 'fuera_de_catalogo', etc. — ver
@@ -43,10 +45,6 @@ async function responderPiezaSinVehiculo({ texto, pieza, marca, anio, contacto, 
 
 const MENSAJE_NO_CATALOGADO =
   'No identificamos ese modelo todavía — ¿nos confirmas la marca y el año? o cuéntanos qué modelo es y lo agregamos a la plataforma.';
-const MENSAJE_SIN_INVENTARIO =
-  'No tenemos esa pieza en inventario ahorita, pero te avisamos en cuanto algún yonke la registre.';
-const MENSAJE_VEHICULO_SIN_INVENTARIO =
-  'No tenemos ese vehículo en inventario ahorita, pero te avisamos en cuanto algún yonke lo registre.';
 const MENSAJE_FUERA_DE_GIRO =
   'Este buscador es solo para encontrar autopartes usadas en yonkes — no identificamos una búsqueda de pieza o vehículo en tu mensaje.';
 const MENSAJE_PARSEO_PARCIAL =
@@ -117,37 +115,15 @@ async function guardarSinBloquear(coleccion, datos) {
   }
 }
 
-// Aviso al WhatsApp del admin cuando un cliente deja su contacto en una búsqueda que no dio
-// nada útil — cierra el ciclo de busquedas_pendientes (antes solo se guardaba, nadie se
-// enteraba). Solo se llama cuando contacto existe; notificarAdmin ya traga sus propios errores.
-// Cae de vuelta al texto original si no se extrajo nada estructurado (ej. no_interpretada
-// puro), para que el admin nunca reciba un aviso vacío sin poder saber qué buscaba el cliente.
-async function avisarContactoPendiente({ texto, pieza, marca, modelo, anio, estado, contacto }) {
-  const vehiculo = [marca, modelo, anio].filter(Boolean).join(' ');
-  const detalle = [pieza, vehiculo].filter(Boolean).join(' ') || texto || '(sin detalle)';
-  const mensaje = `🔔 Búsqueda pendiente en Mecanix\n\nBuscaban: ${detalle}\nEstado: ${estado}\nContacto del cliente: ${contacto}\n\nRevisa el panel para dar seguimiento.`;
-  await notificarAdmin(mensaje);
-}
-
-// Único punto de escritura a busquedas_pendientes + aviso al admin. Se llama en TODO camino
-// de retorno "sin resultado útil" que tenga contacto (sin_inventario, fuera_de_catalogo,
-// no_interpretada, parseo_parcial, fuera_de_giro) — antes esta lógica estaba duplicada en dos
-// ramas (sin_inventario en resolverBusqueda/resolverBusquedaVehiculo) y el resto de las ramas
-// simplemente no guardaba el número, aunque tieneContacto quedara en true. Al centralizarlo
-// acá, una rama nueva que olvide llamarlo no puede volver a perder un contacto en silencio.
-// No hace nada si no hay contacto (nunca escribe un doc vacío ni dispara un aviso de más).
-async function persistirContactoSiExiste(contacto, { texto, pieza = null, marca = null, modelo = null, anio = null, estado }) {
-  if (!contacto) return;
-  await guardarSinBloquear('busquedas_pendientes', {
-    pieza, marca, modelo, anio,
-    textoOriginal: texto,
-    estado,
-    fecha: new Date(),
-    contacto,
-    atendido: false,
-  });
-  await avisarContactoPendiente({ texto, pieza, marca, modelo, anio, estado, contacto });
-}
+// Único punto de escritura a busquedas_pendientes + aviso al admin (ver contactoPendiente.js) —
+// antes esta lógica estaba duplicada en dos ramas (sin_inventario en resolverBusqueda/
+// resolverBusquedaVehiculo) y el resto de las ramas simplemente no guardaba el número, aunque
+// tieneContacto quedara en true. Al centralizarlo, una rama nueva que olvide llamarlo no puede
+// volver a perder un contacto en silencio. Con config/pedidosClientes encendida no guarda ni
+// avisa nada (el cliente usa "Avisar a los yonkes"); busquedas y busquedasResumen no cambian.
+const persistirContactoSiExiste = crearPersistirContacto({
+  guardar: guardarSinBloquear, notificar: notificarAdmin, pedidosClientesActivos,
+});
 
 // Paso 3 en adelante (búsqueda CON pieza): ya con {pieza, marca, modelo, anio} resueltos
 // (extracción exacta o confirmación de sugerencia difusa), valida contra el catálogo vivo
@@ -253,7 +229,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     });
     return NextResponse.json(esNumeroDeParte
       ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
-      : { estado: 'sin_inventario', mensaje: MENSAJE_SIN_INVENTARIO });
+      : { estado: 'sin_inventario', mensaje: mensajeSinInventario({ pedidosClientesActivos: await pedidosClientesActivos() }) });
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
@@ -338,7 +314,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
       texto, estado: estadoLog, pieza: null, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo,
     });
-    return NextResponse.json(estadoYMensajeNoEncontrado('sin_inventario', MENSAJE_VEHICULO_SIN_INVENTARIO));
+    return NextResponse.json(estadoYMensajeNoEncontrado('sin_inventario', mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: await pedidosClientesActivos() })));
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);

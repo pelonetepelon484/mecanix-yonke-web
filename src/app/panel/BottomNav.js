@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './AuthContext';
 import { escucharSolicitudesAbiertas, leerConfigSolicitudesPiezas, leerYonkeEstadoActivo } from './solicitudesPiezasDatos';
+import { escucharPedidosClientesAbiertos, leerConfigPedidosClientes } from './pedidosClientesDatos';
 
 const TABS = [
   { path: '/panel/inventario', icon: '🚗', label: 'Inventario' },
@@ -37,11 +38,31 @@ function useConteoSolicitudes(yonkeId) {
   return conteo;
 }
 
+// Mismo conteo para los pedidos de clientes sin cuenta (pedidosClientes), con su propia bandera:
+// sin config/pedidosClientes no se hace ninguna otra lectura.
+function useConteoPedidosClientes(yonkeId) {
+  const [conteo, setConteo] = useState(0);
+  useEffect(() => {
+    if (!yonkeId) return;
+    let cancelado = false;
+    let dejarDeEscuchar = null;
+    leerConfigPedidosClientes().then((config) => {
+      if (cancelado || config?.habilitado !== true) return;
+      leerYonkeEstadoActivo(yonkeId).then(({ estado, activo }) => {
+        if (cancelado || !activo || !estado) return;
+        dejarDeEscuchar = escucharPedidosClientesAbiertos(estado, (lista) => { if (!cancelado) setConteo(lista.length); });
+      });
+    }).catch(() => {});
+    return () => { cancelado = true; if (dejarDeEscuchar) dejarDeEscuchar(); };
+  }, [yonkeId]);
+  return conteo;
+}
+
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { yonkeId } = useAuth();
-  const conteoSolicitudes = useConteoSolicitudes(yonkeId);
+  const conteoSolicitudes = useConteoSolicitudes(yonkeId) + useConteoPedidosClientes(yonkeId);
 
   return (
     <nav style={navStyle}>

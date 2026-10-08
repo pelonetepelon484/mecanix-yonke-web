@@ -15,6 +15,8 @@ import { conFallbackDePermisos } from '../lib/conFallbackDePermisos';
 import { elegirPiezaParaPrecio, esPrecioValido, formatPrecio } from '../lib/precio';
 import FotoTarjeta from './lib/FotoTarjeta';
 import VisorFotosVehiculo from './lib/VisorFotosVehiculo';
+import AvisarYonkes from './AvisarYonkes';
+import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 
 // Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
 // propia foto, una pieza suelta la suya (r.vehiculo es sintético ahí, ver esPiezaSuelta en
@@ -1501,13 +1503,8 @@ function obtenerEstadoAbierto(horario) {
                 onChange={(e) => setTextoLibre(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') buscarConTextoLibre(); }}
               />
-              <input
-                className="mecanix-input"
-                type="text"
-                placeholder="Tu WhatsApp (opcional, para avisarte si no hay stock)"
-                value={contactoLibre}
-                onChange={(e) => setContactoLibre(e.target.value)}
-              />
+              {/* Desaparece con el pedido de piezas de clientes encendido (config/pedidosClientes). */}
+              <CampoWhatsappBusqueda value={contactoLibre} onChange={(e) => setContactoLibre(e.target.value)} />
               <button onClick={buscarConTextoLibre} disabled={buscandoLibre} className="mecanix-btn-primary">
                 {buscandoLibre ? 'Buscando...' : '✨ Buscar con IA'}
               </button>
@@ -1616,6 +1613,12 @@ function obtenerEstadoAbierto(horario) {
                     </button>
                   )}
                 </div>
+              )}
+
+              {/* Pedido de pieza a los yonkes (pedidosClientes). No muestra nada si la función
+                  está apagada (config/pedidosClientes): la página queda igual que antes. */}
+              {mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && (
+                <AvisarYonkes estadoInicial={estadoBusqueda !== 'todos' ? estadoBusqueda : ''} />
               )}
             </div>
 
@@ -1888,6 +1891,11 @@ function obtenerEstadoAbierto(horario) {
                         escríbenos por WhatsApp
                       </a>.
                     </p>
+                    <AvisarYonkes
+                      marcaInicial={marca} modeloInicial={modelo} anioInicial={ano}
+                      piezaInicial={piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion}
+                      estadoInicial={estadoBusqueda !== 'todos' ? estadoBusqueda : ''}
+                    />
                   </div>
                 )}
 
