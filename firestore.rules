@@ -141,13 +141,54 @@ service cloud.firestore {
       allow read: if esAdmin();
       allow write: if true;
     }
+    // Contactos que deja un cliente en una búsqueda sin resultado útil. Los crea /api/buscar
+    // (persistirContactoSiExiste), que usa el SDK de cliente SIN sesión: por eso crear queda
+    // abierto, pero solo con la forma exacta que manda esa ruta. Nadie más que el admin lee,
+    // marca como atendido o borra (antes "allow write: if true" dejaba editar y borrar a cualquiera).
     match /busquedas_pendientes/{docId} {
+      function pendienteValido() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['pieza', 'marca', 'modelo', 'anio', 'textoOriginal', 'estado', 'fecha', 'contacto', 'atendido'])
+          && d.keys().hasAll(['textoOriginal', 'estado', 'fecha', 'contacto', 'atendido'])
+          && d.textoOriginal is string && d.textoOriginal.size() <= 2000
+          && d.estado in [
+               'sin_inventario', 'fuera_de_catalogo', 'parseo_parcial', 'no_interpretada', 'fuera_de_giro',
+               'numero_de_parte', 'marca_muy_general', 'pieza_sin_vehiculo'
+             ]
+          && d.fecha is timestamp
+          && d.fecha > request.time - duration.value(1, 'h')
+          && d.fecha < request.time + duration.value(1, 'h')
+          && d.contacto is string && d.contacto.size() >= 1 && d.contacto.size() <= 200
+          && d.atendido == false
+          && (d.get('pieza', null) == null || (d.pieza is string && d.pieza.size() <= 200))
+          && (d.get('marca', null) == null || (d.marca is string && d.marca.size() <= 100))
+          && (d.get('modelo', null) == null || (d.modelo is string && d.modelo.size() <= 100))
+          && (d.get('anio', null) == null || d.anio is int);
+      }
       allow read, update, delete: if esAdmin();
-      allow write: if true;
+      allow create: if pendienteValido();
     }
+    // Contadores del límite de búsquedas por IP (src/app/lib/busqueda/rateLimit.js, también sin
+    // sesión). Solo se puede crear un contador nuevo en 1 o sumarle exactamente 1: ya no se puede
+    // reiniciar, inflar, borrar ni escribir otros campos. La lectura sigue cerrada como estaba.
+    // OJO: con la lectura cerrada, la transacción de rateLimit.js falla (permission-denied) y
+    // /api/buscar deja pasar la búsqueda, o sea que el límite NO se aplica. Abrir "get" aquí lo
+    // encendería; es una decisión aparte (ver nota en la rama fix/reglas-privacidad).
     match /busqueda_rate_limit/{docId} {
+      function contadorValido() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['count', 'actualizado', 'expiraEn'])
+          && d.count is int
+          && d.actualizado is timestamp
+          && (!('expiraEn' in d) || d.expiraEn is timestamp);
+      }
       allow read: if false;
-      allow write: if true;
+      allow create: if docId.matches('^[0-9a-f]{32}_[0-9]+$')
+                    && contadorValido()
+                    && request.resource.data.count == 1;
+      allow update: if contadorValido()
+                    && request.resource.data.count == resource.data.count + 1;
+      allow delete: if false;
     }
     // ---------- Config ----------
     match /config/{documento} {
@@ -748,8 +789,13 @@ service cloud.firestore {
       }
     }
     // ---------- Operación ----------
+    // Reservaciones: traen nombre y teléfono del cliente, así que solo las leen el admin y el yonke
+    // dueño (antes la lectura era pública). Crear sigue abierto: el cliente reserva sin cuenta
+    // desde la página principal y desde los subdominios (HomeClient.js, TenantPageClient.js) y
+    // nunca vuelve a leer la reservación. El panel del yonke consulta con where('yonkeId', '==', ...)
+    // -- sin ese filtro la consulta se rechaza entera.
     match /reservaciones/{reservaId} {
-      allow read: if true;
+      allow read: if esAdmin() || esDuenoDelYonke(resource.data.yonkeId);
       allow create: if true;
       allow update: if esAdmin() || esDuenoDelYonke(resource.data.yonkeId);
       allow delete: if esAdmin();
