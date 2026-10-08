@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
@@ -11,6 +11,7 @@ import { subirLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 import { VERSION_LEGAL, URL_TERMINOS, URL_PRIVACIDAD } from '../../../lib/versionesLegales';
 import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
+import { esIdPedido } from '../../../lib/pedidosClientes';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -49,6 +50,25 @@ export default function RegistroYonke() {
 
   useEffect(() => {
     cargarEstados().then(setEstados);
+  }, []);
+
+  // Viene de /pedidos-abiertos (?pedido={id}): se muestra qué pedido va a responder, se
+  // preselecciona el estado del pedido (solo los yonkes de ese estado pueden responderlo) y,
+  // al terminar, se lleva al yonke directo a responderlo en Pedidos.
+  const pedidoId = useRef(null);
+  const [pedidoInfo, setPedidoInfo] = useState(null);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('pedido');
+    if (!esIdPedido(id)) return;
+    pedidoId.current = id;
+    fetch(`/api/pedidos-abiertos?pedido=${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data?.ok || !data.pedido) return;
+        setPedidoInfo(data.pedido);
+        setEstado(data.pedido.estado);
+      })
+      .catch(() => {});
   }, []);
 
   function manejarSeleccionLogo(e) {
@@ -167,6 +187,10 @@ export default function RegistroYonke() {
         console.log('WhatsApp notification failed', e);
       }
 
+      if (pedidoId.current) {
+        router.replace(`/panel/reservaciones?pedido=${pedidoId.current}`);
+        return;
+      }
       setExitoso(true);
     } catch (err) {
       console.error(err);
@@ -231,6 +255,17 @@ export default function RegistroYonke() {
             Sube tu inventario y aparece en búsquedas sin costo. Así de simple.
           </p>
         </div>
+
+        {pedidoInfo && (
+          <div style={{ ...freemiumBannerStyle, backgroundColor: '#FFF4E8', borderColor: '#E8720C' }}>
+            <p style={{ margin: 0, fontSize: '14px', color: '#1A3C5E', fontWeight: 'bold' }}>
+              🙋 Te registras para responder: {pedidoInfo.pieza} · {pedidoInfo.vehiculo.marca} {pedidoInfo.vehiculo.modelo} {pedidoInfo.vehiculo.anio}
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#555' }}>
+              Es un pedido de {pedidoInfo.estadoNombre}: solo los yonkes de ese estado pueden responderlo. Al terminar tu registro te llevamos directo a responder.
+            </p>
+          </div>
+        )}
 
         <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Información del negocio</h2>

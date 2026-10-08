@@ -527,6 +527,128 @@ service cloud.firestore {
       }
     }
 
+    // ---------- NUEVO: pedido de pieza de clientes sin cuenta ----------
+    // El cliente NO escribe en Firestore: todo lo crea el servidor (/api/pedir-pieza) con un
+    // usuario de servicio de Firebase Auth (usuarios/{uid}.rol == 'servicio', creado a mano por el
+    // admin). El pedido solo trae vehículo, pieza y estado; el WhatsApp del cliente y el hash del
+    // código del enlace viven en privado/contacto, que SOLO leen el admin y el servicio -- ningún
+    // yonke. Los yonkes activos del estado ven el pedido y responden una sola vez (igual que en
+    // solicitudesPiezas). Retención: expiraAt = creadoAt + 5 días en los tres documentos (TTL).
+    // Falla cerrada: crear y responder exigen config/pedidosClientes con habilitado == true.
+    function esServicio() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'servicio';
+    }
+    function pedidosClientesHabilitados() {
+      return exists(/databases/$(database)/documents/config/pedidosClientes)
+        && get(/databases/$(database)/documents/config/pedidosClientes).data.habilitado == true;
+    }
+    match /pedidosClientes/{pedidoId} {
+      function pedidoClienteValido() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['vehiculo', 'pieza', 'estado', 'estadoPedido', 'creadoAt', 'expiraAt'])
+          && d.keys().hasAll(['vehiculo', 'pieza', 'estado', 'estadoPedido', 'creadoAt', 'expiraAt'])
+          && d.vehiculo is map
+          && d.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio'])
+          && d.vehiculo.marca is string && d.vehiculo.marca.size() >= 1 && d.vehiculo.marca.size() <= 60
+          && d.vehiculo.modelo is string && d.vehiculo.modelo.size() >= 1 && d.vehiculo.modelo.size() <= 60
+          && d.vehiculo.anio is int && d.vehiculo.anio >= 1950 && d.vehiculo.anio <= 2100
+          && d.pieza is string && d.pieza.size() >= 1 && d.pieza.size() <= 100
+          && d.estado is string && d.estado.size() >= 1 && d.estado.size() <= 60
+          && d.estadoPedido == 'abierta'
+          && d.creadoAt == request.time
+          && d.expiraAt is timestamp
+          && d.expiraAt - request.time >= duration.value(5, 'd') - duration.value(5, 'm')
+          && d.expiraAt - request.time <= duration.value(5, 'd') + duration.value(5, 'm');
+      }
+
+      allow read: if esAdmin()
+                  || esServicio()
+                  || (resource.data.estadoPedido == 'abierta' && yonkeActivoDeEseEstado(resource.data.estado));
+      allow create: if esServicio() && pedidosClientesHabilitados() && pedidoClienteValido();
+      // El admin puede dar de baja un pedido (spam) o reabrirlo; nada más cambia.
+      allow update: if esAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estadoPedido'])
+                    && request.resource.data.estadoPedido in ['abierta', 'cancelada'];
+      allow delete: if esAdmin();
+
+      // Una respuesta por yonke: no se edita ni se borra. Solo la leen su yonke, el admin y el
+      // servicio (que se la muestra al cliente) -- un yonke nunca ve las respuestas de otros.
+      match /respuestas/{yonkeId} {
+        function pedidoPadre() {
+          return get(/databases/$(database)/documents/pedidosClientes/$(pedidoId)).data;
+        }
+        function respuestaPedidoValida() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precio', 'nota', 'whatsapp', 'creadoAt', 'expiraAt'])
+            && d.yonkeId == yonkeId
+            && d.yonkeNombre is string && d.yonkeNombre.size() >= 1 && d.yonkeNombre.size() <= 100
+            && d.tieneLaPieza is bool
+            && d.whatsapp is string
+            && d.nota is string && d.nota.size() <= 200
+            && d.creadoAt == request.time
+            && (
+              (d.tieneLaPieza == true && (d.precio is int || d.precio is float) && d.precio > 0 && d.precio <= 1000000)
+              || (d.tieneLaPieza == false && !('precio' in d))
+            );
+        }
+        // Rango de ±5 min contra el expiraAt del pedido (ver nota en solicitudesPiezas: "==" entre
+        // timestamps de documentos distintos revienta la evaluación).
+        function expiraIgualAlPedido() {
+          let padre = pedidoPadre().expiraAt;
+          return request.resource.data.expiraAt is timestamp
+            && request.resource.data.expiraAt >= padre - duration.value(5, 'm')
+            && request.resource.data.expiraAt <= padre + duration.value(5, 'm');
+        }
+
+        allow read: if esAdmin() || esServicio() || esDuenoDelYonke(yonkeId);
+        allow create: if pedidosClientesHabilitados()
+                      && esDuenoDelYonke(yonkeId)
+                      && yonkeActivoDeEseEstado(pedidoPadre().estado)
+                      && pedidoPadre().estadoPedido == 'abierta'
+                      && pedidoPadre().expiraAt > request.time
+                      && request.resource.data.yonkeNombre == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.nombre
+                      && request.resource.data.whatsapp == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.whatsapp
+                      && respuestaPedidoValida()
+                      && expiraIgualAlPedido();
+        allow update: if false;
+        allow delete: if esAdmin();
+      }
+
+      // WhatsApp del cliente y hash del código del enlace. Ningún yonke lo lee, nunca.
+      match /privado/{docId} {
+        function pedidoDespues() {
+          return getAfter(/databases/$(database)/documents/pedidosClientes/$(pedidoId)).data;
+        }
+        allow read: if esAdmin() || esServicio();
+        allow create: if esServicio()
+                      && docId == 'contacto'
+                      && request.resource.data.keys().hasOnly(['clienteWhatsapp', 'codigoHash', 'expiraAt'])
+                      && request.resource.data.clienteWhatsapp is string
+                      && request.resource.data.clienteWhatsapp.matches('^[0-9]{10}$')
+                      && request.resource.data.codigoHash is string
+                      && request.resource.data.codigoHash.matches('^[0-9a-f]{64}$')
+                      && request.resource.data.expiraAt is timestamp
+                      && request.resource.data.expiraAt >= pedidoDespues().expiraAt - duration.value(5, 'm')
+                      && request.resource.data.expiraAt <= pedidoDespues().expiraAt + duration.value(5, 'm');
+        allow update: if false;
+        allow delete: if esAdmin();
+      }
+    }
+    // Contadores de límite del pedido de clientes (por IP, por WhatsApp y de avisos al admin).
+    // Propios: no se reutiliza busqueda_rate_limit. Solo el servicio los lee y escribe.
+    match /pedidosClientesLimite/{docId} {
+      allow read: if esServicio();
+      allow create, update: if esServicio()
+                            && request.resource.data.keys().hasOnly(['count', 'actualizado', 'expiraEn'])
+                            && request.resource.data.count is int
+                            && request.resource.data.count >= 1
+                            && request.resource.data.actualizado is timestamp
+                            && request.resource.data.expiraEn is timestamp;
+      allow delete: if esAdmin();
+    }
+
     // ---------- Yonkes e inventario ----------
     match /yonkes/{yonkeId} {
       allow read: if true;
