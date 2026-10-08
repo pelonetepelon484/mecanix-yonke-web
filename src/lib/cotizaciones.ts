@@ -46,6 +46,20 @@ export function totalCentavos(renglones: Pick<Renglon, 'cantidad' | 'precioUnita
   return renglones.reduce((suma, r) => suma + subtotalCentavos(r), 0);
 }
 
+// IVA: los precios se capturan SIN IVA. Se calcula al mostrar (no se guarda) y se redondea una
+// sola vez sobre el subtotal de toda la cotización, no renglón por renglón.
+export const IVA_PORCENTAJE = 16;
+
+// IVA en centavos de un subtotal en centavos. subtotal × 16 nunca termina en 50, así que no hay empates al redondear.
+export function ivaCentavos(subtotal: number): number {
+  return Math.round((subtotal * IVA_PORCENTAJE) / 100);
+}
+
+// Total con IVA en centavos (subtotal + IVA).
+export function totalConIvaCentavos(subtotal: number): number {
+  return subtotal + ivaCentavos(subtotal);
+}
+
 // Texto para mostrar: "$1,234.50".
 export function formatearPesos(centavos: number): string {
   const pesos = Math.floor(Math.abs(centavos) / 100);

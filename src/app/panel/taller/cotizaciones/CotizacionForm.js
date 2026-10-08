@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import SelectorMarcaModelo from '../../../lib/SelectorMarcaModelo';
-import { ESTADOS_COTIZACION, MAX_RENGLONES, MAX_VIGENCIA_DIAS, MENSAJES_COTIZACION, formatearPesos, redondearCentavos, subtotalCentavos, totalCentavos, validarCotizacion, validarRenglon } from '../../../../lib/cotizaciones';
+import { ESTADOS_COTIZACION, IVA_PORCENTAJE, MAX_RENGLONES, MAX_VIGENCIA_DIAS, MENSAJES_COTIZACION, formatearPesos, ivaCentavos, redondearCentavos, subtotalCentavos, totalCentavos, totalConIvaCentavos, validarCotizacion, validarRenglon } from '../../../../lib/cotizaciones';
 
 // Formulario de cotización para celular. Si el guardado falla, NADA de lo escrito se borra.
 // soloLectura: el taller tiene la versión vieja o está desactivado. Todo queda deshabilitado,
@@ -84,7 +84,8 @@ export default function CotizacionForm({
 
   const datos = construir(f, archivada, datosClienteHabilitados);
   const renglonesValidos = datos.renglones.every((r) => validarRenglon(r) === null);
-  const totalTexto = renglonesValidos ? formatearPesos(totalCentavos(datos.renglones)) : 'Revisa los renglones';
+  // Precios sin IVA: el IVA se calcula aquí para mostrarlo, no se guarda.
+  const subtotalCotizacion = renglonesValidos ? totalCentavos(datos.renglones) : null;
 
   async function guardar() {
     setError('');
@@ -108,7 +109,7 @@ export default function CotizacionForm({
   const deshabilitarGuardar = guardando || !tallerActivo || soloLectura;
 
   return (
-    <div style={{ paddingBottom: '110px' }}>
+    <div style={{ paddingBottom: '130px' }}>
       {!tallerActivo && (
         <div role="alert" style={{ ...seccion, backgroundColor: '#FDECEA', color: '#8A2A1A', fontSize: '14px' }}>
           {MENSAJES_COTIZACION.tallerDesactivado}
@@ -251,9 +252,19 @@ export default function CotizacionForm({
       )}
 
       <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTop: '1px solid #E5E5E5', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 -4px 12px rgba(0,0,0,0.06)' }}>
-        <div style={{ flex: 1 }}>
-          <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Total</p>
-          <p style={{ margin: 0, fontSize: '22px', fontWeight: 'bold', color: '#1A3C5E' }}>{totalTexto}</p>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {subtotalCotizacion === null ? (
+            <>
+              <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Total</p>
+              <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#1A3C5E' }}>Revisa los renglones</p>
+            </>
+          ) : (
+            <>
+              <p style={{ margin: 0, fontSize: '13px', color: '#555' }}>Subtotal: {formatearPesos(subtotalCotizacion)}</p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#555' }}>IVA ({IVA_PORCENTAJE} %): {formatearPesos(ivaCentavos(subtotalCotizacion))}</p>
+              <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#1A3C5E' }}>Total: {formatearPesos(totalConIvaCentavos(subtotalCotizacion))}</p>
+            </>
+          )}
         </div>
         <button type="button" onClick={onCancelar} style={{ ...botonGrande, backgroundColor: '#EEF1F5', color: '#333' }}>Volver</button>
         {!soloLectura && (
