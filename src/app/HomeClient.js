@@ -10,6 +10,7 @@ import { toMillis } from '../lib/inventoryStatus';
 import YonkeActividadBadge from './lib/YonkeActividadBadge';
 import AvisoPrivacidadReserva from './lib/AvisoPrivacidadReserva';
 import { VERSION_LEGAL } from '../lib/versionesLegales';
+import { talleresHabilitados } from '../lib/talleresHabilitados';
 import { conFallbackDePermisos } from '../lib/conFallbackDePermisos';
 import { elegirPiezaParaPrecio, esPrecioValido, formatPrecio } from '../lib/precio';
 import FotoTarjeta from './lib/FotoTarjeta';
@@ -1442,15 +1443,21 @@ function obtenerEstadoAbierto(horario) {
           </p>
         </div>
 
-        {/* Pestañas: cliente vs yonke — lo primero interactivo que ve el usuario, para que
-            quede claro de inmediato si esto es para buscar o para afiliar un negocio. */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+        {/* Pestañas: cliente vs yonke (vs taller, solo con la bandera prendida) — lo primero
+            interactivo que ve el usuario, para que quede claro de inmediato si esto es para
+            buscar o para afiliar un negocio. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
           <button onClick={() => setPestanaActiva('cliente')} style={estiloPestana(pestanaActiva === 'cliente')}>
             🔍 Busco una pieza
           </button>
           <button onClick={() => setPestanaActiva('yonke')} style={estiloPestana(pestanaActiva === 'yonke')}>
             🏪 Tengo un yonke
           </button>
+          {talleresHabilitados() && (
+            <button onClick={() => setPestanaActiva('taller')} style={estiloPestana(pestanaActiva === 'taller')}>
+              🔧 ¿Tienes un taller?
+            </button>
+          )}
         </div>
 
         {pestanaActiva === 'cliente' && (
@@ -2182,6 +2189,41 @@ function obtenerEstadoAbierto(horario) {
                   </div>
                 )}
               </div>
+            </div>
+          </>
+        )}
+
+        {talleresHabilitados() && pestanaActiva === 'taller' && (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <a href="/panel" style={{
+                display: 'inline-block',
+                backgroundColor: '#1A3C5E',
+                color: '#fff',
+                fontWeight: '700',
+                fontSize: '14px',
+                padding: '11px 28px',
+                borderRadius: '24px',
+                textDecoration: 'none',
+                boxShadow: '0 4px 12px rgba(26,60,94,0.3)',
+                letterSpacing: '0.3px',
+              }}>
+                🔑 Acceso talleres registrados
+              </a>
+            </div>
+
+            {/* CTA talleres */}
+            <div style={yonkeCtaStyle}>
+              <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔧</div>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
+                ¿Tienes un taller mecánico?
+              </h3>
+              <p style={{ fontSize: '14px', color: '#555', margin: '0 0 6px', lineHeight: '1.6' }}>
+                Cotiza a tus clientes y busca piezas en los yonkes. Con tecnología Mecanix.
+              </p>
+              <a href="/panel/taller/registro" style={yonkeCtaButtonStyle}>
+                🆓 Registra tu taller gratis
+              </a>
             </div>
           </>
         )}

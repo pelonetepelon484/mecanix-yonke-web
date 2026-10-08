@@ -1,6 +1,6 @@
 {
-  "version": "talleres-2026-10-1",
-  "fecha": "6 de octubre de 2026",
+  "version": "talleres-2026-10-2",
+  "fecha": "7 de octubre de 2026",
   "urls": {
     "terminosTalleres": "https://mecanixyonkevirtual.com/terminos#talleres",
     "privacidadTalleres": "https://mecanixyonkevirtual.com/privacidad#talleres"
@@ -20,7 +20,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "El Taller es el responsable del tratamiento de los datos personales de sus Clientes que capture en la Plataforma, y decide para qué y cómo se usan. Mecanix actúa únicamente como proveedor del servicio de almacenamiento de esos datos, por petición e instrucción del Taller. Mecanix no usa esos datos para fines propios y no los comparte con yonkes, con otros talleres ni con terceros, salvo con los proveedores de infraestructura tecnológica necesarios para prestar el servicio y cuando una obligación legal lo exija."
+      "texto": "El Taller es el responsable del tratamiento de los datos personales de sus Clientes que capture en la Plataforma, y decide para qué y cómo se usan. Mecanix actúa únicamente como proveedor del servicio de almacenamiento de esos datos, por petición e instrucción del Taller. Mecanix no usa esos datos para fines propios y no los comparte con yonkes, con otros talleres ni con terceros, salvo con los proveedores de infraestructura tecnológica necesarios para prestar el servicio, cuando una obligación legal lo exija, o cuando el propio Taller solicita una pieza a los yonkes conforme a la cláusula 1.9, sin incluir en ese caso datos personales del Cliente del Taller."
     },
     {
       "tipo": "parrafo",
@@ -85,6 +85,18 @@
     {
       "tipo": "parrafo",
       "texto": "1.8.4 Procedimiento en caso de reclamación de terceros. Si Mecanix es notificada o emplazada por una reclamación de un Cliente del Taller: (a) Mecanix notificará al Taller, al correo registrado en su cuenta, en un plazo no mayor a cinco días hábiles tras la recepción formal de la notificación; (b) el Taller deberá asumir de inmediato la defensa legal a su exclusivo costo, con profesionales previamente aprobados por Mecanix; (c) el Taller no podrá celebrar convenio o transacción que imponga obligaciones o desembolsos a Mecanix, o afecte su reputación, sin su consentimiento previo y por escrito; (d) si el Taller no asume la defensa en el plazo requerido, Mecanix podrá defenderse directamente y exigir al Taller el reembolso total de cada costo, honorario o sanción erogada, deduciéndolo de cualquier saldo a favor del Taller en la Plataforma o ejerciendo las acciones legales correspondientes."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.9 Solicitudes de piezas a yonkes"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller puede solicitar en la Plataforma una pieza, indicando los datos del vehículo (marca, modelo y año) y la pieza buscada. Mecanix notifica la solicitud a los yonkes registrados que podrían tenerla, por WhatsApp u otros medios, compartiendo con ellos los datos del Taller (nombre, WhatsApp y ciudad) y los datos del vehículo y la pieza solicitados, sin incluir datos personales del Cliente del Taller. El primer yonke que confirme a Mecanix que tiene la pieza queda asignado a esa solicitud."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Respecto de esta función, Mecanix actúa únicamente como intermediario tecnológico: no vende piezas, no interviene en la negociación y no garantiza que algún yonke tenga la pieza, su estado, su precio ni su disponibilidad. La entrega, el pago y cualquier garantía de la pieza se acuerdan directamente entre el Taller y el yonke asignado; Mecanix no es parte de ese acuerdo ni responde por su cumplimiento."
     }
   ],
   "privacidad": [
@@ -114,7 +126,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Los datos de las cotizaciones solo son visibles para el Taller que los capturó y para el administrador de Mecanix. No se comparten con yonkes, con otros talleres ni con terceros. Mecanix utiliza proveedores de infraestructura (Google LLC, mediante Firebase / Google Cloud, y Vercel Inc.) para almacenar y alojar la Plataforma, y no es responsable de actividades de esos proveedores que no le competan. El uso de estos proveedores constituye una remisión de datos y no una transferencia."
+      "texto": "Los datos de las cotizaciones solo son visibles para el Taller que los capturó y para el administrador de Mecanix. No se comparten con yonkes, con otros talleres ni con terceros, salvo cuando el Taller solicita una pieza a los yonkes, conforme a la sección 2.6. Mecanix utiliza proveedores de infraestructura (Google LLC, mediante Firebase / Google Cloud, y Vercel Inc.) para almacenar y alojar la Plataforma, y no es responsable de actividades de esos proveedores que no le competan. El uso de estos proveedores constituye una remisión de datos y no una transferencia."
     },
     {
       "tipo": "subtitulo",
@@ -131,6 +143,14 @@
     {
       "tipo": "parrafo",
       "texto": "Datos de la cuenta del Taller: ante Mecanix, en contacto@mecanixyonkevirtual.com o WhatsApp 661 103 4260. Datos de los Clientes del Taller: ante el Taller que los capturó; Mecanix apoya al Taller en la atención de la solicitud."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "2.6 Solicitudes de piezas a yonkes"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Cuando el Taller solicita una pieza, Mecanix comparte con los yonkes que reciben la solicitud los datos del Taller (nombre, WhatsApp y ciudad) y los datos del vehículo y la pieza solicitados, con la única finalidad de que puedan confirmar si la tienen y atender la solicitud. Mecanix no comparte con esos yonkes datos personales del Cliente del Taller."
     }
   ],
   "avisoTaller": {
@@ -174,5 +194,5 @@
       }
     ]
   },
-  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir las herramientas de taller. Ahora se aclara que tu taller es el responsable de los datos de sus clientes y que Mecanix los almacena por tu petición; que las cotizaciones se eliminan a los 90 días; y que debes entregar un aviso de privacidad a tus clientes. Para seguir creando cotizaciones, lee y acepta la nueva versión. Mientras tanto puedes consultar tus cotizaciones anteriores y quitar datos de tus clientes."
+  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir las herramientas de taller y el nuevo flujo de solicitud de piezas a yonkes. Tu taller es el responsable de los datos de sus clientes y Mecanix los almacena por tu petición; las cotizaciones se eliminan a los 90 días; y debes entregar un aviso de privacidad a tus clientes. Además, cuando solicites una pieza a los yonkes, Mecanix compartirá con ellos los datos de tu taller y del vehículo solicitado, pero nunca los datos personales de tu cliente. Para seguir creando cotizaciones o solicitando piezas, lee y acepta la nueva versión. Mientras tanto puedes consultar tus cotizaciones anteriores y quitar datos de tus clientes."
 }

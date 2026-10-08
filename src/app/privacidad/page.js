@@ -21,11 +21,11 @@ export default function Privacidad() {
           Aviso de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 26 de septiembre de 2026
+          Última actualización: 7 de octubre de 2026
         </p>
 
         <Seccion titulo="1. Responsable del tratamiento de tus datos">
-          <p style={parrafoStyle}>Mecanix Yonke Virtual (“la Plataforma”, “nosotros”) es un servicio con sede en Tijuana, Baja California, México, que conecta a clientes que buscan autopartes usadas con yonkes (deshuesaderos) registrados en varios estados de México. El responsable del tratamiento de tus datos personales es una persona física:</p>
+          <p style={parrafoStyle}>Mecanix Yonke Virtual (“la Plataforma”, “nosotros”) es un servicio con sede en Tijuana, Baja California, México, que conecta a clientes que buscan autopartes usadas con yonkes (deshuesaderos) registrados en varios estados de México, y que además permite a talleres registrados solicitar piezas a esos yonkes (ver sección 12). El responsable del tratamiento de tus datos personales es una persona física:</p>
           <p style={parrafoStyle}><strong>Nombre:</strong> David Hernández Martínez</p>
           <p style={parrafoStyle}><strong>Domicilio:</strong> Casiopea #1-C, Colonia Sánchez Taboada, C.P. 22185, Tijuana, Baja California, México</p>
           <p style={parrafoStyle}><strong>Correo para ejercer derechos ARCO:</strong> contacto@mecanixyonkevirtual.com</p>
@@ -77,6 +77,7 @@ export default function Privacidad() {
           <p style={parrafoStyle}>• <strong>CallMeBot:</strong> servicio con el que enviamos avisos internos al WhatsApp del administrador (por ejemplo, un nuevo registro de yonke o una búsqueda sin resultados en la que dejaste tu WhatsApp, que puede incluir ese número, lo que buscabas y datos de contacto del yonke registrado).</p>
           <p style={parrafoStyle}>Estos proveedores tratan los datos bajo sus propias políticas de seguridad y privacidad. Personal autorizado de la Plataforma también puede acceder a los datos para soporte, seguridad y mejora del servicio, incluido el registro individual de búsquedas.</p>
           <p style={parrafoStyle}>Podemos compartir información si una autoridad competente la requiere conforme a la ley.</p>
+          <p style={parrafoStyle}>Cuando un taller solicita una pieza a los yonkes, compartimos los datos de esa solicitud conforme a la sección 12.</p>
         </Seccion>
 
         <Seccion titulo="6. Tus derechos ARCO">
@@ -107,12 +108,18 @@ export default function Privacidad() {
           <p style={parrafoStyle}>Podemos actualizar este Aviso de Privacidad para reflejar cambios en la Plataforma, en nuestros proveedores o en la ley. Publicaremos la versión vigente en esta misma página con su fecha de actualización; si el cambio es importante, además lo avisaremos dentro de la Plataforma. El uso continuado de la Plataforma después de un cambio implica que lo conoces.</p>
         </Seccion>
 
-        <Seccion titulo="12. Talleres y cotizaciones" id="talleres">
+        <Seccion titulo="12. Solicitudes de piezas de talleres">
+          <p style={parrafoStyle}>Cuando un taller registrado solicita una pieza, Mecanix comparte con los yonkes que reciben la solicitud los datos del taller (nombre, WhatsApp y ciudad) y los datos del vehículo y la pieza solicitados, con la única finalidad de que puedan confirmar si la tienen y atender la solicitud. No se comparten datos personales del cliente final del taller.</p>
+          <p style={parrafoStyle}>El yonke que recibe una solicitud solo puede usar esos datos para atender esa solicitud, y es responsable, bajo su propia cuenta, de la veracidad de su respuesta al confirmar que tiene la pieza.</p>
+          <p style={parrafoStyle}>Esta sección aplica a los yonkes. Los talleres se rigen, además, por la sección 13.</p>
+        </Seccion>
+
+        <Seccion titulo="13. Talleres y cotizaciones" id="talleres">
           <p style={{ ...parrafoStyle, fontSize: '13px', color: '#888' }}>Versión: {textosTalleres.version} · {textosTalleres.fecha}</p>
           <BloquesTalleres items={textosTalleres.privacidad} />
         </Seccion>
 
-        <Seccion titulo="13. Contacto">
+        <Seccion titulo="14. Contacto">
           <p style={parrafoStyle}>Para dudas sobre este aviso y para ejercer tus derechos ARCO puedes escribirnos a:</p>
           <p style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '8px' }}>
             contacto@mecanixyonkevirtual.com
