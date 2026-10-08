@@ -67,9 +67,14 @@ export default function PanelTaller() {
           </div>
         )}
         {talleresHabilitados() && (
-          <button onClick={() => router.push('/panel/taller/cotizaciones')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: '16px 0 24px' }}>
-            Cotizaciones
-          </button>
+          <>
+            <button onClick={() => router.push('/panel/taller/cotizaciones')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: '16px 0 10px' }}>
+              Cotizaciones
+            </button>
+            <button onClick={() => router.push('/panel/taller/pedir-pieza')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: '2px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: '0 0 24px' }}>
+              Pedir una pieza
+            </button>
+          </>
         )}
         <button onClick={cerrarSesion} style={{ background: 'none', border: '1px solid #DDD', borderRadius: '10px', padding: '10px 18px', fontSize: '14px', color: '#555', cursor: 'pointer' }}>
           Cerrar sesión

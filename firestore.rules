@@ -12,6 +12,19 @@ service cloud.firestore {
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'yonke' &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId == yonkeId;
     }
+    // ---------- NUEVO: pedido de piezas de talleres a yonkes ----------
+    // Un yonke "activo de ese estado" para ver/responder solicitudes: mismo campo yonkes/{id}.estado
+    // que usa estadoDeYonke() en el cliente (src/lib/estados.js) -- NO el mapeo de 3 letras que usa
+    // esYonkeDeEseEstado()/busquedasResumen, que es para otra cosa.
+    function yonkeActivoDeEseEstado(estado) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'yonke' &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId != null &&
+        exists(/databases/$(database)/documents/yonkes/$(get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId)) &&
+        get(/databases/$(database)/documents/yonkes/$(get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId)).data.activo == true &&
+        get(/databases/$(database)/documents/yonkes/$(get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId)).data.estado == estado;
+    }
     // ---------- NUEVO: demanda por estado para el panel del yonke ----------
     // Traduce el slug en español de yonkes/{id}.estado al código de 3 letras que usa
     // busquedasResumen.estadoGeografico -- debe mantenerse sincronizado a mano con
@@ -370,6 +383,147 @@ service cloud.firestore {
         // Quitar renglones (al editar o al eliminar la cotización) exige taller activo y versión vigente; el admin siempre puede
         allow delete: if esAdmin()
                       || (tallerActivoDeDueno() && versionVigente());
+      }
+    }
+
+    // ---------- Pedido de piezas de talleres a yonkes ----------
+    // El taller publica una solicitud (vehículo + pieza, SIN datos del cliente final); Mecanix
+    // decide a qué yonkes avisar por estado (fuera de las reglas); cada yonke responde una sola
+    // vez (subcolección respuestas/{yonkeId}, sin editar ni borrar); el taller elige a uno
+    // (yonkeElegido) y la solicitud pasa a 'cerrada'. El WhatsApp del taller vive en una
+    // subcolección privada que solo lee el taller dueño, el admin y el yonke elegido -- así
+    // ningún otro yonke lo ve. Retención: expiraAt = creadoAt + 5 días (igual en los tres
+    // documentos, para que la política TTL pueda borrar los tres por colección).
+    // Falla cerrada: toda creación exige que exista config/solicitudesPiezas con habilitado == true.
+    match /solicitudesPiezas/{solicitudId} {
+      function esDuenoDeEseTaller(tallerId) {
+        return request.auth != null
+          && get(/databases/$(database)/documents/talleres/$(tallerId)).data.ownerUid == request.auth.uid;
+      }
+      function tallerActivoDeEseTaller(tallerId) {
+        let t = get(/databases/$(database)/documents/talleres/$(tallerId)).data;
+        return request.auth != null && t.ownerUid == request.auth.uid && t.activo == true;
+      }
+      function solicitudesHabilitadas() {
+        return exists(/databases/$(database)/documents/config/solicitudesPiezas)
+          && get(/databases/$(database)/documents/config/solicitudesPiezas).data.habilitado == true;
+      }
+      function solicitudValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['tallerId', 'tallerNombre', 'vehiculo', 'pieza', 'nota', 'estado', 'estadoSolicitud', 'yonkeElegido', 'creadoAt', 'expiraAt'])
+          && d.tallerId is string
+          && d.tallerNombre is string && d.tallerNombre.size() >= 1 && d.tallerNombre.size() <= 100
+          && d.vehiculo is map
+          && d.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio'])
+          && d.vehiculo.marca is string && d.vehiculo.marca.size() >= 1 && d.vehiculo.marca.size() <= 60
+          && d.vehiculo.modelo is string && d.vehiculo.modelo.size() >= 1 && d.vehiculo.modelo.size() <= 60
+          && d.vehiculo.anio is int && d.vehiculo.anio >= 1950 && d.vehiculo.anio <= 2100
+          && d.pieza is string && d.pieza.size() >= 1 && d.pieza.size() <= 100
+          && d.nota is string && d.nota.size() <= 200
+          && d.estado is string
+          && d.creadoAt is timestamp
+          && d.expiraAt is timestamp;
+      }
+
+      allow read: if esAdmin()
+                  || esDuenoDeEseTaller(resource.data.tallerId)
+                  || (resource.data.yonkeElegido != null && esDuenoDelYonke(resource.data.yonkeElegido))
+                  || (resource.data.estadoSolicitud == 'abierta' && yonkeActivoDeEseEstado(resource.data.estado));
+
+      allow create: if solicitudesHabilitadas()
+                    && tallerActivoDeEseTaller(request.resource.data.tallerId)
+                    && request.resource.data.tallerNombre == get(/databases/$(database)/documents/talleres/$(request.resource.data.tallerId)).data.nombre
+                    && request.resource.data.estadoSolicitud == 'abierta'
+                    && request.resource.data.yonkeElegido == null
+                    && request.resource.data.creadoAt == request.time
+                    && request.resource.data.expiraAt - request.time >= duration.value(5, 'd') - duration.value(5, 'm')
+                    && request.resource.data.expiraAt - request.time <= duration.value(5, 'd') + duration.value(5, 'm')
+                    && solicitudValida();
+
+      // Elegir: el taller dueño pasa de 'abierta'+sin elegir a 'cerrada' con un yonke que
+      // respondió que SÍ la tiene. Cancelar: el taller dueño pasa de 'abierta' a 'cancelada'.
+      // Ningún otro campo cambia en ninguno de los dos casos.
+      allow update: if esDuenoDeEseTaller(resource.data.tallerId)
+                    && (
+                      (resource.data.estadoSolicitud == 'abierta'
+                       && resource.data.yonkeElegido == null
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estadoSolicitud', 'yonkeElegido'])
+                       && request.resource.data.estadoSolicitud == 'cerrada'
+                       && request.resource.data.yonkeElegido is string
+                       && get(/databases/$(database)/documents/solicitudesPiezas/$(solicitudId)/respuestas/$(request.resource.data.yonkeElegido)).data.tieneLaPieza == true)
+                      || (resource.data.estadoSolicitud == 'abierta'
+                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estadoSolicitud'])
+                          && request.resource.data.estadoSolicitud == 'cancelada')
+                    );
+
+      allow delete: if esAdmin() || esDuenoDeEseTaller(resource.data.tallerId);
+
+      // Una respuesta por yonke: no se edita ni se borra (allow update/delete: if false --
+      // la ausencia de "update"/"delete" en la lista ya lo deniega por default, se deja explícito).
+      match /respuestas/{yonkeId} {
+        function solicitudPadre() {
+          return get(/databases/$(database)/documents/solicitudesPiezas/$(solicitudId)).data;
+        }
+        // OJO: expiraAt se valida en expiraOk(), NO aquí con "==" -- comparar con "==" un
+        // timestamp de request.resource.data contra uno leído con get() de OTRO documento
+        // revienta la evaluación de las reglas (error del emulador/motor, no un simple falso).
+        // ">="/"<=" sí funcionan bien contra el mismo valor, por eso expiraOk() usa un rango
+        // angosto (±5 min) en vez de una igualdad exacta.
+        function respuestaValida() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precio', 'nota', 'whatsapp', 'creadoAt', 'expiraAt'])
+            && d.yonkeId == yonkeId
+            && d.yonkeNombre is string && d.yonkeNombre.size() >= 1 && d.yonkeNombre.size() <= 100
+            && d.tieneLaPieza is bool
+            && d.whatsapp is string
+            && d.nota is string && d.nota.size() <= 200
+            && d.creadoAt == request.time
+            && (
+              (d.tieneLaPieza == true && (d.precio is int || d.precio is float) && d.precio > 0 && d.precio <= 1000000)
+              || (d.tieneLaPieza == false && !('precio' in d))
+            );
+        }
+        function expiraOk() {
+          let padre = get(/databases/$(database)/documents/solicitudesPiezas/$(solicitudId)).data.expiraAt;
+          return request.resource.data.expiraAt >= padre - duration.value(5, 'm')
+            && request.resource.data.expiraAt <= padre + duration.value(5, 'm');
+        }
+
+        allow read: if esAdmin()
+                    || esDuenoDeEseTaller(solicitudPadre().tallerId)
+                    || esDuenoDelYonke(yonkeId);
+
+        allow create: if solicitudesHabilitadas()
+                      && esDuenoDelYonke(yonkeId)
+                      && yonkeActivoDeEseEstado(solicitudPadre().estado)
+                      && solicitudPadre().estadoSolicitud == 'abierta'
+                      && request.resource.data.yonkeNombre == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.nombre
+                      && request.resource.data.whatsapp == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.whatsapp
+                      && respuestaValida()
+                      && expiraOk();
+        allow update: if false;
+        allow delete: if esAdmin();
+      }
+
+      // Subcolección privada: solo el WhatsApp del taller. Se crea en el mismo lote que la
+      // solicitud (getAfter), por eso usa tallerActivoDeEseTaller sobre el tallerId de ESE lote.
+      match /privado/{docId} {
+        function solicitudPadreDespues() {
+          return getAfter(/databases/$(database)/documents/solicitudesPiezas/$(solicitudId)).data;
+        }
+        function solicitudPadre() {
+          return get(/databases/$(database)/documents/solicitudesPiezas/$(solicitudId)).data;
+        }
+        allow read: if esAdmin()
+                    || esDuenoDeEseTaller(solicitudPadre().tallerId)
+                    || (solicitudPadre().yonkeElegido != null && esDuenoDelYonke(solicitudPadre().yonkeElegido));
+        allow create: if docId == 'contacto'
+                      && tallerActivoDeEseTaller(solicitudPadreDespues().tallerId)
+                      && request.resource.data.keys().hasOnly(['tallerWhatsapp', 'expiraAt'])
+                      && request.resource.data.tallerWhatsapp == get(/databases/$(database)/documents/talleres/$(solicitudPadreDespues().tallerId)).data.whatsapp
+                      && request.resource.data.expiraAt == solicitudPadreDespues().expiraAt;
+        allow update: if false;
+        allow delete: if esAdmin() || esDuenoDeEseTaller(solicitudPadre().tallerId);
       }
     }
 
