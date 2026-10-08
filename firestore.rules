@@ -571,6 +571,21 @@ service cloud.firestore {
       allow update: if esAdmin()
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estadoPedido'])
                     && request.resource.data.estadoPedido in ['abierta', 'cancelada'];
+      // Admin (panel "Pedidos de piezas"): cerrar o cancelar (con la hora en cerradoAt, sin
+      // tocar el vencimiento), o reabrir extendiendo el vencimiento 5 días desde hoy (±1 h por
+      // el reloj de la computadora del admin). Ningún otro campo cambia.
+      allow update: if esAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estadoPedido', 'expiraAt', 'cerradoAt'])
+                    && (
+                      (request.resource.data.estadoPedido in ['cerrada', 'cancelada']
+                       && request.resource.data.expiraAt == resource.data.expiraAt
+                       && request.resource.data.cerradoAt == request.time)
+                      || (request.resource.data.estadoPedido == 'abierta'
+                          && !('cerradoAt' in request.resource.data)
+                          && request.resource.data.expiraAt is timestamp
+                          && request.resource.data.expiraAt - request.time >= duration.value(5, 'd') - duration.value(1, 'h')
+                          && request.resource.data.expiraAt - request.time <= duration.value(5, 'd') + duration.value(1, 'h'))
+                    );
       allow delete: if esAdmin();
 
       // Una respuesta por yonke: no se edita ni se borra. Solo la leen su yonke, el admin y el
@@ -613,6 +628,12 @@ service cloud.firestore {
                       && respuestaPedidoValida()
                       && expiraIgualAlPedido();
         allow update: if false;
+        // Admin, al reabrir el pedido en el mismo lote: solo el vencimiento, igual al nuevo del pedido.
+        allow update: if esAdmin()
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiraAt'])
+                      && request.resource.data.expiraAt is timestamp
+                      && request.resource.data.expiraAt >= getAfter(/databases/$(database)/documents/pedidosClientes/$(pedidoId)).data.expiraAt - duration.value(5, 'm')
+                      && request.resource.data.expiraAt <= getAfter(/databases/$(database)/documents/pedidosClientes/$(pedidoId)).data.expiraAt + duration.value(5, 'm');
         allow delete: if esAdmin();
       }
 
@@ -633,6 +654,12 @@ service cloud.firestore {
                       && request.resource.data.expiraAt >= pedidoDespues().expiraAt - duration.value(5, 'm')
                       && request.resource.data.expiraAt <= pedidoDespues().expiraAt + duration.value(5, 'm');
         allow update: if false;
+        // Admin, al reabrir el pedido en el mismo lote: solo el vencimiento, igual al nuevo del pedido.
+        allow update: if esAdmin()
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiraAt'])
+                      && request.resource.data.expiraAt is timestamp
+                      && request.resource.data.expiraAt >= pedidoDespues().expiraAt - duration.value(5, 'm')
+                      && request.resource.data.expiraAt <= pedidoDespues().expiraAt + duration.value(5, 'm');
         allow delete: if esAdmin();
       }
     }

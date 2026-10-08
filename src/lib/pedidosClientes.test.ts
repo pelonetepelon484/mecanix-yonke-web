@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   DIAS_VIGENCIA_PEDIDO, MENSAJES_PEDIDO, calcularExpiraAtPedido, enlaceGuardarPorWhatsapp, enlaceMiPedido, esCodigo, esIdPedido, estaVencido,
-  mensajeAvisoAdmin, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, validarPedidoCliente,
+  estadoVisible, mensajeAvisoAdmin, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
+  validarPedidoCliente,
 } from './pedidosClientes';
 import { MENSAJES_SOLICITUD } from './solicitudesPiezas';
 
@@ -94,6 +95,22 @@ describe('lo que sale hacia afuera', () => {
     const wa = enlaceGuardarPorWhatsapp('+52 664 123 4567', enlace);
     expect(wa.startsWith('https://wa.me/526641234567?text=')).toBe(true);
     expect(decodeURIComponent(wa)).toContain(enlace);
+  });
+  it('contadores del panel admin: abiertos (sin vencidos), con y sin respuestas, cerrados en 7 días', () => {
+    const ahora = new Date('2026-10-08T12:00:00Z');
+    const en = (dias: number) => ({ toDate: () => new Date(ahora.getTime() + dias * 24 * 60 * 60 * 1000) });
+    const pedidos = [
+      { id: 'A', estadoPedido: 'abierta', expiraAt: en(3) },
+      { id: 'B', estadoPedido: 'abierta', expiraAt: en(1) },
+      { id: 'V', estadoPedido: 'abierta', expiraAt: en(-1) },
+      { id: 'C', estadoPedido: 'cerrada', expiraAt: en(2), cerradoAt: en(-2) },
+      { id: 'D', estadoPedido: 'cerrada', expiraAt: en(2), cerradoAt: en(-8) },
+      { id: 'X', estadoPedido: 'cancelada', expiraAt: en(2), cerradoAt: en(-1) },
+    ];
+    expect(resumenPedidos(pedidos, { A: 2, V: 5 }, ahora)).toEqual({ abiertos: 2, conRespuesta: 1, sinRespuesta: 1, cerrados7Dias: 1 });
+    expect(estadoVisible(pedidos[2], ahora)).toBe('vencido');
+    expect(estadoVisible(pedidos[0], ahora)).toBe('abierta');
+    expect(estadoVisible(pedidos[5], ahora)).toBe('cancelada');
   });
   it('el aviso al admin no lleva el WhatsApp del cliente', () => {
     const m = mensajeAvisoAdmin({ vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2005 }, pieza: 'Alternador' }, 'Baja California');

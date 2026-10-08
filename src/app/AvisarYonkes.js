@@ -3,24 +3,13 @@
 // "Avisar a los yonkes": cuando la búsqueda no da resultados, el cliente (sin cuenta) deja
 // vehículo, pieza, estado y su WhatsApp; /api/pedir-pieza crea el pedido y le devuelve un enlace
 // para ver las respuestas. Falla cerrada: si config/pedidosClientes no está encendida, este
-// componente no muestra NADA (la página se ve igual que antes). La bandera se lee una sola vez,
-// y solo cuando una búsqueda sale sin resultados (nunca al cargar la página).
+// componente no muestra NADA (la página se ve igual que antes). La bandera se lee una sola vez
+// por carga de página (lib/banderaPedidosClientes.js, compartida con el campo de WhatsApp).
 import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from './lib/firebase';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
 import { ESTADO_DEFAULT, cargarEstados } from './lib/estados';
+import { leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
 import { MENSAJES_PEDIDO, enlaceGuardarPorWhatsapp, validarPedidoCliente } from '../lib/pedidosClientes';
-
-let bandera = null;
-function leerBandera() {
-  if (!bandera) {
-    bandera = getDoc(doc(db, 'config', 'pedidosClientes'))
-      .then((snap) => snap.exists() && snap.data().habilitado === true)
-      .catch(() => false);
-  }
-  return bandera;
-}
 
 export default function AvisarYonkes({ marcaInicial = '', modeloInicial = '', anioInicial = '', piezaInicial = '', estadoInicial = '' }) {
   const [habilitado, setHabilitado] = useState(false);
@@ -38,7 +27,7 @@ export default function AvisarYonkes({ marcaInicial = '', modeloInicial = '', an
 
   useEffect(() => {
     let cancelado = false;
-    leerBandera().then((v) => { if (!cancelado) setHabilitado(v); });
+    leerBanderaPedidosClientes().then((v) => { if (!cancelado) setHabilitado(v); });
     return () => { cancelado = true; };
   }, []);
 

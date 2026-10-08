@@ -121,6 +121,32 @@ export function enlaceGuardarPorWhatsapp(whatsapp: string, enlace: string): stri
   return `https://wa.me/52${numero}?text=${encodeURIComponent(texto)}`;
 }
 
+// ---------- Panel admin "Pedidos de piezas" ----------
+export const ESTADOS_PEDIDO = ['abierta', 'cerrada', 'cancelada'] as const;
+
+// Contadores de arriba. conteos: { [pedidoId]: número de respuestas } (solo de los abiertos).
+// "Cerrados en los últimos 7 días" usa cerradoAt (lo pone el admin al cerrar).
+export function resumenPedidos(
+  pedidos: { id: string; estadoPedido?: string; expiraAt?: unknown; cerradoAt?: unknown }[],
+  conteos: Record<string, number>,
+  ahora: Date,
+) {
+  const abiertos = pedidos.filter((p) => p.estadoPedido === 'abierta' && !estaVencido(p.expiraAt, ahora));
+  const hace7Dias = ahora.getTime() - 7 * 24 * 60 * 60 * 1000;
+  return {
+    abiertos: abiertos.length,
+    conRespuesta: abiertos.filter((p) => (conteos[p.id] ?? 0) > 0).length,
+    sinRespuesta: abiertos.filter((p) => (conteos[p.id] ?? 0) === 0).length,
+    cerrados7Dias: pedidos.filter((p) => p.estadoPedido === 'cerrada' && (aFecha(p.cerradoAt)?.getTime() ?? 0) >= hace7Dias).length,
+  };
+}
+
+// Lo que se muestra en la lista: un pedido "abierta" ya vencido (el TTL aún no lo borra) se ve como "vencido".
+export function estadoVisible(p: { estadoPedido?: string; expiraAt?: unknown }, ahora: Date): string {
+  if (p.estadoPedido === 'abierta' && estaVencido(p.expiraAt, ahora)) return 'vencido';
+  return p.estadoPedido || '';
+}
+
 // Aviso al WhatsApp del admin. A propósito SIN el WhatsApp del cliente (vive en privado/contacto).
 export function mensajeAvisoAdmin(d: { vehiculo: Vehiculo; pieza: string }, estadoNombre: string): string {
   return `🙋 Nuevo pedido de pieza de un cliente en Mecanix!\n\nPieza: ${d.pieza}\nVehículo: ${d.vehiculo.marca} ${d.vehiculo.modelo} ${d.vehiculo.anio}\nEstado: ${estadoNombre}\n\nLos yonkes activos de ese estado ya lo ven en su panel. El WhatsApp del cliente está en Firebase (privado/contacto).`;

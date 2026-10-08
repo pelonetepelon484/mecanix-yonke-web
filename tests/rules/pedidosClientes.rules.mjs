@@ -5,7 +5,7 @@ import { describe, it, before, after, beforeEach } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
-  Timestamp, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch,
+  Timestamp, collection, deleteDoc, deleteField, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 
 const reglas = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
@@ -217,5 +217,100 @@ describe('contadores de límite (pedidosClientesLimite)', () => {
   });
   it('no acepta campos de más', async () => {
     await assertFails(setDoc(doc(como('svc'), 'pedidosClientesLimite', 'x'), { ...contador(1), ip: '1.2.3.4' }));
+  });
+});
+
+// ---------- Panel admin "Pedidos de piezas" ----------
+// Igual que reabrirPedidoCliente() en src/app/admin/pedidos/datos.js.
+function reabrirComo(db, pedidoId, { expiraAt = en5Dias(), conPrivado = true, respuestas = [] } = {}) {
+  const lote = writeBatch(db);
+  lote.update(doc(db, 'pedidosClientes', pedidoId), { estadoPedido: 'abierta', expiraAt, cerradoAt: deleteField() });
+  if (conPrivado) lote.update(doc(db, 'pedidosClientes', pedidoId, 'privado', 'contacto'), { expiraAt });
+  for (const y of respuestas) lote.update(doc(db, 'pedidosClientes', pedidoId, 'respuestas', y), { expiraAt });
+  return lote.commit();
+}
+async function cerrarSinReglas(pedidoId) {
+  await env.withSecurityRulesDisabled(async (ctx) => updateDoc(doc(ctx.firestore(), 'pedidosClientes', pedidoId), { estadoPedido: 'cerrada', cerradoAt: Timestamp.now() }));
+}
+
+describe('panel admin: cerrar, cancelar y reabrir pedidos de clientes', () => {
+  it('el admin cierra o cancela un pedido, con la hora en cerradoAt', async () => {
+    await assertSucceeds(updateDoc(doc(como('adm'), 'pedidosClientes', 'P1'), { estadoPedido: 'cerrada', cerradoAt: serverTimestamp() }));
+    await assertSucceeds(updateDoc(doc(como('adm'), 'pedidosClientes', 'P2'), { estadoPedido: 'cancelada', cerradoAt: serverTimestamp() }));
+  });
+  it('cerrar no acepta otra hora, cambiar el vencimiento ni otros campos', async () => {
+    await assertFails(updateDoc(doc(como('adm'), 'pedidosClientes', 'P1'), { estadoPedido: 'cerrada' }));
+    await assertFails(updateDoc(doc(como('adm'), 'pedidosClientes', 'P1'), { estadoPedido: 'cerrada', cerradoAt: Timestamp.fromMillis(Date.now() - DIA) }));
+    await assertFails(updateDoc(doc(como('adm'), 'pedidosClientes', 'P1'), { estadoPedido: 'cerrada', cerradoAt: serverTimestamp(), expiraAt: en5Dias() }));
+    await assertFails(updateDoc(doc(como('adm'), 'pedidosClientes', 'P1'), { estadoPedido: 'cerrada', cerradoAt: serverTimestamp(), pieza: 'Otra' }));
+  });
+  it('el admin reabre extendiendo 5 días el pedido, su privado y sus respuestas en un lote', async () => {
+    await assertSucceeds(responderComo('o1', 'Y1', 'P1'));
+    await cerrarSinReglas('P1');
+    await assertSucceeds(reabrirComo(como('adm'), 'P1', { respuestas: ['Y1'] }));
+    // El vencido también se puede reabrir.
+    await assertSucceeds(reabrirComo(como('adm'), 'PV'));
+  });
+  it('reabrir exige 5 días desde hoy y el mismo vencimiento en privado y respuestas', async () => {
+    await cerrarSinReglas('P1');
+    await assertFails(reabrirComo(como('adm'), 'P1', { expiraAt: Timestamp.fromMillis(Date.now() + 10 * DIA) }));
+    // Sin el pedido en el mismo lote, el privado de PV (vencido ayer) no se puede extender solo.
+    await assertFails(setDoc(doc(como('adm'), 'pedidosClientes', 'PV', 'privado', 'contacto'), { expiraAt: en5Dias() }, { merge: true }));
+    await assertFails(updateDoc(doc(como('adm'), 'pedidosClientes', 'P1', 'privado', 'contacto'), { clienteWhatsapp: '6640000000' }));
+  });
+  it('el admin no puede cambiar el precio ni otra cosa de una respuesta', async () => {
+    await assertSucceeds(responderComo('o1', 'Y1', 'P1'));
+    await assertFails(updateDoc(doc(como('adm'), 'pedidosClientes', 'P1', 'respuestas', 'Y1'), { precio: 1 }));
+  });
+  it('nadie más cierra, cancela ni reabre: ni yonkes, ni el servicio, ni alguien sin cuenta', async () => {
+    await assertSucceeds(responderComo('o1', 'Y1', 'P1'));
+    for (const db of [como('o1'), como('o2'), como('svc'), como('t1'), anonimo()]) {
+      await assertFails(updateDoc(doc(db, 'pedidosClientes', 'P1'), { estadoPedido: 'cerrada', cerradoAt: serverTimestamp() }));
+      await assertFails(updateDoc(doc(db, 'pedidosClientes', 'P1'), { estadoPedido: 'cancelada', cerradoAt: serverTimestamp() }));
+    }
+    await cerrarSinReglas('P1');
+    for (const db of [como('o1'), como('svc'), anonimo()]) {
+      await assertFails(reabrirComo(db, 'P1', { respuestas: ['Y1'] }));
+      await assertFails(updateDoc(doc(db, 'pedidosClientes', 'P1', 'respuestas', 'Y1'), { expiraAt: en5Dias() }));
+    }
+  });
+});
+
+describe('panel admin: borrar pedidos e interruptor', () => {
+  it('el admin borra el pedido con sus respuestas y su privado en un lote; un yonke no', async () => {
+    await assertSucceeds(responderComo('o1', 'Y1', 'P1'));
+    const borrarLote = (db) => {
+      const lote = writeBatch(db);
+      lote.delete(doc(db, 'pedidosClientes', 'P1', 'respuestas', 'Y1'));
+      lote.delete(doc(db, 'pedidosClientes', 'P1', 'privado', 'contacto'));
+      lote.delete(doc(db, 'pedidosClientes', 'P1'));
+      return lote.commit();
+    };
+    await assertFails(borrarLote(como('o1')));
+    await assertFails(borrarLote(como('svc')));
+    await assertSucceeds(borrarLote(como('adm')));
+  });
+  it('pedidos de talleres: el admin ya puede borrar la solicitud, sus respuestas y su privado (reglas sin cambios)', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'talleres', 'T1'), { nombre: 'Taller', ownerUid: 't1', activo: true });
+      await setDoc(doc(db, 'solicitudesPiezas', 'S1'), { tallerId: 'T1', estado: 'baja-california', estadoSolicitud: 'abierta', yonkeElegido: null, pieza: 'Faro' });
+      await setDoc(doc(db, 'solicitudesPiezas', 'S1', 'respuestas', 'Y1'), { yonkeId: 'Y1', tieneLaPieza: false });
+      await setDoc(doc(db, 'solicitudesPiezas', 'S1', 'privado', 'contacto'), { tallerWhatsapp: '6641234567' });
+    });
+    await assertSucceeds(getDocs(query(collection(como('adm'), 'solicitudesPiezas'), orderBy('creadoAt', 'desc'))));
+    await assertSucceeds(getDocs(collection(como('adm'), 'solicitudesPiezas', 'S1', 'respuestas')));
+    const adm = como('adm');
+    const lote = writeBatch(adm);
+    lote.delete(doc(adm, 'solicitudesPiezas', 'S1', 'respuestas', 'Y1'));
+    lote.delete(doc(adm, 'solicitudesPiezas', 'S1', 'privado', 'contacto'));
+    lote.delete(doc(adm, 'solicitudesPiezas', 'S1'));
+    await assertSucceeds(lote.commit());
+  });
+  it('solo el admin prende o apaga config/pedidosClientes (regla de config existente)', async () => {
+    await assertSucceeds(setDoc(doc(como('adm'), 'config', 'pedidosClientes'), { habilitado: false }, { merge: true }));
+    for (const db of [como('o1'), como('svc'), como('t1'), anonimo()]) {
+      await assertFails(setDoc(doc(db, 'config', 'pedidosClientes'), { habilitado: true }, { merge: true }));
+    }
   });
 });

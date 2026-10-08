@@ -87,6 +87,7 @@ export default function MiPedidoCliente() {
         </p>
         <p style={{ margin: '8px 0 0', fontSize: '13px', color: pedido.vencido || pedido.estadoPedido !== 'abierta' ? '#8A2A1A' : '#2E7D32', fontWeight: 'bold' }}>
           {pedido.vencido ? 'Este pedido ya venció: los yonkes ya no lo ven.'
+            : pedido.estadoPedido === 'cerrada' ? 'Este pedido ya se cerró: los yonkes ya no lo ven.'
             : pedido.estadoPedido !== 'abierta' ? 'Este pedido fue dado de baja.'
               : `Abierto · los yonkes pueden responder hasta el ${fecha(pedido.vence)}`}
         </p>
