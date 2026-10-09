@@ -289,10 +289,14 @@ const PIEZAS_INFO = PIEZAS_CATALOGO.map((nombre) => {
 // "Computadora de motor" / "Computadora de transmisión"), esa palabra queda con length>1 y el
 // paso 3 la ignora a propósito — adivinar cuál de las dos sería un error, se sigue exigiendo el
 // nombre completo como hasta ahora.
+// Palabras iniciales demasiado genéricas para adivinar con ellas: "modulo abs" no debe leerse como
+// "Módulo BCM" solo porque es la única pieza del catálogo que empieza con "módulo".
+const PRIMERAS_PALABRAS_GENERICAS = new Set(['modulo']);
 const PRIMERA_PALABRA_BASE = new Map();
 for (const { nombre, base } of PIEZAS_INFO) {
   if (base.length === 0) continue;
   const primera = base[0];
+  if (PRIMERAS_PALABRAS_GENERICAS.has(primera)) continue;
   if (!PRIMERA_PALABRA_BASE.has(primera)) PRIMERA_PALABRA_BASE.set(primera, []);
   PRIMERA_PALABRA_BASE.get(primera).push(nombre);
 }
@@ -301,6 +305,12 @@ for (const { nombre, base } of PIEZAS_INFO) {
 // sin acentos) — usado solo para tolerar typos (ver extraerPieza), igual espíritu que
 // ALIAS_MARCA/catalogo para el fuzzy de marca/modelo de arriba.
 const VOCABULARIO_PIEZAS = [...new Set(PIEZAS_INFO.flatMap(({ palabras }) => palabras))];
+
+// Piezas cuyo nombre tiene una palabra que SINONIMOS_PALABRA convierte en OTRA pieza (no en un
+// lado): hoy solo "Caja de fusibles" ("caja" -> "transmision"). Ver extraerPieza.
+const PIEZAS_CON_PALABRA_REESCRITA = PIEZAS_INFO.filter(({ palabras }) => palabras.some((p) => (
+  SINONIMOS_PALABRA[p] && SINONIMOS_PALABRA[p] !== p && !CALIFICADORES_LADO.has(SINONIMOS_PALABRA[p])
+)));
 
 // Núcleo de matching exacto (sin typos) sobre un set de palabras ya resuelto — separado de
 // extraerPieza() para poder reintentarlo una segunda vez con palabras corregidas por typo sin
@@ -372,6 +382,12 @@ function corregirTypoDeLado(palabra) {
 // búsqueda la entiende y responde "sin inventario" en vez de "no entendí" hasta que alguien la
 // registre — y el log de búsquedas mide la demanda antes de decidir agregarla al catálogo.
 function extraerPieza(textoNormalizado, piezasSinonimo = []) {
+  // Nombre completo de una pieza cuya palabra los sinónimos de palabra reescribirían ("caja de
+  // fusibles": "caja" -> "transmision"). Sin esto, "caja de fusibles" se leía como Transmisión.
+  const originales = new Set(tokenizar(textoNormalizado));
+  const protegida = PIEZAS_CON_PALABRA_REESCRITA.find(({ palabras: pc }) => pc.every((p) => originales.has(p)));
+  if (protegida) return protegida.nombre;
+
   const palabras = tokenizar(textoNormalizado)
     .map((p) => SINONIMOS_PALABRA[p] || p)
     .map(corregirTypoDeLado);

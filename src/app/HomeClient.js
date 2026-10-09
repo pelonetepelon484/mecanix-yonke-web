@@ -15,6 +15,8 @@ import { conFallbackDePermisos } from '../lib/conFallbackDePermisos';
 import { elegirPiezaParaPrecio, esPrecioValido, formatPrecio } from '../lib/precio';
 import FotoTarjeta from './lib/FotoTarjeta';
 import VisorFotosVehiculo from './lib/VisorFotosVehiculo';
+import VisorFotos from './lib/VisorFotos';
+import { fotosDeItem } from '../lib/fotosPieza';
 import AvisarYonkes from './AvisarYonkes';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 
@@ -23,9 +25,16 @@ import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 // consultarInventario.js/buscarPiezasSueltasManual), y cualquier otro resultado (vehículo real,
 // con o sin una pieza específica coincidente) muestra la foto frontal del vehículo.
 function fotoPrincipalDeResultado(r) {
-  if (r?.esMotor) return r.motor?.foto?.url || null;
-  if (r?.esPiezaSuelta) return r.piezaResultado?.foto?.url || null;
+  if (r?.esMotor || r?.esPiezaSuelta) return fotosDeResultado(r)[0]?.url || null;
   return r?.vehiculo?.fotos?.frontal?.url || null;
+}
+
+// Hasta 3 fotos de un motor/transmisión o pieza suelta (la primera es `foto`, como antes; ver
+// src/lib/fotosPieza.ts). Un vehículo real usa su propio visor de 4 lados, no esto.
+function fotosDeResultado(r) {
+  if (r?.esMotor) return fotosDeItem(r.motor);
+  if (r?.esPiezaSuelta) return fotosDeItem(r.piezaResultado);
+  return [];
 }
 
 function altFotoPrincipalDeResultado(r) {
@@ -177,6 +186,8 @@ export default function HomeClient({ textoSeoEstados }) {
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
   // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
   const [visorVehiculo, setVisorVehiculo] = useState(null);
+  // Visor de las fotos (hasta 3) de un motor/transmisión o pieza suelta -- null = cerrado.
+  const [visorFotos, setVisorFotos] = useState(null);
   const [ciudad, setCiudad] = useState('');
   const [tipoBusqueda, setTipoBusqueda] = useState('vehiculo');
   const [marca, setMarca] = useState('');
@@ -488,7 +499,7 @@ export default function HomeClient({ textoSeoEstados }) {
       });
       return await Promise.all(pares.map(async ({ yonkeDoc, vDoc }) => {
         const yonkeData = yonkeDoc.data();
-        const { marca: m, modelo: mo, ano: a, pieza, precio, foto } = vDoc.data();
+        const { marca: m, modelo: mo, ano: a, pieza, precio, foto, fotosExtra } = vDoc.data();
         const calificacion = await obtenerCalificacion(yonkeDoc.id);
         return {
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
@@ -502,7 +513,7 @@ export default function HomeClient({ textoSeoEstados }) {
           // piezaResultado); la tarjeta debe mostrar la foto de la PIEZA, no la de un vehículo
           // que no existe.
           esPiezaSuelta: true,
-          piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null, foto: foto || null },
+          piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null, foto: foto || null, fotosExtra: Array.isArray(fotosExtra) ? fotosExtra : [] },
         };
       }));
     } catch (error) {
@@ -1290,9 +1301,12 @@ function obtenerEstadoAbierto(horario) {
             url={fotoPrincipalDeResultado(r)}
             alt={altFotoPrincipalDeResultado(r)}
             icono={r.esMotor ? '🔧' : '🚗'}
+            total={fotosDeResultado(r).length}
             onClick={(!r.esMotor && !r.esPiezaSuelta && r.vehiculo?.fotos?.frontal)
               ? () => setVisorVehiculo({ fotos: r.vehiculo.fotos, nombre: `${r.vehiculo.marca} ${r.vehiculo.modelo} ${r.vehiculo.ano}`.trim(), slotInicial: 'frontal' })
-              : undefined}
+              : (fotosDeResultado(r).length > 0
+                ? () => setVisorFotos({ fotos: fotosDeResultado(r), titulo: altFotoPrincipalDeResultado(r) })
+                : undefined)}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Resultado de motor/transmisión */}
@@ -1400,7 +1414,13 @@ function obtenerEstadoAbierto(horario) {
         {renderInfoNegocio(r)}
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', margin: '10px 0' }}>
-          <FotoTarjeta url={fotoPrincipalDeResultado(r)} alt={altFotoPrincipalDeResultado(r)} icono="🔧" />
+          <FotoTarjeta
+            url={fotoPrincipalDeResultado(r)}
+            alt={altFotoPrincipalDeResultado(r)}
+            icono="🔧"
+            total={fotosDeResultado(r).length}
+            onClick={fotosDeResultado(r).length > 0 ? () => setVisorFotos({ fotos: fotosDeResultado(r), titulo: altFotoPrincipalDeResultado(r) }) : undefined}
+          />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '0 0 2px', fontWeight: '600' }}>
               {icono} {r.motor.marca} {r.motor.modelo} {r.motor.ano}
@@ -2319,6 +2339,9 @@ function obtenerEstadoAbierto(horario) {
           slotInicial={visorVehiculo.slotInicial}
           onClose={() => setVisorVehiculo(null)}
         />
+      )}
+      {visorFotos && (
+        <VisorFotos items={visorFotos.fotos} titulo={visorFotos.titulo} onClose={() => setVisorFotos(null)} />
       )}
 
       {modalVisible && (
