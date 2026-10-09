@@ -291,7 +291,8 @@ const PIEZAS_INFO = PIEZAS_CATALOGO.map((nombre) => {
 // nombre completo como hasta ahora.
 // Palabras iniciales demasiado genéricas para adivinar con ellas: "modulo abs" no debe leerse como
 // "Módulo BCM" solo porque es la única pieza del catálogo que empieza con "módulo".
-const PRIMERAS_PALABRAS_GENERICAS = new Set(['modulo']);
+// Igual "switch": "switch de luces" no es el switch de encendido.
+const PRIMERAS_PALABRAS_GENERICAS = new Set(['modulo', 'switch']);
 const PRIMERA_PALABRA_BASE = new Map();
 for (const { nombre, base } of PIEZAS_INFO) {
   if (base.length === 0) continue;
@@ -376,6 +377,18 @@ function corregirTypoDeLado(palabra) {
   return candidato ? (SINONIMOS_PALABRA[candidato] || candidato) : palabra;
 }
 
+// Una pieza fuera del catálogo reconocida por una frase que CONTIENE a la del catálogo es más
+// específica y gana: "soporte de radiador" no es "Radiador" (aunque el texto diga "radiador").
+const NOMBRES_CATALOGO = new Set(PIEZAS_CATALOGO);
+function sinonimoMasEspecifico(encontrada, piezasSinonimo) {
+  const palabrasEncontrada = tokenizar(normalizar(encontrada));
+  return piezasSinonimo.find((p) => {
+    if (NOMBRES_CATALOGO.has(p)) return false;
+    const palabras = new Set(tokenizar(normalizar(p)));
+    return palabras.size > palabrasEncontrada.length && palabrasEncontrada.every((w) => palabras.has(w));
+  }) || null;
+}
+
 // piezasSinonimo: piezas canónicas que aplicarSinonimosFrases ya reconoció en el texto (ver
 // sinonimosPiezas.js). Si el catálogo no resuelve nada pero el diccionario SÍ reconoció una pieza
 // que no está en PIEZAS_CATALOGO (ej. "header plate" -> "Soporte de radiador"), se devuelve esa: la
@@ -393,7 +406,7 @@ function extraerPieza(textoNormalizado, piezasSinonimo = []) {
     .map(corregirTypoDeLado);
 
   const exacto = buscarPiezaPorPalabras(new Set(palabras));
-  if (exacto) return exacto;
+  if (exacto) return sinonimoMasEspecifico(exacto, piezasSinonimo) || exacto;
 
   // Typo tolerance (ej. "tansmision" -> "transmision", "alterndor" -> "alternador"): solo se
   // intenta cuando el match exacto de arriba no encontró NADA, y solo corrige palabras que ya

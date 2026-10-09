@@ -14,7 +14,7 @@ import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarc
 import { MOTIVOS_BAJA, sacarDelInventario, reactivarVehiculo, eliminarVehiculoPorError } from '../../../lib/vehiculoEstado';
 import SelectorOpciones from '../../lib/SelectorOpciones';
 import { OPCIONES_TRANSMISION, OPCIONES_CONFIGURACION_MOTOR, OPCIONES_TRACCION, OTRO_NO_ESPECIFICADO } from '../../lib/opcionesVehiculo';
-import { PIEZAS_CATALOGO, PIEZAS_CATALOGO_SUELTAS } from '../../lib/piezasCatalogo';
+import { PIEZAS_POR_VEHICULO, PIEZAS_CATALOGO_SUELTAS } from '../../lib/piezasCatalogo';
 import PrecioInput, { PiezaPrecioInput, precioATexto } from '../../lib/PrecioInput';
 import { parsePrecio, esPrecioValido, formatPrecio } from '../../../lib/precio';
 import VehiculoFotosEditor from '../VehiculoFotosEditor';
@@ -35,7 +35,8 @@ const MOTIVO_BAJA_LABEL = Object.fromEntries(MOTIVOS_BAJA.map((m) => [m.value, m
 async function crearPiezasComunes(vehiculoRef) {
   const batch = writeBatch(db);
   const piezasRef = collection(vehiculoRef, 'piezas');
-  PIEZAS_CATALOGO.forEach((nombre) => {
+  // Solo las piezas que se crean solas en cada vehículo (52), no todo el catálogo: ver piezasCatalogo.js.
+  PIEZAS_POR_VEHICULO.forEach((nombre) => {
     const piezaDocRef = doc(piezasRef);
     batch.set(piezaDocRef, { nombre, disponible: true });
   });
