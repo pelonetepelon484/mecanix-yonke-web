@@ -6,6 +6,7 @@ import CotizacionForm from '../CotizacionForm';
 import { useCotizaciones } from '../contexto';
 import { borrarCotizacionCompleta, cambiarArchivada, duplicarCotizacion, guardarCotizacion, leerCotizacion, quitarDatosCliente } from '../datos';
 import { descargarPdfCotizacion } from '../pdf';
+import { leerConfigSolicitudesPiezas } from '../../../solicitudesPiezasDatos';
 
 export default function EditarCotizacion() {
   const router = useRouter();
@@ -17,6 +18,17 @@ export default function EditarCotizacion() {
   const [aviso, setAviso] = useState('');
   const [vencida, setVencida] = useState(false);
   const [generandoPdf, setGenerandoPdf] = useState(false);
+  // "Pedir a los yonkes" en renglones de pieza: solo con config/solicitudesPiezas.habilitado === true
+  // (igual que "Pedir una pieza" en el inicio del taller). Apagada, la pantalla queda igual que antes.
+  const [pedirPiezaHabilitado, setPedirPiezaHabilitado] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    leerConfigSolicitudesPiezas()
+      .then((config) => { if (!cancelado) setPedirPiezaHabilitado(config?.habilitado === true); })
+      .catch(() => {});
+    return () => { cancelado = true; };
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -89,6 +101,7 @@ export default function EditarCotizacion() {
           tallerActivo={taller?.activo === true}
           soloLectura={soloLectura}
           datosClienteHabilitados={datosClienteHabilitados}
+          mostrarPedirPieza={pedirPiezaHabilitado}
           fechaEliminacion={fechaEliminacion}
           puedeEliminar={puedeEditar}
           onEliminar={async () => {

@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { usePedirPieza } from '../contexto';
 import { crearSolicitud } from '../datos';
 import SelectorMarcaModelo from '../../../../lib/SelectorMarcaModelo';
+import { CATALOGO_BASE } from '../../../../lib/catalogoBase';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../../lib/estados';
 import { MENSAJES_SOLICITUD, validarSolicitud } from '../../../../../lib/solicitudesPiezas';
+import { prefillDesdeParametros } from '../../../../../lib/pedirPiezaDesdeCotizacion';
 
 const inputBase = {
   width: '100%', boxSizing: 'border-box', padding: '14px', fontSize: '16px', borderRadius: '10px',
@@ -16,15 +18,28 @@ const etiqueta = { display: 'block', fontSize: '13px', color: '#555', marginBott
 const seccion = { backgroundColor: '#fff', borderRadius: '14px', padding: '16px', marginBottom: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' };
 const botonGrande = { minHeight: '52px', padding: '0 18px', borderRadius: '12px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' };
 
+// useSearchParams necesita un Suspense alrededor (Next); el formulario es el mismo de siempre.
 export default function NuevaSolicitudPieza() {
+  return (
+    <Suspense fallback={null}>
+      <FormularioNuevaSolicitud />
+    </Suspense>
+  );
+}
+
+function FormularioNuevaSolicitud() {
   const router = useRouter();
   const { tallerId, taller } = usePedirPieza();
+  // Desde "Pedir a los yonkes" de una cotización llegan marca, modelo, año y pieza en la URL: se
+  // validan y solo prellenan (todo editable). Sin parámetros, el formulario empieza vacío como antes.
+  const searchParams = useSearchParams();
+  const [prefill] = useState(() => prefillDesdeParametros(searchParams, CATALOGO_BASE));
   const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [estado, setEstado] = useState(ESTADO_DEFAULT);
-  const [marca, setMarca] = useState('');
-  const [modelo, setModelo] = useState('');
-  const [anio, setAnio] = useState('');
-  const [pieza, setPieza] = useState('');
+  const [marca, setMarca] = useState(prefill.marca);
+  const [modelo, setModelo] = useState(prefill.modelo);
+  const [anio, setAnio] = useState(prefill.anio);
+  const [pieza, setPieza] = useState(prefill.pieza);
   const [nota, setNota] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);

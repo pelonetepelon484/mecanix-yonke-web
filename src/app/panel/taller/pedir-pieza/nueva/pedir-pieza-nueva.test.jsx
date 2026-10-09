@@ -8,7 +8,8 @@ const replace = vi.fn();
 const crearSolicitud = vi.fn(async () => 'SNEW');
 let contextoActual = { tallerId: 'T1', taller: { nombre: 'Taller Uno', whatsapp: '6641110000', activo: true } };
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace }) }));
+// Sin parámetros en la URL (el formulario empieza vacío, como siempre).
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace }), useSearchParams: () => new URLSearchParams() }));
 vi.mock('../contexto', () => ({ usePedirPieza: () => contextoActual }));
 vi.mock('../datos', () => ({ crearSolicitud: (...args) => crearSolicitud(...args) }));
 vi.mock('../../../../lib/estados', () => ({
