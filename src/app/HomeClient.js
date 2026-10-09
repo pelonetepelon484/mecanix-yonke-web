@@ -18,6 +18,7 @@ import VisorFotosVehiculo from './lib/VisorFotosVehiculo';
 import VisorFotos from './lib/VisorFotos';
 import { fotosDeItem } from '../lib/fotosPieza';
 import AvisarYonkes from './AvisarYonkes';
+import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 
 // Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
@@ -1952,6 +1953,18 @@ function obtenerEstadoAbierto(horario) {
                     <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00' }}>{bannerTexto}</p>
                   </div>
                 )}
+
+                {/* Sin el año exacto (años cercanos o cualquier año): ofrecer "Avisar a los yonkes",
+                    prellenado con lo que buscó el cliente. Los resultados siguen debajo, igual.
+                    No aparece con año exacto, sin año, ni en motor/transmisión (ver avisoSinAnioExacto.ts). */}
+                <AvisarSinAnioExacto
+                  tipoBusqueda={tipoBusqueda}
+                  tipoResultado={tipoResultado}
+                  hayResultados={resultados.length > 0}
+                  marca={marca} modelo={modelo} anio={ano}
+                  pieza={piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion}
+                  estado={estadoBusqueda !== 'todos' ? estadoBusqueda : ''}
+                />
 
                 {/* Alternativa honesta cuando la pieza pedida no está registrada por separado
                     pero SÍ existe el vehículo completo "para partes" (exacto, cercano o
