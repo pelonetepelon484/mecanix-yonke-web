@@ -10,6 +10,10 @@ import { talleresHabilitados } from '../../../lib/talleresHabilitados';
 import { leerConfigCotizaciones } from './cotizaciones/datos';
 import { leerConfigSolicitudesPiezas } from '../solicitudesPiezasDatos';
 import AvisoVersion from './AvisoVersion';
+import { OpcionInstalarApp } from '../AvisoInstalarApp';
+
+const seccionInstalar = { textAlign: 'left', borderTop: '1px solid #EEE', padding: '16px 0 0', margin: '0 0 20px' };
+const tituloInstalar = { fontSize: '16px', color: '#1A3C5E', margin: '0 0 6px' };
 
 export default function PanelTaller() {
   const router = useRouter();
@@ -81,6 +85,8 @@ export default function PanelTaller() {
             )}
           </>
         )}
+        {/* Instalar la app (PWA): siempre disponible aquí, aunque se haya cerrado el aviso (igual que en Negocio) */}
+        <OpcionInstalarApp estiloSeccion={seccionInstalar} estiloTitulo={tituloInstalar} />
         <button onClick={cerrarSesion} style={{ background: 'none', border: '1px solid #DDD', borderRadius: '10px', padding: '10px 18px', fontSize: '14px', color: '#555', cursor: 'pointer' }}>
           Cerrar sesión
         </button>
