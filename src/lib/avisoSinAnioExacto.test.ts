@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { debeOfrecerAvisoSinAnioExacto, mensajeAvisoSinAnioExacto } from './avisoSinAnioExacto';
+import { MENSAJE_AVISO_SIN_ANIO_EXACTO, debeOfrecerAvisoSinAnioExacto, tituloAvisoSinAnioExacto } from './avisoSinAnioExacto';
 
 const base = { tipoBusqueda: 'vehiculo', tipoResultado: 'cercano', hayResultados: true, anio: '2015' };
 
@@ -23,11 +23,13 @@ describe('cuándo se ofrece "Avisar a los yonkes" arriba de los resultados', () 
 
 describe('texto del recuadro', () => {
   it('lleva marca, modelo y año que buscó el cliente', () => {
-    expect(mensajeAvisoSinAnioExacto({ marca: 'Toyota', modelo: 'Tacoma', anio: '2015' }))
-      .toBe('No encontramos tu Toyota Tacoma 2015 exacto. ¿Quieres que avisemos a los yonkes?');
+    expect(tituloAvisoSinAnioExacto({ marca: 'Toyota', modelo: 'Tacoma', anio: '2015' }))
+      .toBe('No encontramos tu Toyota Tacoma 2015 exacta.');
+    expect(MENSAJE_AVISO_SIN_ANIO_EXACTO)
+      .toBe('Activaremos una alerta de búsqueda con la pieza que necesitas para que los yonkes te contacten cuando la encuentren.');
   });
   it('si falta el modelo no deja huecos', () => {
-    expect(mensajeAvisoSinAnioExacto({ marca: 'Toyota', modelo: '', anio: 2015 }))
-      .toBe('No encontramos tu Toyota 2015 exacto. ¿Quieres que avisemos a los yonkes?');
+    expect(tituloAvisoSinAnioExacto({ marca: 'Toyota', modelo: '', anio: 2015 }))
+      .toBe('No encontramos tu Toyota 2015 exacta.');
   });
 });

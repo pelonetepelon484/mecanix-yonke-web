@@ -12,10 +12,15 @@ import { leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
 import { MENSAJES_PEDIDO, enlaceGuardarPorWhatsapp, validarPedidoCliente } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
-// mensaje (opcional): texto arriba del botón, en lugar del de siempre. destacado: recuadro más
-// visible (lo usa la página principal cuando no hay el año exacto). Sin ellos se ve como siempre.
+// Mismo botón en los dos lugares donde se ofrece (sin resultados y sin el año exacto).
+export const TEXTO_BOTON_ALERTA = '🚨 Activar alerta de búsqueda 🚨';
+
+// titulo (opcional): encabezado en negritas. mensaje (opcional): texto arriba del botón, en lugar del
+// de siempre. destacado: recuadro más visible (lo usa la página principal cuando no hay el año
+// exacto). Sin ellos se ve como siempre.
 export default function AvisarYonkes({
-  marcaInicial = '', modeloInicial = '', anioInicial = '', piezaInicial = '', estadoInicial = '', mensaje = '', destacado = false,
+  marcaInicial = '', modeloInicial = '', anioInicial = '', piezaInicial = '', estadoInicial = '',
+  titulo = '', mensaje = '', destacado = false,
 }) {
   const [habilitado, setHabilitado] = useState(false);
   const [abierto, setAbierto] = useState(false);
@@ -97,13 +102,14 @@ export default function AvisarYonkes({
   if (!abierto) {
     return (
       <div style={destacado ? cajaDestacada : caja}>
+        {titulo && <p style={{ margin: '0 0 6px', fontSize: '16px', color: '#1A3C5E', lineHeight: '1.35', fontWeight: 'bold' }}>{titulo}</p>}
         <p style={destacado
-          ? { margin: '0 0 10px', fontSize: '15px', color: '#1A3C5E', lineHeight: '1.45', fontWeight: 'bold' }
+          ? { margin: '0 0 12px', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.45' }
           : { margin: '0 0 8px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}
         >
           {mensaje || '¿No la encontraste? Avísale a los yonkes de tu estado y te responden con precio.'}
         </p>
-        <button type="button" onClick={abrir} style={{ ...boton, backgroundColor: '#E8720C' }}>📣 Avisar a los yonkes</button>
+        <button type="button" onClick={abrir} style={botonAlerta}>{TEXTO_BOTON_ALERTA}</button>
       </div>
     );
   }
@@ -147,5 +153,8 @@ export default function AvisarYonkes({
 const caja = { marginTop: '12px', padding: '14px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #C5D8EC' };
 const cajaDestacada = { margin: '0 0 14px', padding: '16px', borderRadius: '12px', backgroundColor: '#FFF4E8', border: '2px solid #E8720C' };
 const boton = { width: '100%', padding: '12px', borderRadius: '50px', border: 'none', color: '#fff', fontWeight: '700', fontSize: '14px', cursor: 'pointer' };
+// En una sola línea con las dos sirenas aun en celulares de 320-360 px (medido con Chromium): la
+// letra se ajusta al ancho de pantalla (12-15 px) y el relleno lateral es menor.
+const botonAlerta = { ...boton, backgroundColor: '#E8720C', padding: '12px 8px', fontSize: 'clamp(12px, 3.7vw, 15px)', whiteSpace: 'nowrap' };
 const etiqueta = { display: 'block', fontSize: '12px', color: '#555', margin: '0 0 4px', fontWeight: 'bold' };
 const input = { width: '100%', boxSizing: 'border-box', padding: '11px', fontSize: '15px', borderRadius: '10px', border: '1px solid #CCC', marginBottom: '10px', backgroundColor: '#fff' };
