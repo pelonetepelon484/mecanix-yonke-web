@@ -29,7 +29,9 @@ async function cargar() {
   };
 }
 
-const TEXTO = 'No encontramos tu Toyota Tacoma 2015 exacto. ¿Quieres que avisemos a los yonkes?';
+const TITULO = 'No encontramos tu Toyota Tacoma 2015 exacta.';
+const TEXTO = 'Activaremos una alerta de búsqueda con la pieza que necesitas para que los yonkes te contacten si la tienen.';
+const BOTON = '🚨 Activar alerta de búsqueda 🚨';
 // Lo que deja en pantalla cada búsqueda al no hallar el año exacto (los dos usan la misma sección
 // de resultados de HomeClient): el buscador con IA guarda la pieza reconocida; la búsqueda
 // avanzada, la pieza elegida en la lista o la escrita a mano con "Otra".
@@ -61,8 +63,9 @@ describe('"Avisar a los yonkes" cuando no hay el año exacto', () => {
     const { AvisarSinAnioExacto } = await cargar();
     for (const tipoResultado of ['cercano', 'cualquierAno']) {
       render(<AvisarSinAnioExacto {...busquedaIA} tipoResultado={tipoResultado} />);
-      expect(await screen.findByText(TEXTO)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Avisar a los yonkes/ })).toBeInTheDocument();
+      expect(await screen.findByText(TITULO)).toBeInTheDocument();
+      expect(screen.getByText(TEXTO)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: BOTON })).toHaveTextContent(BOTON); // con las dos sirenas
       cleanup();
     }
   });
@@ -79,18 +82,23 @@ describe('"Avisar a los yonkes" cuando no hay el año exacto', () => {
     config = { habilitado: true };
     const { AvisarSinAnioExacto } = await cargar();
     render(<AvisarSinAnioExacto {...busquedaIA} tipoResultado="cercano" />);
-    fireEvent.click(await screen.findByRole('button', { name: /Avisar a los yonkes/ }));
+    fireEvent.click(await screen.findByRole('button', { name: BOTON }));
     expect(screen.getByLabelText('Marca')).toHaveValue('Toyota');
     expect(screen.getByLabelText('Modelo')).toHaveValue('Tacoma');
     expect(screen.getByLabelText('Año')).toHaveValue(2015);
     expect(screen.getByLabelText('Pieza que buscas')).toHaveValue('Alternador');
     expect(screen.getByLabelText('Tu WhatsApp')).toHaveValue(''); // lo único que captura el cliente
+    // El título del formulario abierto es el mismo texto del botón, y cabe en celular igual que él.
+    const titulo = screen.getByText(BOTON);
+    expect(titulo.tagName).toBe('P');
+    expect(titulo.style.whiteSpace).toBe('nowrap');
+    expect(screen.queryByText(/Avisar a los yonkes/)).not.toBeInTheDocument();
   });
   it('desde la búsqueda avanzada: igual, y además respeta el estado que eligió', async () => {
     config = { habilitado: true };
     const { AvisarSinAnioExacto } = await cargar();
     render(<AvisarSinAnioExacto {...busquedaAvanzada} tipoResultado="cualquierAno" />);
-    fireEvent.click(await screen.findByRole('button', { name: /Avisar a los yonkes/ }));
+    fireEvent.click(await screen.findByRole('button', { name: BOTON }));
     expect(screen.getByLabelText('Pieza que buscas')).toHaveValue('Bomba de agua');
     await waitFor(() => expect(screen.getByLabelText('¿En qué estado la buscas?')).toHaveValue('sonora'));
   });
@@ -98,13 +106,23 @@ describe('"Avisar a los yonkes" cuando no hay el año exacto', () => {
     config = { habilitado: true };
     const { AvisarSinAnioExacto } = await cargar();
     render(<AvisarSinAnioExacto {...busquedaIA} pieza="" tipoResultado="cercano" />);
-    fireEvent.click(await screen.findByRole('button', { name: /Avisar a los yonkes/ }));
+    fireEvent.click(await screen.findByRole('button', { name: BOTON }));
     expect(screen.getByLabelText('Pieza que buscas')).toHaveValue('');
   });
-  it('donde ya se usaba (sin ningún resultado) se ve igual que antes', async () => {
+  it('donde ya se usaba (sin ningún resultado): mismo texto de siempre y el MISMO botón nuevo', async () => {
     config = { habilitado: true };
     const { AvisarYonkes } = await cargar();
     render(<AvisarYonkes />);
     expect(await screen.findByText('¿No la encontraste? Avísale a los yonkes de tu estado y te responden con precio.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: BOTON })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /📣/ })).not.toBeInTheDocument();
+  });
+  it('el botón cabe en una línea en celular: no se corta y la letra se ajusta al ancho', async () => {
+    config = { habilitado: true };
+    const { AvisarSinAnioExacto } = await cargar();
+    render(<AvisarSinAnioExacto {...busquedaIA} tipoResultado="cercano" />);
+    const boton = await screen.findByRole('button', { name: BOTON });
+    expect(boton.style.whiteSpace).toBe('nowrap');
+    expect(boton.style.fontSize).toBe('clamp(12px, 3.7vw, 15px)');
   });
 });

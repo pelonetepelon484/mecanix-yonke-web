@@ -1,5 +1,5 @@
-// "No encontramos tu [marca] [modelo] [año] exacto. ¿Quieres que avisemos a los yonkes?": cuándo
-// se ofrece "Avisar a los yonkes" ARRIBA de los resultados de la página principal (buscador con
+// "No encontramos tu [marca] [modelo] [año] exacta." + "Activar alerta de búsqueda": cuándo
+// se ofrece la alerta (el formulario AvisarYonkes) ARRIBA de los resultados de la página principal (buscador con
 // IA y búsqueda avanzada). Solo cambia lo que se muestra; la búsqueda (±4 años, cualquier año)
 // sigue exactamente igual.
 
@@ -18,7 +18,10 @@ export function debeOfrecerAvisoSinAnioExacto({ tipoBusqueda, tipoResultado, hay
     && String(anio ?? '').trim() !== '';
 }
 
-export function mensajeAvisoSinAnioExacto({ marca, modelo, anio }: { marca?: unknown; modelo?: unknown; anio?: unknown }): string {
+export function tituloAvisoSinAnioExacto({ marca, modelo, anio }: { marca?: unknown; modelo?: unknown; anio?: unknown }): string {
   const vehiculo = [marca, modelo, anio].map((v) => String(v ?? '').trim()).filter(Boolean).join(' ');
-  return `No encontramos tu ${vehiculo} exacto. ¿Quieres que avisemos a los yonkes?`;
+  return `No encontramos tu ${vehiculo} exacta.`;
 }
+
+export const MENSAJE_AVISO_SIN_ANIO_EXACTO =
+  'Activaremos una alerta de búsqueda con la pieza que necesitas para que los yonkes te contacten si la tienen.';
