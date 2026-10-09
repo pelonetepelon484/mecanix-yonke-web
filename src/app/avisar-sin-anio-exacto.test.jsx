@@ -30,7 +30,7 @@ async function cargar() {
 }
 
 const TITULO = 'No encontramos tu Toyota Tacoma 2015 exacta.';
-const TEXTO = 'Activaremos una alerta de búsqueda con la pieza que necesitas para que los yonkes te contacten cuando la encuentren.';
+const TEXTO = 'Activaremos una alerta de búsqueda con la pieza que necesitas para que los yonkes te contacten si la tienen.';
 const BOTON = '🚨 Activar alerta de búsqueda 🚨';
 // Lo que deja en pantalla cada búsqueda al no hallar el año exacto (los dos usan la misma sección
 // de resultados de HomeClient): el buscador con IA guarda la pieza reconocida; la búsqueda
@@ -88,6 +88,11 @@ describe('"Avisar a los yonkes" cuando no hay el año exacto', () => {
     expect(screen.getByLabelText('Año')).toHaveValue(2015);
     expect(screen.getByLabelText('Pieza que buscas')).toHaveValue('Alternador');
     expect(screen.getByLabelText('Tu WhatsApp')).toHaveValue(''); // lo único que captura el cliente
+    // El título del formulario abierto es el mismo texto del botón, y cabe en celular igual que él.
+    const titulo = screen.getByText(BOTON);
+    expect(titulo.tagName).toBe('P');
+    expect(titulo.style.whiteSpace).toBe('nowrap');
+    expect(screen.queryByText(/Avisar a los yonkes/)).not.toBeInTheDocument();
   });
   it('desde la búsqueda avanzada: igual, y además respeta el estado que eligió', async () => {
     config = { habilitado: true };

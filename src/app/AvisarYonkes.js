@@ -116,7 +116,7 @@ export default function AvisarYonkes({
 
   return (
     <div style={caja}>
-      <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E' }}>📣 Avisar a los yonkes</p>
+      <p style={tituloFormulario}>{TEXTO_BOTON_ALERTA}</p>
       <SelectorMarcaModelo marca={marca} modelo={modelo} onMarca={setMarca} onModelo={setModelo} inputStyle={input} selectStyle={input} />
       <label style={etiqueta} htmlFor="avisar-anio">Año</label>
       <input id="avisar-anio" type="number" inputMode="numeric" value={anio} onChange={(e) => setAnio(e.target.value)} style={input} />
@@ -156,5 +156,7 @@ const boton = { width: '100%', padding: '12px', borderRadius: '50px', border: 'n
 // En una sola línea con las dos sirenas aun en celulares de 320-360 px (medido con Chromium): la
 // letra se ajusta al ancho de pantalla (12-15 px) y el relleno lateral es menor.
 const botonAlerta = { ...boton, backgroundColor: '#E8720C', padding: '12px 8px', fontSize: 'clamp(12px, 3.7vw, 15px)', whiteSpace: 'nowrap' };
+// Título del formulario abierto = mismo texto del botón, con el mismo ajuste para que quepa en celular.
+const tituloFormulario = { margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E', fontSize: 'clamp(12px, 3.7vw, 15px)', whiteSpace: 'nowrap' };
 const etiqueta = { display: 'block', fontSize: '12px', color: '#555', margin: '0 0 4px', fontWeight: 'bold' };
 const input = { width: '100%', boxSizing: 'border-box', padding: '11px', fontSize: '15px', borderRadius: '10px', border: '1px solid #CCC', marginBottom: '10px', backgroundColor: '#fff' };
