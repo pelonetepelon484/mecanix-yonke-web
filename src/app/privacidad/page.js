@@ -21,7 +21,7 @@ export default function Privacidad() {
           Aviso de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 7 de octubre de 2026
+          Última actualización: 8 de octubre de 2026
         </p>
 
         <Seccion titulo="1. Responsable del tratamiento de tus datos">
@@ -119,7 +119,32 @@ export default function Privacidad() {
           <BloquesTalleres items={textosTalleres.privacidad} />
         </Seccion>
 
-        <Seccion titulo="14. Contacto">
+        <Seccion titulo={'14. Clientes que piden una pieza a los yonkes ("Avisar a los yonkes")'} id="pedidos-clientes">
+          <p style={parrafoStyle}><strong>Datos que recabamos.</strong> Cuando usas &quot;Avisar a los yonkes&quot; te pedimos:</p>
+          <p style={parrafoStyle}>• marca, modelo y año de tu vehículo;</p>
+          <p style={parrafoStyle}>• la pieza que buscas;</p>
+          <p style={parrafoStyle}>• el estado de la República donde la buscas;</p>
+          <p style={parrafoStyle}>• tu número de WhatsApp.</p>
+          <p style={parrafoStyle}>No necesitas crear una cuenta. No te pedimos tu nombre ni ningún dato sensible.</p>
+          <p style={parrafoStyle}>Para proteger el servicio contra abusos, también registramos de forma técnica tu dirección IP y tu número de WhatsApp <strong>convertidos en un código irreversible</strong>. Solo sirven para limitar cuántos pedidos se pueden enviar en cierto tiempo y se eliminan automáticamente en un plazo aproximado de dos días.</p>
+          <p style={parrafoStyle}><strong>Para qué los usamos.</strong></p>
+          <p style={parrafoStyle}><strong>(a)</strong> Mostrar tu pedido, sin tus datos de contacto, a los yonkes de tu estado para que te respondan.</p>
+          <p style={parrafoStyle}><strong>(b)</strong> Mostrarte, en tu enlace privado, las respuestas de los yonkes.</p>
+          <p style={parrafoStyle}><strong>(c)</strong> Avisar internamente a Mecanix de que hay un pedido nuevo.</p>
+          <p style={parrafoStyle}><strong>(d)</strong> Contactarte, solo si es necesario, para darle seguimiento a tu pedido.</p>
+          <p style={parrafoStyle}><strong>(e)</strong> Prevenir abusos y uso indebido de la Plataforma.</p>
+          <p style={parrafoStyle}>No usamos tu WhatsApp para publicidad.</p>
+          <p style={parrafoStyle}><strong>Con quién compartimos tus datos.</strong></p>
+          <p style={parrafoStyle}>• <strong>Yonkes:</strong> solo ven el vehículo, la pieza, el estado y la fecha del pedido. <strong>Nunca ven tu número de WhatsApp.</strong></p>
+          <p style={parrafoStyle}>• <strong>Proveedores de infraestructura</strong> que almacenan y procesan la información por cuenta de Mecanix, sin usarla para fines propios: Google LLC (Firebase / Google Cloud) y Vercel Inc.</p>
+          <p style={parrafoStyle}>• El aviso interno a Mecanix sobre un pedido nuevo se envía por WhatsApp mediante el servicio CallMeBot. Ese aviso <strong>no incluye tu número</strong>.</p>
+          <p style={parrafoStyle}><strong>Cuando tú contactas a un yonke.</strong> Si decides escribirle a un yonke desde tu enlace, la conversación ocurre directamente entre tú y el yonke, fuera de la Plataforma. A partir de ese momento el yonke conoce tu número porque tú se lo diste, y lo trata por su cuenta, como responsable independiente.</p>
+          <p style={parrafoStyle}><strong>Tu enlace privado.</strong> Cualquier persona que tenga tu enlace puede ver las respuestas de tu pedido. Esas respuestas no incluyen tus datos de contacto. Te recomendamos no compartirlo.</p>
+          <p style={parrafoStyle}><strong>Cuánto tiempo los conservamos.</strong> Tu pedido, tu número de WhatsApp y las respuestas de los yonkes se eliminan automáticamente a los <strong>5 días</strong> de haber enviado el pedido.</p>
+          <p style={parrafoStyle}><strong>Tus derechos.</strong> Puedes solicitar el acceso, la rectificación o la cancelación de tus datos, u oponerte a su uso, escribiendo a contacto@mecanixyonkevirtual.com o al WhatsApp 661 103 4260. Para ubicar tu pedido nos puedes compartir tu enlace o tu número de WhatsApp. Si pides la cancelación antes de los 5 días, eliminamos tu pedido y tus datos.</p>
+        </Seccion>
+
+        <Seccion titulo="15. Contacto">
           <p style={parrafoStyle}>Para dudas sobre este aviso y para ejercer tus derechos ARCO puedes escribirnos a:</p>
           <p style={{ ...parrafoStyle, fontWeight: 'bold', color: '#1A3C5E', marginTop: '8px' }}>
             contacto@mecanixyonkevirtual.com

@@ -10,6 +10,7 @@ import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
 import { ESTADO_DEFAULT, cargarEstados } from './lib/estados';
 import { leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
 import { MENSAJES_PEDIDO, enlaceGuardarPorWhatsapp, validarPedidoCliente } from '../lib/pedidosClientes';
+import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 export default function AvisarYonkes({ marcaInicial = '', modeloInicial = '', anioInicial = '', piezaInicial = '', estadoInicial = '' }) {
   const [habilitado, setHabilitado] = useState(false);
@@ -125,6 +126,13 @@ export default function AvisarYonkes({ marcaInicial = '', modeloInicial = '', an
           {enviando ? 'Enviando...' : 'Enviar pedido'}
         </button>
       </div>
+      {/* Solo enlaces, no una casilla de aceptación. URLs absolutas igual que en el registro de yonkes. */}
+      <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#777', textAlign: 'center', lineHeight: '1.5' }}>
+        Al enviar aceptas los{' '}
+        <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>términos</a>
+        {' '}y el{' '}
+        <a href={`${URL_PRIVACIDAD}#pedidos-clientes`} target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>aviso de privacidad</a>.
+      </p>
     </div>
   );
 }

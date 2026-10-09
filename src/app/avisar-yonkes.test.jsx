@@ -54,6 +54,10 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" estadoInicial="sonora" />);
     fireEvent.click(await screen.findByRole('button', { name: /Avisar a los yonkes/ }));
     expect(screen.getByText(/Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes\./)).toBeInTheDocument();
+    expect(screen.getByText(/Al enviar aceptas los/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'términos' })).toHaveAttribute('href', 'https://mecanixyonkevirtual.com/terminos');
+    expect(screen.getByRole('link', { name: 'aviso de privacidad' })).toHaveAttribute('href', 'https://mecanixyonkevirtual.com/privacidad#pedidos-clientes');
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText('¿En qué estado la buscas?')).toHaveValue('sonora'));
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '664 123 4567' } });
     fireEvent.click(screen.getByRole('button', { name: 'Enviar pedido' }));
