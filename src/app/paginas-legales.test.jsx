@@ -26,6 +26,8 @@ function lineasPublicables(lineas) {
     .map((l) => l.replace(/^### /, '').replace(/^- /, ''))
     .map((l) => l.split(/(?<=\.)\s+(?=\*\*|[A-ZÁÉÍÓÚÑ])/).filter((frase) => !frase.includes('POR CONFIRMAR')).join(' '))
     .map((l) => l.replace(/\*\*/g, '').trim())
+    // Ajuste de forma aprobado: "cliente" en minúscula en el texto publicado (salvo al inicio de un título).
+    .map((l) => l.replace(/Cliente/g, (m, i) => (i === 0 ? m : 'cliente')))
     .filter(Boolean);
 }
 
@@ -52,11 +54,32 @@ describe('textos legales de "Avisar a los yonkes"', () => {
     const s7 = texto.indexOf('7. Datos de terceros');
     const s8 = texto.indexOf('8. Responsabilidades del cliente');
     const s9 = texto.indexOf('9. Insignias y distintivos');
-    expect(texto.indexOf('Respuestas a pedidos de Clientes.')).toBeGreaterThan(s6);
-    expect(texto.indexOf('Respuestas a pedidos de Clientes.')).toBeLessThan(s7);
+    expect(texto.indexOf('Respuestas a pedidos de clientes.')).toBeGreaterThan(s6);
+    expect(texto.indexOf('Respuestas a pedidos de clientes.')).toBeLessThan(s7);
     expect(texto.indexOf('Pedidos de piezas a los yonkes.')).toBeGreaterThan(s8);
     expect(texto.indexOf('Pedidos de piezas a los yonkes.')).toBeLessThan(s9);
     expect(texto).toContain('23. Contacto');
+  });
+  it('el texto nuevo escribe "cliente" en minúscula; el texto de talleres ("Cliente del Taller") no cambia', () => {
+    const terminos = textoDe(Terminos);
+    for (const frase of [
+      'Respuestas a pedidos de clientes.', 'aclarar al cliente cualquier diferencia', 'los datos que el cliente le proporcione',
+      'permite que el cliente avise', 'El cliente debe confirmar directamente', 'El cliente se obliga a proporcionar',
+    ]) {
+      expect(terminos).toContain(frase);
+      expect(terminos).not.toContain(frase.replace('clientes', 'Clientes').replace('cliente', 'Cliente'));
+    }
+    expect(terminos).toContain('Cliente del Taller');
+    cleanup();
+    expect(textoDe(Privacidad)).toContain('14. Clientes que piden una pieza a los yonkes');
+  });
+  it('la sección 7 de Privacidad remite a la 14 para los pedidos de "Avisar a los yonkes"', () => {
+    const texto = textoDe(Privacidad);
+    const s7 = texto.indexOf('7. Conservación y eliminación');
+    const s8 = texto.indexOf('8. Cookies');
+    const referencia = texto.indexOf('Para los pedidos de "Avisar a los yonkes", consulta también la sección 14.');
+    expect(referencia).toBeGreaterThan(s7);
+    expect(referencia).toBeLessThan(s8);
   });
   it('ninguna página publica un [POR CONFIRMAR] ni las frases que dependen de él', () => {
     for (const Pagina of [Privacidad, Terminos]) {

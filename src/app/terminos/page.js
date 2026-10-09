@@ -55,10 +55,10 @@ export default function Terminos() {
           <p style={parrafoStyle}>El yonke es responsable de la <strong>exactitud, veracidad y actualización de su inventario, precios, fotografías, logotipo, datos de contacto y disponibilidad</strong>. Debe publicar únicamente piezas que realmente tenga, retirar o marcar como no disponible lo que ya no tenga, y no publicar piezas de procedencia ilícita.</p>
           <p style={parrafoStyle}>El yonke debe atender y confirmar o cancelar en un tiempo razonable las reservaciones que reciba. El incumplimiento reiterado o la información incorrecta pueden resultar en la suspensión de la cuenta.</p>
           <p style={parrafoStyle}>El yonke es el único responsable del precio, la calidad, la condición, la entrega, la factura y la garantía de las piezas que vende, y del cumplimiento de las leyes que le apliquen (fiscales, ambientales, de protección al consumidor, entre otras). Mecanix no interviene en negociaciones de precio ni en disputas entre el yonke y el cliente.</p>
-          <p style={parrafoStyle}><strong>Respuestas a pedidos de Clientes.</strong> El yonke que responde un pedido se obliga a:</p>
+          <p style={parrafoStyle}><strong>Respuestas a pedidos de clientes.</strong> El yonke que responde un pedido se obliga a:</p>
           <p style={parrafoStyle}><strong>(a)</strong> responder con información veraz sobre la existencia, el estado y el precio de la pieza;</p>
-          <p style={parrafoStyle}><strong>(b)</strong> respetar el precio informado o aclarar al Cliente cualquier diferencia antes de la venta;</p>
-          <p style={parrafoStyle}><strong>(c)</strong> tratar los datos que el Cliente le proporcione directamente como responsable independiente y conforme a la ley aplicable.</p>
+          <p style={parrafoStyle}><strong>(b)</strong> respetar el precio informado o aclarar al cliente cualquier diferencia antes de la venta;</p>
+          <p style={parrafoStyle}><strong>(c)</strong> tratar los datos que el cliente le proporcione directamente como responsable independiente y conforme a la ley aplicable.</p>
           <p style={parrafoStyle}>Cada yonke puede responder una sola vez a cada pedido, y su respuesta no se puede modificar. Las respuestas falsas o engañosas pueden causar la suspensión de la cuenta.</p>
         </Seccion>
 
@@ -77,11 +77,11 @@ export default function Terminos() {
           <p style={parrafoStyle}>El cliente es responsable de verificar la compatibilidad de la pieza con su vehículo antes de comprarla. Mecanix no garantiza la compatibilidad de las piezas mostradas.</p>
           <p style={parrafoStyle}>El cliente acepta que el nombre y teléfono que proporcione al reservar serán compartidos con el yonke correspondiente para atender su reservación, según el Aviso de Privacidad.</p>
           <p style={parrafoStyle}><strong>Pedidos de piezas a los yonkes.</strong></p>
-          <p style={parrafoStyle}>• Mecanix únicamente permite que el Cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas.</p>
+          <p style={parrafoStyle}>• Mecanix únicamente permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas.</p>
           <p style={parrafoStyle}>• Mecanix <strong>no vende piezas, no fija precios, no garantiza que algún yonke tenga la pieza, ni su estado, precio o disponibilidad</strong>, y no participa en el pago ni en la entrega.</p>
           <p style={parrafoStyle}>• La marca &quot;Verificado&quot; significa únicamente que Mecanix revisó la identidad del yonke conforme a sus criterios internos. No garantiza la pieza ni la operación.</p>
-          <p style={parrafoStyle}>• El Cliente debe confirmar directamente con el yonke antes de pagar o acudir. Se le recomienda no hacer pagos anticipados a yonkes sin verificar.</p>
-          <p style={parrafoStyle}>• El Cliente se obliga a proporcionar un número de WhatsApp propio y datos veraces.</p>
+          <p style={parrafoStyle}>• El cliente debe confirmar directamente con el yonke antes de pagar o acudir. Se le recomienda no hacer pagos anticipados a yonkes sin verificar.</p>
+          <p style={parrafoStyle}>• El cliente se obliga a proporcionar un número de WhatsApp propio y datos veraces.</p>
           <p style={parrafoStyle}>• Mecanix puede dar de baja pedidos que parezcan falsos, ofensivos o abusivos, y limitar el número de pedidos por persona.</p>
         </Seccion>
 

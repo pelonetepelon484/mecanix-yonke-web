@@ -89,6 +89,7 @@ export default function Privacidad() {
 
         <Seccion titulo="7. Conservación y eliminación">
           <p style={parrafoStyle}>Conservamos tus datos mientras sean necesarios para las finalidades descritas, mientras mantengas una cuenta activa o hasta que solicites su eliminación. La eliminación se atiende a solicitud, en el plazo indicado en la sección 6. Algunos registros, como los de búsquedas (que no incluyen tu nombre), pueden conservarse para fines estadísticos, y podemos conservar información cuando una ley nos obligue a ello. Los datos que un yonke registra sobre terceros los conserva el yonke bajo su responsabilidad (sección 3).</p>
+          <p style={parrafoStyle}>Para los pedidos de &quot;Avisar a los yonkes&quot;, consulta también la sección 14.</p>
         </Seccion>
 
         <Seccion titulo="8. Cookies y almacenamiento local">
