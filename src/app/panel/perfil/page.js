@@ -7,6 +7,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import { OpcionInstalarApp } from '../AvisoInstalarApp';
 import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 import PromoImagenesEditor from '../PromoImagenesEditor';
@@ -328,6 +329,9 @@ export default function PerfilPanel() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
+
+        {/* Instalar la app (PWA): siempre disponible aquí, aunque se haya cerrado el aviso */}
+        <OpcionInstalarApp estiloSeccion={sectionStyle} estiloTitulo={sectionTitleStyle} />
 
         {/* Logo del negocio */}
         <div style={sectionStyle}>

@@ -1,32 +1,23 @@
-'use client';
+import PanelLayoutCliente from './PanelLayoutCliente';
+import { COLOR_TEMA } from '../../lib/manifestPanel';
 
-'use client';
+// App instalable (PWA) de yonkes y talleres: el manifest, los datos para iPhone (appleWebApp,
+// apple-touch-icon) y el color de la barra viven SOLO en el panel. Las páginas públicas y los
+// subdominios de los yonkes (que nunca llegan aquí: el middleware los manda a /tenant-demo)
+// no cambian.
+export const metadata = {
+  manifest: '/panel/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Mecanix', statusBarStyle: 'default' },
+  icons: {
+    icon: '/favicon.ico',
+    apple: [{ url: '/icons/apple-icon-180.png', sizes: '180x180', type: 'image/png' }],
+  },
+};
 
-import { useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { AuthProvider, useAuth } from './AuthContext';
-
-// Una cuenta de taller solo puede estar en /panel/taller: si intenta abrir el panel de yonkes,
-// la mandamos a su pantalla. Yonke y admin no pasan por aquí.
-function GuardaTaller({ children }) {
-  const { loading, userRole } = useAuth();
-  const pathname = usePathname();
-  const router = useRouter();
-  const esRutaDeTaller = pathname.startsWith('/panel/taller');
-  const debeIrseATaller = !loading && userRole === 'taller' && !esRutaDeTaller;
-
-  useEffect(() => {
-    if (debeIrseATaller) router.replace('/panel/taller');
-  }, [debeIrseATaller]);
-
-  if (debeIrseATaller) return null;
-  return <>{children}</>;
-}
+export const viewport = {
+  themeColor: COLOR_TEMA,
+};
 
 export default function PanelLayout({ children }) {
-  return (
-    <AuthProvider>
-      <GuardaTaller>{children}</GuardaTaller>
-    </AuthProvider>
-  );
+  return <PanelLayoutCliente>{children}</PanelLayoutCliente>;
 }
