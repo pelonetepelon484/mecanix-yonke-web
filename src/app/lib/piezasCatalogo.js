@@ -16,6 +16,10 @@ export const PIEZAS_CATALOGO = [
   'Flecha delantera izquierda', 'Flecha delantera derecha', 'Motor', 'Transmisión', 'Pistón', 'Arranque',
   // Mangueta/muñón de dirección (spindle) — alta rotación; sinónimos en lib/busqueda/sinonimosPiezas.js.
   'Mango/muñón de dirección',
+  // Eléctricas pedidas por los yonkeros (sinónimos en lib/busqueda/sinonimosPiezas.js). TCM, ECM/ECU
+  // y caja de fusibles ya existían arriba como "Computadora de transmisión", "Computadora de motor"
+  // y "Caja de fusibles": a esas solo se les agregaron sinónimos.
+  'Módulo BCM', 'Bobinas de encendido',
 ];
 
 // Piezas sueltas (yonkes/{id}/piezasSueltas): Motor y Transmisión ya tienen su propio flujo

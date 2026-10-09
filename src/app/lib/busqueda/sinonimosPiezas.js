@@ -77,6 +77,7 @@ const PALABRAS_PIEZA_EXTRA = [
   'toldo', 'techo', 'volante', 'radiador', 'bomba', 'clutch', 'embrague', 'catalizador',
   'mofle', 'escobilla', 'escobillas', 'bisagra', 'manija', 'chapa', 'moldura', 'defensas',
   'piston', 'pistones',
+  'modulo', 'bobina', 'fusiblera',
 ];
 
 // [término, pieza canónica]. Ver el encabezado del archivo para cómo extenderlo.
@@ -120,6 +121,28 @@ export const FRASES_PIEZAS_BASE = [
   ['rack and pinion', 'Cremallera'], ['shock', 'Amortiguador'], ['strut', 'Amortiguador'],
   ['ac compressor', 'Compresor A/C'], ['a/c compressor', 'Compresor A/C'],
   ['cv axle', 'Flecha'], ['axle shaft', 'Flecha'],
+
+  // Eléctricas: módulos/computadoras, caja de fusibles y bobinas. Las frases más largas ganan (ver
+  // construirIndice): "computadora de transmision" le gana a "computadora" sola, que es la del motor.
+  ['bcm', 'Módulo BCM'], ['modulo bcm', 'Módulo BCM'], ['modulo de carroceria', 'Módulo BCM'],
+  ['modulo de control de carroceria', 'Módulo BCM'], ['computadora de carroceria', 'Módulo BCM'],
+  ['body control module', 'Módulo BCM'], ['body control', 'Módulo BCM'],
+  ['tcm', 'Computadora de transmisión'], ['modulo tcm', 'Computadora de transmisión'],
+  ['modulo de transmision', 'Computadora de transmisión'], ['modulo de control de transmision', 'Computadora de transmisión'],
+  ['computadora de transmision', 'Computadora de transmisión'], ['computadora de la transmision', 'Computadora de transmisión'],
+  ['computadora transmision', 'Computadora de transmisión'], ['transmission control module', 'Computadora de transmisión'],
+  ['ecm', 'Computadora de motor'], ['ecu', 'Computadora de motor'], ['pcm', 'Computadora de motor'],
+  ['modulo ecm', 'Computadora de motor'], ['modulo ecu', 'Computadora de motor'], ['modulo pcm', 'Computadora de motor'],
+  ['computadora', 'Computadora de motor'], ['compu', 'Computadora de motor'],
+  ['computadora de motor', 'Computadora de motor'], ['computadora del motor', 'Computadora de motor'],
+  ['computadora motor', 'Computadora de motor'], ['modulo de control del motor', 'Computadora de motor'],
+  ['engine control module', 'Computadora de motor'], ['engine computer', 'Computadora de motor'],
+  ['caja de fusibles', 'Caja de fusibles'], ['caja fusibles', 'Caja de fusibles'], ['fusiblera', 'Caja de fusibles'],
+  ['fusibleras', 'Caja de fusibles'], ['centro de fusibles', 'Caja de fusibles'], ['portafusibles', 'Caja de fusibles'],
+  ['fuse box', 'Caja de fusibles'],
+  ['bobina', 'Bobinas de encendido'], ['bobinas', 'Bobinas de encendido'], ['bobina de encendido', 'Bobinas de encendido'],
+  ['bobinas de encendido', 'Bobinas de encendido'], ['ignition coil', 'Bobinas de encendido'],
+  ['ignition coils', 'Bobinas de encendido'], ['coil pack', 'Bobinas de encendido'], ['coil', 'Bobinas de encendido'],
 ];
 
 // ---------- Índice (base + Firestore) ----------

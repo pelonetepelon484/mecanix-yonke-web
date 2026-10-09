@@ -14,6 +14,8 @@ import { conFallbackDePermisos } from '../../lib/conFallbackDePermisos';
 import AvisoPrivacidadReserva from '../lib/AvisoPrivacidadReserva';
 import FotoTarjeta from '../lib/FotoTarjeta';
 import VisorFotosVehiculo from '../lib/VisorFotosVehiculo';
+import VisorFotos from '../lib/VisorFotos';
+import { fotosDeItem } from '../../lib/fotosPieza';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -128,6 +130,8 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Las otras 3 fotos no se
   // piden al navegador hasta que esto deja de ser null.
   const [visorVehiculo, setVisorVehiculo] = useState(null);
+  // Visor de las fotos (hasta 3) de un motor/transmisión -- null = cerrado.
+  const [visorFotos, setVisorFotos] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const [filtroMarca, setFiltroMarca] = useState('');
   const [filtroTransmision, setFiltroTransmision] = useState('');
@@ -616,7 +620,15 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
             {motoresFiltrados.map((m) => (
               <div key={m.id} style={cardStyle}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <FotoTarjeta url={m.foto?.url} alt={`${m.tipo} ${m.marca} ${m.modelo} ${m.ano}`.trim()} icono="🔧" />
+                  <FotoTarjeta
+                    url={fotosDeItem(m)[0]?.url}
+                    alt={`${m.tipo} ${m.marca} ${m.modelo} ${m.ano}`.trim()}
+                    icono="🔧"
+                    total={fotosDeItem(m).length}
+                    onClick={fotosDeItem(m).length > 0
+                      ? () => setVisorFotos({ fotos: fotosDeItem(m), titulo: `${m.tipo} ${m.marca} ${m.modelo} ${m.ano}`.trim() })
+                      : undefined}
+                  />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <span style={tipoBadgeStyle(branding.colorAcento)}>
                       {m.tipo === 'Motor' ? '🔧 Motor' : '⚙️ Transmisión'}
@@ -692,6 +704,9 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           slotInicial={visorVehiculo.slotInicial}
           onClose={() => setVisorVehiculo(null)}
         />
+      )}
+      {visorFotos && (
+        <VisorFotos items={visorFotos.fotos} titulo={visorFotos.titulo} onClose={() => setVisorFotos(null)} />
       )}
 
       {reservaVisible && (

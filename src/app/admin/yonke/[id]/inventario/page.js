@@ -17,6 +17,8 @@ import PrecioInput, { PiezaPrecioInput } from '../../../../lib/PrecioInput';
 import { parsePrecio, esPrecioValido, formatPrecio } from '../../../../../lib/precio';
 import VehiculoFotosEditor from '../../../../panel/VehiculoFotosEditor';
 import FotoPiezaEditor from '../../../../panel/FotoPiezaEditor';
+import FotosPiezaEditor from '../../../../panel/FotosPiezaEditor';
+import { camposFotos } from '../../../../../lib/fotosPieza';
 import { borrarFotoPieza } from '../../../../lib/piezaFotoStorage';
 
 // vendidoAt es un Timestamp de Firestore — mismo patrón usado en panel/inventario/page.js.
@@ -341,17 +343,20 @@ export default function InventarioAdminPage() {
 
   // Foto de un motor/transmisión o de una pieza suelta -- motorEditando/piezaSueltaEditando son
   // una foto local del modal (no reactiva a la lista completa), hay que sincronizarla a mano tras
-  // guardar en Firestore. Mismo patrón que panel/inventario/page.js.
-  async function guardarFotoMotor(motorId, nuevaFoto) {
+  // guardar en Firestore. Mismo patrón que panel/inventario/page.js (hasta 3 fotos: `foto` +
+  // `fotosExtra`, ver src/lib/fotosPieza.ts).
+  async function guardarFotosMotor(motorId, lista) {
+    const { foto, fotosExtra } = camposFotos(lista);
     const ref = doc(db, 'yonkes', id, 'motores', motorId);
-    await updateDoc(ref, { foto: nuevaFoto === null ? deleteField() : nuevaFoto });
-    setMotorEditando((prev) => (prev && prev.id === motorId ? { ...prev, foto: nuevaFoto } : prev));
+    await updateDoc(ref, { foto: foto ?? deleteField(), fotosExtra: fotosExtra ?? deleteField() });
+    setMotorEditando((prev) => (prev && prev.id === motorId ? { ...prev, foto, fotosExtra } : prev));
   }
 
-  async function guardarFotoPiezaSuelta(piezaSueltaId, nuevaFoto) {
+  async function guardarFotosPiezaSuelta(piezaSueltaId, lista) {
+    const { foto, fotosExtra } = camposFotos(lista);
     const ref = doc(db, 'yonkes', id, 'piezasSueltas', piezaSueltaId);
-    await updateDoc(ref, { foto: nuevaFoto === null ? deleteField() : nuevaFoto });
-    setPiezaSueltaEditando((prev) => (prev && prev.id === piezaSueltaId ? { ...prev, foto: nuevaFoto } : prev));
+    await updateDoc(ref, { foto: foto ?? deleteField(), fotosExtra: fotosExtra ?? deleteField() });
+    setPiezaSueltaEditando((prev) => (prev && prev.id === piezaSueltaId ? { ...prev, foto, fotosExtra } : prev));
   }
 
   const vehiculosActivos = vehiculos.filter((v) => v.disponible !== false);
@@ -604,13 +609,13 @@ export default function InventarioAdminPage() {
             <PrecioInput value={motorPrecio} onChange={setMotorPrecio} inputStyle={inputStyle} />
             {motorEditando && (
               <>
-                <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '6px' }}>Foto (opcional)</p>
+                <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '6px' }}>Fotos (opcional, hasta 3)</p>
                 <div style={{ marginBottom: '12px' }}>
-                  <FotoPiezaEditor
+                  <FotosPiezaEditor
                     carpeta={`yonkes/${id}/motores`}
                     id={motorEditando.id}
-                    foto={motorEditando.foto}
-                    onGuardar={(nuevaFoto) => guardarFotoMotor(motorEditando.id, nuevaFoto)}
+                    item={motorEditando}
+                    onGuardar={(lista) => guardarFotosMotor(motorEditando.id, lista)}
                   />
                 </div>
               </>
@@ -653,13 +658,13 @@ export default function InventarioAdminPage() {
             <PrecioInput value={piezaSueltaPrecio} onChange={setPiezaSueltaPrecio} inputStyle={inputStyle} />
             {piezaSueltaEditando && (
               <>
-                <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '6px' }}>Foto (opcional)</p>
+                <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', marginBottom: '6px' }}>Fotos (opcional, hasta 3)</p>
                 <div style={{ marginBottom: '12px' }}>
-                  <FotoPiezaEditor
+                  <FotosPiezaEditor
                     carpeta={`yonkes/${id}/piezasSueltas`}
                     id={piezaSueltaEditando.id}
-                    foto={piezaSueltaEditando.foto}
-                    onGuardar={(nuevaFoto) => guardarFotoPiezaSuelta(piezaSueltaEditando.id, nuevaFoto)}
+                    item={piezaSueltaEditando}
+                    onGuardar={(lista) => guardarFotosPiezaSuelta(piezaSueltaEditando.id, lista)}
                   />
                 </div>
               </>

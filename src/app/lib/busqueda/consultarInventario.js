@@ -123,7 +123,7 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
 // funcionan sin ningún cambio, porque solo leen esos mismos campos genéricos.
 function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
   const yonkeData = yonkeDoc.data();
-  const { marca, modelo, ano, pieza, precio, foto } = pDoc.data();
+  const { marca, modelo, ano, pieza, precio, foto, fotosExtra } = pDoc.data();
   return {
     yonkeId: yonkeDoc.id, yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null,
     subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false,
@@ -142,8 +142,9 @@ function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
     // PIEZA, no una foto de vehículo que no existe.
     esPiezaSuelta: true,
     // Pieza confirmada + su precio opcional (null = "Consultar precio con el yonke" en la UI) y
-    // su foto opcional ({url, path} | null).
-    piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null, foto: foto || null },
+    // sus fotos opcionales: foto ({url, path} | null) es la primera y fotosExtra la 2a y 3a (ver
+    // src/lib/fotosPieza.ts).
+    piezaResultado: { nombre: pieza, precio: esPrecioValido(precio) ? precio : null, foto: foto || null, fotosExtra: Array.isArray(fotosExtra) ? fotosExtra : [] },
   };
 }
 
