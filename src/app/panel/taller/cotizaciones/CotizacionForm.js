@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import SelectorMarcaModelo from '../../../lib/SelectorMarcaModelo';
 import { ESTADOS_COTIZACION, IVA_PORCENTAJE, MAX_RENGLONES, MAX_VIGENCIA_DIAS, MENSAJES_COTIZACION, formatearPesos, ivaCentavos, redondearCentavos, subtotalCentavos, totalCentavos, totalConIvaCentavos, validarCotizacion, validarRenglon } from '../../../../lib/cotizaciones';
+import { enlacePedirPieza } from '../../../../lib/pedirPiezaDesdeCotizacion';
 
 // Formulario de cotización para celular. Si el guardado falla, NADA de lo escrito se borra.
 // soloLectura: el taller tiene la versión vieja o está desactivado. Todo queda deshabilitado,
@@ -60,9 +62,14 @@ const etiqueta = { display: 'block', fontSize: '13px', color: '#555', marginBott
 const seccion = { backgroundColor: '#fff', borderRadius: '14px', padding: '16px', marginBottom: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' };
 const botonGrande = { minHeight: '52px', padding: '0 18px', borderRadius: '12px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' };
 const sinBorde = { border: 0, padding: 0, margin: 0, minWidth: 0 };
+const enlacePedirPiezaStyle = {
+  display: 'block', marginTop: '10px', padding: '12px', borderRadius: '12px', border: '2px solid #1A3C5E',
+  color: '#1A3C5E', fontWeight: 'bold', fontSize: '15px', textAlign: 'center', textDecoration: 'none', backgroundColor: '#fff',
+};
 
 export default function CotizacionForm({
   inicial = null, tallerActivo = true, soloLectura = false, datosClienteHabilitados = true, fechaEliminacion = null,
+  mostrarPedirPieza = false,
   puedeEliminar = false,
   onGuardar, onQuitarDatos, onArchivar, onDuplicar, onEliminar, onCancelar,
 }) {
@@ -195,6 +202,16 @@ export default function CotizacionForm({
                     Quitar
                   </button>
                 </div>
+                {/* "Pedir a los yonkes": solo en renglones de pieza de una cotización guardada, con la
+                    función de pedido de piezas encendida. Por la URL va SOLO el vehículo y la pieza. */}
+                {mostrarPedirPieza && r.tipo === 'pieza' && (
+                  <Link
+                    href={enlacePedirPieza({ vehiculo: { marca: f.marca, modelo: f.modelo, anio: f.anio }, descripcion: r.descripcion })}
+                    style={enlacePedirPiezaStyle}
+                  >
+                    🔧 Pedir a los yonkes
+                  </Link>
+                )}
               </div>
             );
           })}
