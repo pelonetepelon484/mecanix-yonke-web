@@ -2,7 +2,7 @@
 // actualización"). Se guarda junto con cada aceptación (registro del yonke) y cada reservación
 // para poder demostrar qué texto estaba vigente. Cambiar este valor SIEMPRE que se modifique
 // cualquiera de los dos documentos.
-export const VERSION_LEGAL = '2026-10-07';
+export const VERSION_LEGAL = '2026-10-08';
 
 // URLs absolutas a propósito: en un subdominio white-label (yonke.mecanixyonkevirtual.com) el
 // middleware reescribe TODAS las rutas a la página del yonke, así que un enlace relativo a
