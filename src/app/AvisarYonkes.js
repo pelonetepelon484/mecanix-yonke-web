@@ -12,7 +12,11 @@ import { leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
 import { MENSAJES_PEDIDO, enlaceGuardarPorWhatsapp, validarPedidoCliente } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
-export default function AvisarYonkes({ marcaInicial = '', modeloInicial = '', anioInicial = '', piezaInicial = '', estadoInicial = '' }) {
+// mensaje (opcional): texto arriba del botón, en lugar del de siempre. destacado: recuadro más
+// visible (lo usa la página principal cuando no hay el año exacto). Sin ellos se ve como siempre.
+export default function AvisarYonkes({
+  marcaInicial = '', modeloInicial = '', anioInicial = '', piezaInicial = '', estadoInicial = '', mensaje = '', destacado = false,
+}) {
   const [habilitado, setHabilitado] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
@@ -92,9 +96,12 @@ export default function AvisarYonkes({ marcaInicial = '', modeloInicial = '', an
 
   if (!abierto) {
     return (
-      <div style={caja}>
-        <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
-          ¿No la encontraste? Avísale a los yonkes de tu estado y te responden con precio.
+      <div style={destacado ? cajaDestacada : caja}>
+        <p style={destacado
+          ? { margin: '0 0 10px', fontSize: '15px', color: '#1A3C5E', lineHeight: '1.45', fontWeight: 'bold' }
+          : { margin: '0 0 8px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}
+        >
+          {mensaje || '¿No la encontraste? Avísale a los yonkes de tu estado y te responden con precio.'}
         </p>
         <button type="button" onClick={abrir} style={{ ...boton, backgroundColor: '#E8720C' }}>📣 Avisar a los yonkes</button>
       </div>
@@ -138,6 +145,7 @@ export default function AvisarYonkes({ marcaInicial = '', modeloInicial = '', an
 }
 
 const caja = { marginTop: '12px', padding: '14px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #C5D8EC' };
+const cajaDestacada = { margin: '0 0 14px', padding: '16px', borderRadius: '12px', backgroundColor: '#FFF4E8', border: '2px solid #E8720C' };
 const boton = { width: '100%', padding: '12px', borderRadius: '50px', border: 'none', color: '#fff', fontWeight: '700', fontSize: '14px', cursor: 'pointer' };
 const etiqueta = { display: 'block', fontSize: '12px', color: '#555', margin: '0 0 4px', fontWeight: 'bold' };
 const input = { width: '100%', boxSizing: 'border-box', padding: '11px', fontSize: '15px', borderRadius: '10px', border: '1px solid #CCC', marginBottom: '10px', backgroundColor: '#fff' };
