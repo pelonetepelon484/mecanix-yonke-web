@@ -6,6 +6,7 @@ import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'fi
 import { db } from '../../../lib/firebase';
 import { filtroBusquedasConfiables } from '../../../lib/busqueda/corteBusquedasConfiables';
 import mexicoMap from '@svg-maps/mexico';
+import { aFecha, esDeLasUltimas24Horas, formatearFechaTijuana } from './fechas';
 
 // @svg-maps/mexico usa como `id` el código ISO 3166-2:MX en minúsculas (agu, bcn, ..., zac) —
 // el mismo esquema que resolverGeoIp() ya guarda en `estadoGeografico` (ver
@@ -55,6 +56,18 @@ function queBuscaba(d) {
 
 // Interpolación lineal de un azul claro (sin búsquedas) al azul de marca (#1A3C5E, máxima
 // intensidad) — mismo tono que el header del panel, no se introduce una paleta nueva.
+// Cuántas búsquedas individuales se listan debajo de la tabla del estado.
+const RECIENTES_POR_ESTADO = 20;
+
+// Etiqueta verde para lo de las últimas 24 horas (en la tabla y en la lista del estado).
+function EtiquetaReciente() {
+  return (
+    <span style={{ display: 'inline-block', marginLeft: '6px', backgroundColor: '#E6F4EA', color: '#2E7D32', fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
+      ● Últimas 24 h
+    </span>
+  );
+}
+
 function colorPorIntensidad(valor, maximo) {
   if (!valor || maximo <= 0) return '#E6ECF2';
   const t = Math.min(1, valor / maximo);
@@ -71,6 +84,8 @@ export default function MapaBusquedasPage() {
   const [filtroResultado, setFiltroResultado] = useState('todos');
   const [docs, setDocs] = useState([]);
   const [estadoActivo, setEstadoActivo] = useState(null);
+  // Momento de la carga: contra él se decide qué es de las últimas 24 horas.
+  const [cargadoEn, setCargadoEn] = useState(0);
 
   useEffect(() => {
     async function cargar() {
@@ -91,6 +106,7 @@ export default function MapaBusquedasPage() {
         }
         const snap = await getDocs(query(ref, ...restricciones));
         setDocs(snap.docs.map((d) => d.data()));
+        setCargadoEn(Date.now());
       } catch (e) {
         console.error('[admin/busquedas/mapa] Error cargando datos', e);
       }
@@ -129,12 +145,24 @@ export default function MapaBusquedasPage() {
     for (const d of docsFiltrados) {
       if (claveEstado(d) !== estadoActivo) continue;
       const clave = queBuscaba(d);
-      const actual = mapa.get(clave) || { clave, conteo: 0, conResultado: 0 };
+      const actual = mapa.get(clave) || { clave, conteo: 0, conResultado: 0, ultima: null };
       actual.conteo++;
       if (tieneResultado(d)) actual.conResultado++;
+      const fecha = aFecha(d.fecha);
+      if (fecha && (!actual.ultima || fecha > actual.ultima)) actual.ultima = fecha;
       mapa.set(clave, actual);
     }
     return [...mapa.values()].sort((a, b) => b.conteo - a.conteo).slice(0, 15);
+  }, [docsFiltrados, estadoActivo]);
+
+  // Búsquedas individuales del estado, la más nueva primero (la consulta ya viene ordenada por
+  // fecha, pero se ordena de nuevo para no depender de eso).
+  const recientesEnEstado = useMemo(() => {
+    if (!estadoActivo) return [];
+    return docsFiltrados
+      .filter((d) => claveEstado(d) === estadoActivo)
+      .sort((a, b) => (aFecha(b.fecha)?.getTime() || 0) - (aFecha(a.fecha)?.getTime() || 0))
+      .slice(0, RECIENTES_POR_ESTADO);
   }, [docsFiltrados, estadoActivo]);
 
   return (
@@ -202,7 +230,7 @@ export default function MapaBusquedasPage() {
                 })}
               </svg>
               <p style={{ color: '#888', fontSize: '12px', textAlign: 'center', margin: '8px 0 0' }}>
-                Haz clic en un estado para ver las piezas más buscadas ahí
+                Haz clic en un estado para ver las piezas más buscadas ahí y sus búsquedas recientes
               </p>
             </div>
 
@@ -227,6 +255,7 @@ export default function MapaBusquedasPage() {
                           <th style={thStyle}>Pieza / vehículo</th>
                           <th style={thStyle}>Veces buscado</th>
                           <th style={thStyle}>Con resultado</th>
+                          <th style={thStyle}>Última vez</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -235,11 +264,46 @@ export default function MapaBusquedasPage() {
                             <td style={tdStyle}>{r.clave}</td>
                             <td style={tdStyle}>{r.conteo}</td>
                             <td style={tdStyle}>{r.conResultado} / {r.conteo}</td>
+                            <td style={tdStyle}>
+                              {formatearFechaTijuana(r.ultima)}
+                              {esDeLasUltimas24Horas(r.ultima, cargadoEn) && <EtiquetaReciente />}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                )}
+
+                {recientesEnEstado.length > 0 && (
+                  <>
+                    <h3 style={{ color: '#1A3C5E', fontSize: '14px', margin: '18px 0 2px' }}>
+                      Búsquedas recientes en {NOMBRES_ESTADO[estadoActivo] || estadoActivo}
+                    </h3>
+                    <p style={{ color: '#888', fontSize: '12px', margin: '0 0 10px' }}>
+                      Las últimas {RECIENTES_POR_ESTADO} del periodo, una por una — hora de Tijuana
+                    </p>
+                    <ul aria-label={`Búsquedas recientes en ${NOMBRES_ESTADO[estadoActivo] || estadoActivo}`} style={{ listStyle: 'none', margin: 0, padding: 0, backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      {recientesEnEstado.map((d, i) => {
+                        const reciente = esDeLasUltimas24Horas(d.fecha, cargadoEn);
+                        const conResultado = tieneResultado(d);
+                        return (
+                          <li key={i} style={{ padding: '10px 12px', borderTop: i === 0 ? 'none' : '1px solid #EEF1F5', borderLeft: reciente ? '4px solid #2E7D32' : '4px solid transparent' }}>
+                            <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>
+                              {formatearFechaTijuana(d.fecha)}
+                              {reciente && <EtiquetaReciente />}
+                            </p>
+                            <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#333' }}>
+                              {queBuscaba(d)}{' '}
+                              <span style={{ color: conResultado ? '#2E7D32' : '#C62828', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                {conResultado ? '✓ Con resultado' : '✗ Sin resultado'}
+                              </span>
+                            </p>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
                 )}
               </div>
             )}

@@ -109,6 +109,10 @@ describe('panel admin "Pedidos de piezas"', () => {
     fireEvent.click(interruptor);
     await waitFor(() => expect(datos.cambiarBanderaPedidosClientes).toHaveBeenCalledWith(true));
     await waitFor(() => expect(interruptor).toHaveAttribute('aria-checked', 'true'));
+    // El aviso ya no menciona la sección "Contactos pendientes" (se quitó del panel de Búsquedas).
+    const aviso = window.confirm.mock.calls.at(-1)[0];
+    expect(aviso).not.toMatch(/Contactos pendientes/);
+    expect(aviso).toContain('El WhatsApp de las búsquedas sin resultados ya no se guarda ni te llega aviso por CallMeBot.');
   });
   it('pestaña de talleres: lista y respuestas en solo lectura, y borrar con confirmación', async () => {
     render(<PedidosAdminPage />);
