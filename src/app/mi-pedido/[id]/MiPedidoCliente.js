@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { DURACION_RECARGA_MS, INTERVALO_RECARGA_MS, MENSAJES_PEDIDO } from '../../../lib/pedidosClientes';
+import { DURACION_RECARGA_MS, INTERVALO_RECARGA_MS, MENSAJES_PEDIDO, avisoEnvioOtroEstado } from '../../../lib/pedidosClientes';
 
 function pesos(n) {
   return `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -109,9 +109,22 @@ export default function MiPedidoCliente() {
             <p style={{ margin: '4px 0 0', fontSize: '12px', fontWeight: 'bold', color: r.verificado ? '#2E7D32' : '#8A6D00' }}>
               {r.verificado ? '✅ Verificado' : '⚠️ Yonke nuevo, sin verificar'}
             </p>
+            {r.estadoYonkeNombre && (
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#555' }}>
+                📍 {r.estadoYonkeNombre}
+                {r.otroEstado && (
+                  <span style={{ marginLeft: '6px', display: 'inline-block', backgroundColor: '#E3F2FD', color: '#1565C0', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>📦 Envío</span>
+                )}
+              </p>
+            )}
             <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#555' }}>{r.tieneLaPieza ? 'La tiene' : 'No la tiene'}{r.nota ? ` · ${r.nota}` : ''}</p>
             {r.tieneLaPieza && r.whatsapp && (
               <a href={enlaceWhatsappYonke(r, pedido)} target="_blank" rel="noopener noreferrer" style={botonWhatsapp}>💬 Escribirle por WhatsApp</a>
+            )}
+            {r.otroEstado && r.tieneLaPieza && (
+              <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#1565C0', backgroundColor: '#F1F7FD', borderRadius: '8px', padding: '8px', lineHeight: '1.5' }}>
+                {avisoEnvioOtroEstado(r.estadoYonkeNombre)}
+              </p>
             )}
           </div>
         ))}

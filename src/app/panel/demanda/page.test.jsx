@@ -47,6 +47,8 @@ vi.mock('../solicitudesPiezasDatos', () => ({
 vi.mock('../pedidosClientesDatos', () => ({
   leerConfigPedidosClientes: vi.fn(async () => null),
   escucharPedidosClientesAbiertos: vi.fn(() => () => {}),
+  escucharPedidosClientesOtrosEstados: vi.fn(() => () => {}),
+  EVENTO_OTROS_ESTADOS: 'mecanix:ver-alertas-otros-estados',
 }));
 
 const { default: DemandaPanel } = await import('./page.js');

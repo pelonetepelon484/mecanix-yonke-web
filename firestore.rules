@@ -585,11 +585,38 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/config/pedidosClientes)
         && get(/databases/$(database)/documents/config/pedidosClientes).data.habilitado == true;
     }
+    // Alertas de otros estados: segunda bandera config/pedidosClientes.otrosEstados (además de la
+    // primera). Apagada, todo funciona exactamente como antes.
+    function otrosEstadosHabilitados() {
+      return pedidosClientesHabilitados()
+        && get(/databases/$(database)/documents/config/pedidosClientes).data.get('otrosEstados', false) == true;
+    }
+    // Yonke que puede ver y responder alertas de OTROS estados (las que el cliente marcó con
+    // aceptaOtrosEstados): activo, Verificado y con envíos nacionales (estos dos solo los pone el
+    // admin) y con su interruptor verAlertasOtrosEstados encendido. Todo sale de usuarios/{uid} y
+    // yonkes/{id} leídos por la regla, nunca de lo que mande el navegador.
+    function yonkeConEnvio(y) {
+      return y.get('activo', false) == true
+        && y.get('verificado', false) == true
+        && y.get('enviosNacionales', false) == true
+        && y.get('verAlertasOtrosEstados', false) == true;
+    }
+    function yonkeConEnvioAOtrosEstados() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'yonke' &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId != null &&
+        exists(/databases/$(database)/documents/yonkes/$(get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId)) &&
+        yonkeConEnvio(get(/databases/$(database)/documents/yonkes/$(get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId)).data);
+    }
     match /pedidosClientes/{pedidoId} {
       function pedidoClienteValido() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['vehiculo', 'pieza', 'estado', 'estadoPedido', 'creadoAt', 'expiraAt'])
+        return d.keys().hasOnly(['vehiculo', 'pieza', 'estado', 'estadoPedido', 'creadoAt', 'expiraAt', 'aceptaOtrosEstados'])
           && d.keys().hasAll(['vehiculo', 'pieza', 'estado', 'estadoPedido', 'creadoAt', 'expiraAt'])
+          // Opcional (las alertas de antes no lo traen = false). true solo con la segunda bandera.
+          && (!('aceptaOtrosEstados' in d) || d.aceptaOtrosEstados is bool)
+          && (d.get('aceptaOtrosEstados', false) == false || otrosEstadosHabilitados())
           && d.vehiculo is map
           && d.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio'])
           && d.vehiculo.marca is string && d.vehiculo.marca.size() >= 1 && d.vehiculo.marca.size() <= 60
@@ -606,7 +633,13 @@ service cloud.firestore {
 
       allow read: if esAdmin()
                   || esServicio()
-                  || (resource.data.estadoPedido == 'abierta' && yonkeActivoDeEseEstado(resource.data.estado));
+                  || (resource.data.estadoPedido == 'abierta' && yonkeActivoDeEseEstado(resource.data.estado))
+                  // Yonke de otro estado: solo alertas que lo aceptan (la consulta debe filtrar
+                  // aceptaOtrosEstados == true y estadoPedido == 'abierta').
+                  || (resource.data.estadoPedido == 'abierta'
+                      && resource.data.aceptaOtrosEstados == true
+                      && otrosEstadosHabilitados()
+                      && yonkeConEnvioAOtrosEstados());
       allow create: if esServicio() && pedidosClientesHabilitados() && pedidoClienteValido();
       // El admin puede dar de baja un pedido (spam) o reabrirlo; nada más cambia.
       allow update: if esAdmin()
@@ -661,7 +694,10 @@ service cloud.firestore {
         allow read: if esAdmin() || esServicio() || esDuenoDelYonke(yonkeId);
         allow create: if pedidosClientesHabilitados()
                       && esDuenoDelYonke(yonkeId)
-                      && yonkeActivoDeEseEstado(pedidoPadre().estado)
+                      && (yonkeActivoDeEseEstado(pedidoPadre().estado)
+                          || (pedidoPadre().get('aceptaOtrosEstados', false) == true
+                              && otrosEstadosHabilitados()
+                              && yonkeConEnvioAOtrosEstados()))
                       && pedidoPadre().estadoPedido == 'abierta'
                       && pedidoPadre().expiraAt > request.time
                       && request.resource.data.yonkeNombre == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.nombre
@@ -736,6 +772,9 @@ service cloud.firestore {
                         // si cambia sitio, debe ser válido
                         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['sitio'])
                             || sitioValido(request.resource.data.get('sitio', {}), yonkeId))
+                        // interruptor "Ver también alertas de otros estados con envío": solo true/false
+                        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['verAlertasOtrosEstados'])
+                            || request.resource.data.verAlertasOtrosEstados is bool)
                         // NUEVO: si cambia branding, el fondo debe ser válido
                         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['branding'])
                             || brandingValido(request.resource.data.get('branding', null), yonkeId)));

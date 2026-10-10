@@ -42,13 +42,21 @@ export function obtenerDbServicio() {
 }
 
 // config/pedidosClientes se cachea 1 minuto por instancia (se lee en cada consulta de /mi-pedido).
-let cacheHabilitado = { valor: false, en: 0 };
-export async function habilitado(db) {
-  if (Date.now() - cacheHabilitado.en < 60 * 1000) return cacheHabilitado.valor;
+let cacheConfig = { valor: null, en: 0 };
+async function leerConfig(db) {
+  if (Date.now() - cacheConfig.en < 60 * 1000) return cacheConfig.valor;
   const snap = await getDoc(doc(db, 'config', 'pedidosClientes'));
-  const valor = snap.exists() && snap.data().habilitado === true;
-  cacheHabilitado = { valor, en: Date.now() };
+  const valor = snap.exists() ? snap.data() : null;
+  cacheConfig = { valor, en: Date.now() };
   return valor;
+}
+export async function habilitado(db) {
+  return (await leerConfig(db))?.habilitado === true;
+}
+// Segunda bandera: casilla "yonkes de otros estados que hagan envíos". Exige también la primera.
+export async function otrosEstados(db) {
+  const config = await leerConfig(db);
+  return config?.habilitado === true && config?.otrosEstados === true;
 }
 
 // Contador atómico en pedidosClientesLimite. expiraEn: para la política TTL (se borra solo).
@@ -71,6 +79,8 @@ export async function crearPedido(db, { pedido, privado }) {
   lote.set(ref, {
     vehiculo: pedido.vehiculo, pieza: pedido.pieza, estado: pedido.estado,
     estadoPedido: 'abierta', creadoAt: serverTimestamp(), expiraAt,
+    // Solo con la bandera otrosEstados encendida (si no, el documento queda igual que siempre).
+    ...('aceptaOtrosEstados' in pedido ? { aceptaOtrosEstados: pedido.aceptaOtrosEstados === true } : {}),
   });
   lote.set(doc(db, 'pedidosClientes', ref.id, 'privado', 'contacto'), {
     clienteWhatsapp: privado.clienteWhatsapp, codigoHash: privado.codigoHash, expiraAt,
@@ -116,7 +126,7 @@ let manejadores = null;
 export function manejadoresReales() {
   if (!manejadores) {
     manejadores = crearManejadores({
-      obtenerDb: obtenerDbServicio, habilitado, contar, crearPedido, leerPedido, leerPrivado, leerRespuestas, leerYonkes, listarAbiertos,
+      obtenerDb: obtenerDbServicio, habilitado, otrosEstados, contar, crearPedido, leerPedido, leerPrivado, leerRespuestas, leerYonkes, listarAbiertos,
       estados: obtenerEstadosCombinado, notificar: notificarAdmin, ahora: () => new Date(),
       generarCodigo, hashCodigo, codigoCoincide, claveLimite,
     });

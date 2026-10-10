@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DIAS_VIGENCIA_PEDIDO, MAX_PEDIDOS_POR_WHATSAPP_DIA, MENSAJES_PEDIDO, calcularExpiraAtPedido, enlaceGuardarPorWhatsapp, enlaceMiPedido, esCodigo, esIdPedido, estaVencido,
-  estadoVisible, mensajeAvisoAdmin, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
+  avisoEnvioOtroEstado, estadoVisible, mensajeAvisoAdmin, puedeVerOtrosEstados, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
   validarPedidoCliente,
 } from './pedidosClientes';
 import { MENSAJES_SOLICITUD } from './solicitudesPiezas';
@@ -127,3 +127,27 @@ describe('lo que sale hacia afuera', () => {
     expect(m).not.toMatch(/[0-9]{10}/);
   });
 });
+
+describe('alertas de otros estados', () => {
+  it('puedeVerOtrosEstados: las dos banderas y un yonke activo, Verificado y con envíos nacionales', () => {
+    const config = { habilitado: true, otrosEstados: true };
+    const yonke = { activo: true, verificado: true, enviosNacionales: true };
+    expect(puedeVerOtrosEstados(config, yonke)).toBe(true);
+    expect(puedeVerOtrosEstados({ habilitado: true }, yonke)).toBe(false);
+    expect(puedeVerOtrosEstados({ otrosEstados: true }, yonke)).toBe(false);
+    expect(puedeVerOtrosEstados(null, yonke)).toBe(false);
+    for (const falta of ['activo', 'verificado', 'enviosNacionales']) {
+      expect(puedeVerOtrosEstados(config, { ...yonke, [falta]: false })).toBe(false);
+    }
+    expect(puedeVerOtrosEstados(config, { ...yonke, verificado: 'true' })).toBe(false);
+  });
+  it('respuestaParaCliente trae el estado del yonke (vacío si no se sabe)', () => {
+    const r = { yonkeId: 'Y1', yonkeNombre: 'El Güero', tieneLaPieza: true, precio: 1500 };
+    expect(respuestaParaCliente(r, { estado: 'jalisco' }).estadoYonke).toBe('jalisco');
+    expect(respuestaParaCliente(r, null).estadoYonke).toBe('');
+  });
+  it('texto del aviso de envío', () => {
+    expect(avisoEnvioOtroEstado('Jalisco')).toBe('📦 Te la enviaría un yonke de Jalisco. Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Confirma por WhatsApp cómo se hará el pago. Mecanix no vende ni cobra.');
+  });
+});
+

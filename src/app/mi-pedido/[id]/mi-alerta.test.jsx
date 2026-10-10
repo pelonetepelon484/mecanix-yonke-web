@@ -29,4 +29,35 @@ describe('página del cliente con las respuestas de los yonkes', () => {
     expect(screen.queryByText('Mi pedido de pieza')).not.toBeInTheDocument();
     expect(metadata.title).toBe('Mi alerta de búsqueda | Mecanix Yonke Virtual');
   });
+
+  it('cada respuesta dice el estado del yonke; las de otro estado llevan "📦 Envío" y el aviso de envío', async () => {
+    const base = { tieneLaPieza: true, precio: 1500, nota: '', whatsapp: '3331111111', verificado: true };
+    global.fetch = vi.fn(async () => ({
+      status: 200, ok: true,
+      json: async () => ({
+        ok: true,
+        pedido: { pieza: 'Alternador', vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2005 }, estado: 'baja-california', estadoNombre: 'Baja California', estadoPedido: 'abierta', vencido: false, vence: '2026-10-14T20:00:00Z' },
+        respuestas: [
+          { ...base, yonkeNombre: 'Yonke Tijuana', estadoYonke: 'baja-california', estadoYonkeNombre: 'Baja California', otroEstado: false },
+          { ...base, yonkeNombre: 'Yonke Guadalajara', estadoYonke: 'jalisco', estadoYonkeNombre: 'Jalisco', otroEstado: true },
+          { ...base, tieneLaPieza: false, precio: null, yonkeNombre: 'Yonke Hermosillo', estadoYonke: 'sonora', estadoYonkeNombre: 'Sonora', otroEstado: true },
+        ],
+      }),
+    }));
+    render(<MiPedidoCliente />);
+    const tarjeta = async (nombre) => (await screen.findByText(nombre)).closest('div').parentElement;
+    const local = await tarjeta('Yonke Tijuana');
+    expect(local).toHaveTextContent('📍 Baja California');
+    expect(local).not.toHaveTextContent('📦');
+
+    const lejos = await tarjeta('Yonke Guadalajara');
+    expect(lejos).toHaveTextContent('📍 Jalisco');
+    expect(lejos).toHaveTextContent('📦 Envío');
+    expect(lejos).toHaveTextContent('📦 Te la enviaría un yonke de Jalisco. Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Confirma por WhatsApp cómo se hará el pago. Mecanix no vende ni cobra.');
+
+    // Si no la tiene, no hay nada que enviar: sin el aviso.
+    const sinPieza = await tarjeta('Yonke Hermosillo');
+    expect(sinPieza).toHaveTextContent('📦 Envío');
+    expect(sinPieza).not.toHaveTextContent('Te la enviaría');
+  });
 });
