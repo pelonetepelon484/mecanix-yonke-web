@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, limit, getDocs, getCountFromServer, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { filtroBusquedasConfiables } from '../../lib/busqueda/corteBusquedasConfiables';
 
@@ -18,19 +18,6 @@ const ESTADOS = [
 function formatearFecha(fecha) {
   const f = fecha?.toDate ? fecha.toDate() : new Date(fecha);
   return f.toLocaleString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function queBuscaba(d) {
-  const vehiculo = [d.marca, d.modelo, d.anio].filter(Boolean).join(' ');
-  return [d.pieza, vehiculo].filter(Boolean).join(' — ') || '(sin detalle)';
-}
-
-function mensajeWhatsappCliente(d) {
-  const vehiculo = [d.marca, d.modelo, d.anio].filter(Boolean).join(' ');
-  const detalle = [d.pieza, vehiculo].filter(Boolean).join(' para ');
-  return detalle
-    ? `Hola, vi que buscabas ${detalle} en Mecanix Yonke Virtual. ¿Sigues interesado?`
-    : 'Hola, vi tu búsqueda en Mecanix Yonke Virtual. ¿Sigues interesado?';
 }
 
 function agruparPorClave(docs, obtenerClave) {
@@ -71,7 +58,6 @@ export default function AdminBusquedasPage() {
   const [totalMx, setTotalMx] = useState(0);
   const [totalFueraDeMexico, setTotalFueraDeMexico] = useState(0);
   const [vista, setVista] = useState('mexico'); // 'mexico' (default) | 'todo'
-  const [conContacto, setConContacto] = useState(0);
   // Se guardan los docs CRUDOS (no ya agrupados) para poder re-filtrar por país en el cliente
   // cuando cambia `vista`, sin volver a leer Firestore — ver filtrarPorVista/agruparPorClave más
   // abajo, calculados en cada render a partir de estos arreglos.
@@ -79,8 +65,6 @@ export default function AdminBusquedasPage() {
   const [docsSinInventario, setDocsSinInventario] = useState([]);
   const [docsFueraDeGiro, setDocsFueraDeGiro] = useState([]);
   const [docsNoInterpretadas, setDocsNoInterpretadas] = useState([]);
-  const [contactosPendientes, setContactosPendientes] = useState([]);
-  const [marcandoId, setMarcandoId] = useState(null);
   const [exportando, setExportando] = useState(false);
 
   useEffect(() => {
@@ -116,31 +100,20 @@ export default function AdminBusquedasPage() {
         setConteos(nuevoConteos);
         setConteosMx(nuevoConteosMx);
 
-        // Las 4 queries que alimentan las tablas de abajo también excluyen lo anterior al corte
-        // (busquedas_pendientes, que alimenta "Contactos pendientes", NO lleva este filtro —
-        // ver corteBusquedasConfiables.js).
-        const [fueraCatalogoSnap, sinInventarioSnap, fueraDeGiroSnap, noInterpretadasSnap, pendientesSnap] = await Promise.all([
+        // Las 4 queries que alimentan las tablas de abajo también excluyen lo anterior al corte.
+        // Esta pantalla ya no lee busquedas_pendientes: "Contactos pendientes de atender" y el
+        // contador "Con contacto dejado" se quitaron (los datos y las reglas siguen igual).
+        const [fueraCatalogoSnap, sinInventarioSnap, fueraDeGiroSnap, noInterpretadasSnap] = await Promise.all([
           getDocs(query(ref, where('estado', '==', 'fuera_de_catalogo'), filtroBusquedasConfiables(), orderBy('fecha', 'desc'), limit(300))),
           getDocs(query(ref, where('estado', '==', 'sin_inventario'), filtroBusquedasConfiables(), orderBy('fecha', 'desc'), limit(300))),
           getDocs(query(ref, where('estado', '==', 'fuera_de_giro'), filtroBusquedasConfiables(), orderBy('fecha', 'desc'), limit(30))),
           getDocs(query(ref, where('estado', 'in', ['no_interpretada', 'parseo_parcial']), filtroBusquedasConfiables(), orderBy('fecha', 'desc'), limit(30))),
-          getDocs(query(collection(db, 'busquedas_pendientes'), orderBy('fecha', 'desc'), limit(300))),
         ]);
 
         setDocsFueraCatalogo(fueraCatalogoSnap.docs.map((d) => d.data()));
         setDocsSinInventario(sinInventarioSnap.docs.map((d) => d.data()));
         setDocsFueraDeGiro(fueraDeGiroSnap.docs.map((d) => d.data()));
         setDocsNoInterpretadas(noInterpretadasSnap.docs.map((d) => d.data()));
-
-        // "Con contacto dejado" se calcula de busquedas_pendientes (no de busquedas.tieneContacto):
-        // ahí solo cuenta contacto si la búsqueda realmente quedó sin inventario — el mismo grupo
-        // que necesita seguimiento real, para que el número de la tarjeta coincida con la lista.
-        // No lleva país (un bot casi nunca deja un WhatsApp real) — se muestra igual en ambas vistas.
-        const conContactoDocs = pendientesSnap.docs
-          .filter((d) => Boolean(d.data().contacto))
-          .map((d) => ({ id: d.id, ...d.data() }));
-        setContactosPendientes(conContactoDocs);
-        setConContacto(conContactoDocs.length);
       } catch (e) {
         console.error('[admin/busquedas] Error cargando datos', e);
       }
@@ -162,18 +135,6 @@ export default function AdminBusquedasPage() {
   );
   const tablaFueraDeGiro = filtrarPorVista(docsFueraDeGiro, vista);
   const tablaNoInterpretadas = filtrarPorVista(docsNoInterpretadas, vista);
-
-  async function marcarAtendido(id) {
-    setMarcandoId(id);
-    try {
-      await updateDoc(doc(db, 'busquedas_pendientes', id), { atendido: true, atendidoFecha: new Date() });
-      setContactosPendientes((prev) => prev.map((c) => (c.id === id ? { ...c, atendido: true } : c)));
-    } catch (e) {
-      console.error('[admin/busquedas] No se pudo marcar como atendido', e);
-      alert('No se pudo marcar como atendido, intenta de nuevo.');
-    }
-    setMarcandoId(null);
-  }
 
   // Exportación de solo lectura para auditoría manual: TODAS las búsquedas con conResultado
   // false (cualquier estado que no sea 'ok'), sin límite — se descarga como un .json en el
@@ -291,38 +252,6 @@ export default function AdminBusquedasPage() {
                   color={e.color}
                 />
               ))}
-              <MetricaCard
-                label="Con contacto dejado"
-                valor={conContacto}
-                pct={totalVista > 0 ? Math.round((conContacto / totalVista) * 100) : 0}
-              />
-            </div>
-
-            {/* Contactos pendientes — la parte urgente: clientes que dejaron su WhatsApp en
-                una búsqueda sin inventario y siguen esperando aviso. */}
-            <div style={{ marginBottom: '28px' }}>
-              <h2 style={{ color: '#1A3C5E', fontSize: '15px', margin: '0 0 2px' }}>
-                Contactos pendientes de atender
-              </h2>
-              <p style={{ color: '#888', fontSize: '12px', margin: '0 0 10px' }}>
-                Clientes que dejaron su WhatsApp en una búsqueda sin inventario — {contactosPendientes.filter((c) => !c.atendido).length} sin atender
-              </p>
-              {contactosPendientes.length === 0 ? (
-                <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '14px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', color: '#aaa', fontSize: '13px', textAlign: 'center' }}>
-                  Sin contactos pendientes todavía
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {contactosPendientes.map((c) => (
-                    <ContactoCard
-                      key={c.id}
-                      contacto={c}
-                      marcando={marcandoId === c.id}
-                      onMarcarAtendido={() => marcarAtendido(c.id)}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
 
             <Tabla
@@ -356,61 +285,6 @@ export default function AdminBusquedasPage() {
         )}
       </div>
     </main>
-  );
-}
-
-function ContactoCard({ contacto, marcando, onMarcarAtendido }) {
-  const atendido = Boolean(contacto.atendido);
-  const numero = (contacto.contacto || '').replace(/\D/g, '');
-  const whatsappHref = numero
-    ? `https://wa.me/52${numero}?text=${encodeURIComponent(mensajeWhatsappCliente(contacto))}`
-    : null;
-
-  return (
-    <div style={{
-      backgroundColor: '#fff', borderRadius: '12px', padding: '14px 16px',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-      borderLeft: atendido ? '4px solid #ccc' : '4px solid #E8720C',
-      opacity: atendido ? 0.7 : 1,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
-        <div>
-          <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: 0 }}>
-            📱 {contacto.contacto || '(sin contacto)'}
-          </p>
-          <p style={{ color: '#333', fontSize: '13px', margin: '4px 0 2px' }}>{queBuscaba(contacto)}</p>
-          <p style={{ color: '#888', fontSize: '12px', margin: 0 }}>{formatearFecha(contacto.fecha)}</p>
-        </div>
-        {!atendido && (
-          <span style={{ backgroundColor: '#FDECEA', color: '#C62828', fontSize: '11px', fontWeight: '700', padding: '3px 9px', borderRadius: '20px' }}>
-            Sin atender
-          </span>
-        )}
-      </div>
-      <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-        {whatsappHref && (
-          <a
-            href={whatsappHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ backgroundColor: '#25D366', color: '#fff', fontSize: '13px', fontWeight: '700', padding: '8px 14px', borderRadius: '8px', textDecoration: 'none' }}
-          >
-            💬 WhatsApp
-          </a>
-        )}
-        {atendido ? (
-          <span style={{ color: '#888', fontSize: '13px', padding: '8px 0' }}>✓ Atendido</span>
-        ) : (
-          <button
-            onClick={onMarcarAtendido}
-            disabled={marcando}
-            style={{ backgroundColor: '#1A3C5E', color: '#fff', fontSize: '13px', fontWeight: '700', padding: '8px 14px', borderRadius: '8px', border: 'none', cursor: marcando ? 'default' : 'pointer' }}
-          >
-            {marcando ? 'Marcando...' : 'Marcar como atendido'}
-          </button>
-        )}
-      </div>
-    </div>
   );
 }
 

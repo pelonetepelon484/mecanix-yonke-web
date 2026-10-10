@@ -45,7 +45,7 @@ export default function PedidosAdminPage() {
   async function alternarBandera() {
     const nueva = !bandera;
     const texto = nueva
-      ? '¿Activar el pedido de piezas para clientes? En el buscador desaparece el campo "Tu WhatsApp" y, sin resultados, aparece "Avisar a los yonkes". Las búsquedas ya no se guardan en Contactos pendientes.'
+      ? '¿Activar el pedido de piezas para clientes? En el buscador desaparece el campo "Tu WhatsApp" y, sin resultados, aparece "Avisar a los yonkes". El WhatsApp de las búsquedas sin resultados ya no se guarda ni te llega aviso por CallMeBot.'
       : '¿Desactivar el pedido de piezas para clientes? El botón "Avisar a los yonkes" desaparece y el buscador vuelve a pedir "Tu WhatsApp" como antes.';
     if (!window.confirm(texto)) return;
     setCambiandoBandera(true);
