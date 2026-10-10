@@ -22,12 +22,12 @@ export const MENSAJES_PEDIDO = {
   ...MENSAJES_SOLICITUD,
   estado: 'Elige el estado donde buscas la pieza.',
   whatsapp: 'Escribe tu WhatsApp a 10 dígitos (ej. 664 123 4567).',
-  limiteWhatsapp: `Ya enviaste ${MAX_PEDIDOS_POR_WHATSAPP_DIA} pedidos hoy con este WhatsApp. Intenta mañana.`,
-  limiteIp: 'Enviaste muchos pedidos seguidos. Espera un rato y vuelve a intentar.',
+  limiteWhatsapp: `Ya enviaste ${MAX_PEDIDOS_POR_WHATSAPP_DIA} alertas hoy con este WhatsApp. Intenta mañana.`,
+  limiteIp: 'Enviaste muchas alertas seguidas. Espera un rato y vuelve a intentar.',
   limiteConsultas: 'Demasiadas consultas seguidas. Espera un momento.',
   noDisponible: 'Esta función no está disponible por ahora.',
   noEncontrado: 'No encontramos este pedido. Revisa que el enlace esté completo.',
-  guardarFallo: 'No pudimos enviar tu pedido. Revisa tu conexión e intenta de nuevo.',
+  guardarFallo: 'No pudimos enviar tu alerta. Revisa tu conexión e intenta de nuevo.',
   solicitudInvalida: 'Solicitud inválida.',
 } as const;
 
@@ -117,7 +117,7 @@ export function enlaceMiPedido(origen: string, id: string, codigo: string): stri
 // wa.me hacia el propio número del cliente, con su enlace ya escrito (para guardarlo).
 export function enlaceGuardarPorWhatsapp(whatsapp: string, enlace: string): string {
   const numero = normalizarWhatsapp(whatsapp) ?? '';
-  const texto = `Mi pedido de pieza en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`;
+  const texto = `Mi alerta de búsqueda en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`;
   return `https://wa.me/52${numero}?text=${encodeURIComponent(texto)}`;
 }
 

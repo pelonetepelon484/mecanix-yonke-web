@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DIAS_VIGENCIA_PEDIDO, MENSAJES_PEDIDO, calcularExpiraAtPedido, enlaceGuardarPorWhatsapp, enlaceMiPedido, esCodigo, esIdPedido, estaVencido,
+  DIAS_VIGENCIA_PEDIDO, MAX_PEDIDOS_POR_WHATSAPP_DIA, MENSAJES_PEDIDO, calcularExpiraAtPedido, enlaceGuardarPorWhatsapp, enlaceMiPedido, esCodigo, esIdPedido, estaVencido,
   estadoVisible, mensajeAvisoAdmin, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
   validarPedidoCliente,
 } from './pedidosClientes';
@@ -95,6 +95,13 @@ describe('lo que sale hacia afuera', () => {
     const wa = enlaceGuardarPorWhatsapp('+52 664 123 4567', enlace);
     expect(wa.startsWith('https://wa.me/526641234567?text=')).toBe(true);
     expect(decodeURIComponent(wa)).toContain(enlace);
+    expect(decodeURIComponent(wa)).toContain(`text=Mi alerta de búsqueda en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`);
+  });
+  it('mensajes de error que ve el cliente hablan de "alertas" y usan el límite real', () => {
+    expect(MENSAJES_PEDIDO.limiteWhatsapp).toBe(`Ya enviaste ${MAX_PEDIDOS_POR_WHATSAPP_DIA} alertas hoy con este WhatsApp. Intenta mañana.`);
+    expect(MENSAJES_PEDIDO.limiteWhatsapp).toBe('Ya enviaste 3 alertas hoy con este WhatsApp. Intenta mañana.');
+    expect(MENSAJES_PEDIDO.limiteIp).toBe('Enviaste muchas alertas seguidas. Espera un rato y vuelve a intentar.');
+    expect(MENSAJES_PEDIDO.guardarFallo).toBe('No pudimos enviar tu alerta. Revisa tu conexión e intenta de nuevo.');
   });
   it('contadores del panel admin: abiertos (sin vencidos), con y sin respuestas, cerrados en 7 días', () => {
     const ahora = new Date('2026-10-08T12:00:00Z');

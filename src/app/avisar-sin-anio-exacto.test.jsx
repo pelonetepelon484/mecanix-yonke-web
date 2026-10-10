@@ -113,7 +113,7 @@ describe('"Avisar a los yonkes" cuando no hay el año exacto', () => {
     config = { habilitado: true };
     const { AvisarYonkes } = await cargar();
     render(<AvisarYonkes />);
-    expect(await screen.findByText('¿No la encontraste? Avísale a los yonkes de tu estado y te responden con precio.')).toBeInTheDocument();
+    expect(await screen.findByText('¿No la encontraste? Activa una alerta de búsqueda y los yonkes de tu estado te responden con precio si la tienen.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: BOTON })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /📣/ })).not.toBeInTheDocument();
   });
