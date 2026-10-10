@@ -84,7 +84,7 @@ export default function AvisarYonkes({
     const nombreEstado = estados.find((e) => e.id === estado)?.nombre || estado;
     return (
       <div style={caja}>
-        <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px' }}>✅ ¡Listo! Los yonkes de {nombreEstado} ya ven tu pedido.</p>
+        <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px' }}>✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de {nombreEstado} la ven en su panel.</p>
         <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
           Guarda este enlace: ahí verás las respuestas con precio, y tú decides a quién escribirle. Vence en 5 días.
         </p>
@@ -133,10 +133,10 @@ export default function AvisarYonkes({
         <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>Aviso de privacidad</a>
       </p>
       {error && <p role="alert" style={{ margin: '0 0 10px', fontSize: '13px', color: '#B3261E' }}>{error}</p>}
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" onClick={() => setAbierto(false)} style={{ ...boton, flex: 1, backgroundColor: '#EEF1F5', color: '#333' }}>Cancelar</button>
-        <button type="button" onClick={enviar} disabled={enviando} style={{ ...boton, flex: 1, backgroundColor: '#1A3C5E', opacity: enviando ? 0.6 : 1 }}>
-          {enviando ? 'Enviando...' : 'Enviar pedido'}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => setAbierto(false)} style={{ ...botonFila, backgroundColor: '#EEF1F5', color: '#333' }}>Cancelar</button>
+        <button type="button" onClick={enviar} disabled={enviando} style={{ ...botonFila, backgroundColor: '#1A3C5E', opacity: enviando ? 0.6 : 1 }}>
+          {enviando ? 'Enviando...' : '🚨 Enviar alerta'}
         </button>
       </div>
       {/* Solo enlaces, no una casilla de aceptación. URLs absolutas igual que en el registro de yonkes. */}
@@ -158,5 +158,9 @@ const boton = { width: '100%', padding: '12px', borderRadius: '50px', border: 'n
 const botonAlerta = { ...boton, backgroundColor: '#E8720C', padding: '12px 8px', fontSize: 'clamp(12px, 3.7vw, 15px)', whiteSpace: 'nowrap' };
 // Título del formulario abierto = mismo texto del botón, con el mismo ajuste para que quepa en celular.
 const tituloFormulario = { margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E', fontSize: 'clamp(12px, 3.7vw, 15px)', whiteSpace: 'nowrap' };
+// "Cancelar" y "🚨 Enviar alerta" lado a lado y en una línea aun en celulares de 320 px (medido con
+// Chromium dentro de la tarjeta del buscador con IA, el lugar más angosto): cada botón toma el ancho
+// de su texto y reparten el sobrante; si algún día no cupieran, se acomodan uno arriba del otro.
+const botonFila = { ...boton, width: 'auto', flex: '1 1 auto', padding: '12px 8px', fontSize: 'clamp(12px, 3.7vw, 14px)', whiteSpace: 'nowrap' };
 const etiqueta = { display: 'block', fontSize: '12px', color: '#555', margin: '0 0 4px', fontWeight: 'bold' };
 const input = { width: '100%', boxSizing: 'border-box', padding: '11px', fontSize: '15px', borderRadius: '10px', border: '1px solid #CCC', marginBottom: '10px', backgroundColor: '#fff' };

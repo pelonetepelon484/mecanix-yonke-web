@@ -59,10 +59,17 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     expect(screen.getByRole('link', { name: 'aviso de privacidad' })).toHaveAttribute('href', 'https://mecanixyonkevirtual.com/privacidad#pedidos-clientes');
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText('¿En qué estado la buscas?')).toHaveValue('sonora'));
+    // "Cancelar" y "🚨 Enviar alerta" lado a lado, cada uno en una sola línea (cabe en celular de 320 px).
+    for (const nombre of ['Cancelar', '🚨 Enviar alerta']) {
+      const b = screen.getByRole('button', { name: nombre });
+      expect(b.style.whiteSpace).toBe('nowrap');
+      expect(b.style.fontSize).toBe('clamp(12px, 3.7vw, 14px)');
+    }
+    expect(screen.queryByRole('button', { name: 'Enviar pedido' })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '664 123 4567' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar pedido' }));
+    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
 
-    expect(await screen.findByText(/Los yonkes de Sonora ya ven tu pedido/)).toBeInTheDocument();
+    expect(await screen.findByText('✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de Sonora la ven en su panel.')).toBeInTheDocument();
     const [url, opciones] = global.fetch.mock.calls[0];
     expect(url).toBe('/api/pedir-pieza');
     expect(JSON.parse(opciones.body)).toEqual({
@@ -78,11 +85,11 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     const AvisarYonkes = await cargar();
     render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
     fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar pedido' }));
+    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/WhatsApp a 10 dígitos/);
     expect(global.fetch).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar pedido' }));
+    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
     expect(await screen.findByText(/Ya enviaste 3 pedidos hoy/)).toBeInTheDocument();
   });
 });
