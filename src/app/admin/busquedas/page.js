@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, limit, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { filtroBusquedasConfiables } from '../../lib/busqueda/corteBusquedasConfiables';
+import { formatearFechaTijuana as formatearFecha } from './mapa/fechas';
+import { TODOS_LOS_ESTADOS, filasSinInventario, opcionesEstado } from './piezasSinInventario';
 
 const ESTADOS = [
   { key: 'ok', label: 'Con resultados', color: '#2E7D32' },
@@ -14,11 +16,6 @@ const ESTADOS = [
   { key: 'fuera_de_giro', label: 'Fuera de giro', color: '#C62828' },
   { key: 'no_interpretada', label: 'No interpretada', color: '#C62828' },
 ];
-
-function formatearFecha(fecha) {
-  const f = fecha?.toDate ? fecha.toDate() : new Date(fecha);
-  return f.toLocaleString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
 
 function agruparPorClave(docs, obtenerClave) {
   const mapa = new Map();
@@ -58,6 +55,8 @@ export default function AdminBusquedasPage() {
   const [totalMx, setTotalMx] = useState(0);
   const [totalFueraDeMexico, setTotalFueraDeMexico] = useState(0);
   const [vista, setVista] = useState('mexico'); // 'mexico' (default) | 'todo'
+  // Filtro por estado de "Piezas sin inventario" (desde dónde se conectó el cliente).
+  const [estadoSinInventario, setEstadoSinInventario] = useState(TODOS_LOS_ESTADOS);
   // Se guardan los docs CRUDOS (no ya agrupados) para poder re-filtrar por país en el cliente
   // cuando cambia `vista`, sin volver a leer Firestore — ver filtrarPorVista/agruparPorClave más
   // abajo, calculados en cada render a partir de estos arreglos.
@@ -129,10 +128,9 @@ export default function AdminBusquedasPage() {
     filtrarPorVista(docsFueraCatalogo, vista),
     (d) => `${d.marca || '?'} ${d.modelo || ''}`.trim(),
   );
-  const tablaSinInventario = agruparPorClave(
-    filtrarPorVista(docsSinInventario, vista),
-    (d) => `${d.pieza || '?'} — ${d.marca || '?'} ${d.modelo || ''}`.trim(),
-  );
+  const docsSinInventarioVista = filtrarPorVista(docsSinInventario, vista);
+  const opcionesSinInventario = opcionesEstado(docsSinInventarioVista, estadoSinInventario);
+  const tablaSinInventario = filasSinInventario(docsSinInventarioVista, estadoSinInventario);
   const tablaFueraDeGiro = filtrarPorVista(docsFueraDeGiro, vista);
   const tablaNoInterpretadas = filtrarPorVista(docsNoInterpretadas, vista);
 
@@ -263,9 +261,24 @@ export default function AdminBusquedasPage() {
 
             <Tabla
               titulo="Piezas sin inventario más buscadas"
-              subtitulo="Candidatos a inventariar"
-              columnas={['Pieza / vehículo', 'Veces buscado', 'Última vez']}
-              filas={tablaSinInventario.map((r) => [r.clave, r.conteo, formatearFecha(r.ultima)])}
+              subtitulo="Candidatos a inventariar — estado = desde dónde se conectó el cliente"
+              controles={(
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#1A3C5E', fontWeight: '600', margin: '0 0 10px' }}>
+                  Estado:
+                  <select
+                    value={estadoSinInventario}
+                    onChange={(e) => setEstadoSinInventario(e.target.value)}
+                    style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '13px', backgroundColor: '#fff', maxWidth: '100%' }}
+                  >
+                    <option value={TODOS_LOS_ESTADOS}>Todos</option>
+                    {opcionesSinInventario.map((o) => (
+                      <option key={o.clave} value={o.clave}>{o.nombre} ({o.conteo})</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              columnas={['Pieza / vehículo', 'Veces buscado', 'Última vez', 'Estados']}
+              filas={tablaSinInventario.map((r) => [r.clave, r.conteo, formatearFecha(r.ultima), r.textoEstados])}
             />
 
             <Tabla
@@ -302,11 +315,12 @@ function MetricaCard({ label, valor, pct, color }) {
   );
 }
 
-function Tabla({ titulo, subtitulo, columnas, filas }) {
+function Tabla({ titulo, subtitulo, controles = null, columnas, filas }) {
   return (
     <div style={{ marginBottom: '28px' }}>
       <h2 style={{ color: '#1A3C5E', fontSize: '15px', margin: '0 0 2px' }}>{titulo}</h2>
       <p style={{ color: '#888', fontSize: '12px', margin: '0 0 10px' }}>{subtitulo}</p>
+      {controles}
       <div style={{ overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#fff' }}>
           <thead>
