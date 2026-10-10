@@ -73,6 +73,17 @@ export function crearManejadores(deps) {
     return limiteEnMemoria(deps.claveLimite('lectura', obtenerIp(request), ventana), MAX_CONSULTAS_POR_IP_MINUTO, ventana);
   }
 
+  // Segunda bandera (config/pedidosClientes.otrosEstados): sin ella, la alerta se guarda igual
+  // que siempre, sin el campo aceptaOtrosEstados, aunque el navegador lo mande.
+  async function otrosEstadosHabilitados(db) {
+    try {
+      return deps.otrosEstados ? (await deps.otrosEstados(db)) === true : false;
+    } catch (error) {
+      console.error('[pedidosClientes] No se pudo leer la bandera otrosEstados', { message: error?.message });
+      return false;
+    }
+  }
+
   async function nombreDeEstado(id) {
     const estados = await deps.estados();
     return estados.find((e) => e.id === id)?.nombre || id;
@@ -115,10 +126,12 @@ export function crearManejadores(deps) {
 
     const codigo = deps.generarCodigo();
     const expiraAt = calcularExpiraAtPedido(deps.ahora());
+    // Casilla "Acepto que me contacten yonkes de otros estados que hagan envíos" (sin marcar = false).
+    const otrosEstados = (await otrosEstadosHabilitados(db)) ? { aceptaOtrosEstados: body?.aceptaOtrosEstados === true } : {};
     let id;
     try {
       id = await deps.crearPedido(db, {
-        pedido: { vehiculo: datos.vehiculo, pieza: datos.pieza, estado: datos.estado, expiraAt },
+        pedido: { vehiculo: datos.vehiculo, pieza: datos.pieza, estado: datos.estado, expiraAt, ...otrosEstados },
         privado: { clienteWhatsapp: whatsapp, codigoHash: deps.hashCodigo(codigo), expiraAt },
       });
     } catch (error) {
@@ -155,6 +168,13 @@ export function crearManejadores(deps) {
       if (!pedido) return noEncontrado();
       const respuestas = await deps.leerRespuestas(db, id);
       const yonkes = await deps.leerYonkes(db, [...new Set(respuestas.map((r) => r.yonkeId))]);
+      // Estado de cada yonke que respondió (ya viene en su documento: sin lecturas extra).
+      const estados = await deps.estados();
+      const conEstado = (r) => ({
+        ...r,
+        estadoYonkeNombre: estados.find((e) => e.id === r.estadoYonke)?.nombre || r.estadoYonke,
+        otroEstado: r.estadoYonke !== '' && r.estadoYonke !== pedido.estado,
+      });
       return json({
         ok: true,
         pedido: {
@@ -164,7 +184,7 @@ export function crearManejadores(deps) {
           vence: pedido.expiraAt?.toDate ? pedido.expiraAt.toDate().toISOString() : null,
           vencido: estaVencido(pedido.expiraAt, deps.ahora()),
         },
-        respuestas: ordenarRespuestas(respuestas.map((r) => respuestaParaCliente(r, yonkes[r.yonkeId]))),
+        respuestas: ordenarRespuestas(respuestas.map((r) => conEstado(respuestaParaCliente(r, yonkes[r.yonkeId])))),
       });
     } catch (error) {
       console.error('[pedidosClientes] No se pudo leer el pedido', { code: error?.code, message: error?.message });
@@ -186,7 +206,7 @@ export function crearManejadores(deps) {
         if (!esIdPedido(idPedido)) return noEncontrado();
         const d = await deps.leerPedido(db, idPedido);
         if (!d || d.estadoPedido !== 'abierta' || estaVencido(d.expiraAt, deps.ahora())) return noEncontrado();
-        return json({ ok: true, pedido: { ...pedidoPublico(idPedido, d), estadoNombre: await nombreDeEstado(d.estado) } });
+        return json({ ok: true, pedido: { ...pedidoPublico(idPedido, d), estadoNombre: await nombreDeEstado(d.estado), aceptaOtrosEstados: d.aceptaOtrosEstados === true } });
       }
 
       const estado = params.get('estado') || '';

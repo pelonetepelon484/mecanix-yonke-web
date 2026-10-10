@@ -93,4 +93,45 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
     expect(await screen.findByText('Ya enviaste 3 alertas hoy con este WhatsApp. Intenta mañana.')).toBeInTheDocument();
   });
+
+  describe('casilla de otros estados', () => {
+    const CASILLA = { name: 'Acepto que me contacten yonkes de otros estados que hagan envíos' };
+    const enviar = async () => {
+      fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
+      fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      return JSON.parse(global.fetch.mock.calls[0][1].body);
+    };
+    const exito = () => vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, id: 'X', enlace: 'https://m.test/mi-pedido/X?c=COD' }) }));
+
+    it('sin la segunda bandera: no aparece y no se manda nada nuevo (igual que hoy)', async () => {
+      config = { habilitado: true };
+      global.fetch = exito();
+      const AvisarYonkes = await cargar();
+      render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+      expect(Object.keys(await enviar())).not.toContain('aceptaOtrosEstados');
+      expect(getDoc).toHaveBeenCalledTimes(1); // las dos banderas salen de la misma lectura
+    });
+    it('con la segunda bandera: aparece SIN marcar y manda false', async () => {
+      config = { habilitado: true, otrosEstados: true };
+      global.fetch = exito();
+      const AvisarYonkes = await cargar();
+      render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      expect(await screen.findByRole('checkbox', CASILLA)).not.toBeChecked();
+      expect((await enviar()).aceptaOtrosEstados).toBe(false);
+    });
+    it('marcada: manda true', async () => {
+      config = { habilitado: true, otrosEstados: true };
+      global.fetch = exito();
+      const AvisarYonkes = await cargar();
+      render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('checkbox', CASILLA));
+      expect((await enviar()).aceptaOtrosEstados).toBe(true);
+    });
+  });
 });
+

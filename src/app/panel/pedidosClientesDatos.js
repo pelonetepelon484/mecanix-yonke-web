@@ -3,7 +3,7 @@
 // Acceso a Firestore para el lado del yonke en el pedido de pieza de clientes sin cuenta.
 // Las reglas (firestore.rules, pedidosClientes) son la protección real: el yonke solo ve
 // vehículo, pieza y estado, nunca el WhatsApp del cliente (vive en privado/contacto).
-import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 // Bandera de la función: sin config/pedidosClientes, o con habilitado != true, quien llama no
@@ -26,6 +26,30 @@ export function escucharPedidosClientesAbiertos(estado, cb) {
     q,
     (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => !vencido(p))),
     (error) => console.error('[pedidosClientes] No se pudo escuchar los pedidos (¿falta el índice?)', error),
+  );
+}
+
+// ---------- Alertas de otros estados (quién puede: puedeVerOtrosEstados en lib/pedidosClientes) ----------
+// Evento del navegador para que el contador del botón "Pedidos" se entere al cambiar el interruptor.
+export const EVENTO_OTROS_ESTADOS = 'mecanix:ver-alertas-otros-estados';
+
+export async function guardarVerOtrosEstados(yonkeId, valor) {
+  await updateDoc(doc(db, 'yonkes', yonkeId), { verAlertasOtrosEstados: valor === true });
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(EVENTO_OTROS_ESTADOS));
+}
+
+// Alertas abiertas que aceptan otros estados, de TODOS los estados (quien llama quita las de su
+// propio estado, que ya vienen en la otra lista). La regla exige estos dos filtros.
+// Índice: aceptaOtrosEstados + estadoPedido + creadoAt desc.
+export function escucharPedidosClientesOtrosEstados(cb) {
+  const q = query(
+    collection(db, 'pedidosClientes'),
+    where('aceptaOtrosEstados', '==', true), where('estadoPedido', '==', 'abierta'), orderBy('creadoAt', 'desc'), limit(50),
+  );
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => !vencido(p))),
+    (error) => console.error('[pedidosClientes] No se pudo escuchar las alertas de otros estados (¿falta el índice?)', error),
   );
 }
 

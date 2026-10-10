@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './AuthContext';
 import { escucharSolicitudesAbiertas, leerConfigSolicitudesPiezas, leerYonkeEstadoActivo } from './solicitudesPiezasDatos';
-import { escucharPedidosClientesAbiertos, leerConfigPedidosClientes } from './pedidosClientesDatos';
+import {
+  EVENTO_OTROS_ESTADOS, escucharPedidosClientesAbiertos, escucharPedidosClientesOtrosEstados, leerConfigPedidosClientes,
+} from './pedidosClientesDatos';
+import { puedeVerOtrosEstados } from '../../lib/pedidosClientes';
 
 const TABS = [
   { path: '/panel/inventario', icon: '🚗', label: 'Inventario' },
@@ -39,22 +42,43 @@ function useConteoSolicitudes(yonkeId) {
 }
 
 // Mismo conteo para los pedidos de clientes sin cuenta (pedidosClientes), con su propia bandera:
-// sin config/pedidosClientes no se hace ninguna otra lectura.
+// sin config/pedidosClientes no se hace ninguna otra lectura. Suma las alertas de otros estados
+// que aceptan envío SOLO con el interruptor del yonke encendido (y la segunda bandera, Verificado
+// y envíos nacionales); al cambiar el interruptor en Pedidos, se vuelve a calcular.
 function useConteoPedidosClientes(yonkeId) {
   const [conteo, setConteo] = useState(0);
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    const alCambiar = () => setVersion((v) => v + 1);
+    window.addEventListener(EVENTO_OTROS_ESTADOS, alCambiar);
+    return () => window.removeEventListener(EVENTO_OTROS_ESTADOS, alCambiar);
+  }, []);
   useEffect(() => {
     if (!yonkeId) return;
     let cancelado = false;
-    let dejarDeEscuchar = null;
+    const dejarDeEscuchar = [];
     leerConfigPedidosClientes().then((config) => {
       if (cancelado || config?.habilitado !== true) return;
-      leerYonkeEstadoActivo(yonkeId).then(({ estado, activo }) => {
+      leerYonkeEstadoActivo(yonkeId).then((yonke) => {
+        const { estado, activo } = yonke;
         if (cancelado || !activo || !estado) return;
-        dejarDeEscuchar = escucharPedidosClientesAbiertos(estado, (lista) => { if (!cancelado) setConteo(lista.length); });
+        const conOtros = puedeVerOtrosEstados(config, yonke) && yonke.verAlertasOtrosEstados === true;
+        let propias = 0;
+        let otras = 0;
+        const actualizar = () => { if (!cancelado) setConteo(propias + otras); };
+        dejarDeEscuchar.push(escucharPedidosClientesAbiertos(estado, (lista) => { propias = lista.length; actualizar(); }));
+        if (conOtros) {
+          dejarDeEscuchar.push(escucharPedidosClientesOtrosEstados((lista) => {
+            otras = lista.filter((p) => p.estado !== estado).length;
+            actualizar();
+          }));
+        } else {
+          actualizar();
+        }
       });
     }).catch(() => {});
-    return () => { cancelado = true; if (dejarDeEscuchar) dejarDeEscuchar(); };
-  }, [yonkeId]);
+    return () => { cancelado = true; dejarDeEscuchar.forEach((f) => f()); };
+  }, [yonkeId, version]);
   return conteo;
 }
 

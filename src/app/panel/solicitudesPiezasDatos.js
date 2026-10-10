@@ -18,9 +18,14 @@ export async function leerConfigSolicitudesPiezas() {
 // solicitudes; nombre y whatsapp son los que se mandan al responder (los exige la regla).
 export async function leerYonkeEstadoActivo(yonkeId) {
   const snap = await getDoc(doc(db, 'yonkes', yonkeId));
-  if (!snap.exists()) return { estado: null, activo: false, nombre: '', whatsapp: '' };
+  if (!snap.exists()) return { estado: null, activo: false, nombre: '', whatsapp: '', verificado: false, enviosNacionales: false, verAlertasOtrosEstados: false };
   const d = snap.data();
-  return { estado: d.estado || null, activo: d.activo === true, nombre: d.nombre || '', whatsapp: d.whatsapp || '' };
+  return {
+    estado: d.estado || null, activo: d.activo === true, nombre: d.nombre || '', whatsapp: d.whatsapp || '',
+    // Para las alertas de otros estados (pedidosClientes): verificado y enviosNacionales los pone
+    // el admin; verAlertasOtrosEstados es el interruptor del propio yonke.
+    verificado: d.verificado === true, enviosNacionales: d.enviosNacionales === true, verAlertasOtrosEstados: d.verAlertasOtrosEstados === true,
+  };
 }
 
 const solicitudesRef = () => collection(db, 'solicitudesPiezas');

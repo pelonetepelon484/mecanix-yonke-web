@@ -8,15 +8,25 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-let bandera = null;
+let config = null;
+
+function leerConfig() {
+  if (!config) {
+    config = getDoc(doc(db, 'config', 'pedidosClientes'))
+      .then((snap) => (snap.exists() ? snap.data() : {}))
+      .catch(() => ({}));
+  }
+  return config;
+}
 
 export function leerBanderaPedidosClientes() {
-  if (!bandera) {
-    bandera = getDoc(doc(db, 'config', 'pedidosClientes'))
-      .then((snap) => snap.exists() && snap.data().habilitado === true)
-      .catch(() => false);
-  }
-  return bandera;
+  return leerConfig().then((c) => c.habilitado === true);
+}
+
+// Segunda bandera (config/pedidosClientes.otrosEstados): casilla "yonkes de otros estados que
+// hagan envíos" en el formulario. Mismo documento y misma lectura que la primera; exige las dos.
+export function leerBanderaOtrosEstados() {
+  return leerConfig().then((c) => c.habilitado === true && c.otrosEstados === true);
 }
 
 export function useBanderaPedidosClientes() {

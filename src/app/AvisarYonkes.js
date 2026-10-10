@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
 import { ESTADO_DEFAULT, cargarEstados } from './lib/estados';
-import { leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
+import { leerBanderaOtrosEstados, leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
 import { MENSAJES_PEDIDO, enlaceGuardarPorWhatsapp, validarPedidoCliente } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
@@ -31,6 +31,9 @@ export default function AvisarYonkes({
   const [pieza, setPieza] = useState(piezaInicial);
   const [estado, setEstado] = useState(estadoInicial || ESTADO_DEFAULT);
   const [whatsapp, setWhatsapp] = useState('');
+  // Casilla de otros estados: solo existe con config/pedidosClientes.otrosEstados encendida.
+  const [otrosEstadosActivo, setOtrosEstadosActivo] = useState(false);
+  const [aceptaOtrosEstados, setAceptaOtrosEstados] = useState(false);
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enlace, setEnlace] = useState('');
@@ -38,6 +41,7 @@ export default function AvisarYonkes({
   useEffect(() => {
     let cancelado = false;
     leerBanderaPedidosClientes().then((v) => { if (!cancelado) setHabilitado(v); });
+    leerBanderaOtrosEstados().then((v) => { if (!cancelado) setOtrosEstadosActivo(v); });
     return () => { cancelado = true; };
   }, []);
 
@@ -61,7 +65,7 @@ export default function AvisarYonkes({
       const res = await fetch('/api/pedir-pieza', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datos),
+        body: JSON.stringify(otrosEstadosActivo ? { ...datos, aceptaOtrosEstados } : datos),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
@@ -128,6 +132,12 @@ export default function AvisarYonkes({
       </select>
       <label style={etiqueta} htmlFor="avisar-whatsapp">Tu WhatsApp</label>
       <input id="avisar-whatsapp" type="tel" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="10 dígitos" autoComplete="tel" style={input} />
+      {otrosEstadosActivo && (
+        <label htmlFor="avisar-otros-estados" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.4', cursor: 'pointer' }}>
+          <input id="avisar-otros-estados" type="checkbox" checked={aceptaOtrosEstados} onChange={(e) => setAceptaOtrosEstados(e.target.checked)} style={{ marginTop: '2px', width: '18px', height: '18px', flexShrink: 0 }} />
+          Acepto que me contacten yonkes de otros estados que hagan envíos
+        </label>
+      )}
       <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#555', lineHeight: '1.5' }}>
         Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes.{' '}
         <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>Aviso de privacidad</a>

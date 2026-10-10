@@ -5,24 +5,25 @@ import { MAX_AVISOS_ADMIN_HORA, MAX_CONSULTAS_POR_IP_MINUTO, MAX_PEDIDOS_POR_IP_
 
 // Firestore falso en memoria: mismas funciones que servicio.js, sin red.
 const ts = (fecha) => ({ toDate: () => fecha });
-function crearFalsos({ habilitado = true, obtenerDb } = {}) {
+function crearFalsos({ habilitado = true, otrosEstados, obtenerDb } = {}) {
   let ahora = new Date('2026-10-08T18:00:00Z');
   const contadores = new Map();
   const pedidos = new Map();
   const privados = new Map();
   const respuestas = new Map();
-  const yonkes = { Y1: { nombre: 'El Güero', verificado: true }, Y2: { nombre: 'Nuevo' } };
+  const yonkes = { Y1: { nombre: 'El Güero', verificado: true, estado: 'baja-california' }, Y2: { nombre: 'Nuevo' }, YJ: { nombre: 'Yonke Jalisco', verificado: true, estado: 'jalisco' } };
   let n = 0;
   const deps = {
     obtenerDb: obtenerDb ?? vi.fn(async () => ({ falso: true })),
     habilitado: vi.fn(async () => habilitado),
+    ...(otrosEstados === undefined ? {} : { otrosEstados: typeof otrosEstados === 'function' ? otrosEstados : vi.fn(async () => otrosEstados) }),
     contar: vi.fn(async (_db, clave, max) => {
       const c = contadores.get(clave) || 0;
       if (c >= max) return false;
       contadores.set(clave, c + 1);
       return true;
     }),
-    estados: async () => [{ id: 'baja-california', nombre: 'Baja California' }, { id: 'sonora', nombre: 'Sonora' }],
+    estados: async () => [{ id: 'baja-california', nombre: 'Baja California' }, { id: 'sonora', nombre: 'Sonora' }, { id: 'jalisco', nombre: 'Jalisco' }],
     crearPedido: vi.fn(async (_db, { pedido, privado }) => {
       n += 1;
       const id = `Pedido${String(n).padStart(14, '0')}`;
@@ -266,3 +267,46 @@ describe('GET /api/pedidos-abiertos', () => {
     expect((await m.pedidosAbiertos(get(`/api/pedidos-abiertos?pedido=${id}`))).status).toBe(404);
   });
 });
+
+describe('alertas de otros estados (aceptaOtrosEstados)', () => {
+  it('segunda bandera apagada: la alerta se guarda igual que siempre, sin el campo, aunque el navegador lo mande', async () => {
+    for (const otrosEstados of [undefined, false, () => { throw new Error('sin red'); }]) {
+      const { deps, pedidos } = crearFalsos({ otrosEstados });
+      const { id } = await crearUno(crearManejadores(deps), { aceptaOtrosEstados: true });
+      expect(Object.keys(pedidos.get(id))).not.toContain('aceptaOtrosEstados');
+    }
+  });
+  it('segunda bandera encendida: guarda true solo si marcó la casilla; sin marcar (o basura) = false', async () => {
+    const { deps, pedidos } = crearFalsos({ otrosEstados: true });
+    const m = crearManejadores(deps);
+    const casos = [[{ aceptaOtrosEstados: true }, true], [{ aceptaOtrosEstados: false }, false], [{}, false], [{ aceptaOtrosEstados: 'true' }, false]];
+    for (const [extra, esperado] of casos) {
+      const { id } = await crearUno(m, { ...extra, whatsapp: `664 000 00${String(casos.findIndex((c) => c[0] === extra)).padStart(2, '0')}` });
+      expect(pedidos.get(id).aceptaOtrosEstados).toBe(esperado);
+    }
+  });
+  it('/mi-pedido: cada respuesta trae el estado del yonke y si es de otro estado (sin el WhatsApp del cliente)', async () => {
+    const { deps, respuestas } = crearFalsos({ otrosEstados: true });
+    const m = crearManejadores(deps);
+    const { id, codigo } = await crearUno(m, { aceptaOtrosEstados: true });
+    respuestas.set(id, [
+      { yonkeId: 'Y1', yonkeNombre: 'El Güero', tieneLaPieza: true, precio: 1500, nota: '', whatsapp: '6641111111' },
+      { yonkeId: 'YJ', yonkeNombre: 'Yonke Jalisco', tieneLaPieza: true, precio: 1400, nota: '', whatsapp: '3331111111' },
+      { yonkeId: 'Y2', yonkeNombre: 'Nuevo', tieneLaPieza: false, nota: '', whatsapp: '6642222222' },
+    ]);
+    const data = await (await m.miPedido(get(`/api/mi-pedido/${id}?c=${codigo}`), id)).json();
+    expect(data.respuestas.map((r) => [r.yonkeNombre, r.estadoYonkeNombre, r.otroEstado])).toEqual([
+      ['Yonke Jalisco', 'Jalisco', true], ['El Güero', 'Baja California', false], ['Nuevo', '', false],
+    ]);
+    expect(JSON.stringify(data)).not.toContain('6641234567');
+  });
+  it('/pedidos-abiertos?pedido={id} dice si la alerta acepta otros estados (para el mensaje del panel)', async () => {
+    const { deps } = crearFalsos({ otrosEstados: true });
+    const m = crearManejadores(deps);
+    const { id } = await crearUno(m, { aceptaOtrosEstados: true });
+    const { id: id2 } = await crearUno(m, { whatsapp: '664 555 5555' });
+    expect((await (await m.pedidosAbiertos(get(`/api/pedidos-abiertos?pedido=${id}`))).json()).pedido.aceptaOtrosEstados).toBe(true);
+    expect((await (await m.pedidosAbiertos(get(`/api/pedidos-abiertos?pedido=${id2}`))).json()).pedido.aceptaOtrosEstados).toBe(false);
+  });
+});
+

@@ -89,8 +89,9 @@ export function pedidoPublico(id: string, d: PedidoDoc) {
 
 type RespuestaDoc = { yonkeId: string; yonkeNombre: string; tieneLaPieza: boolean; precio?: number; nota?: string; whatsapp?: string; creadoAt?: unknown };
 
-// Respuesta tal como la ve el cliente. "verificado" se toma del yonke en vivo (lo pone el admin).
-export function respuestaParaCliente(r: RespuestaDoc, yonke: { verificado?: unknown } | null | undefined) {
+// Respuesta tal como la ve el cliente. "verificado" y el estado del yonke se toman del yonke en
+// vivo (verificado lo pone el admin). estadoYonke: id del estado (mismo esquema que pedido.estado).
+export function respuestaParaCliente(r: RespuestaDoc, yonke: { verificado?: unknown; estado?: unknown } | null | undefined) {
   return {
     yonkeNombre: r.yonkeNombre,
     tieneLaPieza: r.tieneLaPieza === true,
@@ -98,8 +99,25 @@ export function respuestaParaCliente(r: RespuestaDoc, yonke: { verificado?: unkn
     nota: typeof r.nota === 'string' ? r.nota : '',
     whatsapp: typeof r.whatsapp === 'string' ? r.whatsapp : '',
     verificado: yonke?.verificado === true,
+    estadoYonke: typeof yonke?.estado === 'string' ? yonke.estado : '',
     creadoAt: aFecha(r.creadoAt)?.toISOString() ?? null,
   };
+}
+
+// Alertas de otros estados: con config/pedidosClientes.otrosEstados, el yonke activo, Verificado
+// y con envíos nacionales (los dos últimos los pone el admin) ve el interruptor "Ver también
+// alertas de otros estados con envío". Las reglas de Firestore exigen lo mismo.
+export function puedeVerOtrosEstados(
+  config: { habilitado?: unknown; otrosEstados?: unknown } | null | undefined,
+  yonke: { activo?: unknown; verificado?: unknown; enviosNacionales?: unknown } | null | undefined,
+): boolean {
+  return config?.habilitado === true && config?.otrosEstados === true
+    && yonke?.activo === true && yonke?.verificado === true && yonke?.enviosNacionales === true;
+}
+
+// Aviso debajo de una respuesta de un yonke de otro estado (alerta que aceptó envíos).
+export function avisoEnvioOtroEstado(estadoNombre: string): string {
+  return `📦 Te la enviaría un yonke de ${estadoNombre}. Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Confirma por WhatsApp cómo se hará el pago. Mecanix no vende ni cobra.`;
 }
 
 // Primero los que la tienen (más barato primero), luego los que no.
