@@ -1,4 +1,5 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
+import { compactarModelo, mismoModelo } from './modeloCompacto';
 
 // Modelos que el cliente nombra con un nombre comercial regional distinto al que normalmente
 // captura el yonke en su inventario (mismo vehículo, otro badge) — se revisan ADEMÁS del nombre
@@ -48,10 +49,11 @@ export async function buscarVehiculosPorAnio(dbInstancia, yonkesDocs, marca, mod
       // nuevos (auditoría 2026-09-24, "vehículos vendidos ya no se borran").
       if (data.disponible === false) return false;
       const marcaOk = marca == null || data.marca?.toLowerCase() === marca.trim().toLowerCase();
-      const modeloBuscado = modelo?.trim().toLowerCase();
-      const modeloDatoOk = modelo == null || data.modelo?.toLowerCase() === modeloBuscado;
+      // Modelo "en compacto" (modeloCompacto.js): "CR-V" del catálogo casa con "CRV", "Cr-V" o
+      // "cr v" capturados por el yonke, sin cambiar lo que está guardado.
+      const modeloDatoOk = modelo == null || mismoModelo(data.modelo, modelo);
       const modeloEquivalenteOk = modelo != null
-        && (MODELOS_EQUIVALENTES[modeloBuscado] || []).includes(data.modelo?.toLowerCase());
+        && (MODELOS_EQUIVALENTES[compactarModelo(modelo)] || []).some((e) => mismoModelo(e, data.modelo));
       return marcaOk && (modeloDatoOk || modeloEquivalenteOk);
     });
     for (const vDoc of coincidentes) {

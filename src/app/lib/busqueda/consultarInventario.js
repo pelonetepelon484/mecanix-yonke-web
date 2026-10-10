@@ -5,6 +5,7 @@ import { buscarVehiculosPorAnio } from '../buscarVehiculosPorAnio';
 import { estadoDeYonke } from './estadosServer';
 import { cilindradaCoincide } from './cilindrada';
 import { CATALOGO_BASE } from '../catalogoBase';
+import { mismoModelo } from '../modeloCompacto';
 import { toMillis } from '../../../lib/inventoryStatus';
 import { elegirPiezaParaPrecio, esPrecioValido } from '../../../lib/precio';
 
@@ -24,7 +25,7 @@ function existeEnCatalogoEstatico(marca, modelo) {
   const modelos = CATALOGO_BASE[marca];
   if (!modelos || modelos.length === 0) return false;
   if (modelo == null) return true;
-  return modelos.some((m) => m.toLowerCase() === modelo.toLowerCase());
+  return modelos.some((m) => mismoModelo(m, modelo));
 }
 
 // Filtro de estado, opcional y aditivo: sin `estado` (o 'todos') se devuelven TODOS los yonkes,
@@ -93,7 +94,7 @@ export async function existeEnCatalogoVivo(marca, modelo) {
   const modelos = catalogo[marca];
   if (!modelos || modelos.length === 0) return false;
   if (modelo == null) return true;
-  return modelos.some((m) => m.toLowerCase() === modelo.toLowerCase());
+  return modelos.some((m) => mismoModelo(m, modelo));
 }
 
 function toResultado(yonkeDoc, vDoc, calificacion) {

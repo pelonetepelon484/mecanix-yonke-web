@@ -6,6 +6,7 @@ import { PIEZAS_CATALOGO } from '../piezasCatalogo';
 import { distanciaLevenshtein, umbralMaximo, MIN_LARGO_PARA_DIFUSO, PALABRAS_EXCLUIDAS_DIFUSO } from './fuzzy';
 import { SINONIMOS_PALABRA, obtenerSinonimosCombinados, aplicarSinonimosFrases, tokenizar } from './sinonimosPiezas';
 import { debeMostrarAvisoPiezaSinVehiculo, piezaExentaDeVehiculo } from '../../../lib/piezaSinVehiculo';
+import { compactarModelo } from '../modeloCompacto';
 
 // Alias comunes de marcas — mismo espíritu que el mapa MARCAS de admin/page.js (migrarInventario).
 const ALIAS_MARCA = {
@@ -40,6 +41,16 @@ const MODELOS_RAM_EXCLUSIVOS = (CATALOGO_BASE['RAM'] || []).filter((modelo) => {
   const comoModeloDodge = `ram ${modelo}`.toLowerCase();
   return !(CATALOGO_BASE['Dodge'] || []).some((m) => m.toLowerCase() === comoModeloDodge);
 });
+
+// Nombres de modelo genéricos (en compacto): solo cuentan como modelo si la marca viene en el
+// texto. Sin marca, "pickup 1990 defensa" NO debe volverse Toyota (ni ninguna otra marca).
+const MODELOS_GENERICOS = new Set(['pickup', 'estacas']);
+
+// Búsqueda en compacto SIN marca: solo modelos de 4+ letras/números en compacto, más esta lista
+// corta de modelos populares de 3 que no chocan con otro modelo, con una palabra común, con una
+// pieza ni son solo números (revisado contra CATALOGO_BASE). Con marca en el texto aplica a todos.
+const MODELOS_3_SIN_MARCA = new Set(['crv', 'hrv', 'cx3', 'cx5', 'cx7', 'cx9', 'mx5', 's10', 'c10', 'k10', 'd21']);
+const MAX_PALABRAS_COMPACTO = 3;
 
 const DIACRITICOS_COMBINABLES = new RegExp('[\\u0300-\\u036f]', 'g');
 
@@ -99,6 +110,36 @@ function contieneSecuenciaTokens(tokensTexto, tokensModelo) {
   return false;
 }
 
+// Paso "en compacto" (ver modeloCompacto.js): junta 1 a 3 palabras seguidas del texto sin
+// separadores y las compara contra cada modelo también en compacto — "crv"/"cr v" = "CR-V",
+// "rav 4" = "RAV4", "f 150" = "F-150". Las ventanas más largas van primero. Nunca usa el año ni
+// una palabra de relleno ("a 4 cilindros" no es Audi A4). Solo devuelve coincidencias que NO son
+// ya una secuencia exacta de palabras del modelo (esas las resuelve el paso exacto, igual que
+// antes): así "silverado 1500" sigue igual que hoy.
+function buscarModeloCompacto(tokensConVacios, anioStr, marcasAProbar, catalogo, conMarca) {
+  // Un signo suelto ("&" en "town & country") queda como palabra vacía tras limpiarToken: se quita.
+  const tokensTexto = tokensConVacios.filter(Boolean);
+  for (let largo = Math.min(MAX_PALABRAS_COMPACTO, tokensTexto.length); largo >= 1; largo--) {
+    for (let i = 0; i + largo <= tokensTexto.length; i++) {
+      const ventana = tokensTexto.slice(i, i + largo);
+      if (ventana.some((t) => t === anioStr || PALABRAS_CONECTORAS.has(t))) continue;
+      const clave = compactarModelo(ventana.join(''));
+      if (!clave) continue;
+      if (!conMarca && clave.length < 4 && !MODELOS_3_SIN_MARCA.has(clave)) continue;
+      for (const marca of marcasAProbar) {
+        const modelo = (catalogo[marca] || []).find((m) => {
+          if (compactarModelo(m) !== clave) return false;
+          if (!conMarca && MODELOS_GENERICOS.has(clave)) return false;
+          const tokensModelo = normalizar(m).split(/\s+/).filter(Boolean);
+          return !(tokensModelo.length === ventana.length && tokensModelo.every((t, j) => t === ventana[j]));
+        });
+        if (modelo) return { marca, modelo, largo };
+      }
+    }
+  }
+  return null;
+}
+
 async function extraerMarcaModelo(textoNormalizado, anio) {
   // Catálogo combinado (CATALOGO_BASE + catálogo vivo de Firestore, con caché de 10 min) —
   // así el matching exacto y difuso de abajo reconoce también modelos que solo existen en el
@@ -142,6 +183,7 @@ async function extraerMarcaModelo(textoNormalizado, anio) {
   // de reconocer RAM (regresión confirmada con pruebas antes de este commit).
   let modeloEncontrado = null;
   let marcaDelModelo = null;
+  let palabrasDelModelo = 0;
   const tokensTexto = textoNormalizado.split(/\s+/).filter(Boolean).map(limpiarToken);
   const marcasAProbar = marcaEncontrada
     ? [marcaEncontrada, ...(['Dodge', 'Chrysler'].includes(marcaEncontrada) ? ['RAM'] : [])]
@@ -149,14 +191,25 @@ async function extraerMarcaModelo(textoNormalizado, anio) {
   for (const marca of marcasAProbar) {
     const modelos = catalogo[marca] || [];
     for (const modelo of modelos) {
+      // Genéricos ("Pickup", "Estacas") solo con la marca en el texto.
+      if (!marcaEncontrada && MODELOS_GENERICOS.has(compactarModelo(modelo))) continue;
       const tokensModelo = normalizar(modelo).split(/\s+/).filter(Boolean);
       if (contieneSecuenciaTokens(tokensTexto, tokensModelo)) {
         modeloEncontrado = modelo;
         marcaDelModelo = marca;
+        palabrasDelModelo = tokensModelo.length;
         break;
       }
     }
     if (modeloEncontrado) break;
+  }
+
+  // 2b. En compacto: si el exacto no encontró nada, o si la coincidencia compacta abarca MÁS
+  // palabras (ej. "mazda cx 5": el exacto hallaba el modelo "5"; lo correcto es "CX-5").
+  const compacto = buscarModeloCompacto(tokensTexto, anioStr, marcasAProbar, catalogo, Boolean(marcaEncontrada));
+  if (compacto && (!modeloEncontrado || compacto.largo > palabrasDelModelo)) {
+    modeloEncontrado = compacto.modelo;
+    marcaDelModelo = compacto.marca;
   }
 
   // "chrysler ram 700" / "dodge ram 700": el alias genérico de Chrysler/Dodge (paso 1) se
@@ -205,7 +258,9 @@ async function extraerMarcaModelo(textoNormalizado, anio) {
     for (const palabra of palabras) {
       let encontrado = null;
       for (const m of marcasABuscar) {
-        const candidato = mejorCandidatoDifuso(palabra, catalogo[m] || []);
+        // Sin marca en el texto, los modelos genéricos tampoco se adivinan por parecido.
+        const candidatos = (catalogo[m] || []).filter((x) => marca || !MODELOS_GENERICOS.has(compactarModelo(x)));
+        const candidato = mejorCandidatoDifuso(palabra, candidatos);
         if (candidato) { encontrado = { marca: m, modelo: candidato }; break; }
       }
       if (encontrado) {
