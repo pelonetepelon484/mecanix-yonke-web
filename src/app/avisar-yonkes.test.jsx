@@ -77,11 +77,12 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     });
     const guardar = screen.getByRole('link', { name: /Guardar mi enlace por WhatsApp/ });
     expect(guardar.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/526641234567\?text=/);
-    expect(decodeURIComponent(guardar.getAttribute('href'))).toContain('https://m.test/mi-pedido/X?c=COD');
+    expect(decodeURIComponent(guardar.getAttribute('href'))).toContain('Mi alerta de búsqueda en Mecanix (guárdalo para ver las respuestas de los yonkes): https://m.test/mi-pedido/X?c=COD');
+    expect(screen.getByRole('link', { name: 'Ver mi alerta' })).toHaveAttribute('href', 'https://m.test/mi-pedido/X?c=COD');
   });
   it('valida antes de enviar y muestra el mensaje del servidor (por ejemplo, el límite)', async () => {
     config = { habilitado: true };
-    global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false, mensaje: 'Ya enviaste 3 pedidos hoy con este WhatsApp. Intenta mañana.' }) }));
+    global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false, mensaje: 'Ya enviaste 3 alertas hoy con este WhatsApp. Intenta mañana.' }) }));
     const AvisarYonkes = await cargar();
     render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
     fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
@@ -90,6 +91,6 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     expect(global.fetch).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
     fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
-    expect(await screen.findByText(/Ya enviaste 3 pedidos hoy/)).toBeInTheDocument();
+    expect(await screen.findByText('Ya enviaste 3 alertas hoy con este WhatsApp. Intenta mañana.')).toBeInTheDocument();
   });
 });

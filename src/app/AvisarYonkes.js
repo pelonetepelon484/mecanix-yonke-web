@@ -93,7 +93,7 @@ export default function AvisarYonkes({
           💬 Guardar mi enlace por WhatsApp
         </a>
         <a href={enlace} style={{ display: 'block', textAlign: 'center', marginTop: '10px', color: '#1A3C5E', fontWeight: 'bold', fontSize: '14px' }}>
-          Ver mi pedido
+          Ver mi alerta
         </a>
       </div>
     );
@@ -107,7 +107,7 @@ export default function AvisarYonkes({
           ? { margin: '0 0 12px', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.45' }
           : { margin: '0 0 8px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}
         >
-          {mensaje || '¿No la encontraste? Avísale a los yonkes de tu estado y te responden con precio.'}
+          {mensaje || '¿No la encontraste? Activa una alerta de búsqueda y los yonkes de tu estado te responden con precio si la tienen.'}
         </p>
         <button type="button" onClick={abrir} style={botonAlerta}>{TEXTO_BOTON_ALERTA}</button>
       </div>
