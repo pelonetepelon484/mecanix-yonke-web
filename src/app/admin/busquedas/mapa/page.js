@@ -218,6 +218,17 @@ export default function MapaBusquedasPage() {
               <p style={{ color: '#888', fontSize: '12px', textAlign: 'center', margin: '8px 0 0' }}>
                 Haz clic en un estado para ver las piezas más buscadas ahí y sus búsquedas recientes
               </p>
+              {/* Crédito que exige la licencia CC BY 4.0 del mapa (datos de node_modules/@svg-maps/mexico:
+                  package.json, LICENSE.md y README). */}
+              <p style={{ color: '#aaa', fontSize: '10px', textAlign: 'center', margin: '6px 0 0' }}>
+                Mapa:{' '}
+                <a href="https://github.com/VictorCazanave/svg-maps/tree/master/packages/mexico" target="_blank" rel="noopener noreferrer" style={enlaceCredito}>@svg-maps/mexico</a>
+                {' '}de Victor Cazanave, basado en{' '}
+                <a href="https://mapsvg.com/maps/mexico" target="_blank" rel="noopener noreferrer" style={enlaceCredito}>MapSVG</a>
+                {' '}·{' '}
+                <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={enlaceCredito}>CC BY 4.0</a>
+                {' '}· colores modificados
+              </p>
             </div>
 
             {/* Detalle del estado activo */}
@@ -342,3 +353,4 @@ function chipStyle(activo) {
 
 const thStyle = { color: '#fff', textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '600' };
 const tdStyle = { padding: '10px 12px', fontSize: '13px', color: '#333' };
+const enlaceCredito = { color: '#888' };
