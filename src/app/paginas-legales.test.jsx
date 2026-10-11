@@ -28,8 +28,20 @@ function lineasPublicables(lineas) {
     .map((l) => l.replace(/\*\*/g, '').trim())
     // Ajuste de forma aprobado: "cliente" en minúscula en el texto publicado (salvo al inicio de un título).
     .map((l) => l.replace(/Cliente/g, (m, i) => (i === 0 ? m : 'cliente')))
+    // Cambios aprobados por el abogado después de ese documento (ver CAMBIOS_2026_10_10).
+    .map((l) => CAMBIOS_2026_10_10[l] ?? l)
     .filter(Boolean);
 }
+
+// Alertas a yonkes de otros estados (aprobado por el abogado el 10 de octubre de 2026): la línea
+// de los Términos que decía que el cliente avisa "únicamente" a los yonkes de su estado.
+const CASILLA = 'Acepto que me contacten yonkes de otros estados que hagan envíos';
+const TERMINOS_OTROS_ESTADOS = 'Mecanix permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas. Si el cliente activa la casilla correspondiente, acepta que su alerta de pedido también pueda mostrarse a los yonkes Verificados que tengan activada la opción de Envíos nacionales, en los demás estados, identificados con su insignia.';
+const CAMBIOS_2026_10_10 = {
+  'Mecanix únicamente permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas.': TERMINOS_OTROS_ESTADOS,
+};
+const PRIVACIDAD_A = `(a) Mostrar tu pedido, sin tus datos de contacto, a los yonkes de tu estado para que te respondan. Si marcas la casilla "${CASILLA}", estarás aprobando que tu alerta se muestre también a yonkes de otros estados del país, pero únicamente a los yonkes Verificados que tengan activada la opción de Envíos nacionales (lo verás indicado con su insignia). Solo se muestra la alerta (el vehículo, la pieza, el estado y la fecha); tus datos de contacto siguen protegidos y no se comparten con los yonkes hasta que la alerta se elimine.`;
+const PRIVACIDAD_B = 'Asimismo, cuando el usuario utiliza la función de Alerta de Búsqueda, la información de la autoparte o refacción solicitada en dicha alerta es compartida con los yonkes y yonkeros afiliados para atender la disponibilidad del pedido dentro de la alerta autorizada por el cliente.';
 
 const textoDe = (Pagina) => render(<Pagina />).container.textContent.replace(/\s+/g, ' ');
 
@@ -90,9 +102,37 @@ describe('textos legales de "Avisar a los yonkes"', () => {
     }
   });
   it('fecha de última actualización y VERSION_LEGAL de hoy', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-08');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 8 de octubre de 2026');
+    expect(VERSION_LEGAL).toBe('2026-10-10');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 10 de octubre de 2026');
     cleanup();
-    expect(textoDe(Terminos)).toContain('Última actualización: 8 de octubre de 2026');
+    expect(textoDe(Terminos)).toContain('Última actualización: 10 de octubre de 2026');
+  });
+});
+
+describe('alertas a yonkes de otros estados (aprobado el 10 de octubre de 2026)', () => {
+  it('Privacidad, sección 14: el inciso (a) nombra la casilla con su texto exacto del formulario', () => {
+    const texto = textoDe(Privacidad);
+    expect(texto).toContain(PRIVACIDAD_A);
+    const a = texto.indexOf(PRIVACIDAD_A);
+    expect(a).toBeGreaterThan(texto.indexOf('Para qué los usamos.'));
+    expect(a).toBeLessThan(texto.indexOf('(b) Mostrarte, en tu enlace privado'));
+  });
+  it('Privacidad, sección 14: la frase B va justo después del renglón de "Yonkes"', () => {
+    const texto = textoDe(Privacidad);
+    const yonkes = 'Yonkes: solo ven el vehículo, la pieza, el estado y la fecha del pedido. Nunca ven tu número de WhatsApp.';
+    const y = texto.indexOf(yonkes);
+    expect(y).toBeGreaterThan(-1);
+    // Párrafo propio, inmediatamente después del renglón de Yonkes y antes de "Proveedores".
+    expect(texto.indexOf(PRIVACIDAD_B)).toBe(y + yonkes.length);
+    expect(texto.indexOf('• Proveedores de infraestructura')).toBe(y + yonkes.length + PRIVACIDAD_B.length);
+  });
+  it('Términos, sección 8: la línea nueva reemplaza a la de "únicamente ... de su estado"', () => {
+    const texto = textoDe(Terminos);
+    expect(texto).toContain(TERMINOS_OTROS_ESTADOS);
+    expect(texto).not.toContain('Mecanix únicamente permite que el cliente avise');
+  });
+  it('la sección 13 de talleres y su versión no cambian', () => {
+    expect(textoDe(Privacidad)).toContain('13. Talleres y cotizaciones');
+    expect(textoDe(Privacidad)).toContain('Versión: talleres-2026-10-2');
   });
 });

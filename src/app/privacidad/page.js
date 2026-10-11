@@ -21,7 +21,7 @@ export default function Privacidad() {
           Aviso de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 8 de octubre de 2026
+          Última actualización: 10 de octubre de 2026
         </p>
 
         <Seccion titulo="1. Responsable del tratamiento de tus datos">
@@ -129,7 +129,7 @@ export default function Privacidad() {
           <p style={parrafoStyle}>No necesitas crear una cuenta. No te pedimos tu nombre ni ningún dato sensible.</p>
           <p style={parrafoStyle}>Para proteger el servicio contra abusos, también registramos de forma técnica tu dirección IP y tu número de WhatsApp <strong>convertidos en un código irreversible</strong>. Solo sirven para limitar cuántos pedidos se pueden enviar en cierto tiempo y se eliminan automáticamente en un plazo aproximado de dos días.</p>
           <p style={parrafoStyle}><strong>Para qué los usamos.</strong></p>
-          <p style={parrafoStyle}><strong>(a)</strong> Mostrar tu pedido, sin tus datos de contacto, a los yonkes de tu estado para que te respondan.</p>
+          <p style={parrafoStyle}><strong>(a)</strong> Mostrar tu pedido, sin tus datos de contacto, a los yonkes de tu estado para que te respondan. Si marcas la casilla &quot;Acepto que me contacten yonkes de otros estados que hagan envíos&quot;, estarás aprobando que tu alerta se muestre también a yonkes de otros estados del país, pero únicamente a los yonkes Verificados que tengan activada la opción de Envíos nacionales (lo verás indicado con su insignia). Solo se muestra la alerta (el vehículo, la pieza, el estado y la fecha); tus datos de contacto siguen protegidos y no se comparten con los yonkes hasta que la alerta se elimine.</p>
           <p style={parrafoStyle}><strong>(b)</strong> Mostrarte, en tu enlace privado, las respuestas de los yonkes.</p>
           <p style={parrafoStyle}><strong>(c)</strong> Avisar internamente a Mecanix de que hay un pedido nuevo.</p>
           <p style={parrafoStyle}><strong>(d)</strong> Contactarte, solo si es necesario, para darle seguimiento a tu pedido.</p>
@@ -137,6 +137,7 @@ export default function Privacidad() {
           <p style={parrafoStyle}>No usamos tu WhatsApp para publicidad.</p>
           <p style={parrafoStyle}><strong>Con quién compartimos tus datos.</strong></p>
           <p style={parrafoStyle}>• <strong>Yonkes:</strong> solo ven el vehículo, la pieza, el estado y la fecha del pedido. <strong>Nunca ven tu número de WhatsApp.</strong></p>
+          <p style={parrafoStyle}>Asimismo, cuando el usuario utiliza la función de Alerta de Búsqueda, la información de la autoparte o refacción solicitada en dicha alerta es compartida con los yonkes y yonkeros afiliados para atender la disponibilidad del pedido dentro de la alerta autorizada por el cliente.</p>
           <p style={parrafoStyle}>• <strong>Proveedores de infraestructura</strong> que almacenan y procesan la información por cuenta de Mecanix, sin usarla para fines propios: Google LLC (Firebase / Google Cloud) y Vercel Inc.</p>
           <p style={parrafoStyle}>• El aviso interno a Mecanix sobre un pedido nuevo se envía por WhatsApp mediante el servicio CallMeBot. Ese aviso <strong>no incluye tu número</strong>.</p>
           <p style={parrafoStyle}><strong>Cuando tú contactas a un yonke.</strong> Si decides escribirle a un yonke desde tu enlace, la conversación ocurre directamente entre tú y el yonke, fuera de la Plataforma. A partir de ese momento el yonke conoce tu número porque tú se lo diste, y lo trata por su cuenta, como responsable independiente.</p>
