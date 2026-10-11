@@ -24,10 +24,14 @@ export async function leerConfigOrdenes() {
 // Lista: 1 lectura por orden mostrada, de la más reciente a la más vieja, de 20 en 20.
 // Con filtro de estado usa el índice compuesto estado + actualizadoAt (desc). Sin escuchas en vivo.
 // Las vencidas que el TTL aún no borra no se muestran.
-export async function listarOrdenes(tallerId, { estado = 'todos', cursor = null } = {}) {
+// direccion: 'desc' (más recientes primero) o 'asc' (más antiguas primero). 'asc' solo sin filtro de
+// estado: usa el índice automático de actualizadoAt y NO necesita índice nuevo (con filtro de estado
+// pediría uno compuesto estado + actualizadoAt ascendente, que no existe a propósito).
+export async function listarOrdenes(tallerId, { estado = 'todos', cursor = null, direccion = 'desc' } = {}) {
   const restricciones = [];
   if (estado !== 'todos') restricciones.push(where('estado', '==', estado));
-  restricciones.push(orderBy('actualizadoAt', 'desc'), limit(TAMANO_PAGINA));
+  const dir = estado === 'todos' && direccion === 'asc' ? 'asc' : 'desc';
+  restricciones.push(orderBy('actualizadoAt', dir), limit(TAMANO_PAGINA));
   if (cursor) restricciones.push(startAfter(cursor));
   const snap = await getDocs(query(ordenesRef(tallerId), ...restricciones));
   const ahora = Date.now();

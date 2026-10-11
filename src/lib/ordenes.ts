@@ -236,3 +236,31 @@ export function validarConversion(c: CotizacionParaConvertir): string | null {
   if (datos.trabajos.length > MAX_TRABAJOS || datos.piezas.length > MAX_PIEZAS) return MENSAJES_CONVERSION.demasiados;
   return validarOrden(datos);
 }
+
+// ---------- Etapa 3: aviso de vencimiento (con las órdenes que la lista ya cargó) ----------
+export const DIAS_AVISO_VENCIMIENTO = 15;
+
+// Días que faltan para el borrado (redondeado hacia arriba). null si no hay fecha.
+export function diasParaBorrado(expiraAt: unknown, ahora: number): number | null {
+  const f = aDate(expiraAt);
+  if (!f) return null;
+  return Math.ceil((f.getTime() - ahora) / DIA_MS);
+}
+
+export function porVencer(expiraAt: unknown, ahora: number): boolean {
+  const d = diasParaBorrado(expiraAt, ahora);
+  return d !== null && d <= DIAS_AVISO_VENCIMIENTO;
+}
+
+export function textoSeEliminaEn(dias: number): string {
+  if (dias <= 0) return 'Se elimina hoy';
+  return dias === 1 ? 'Se elimina en 1 día' : `Se elimina en ${dias} días`;
+}
+
+// Aviso general: solo con al menos una orden por vencer. Nunca "no tienes órdenes por vencer" ni un cero.
+export function textoAvisoVencimiento(cuantas: number): string | null {
+  if (!(cuantas > 0)) return null;
+  return cuantas === 1
+    ? `Tienes 1 orden que se eliminará en ${DIAS_AVISO_VENCIMIENTO} días o menos. Descarga tu copia.`
+    : `Tienes ${cuantas} órdenes que se eliminarán en ${DIAS_AVISO_VENCIMIENTO} días o menos. Descarga tu copia.`;
+}

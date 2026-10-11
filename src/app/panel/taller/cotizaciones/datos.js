@@ -43,14 +43,19 @@ export async function listarCotizaciones(tallerId, { archivada, cursor = null })
   };
 }
 
+// Solo los renglones de una cotización: 1 lectura por renglón (máximo 20), ordenados.
+export async function leerRenglones(tallerId, folio) {
+  const rs = await getDocs(renglonesRef(tallerId, folio));
+  return rs.docs
+    .map((d) => ({ numero: Number(d.id), tipo: d.data().tipo, descripcion: d.data().descripcion, cantidad: d.data().cantidad, precioUnitario: d.data().precioUnitario, expiraAt: d.data().expiraAt }))
+    .sort((a, b) => a.numero - b.numero);
+}
+
 // Abrir una cotización: 1 lectura de la cotización + 1 por renglón (máximo 20).
 export async function leerCotizacion(tallerId, folio) {
   const snap = await getDoc(cotizacionRef(tallerId, folio));
   if (!snap.exists()) return null;
-  const rs = await getDocs(renglonesRef(tallerId, folio));
-  const renglones = rs.docs
-    .map((d) => ({ numero: Number(d.id), tipo: d.data().tipo, descripcion: d.data().descripcion, cantidad: d.data().cantidad, precioUnitario: d.data().precioUnitario, expiraAt: d.data().expiraAt }))
-    .sort((a, b) => a.numero - b.numero);
+  const renglones = await leerRenglones(tallerId, folio);
   return { folio, ...snap.data(), renglones };
 }
 

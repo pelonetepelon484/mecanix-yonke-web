@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { listarOrdenes } from './datos';
 import { useOrdenes } from './contexto';
 import { formatearPesos, totalConIvaCentavos } from '../../../../lib/cotizaciones';
-import { ESTADOS_ORDEN, NOMBRE_ESTADO_ORDEN, textoPlano } from '../../../../lib/ordenes';
+import { ESTADOS_ORDEN, NOMBRE_ESTADO_ORDEN, diasParaBorrado, porVencer, textoAvisoVencimiento, textoPlano, textoSeEliminaEn } from '../../../../lib/ordenes';
+import DescargarDocumentos from './DescargarDocumentos';
 
 const MENSAJE_INDICE = 'Falta un índice de Firestore para esta lista. Avisa al equipo técnico (el enlace para crearlo aparece en la consola del navegador).';
 
@@ -15,10 +16,15 @@ function fecha(ts) {
 
 // Lista de órdenes: de 20 en 20 con "Ver más", filtro por estado (consulta a Firestore, no se
 // bajan todas) y sin escuchas en vivo: se lee solo al abrir, al cambiar el filtro o con "Ver más".
+// Aviso de vencimiento: con las órdenes YA cargadas (sin consultas por expiraAt ni índices nuevos).
+// "Más antiguas primero" sube las que llevan más tiempo sin tocarse, que son las que se borran antes.
 export default function ListaOrdenes() {
   const router = useRouter();
-  const { tallerId, puedeEditar } = useOrdenes();
+  const { tallerId, taller, puedeEditar } = useOrdenes();
   const [filtro, setFiltro] = useState('todos');
+  const [direccion, setDireccion] = useState('desc');
+  // Momento de la última carga: contra él se calculan los días que faltan (no se usa la hora en cada render).
+  const [ahora, setAhora] = useState(0);
   const [items, setItems] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [hayMas, setHayMas] = useState(false);
@@ -28,9 +34,10 @@ export default function ListaOrdenes() {
 
   useEffect(() => {
     let cancelado = false;
-    listarOrdenes(tallerId, { estado: filtro })
+    listarOrdenes(tallerId, { estado: filtro, direccion })
       .then((r) => {
         if (cancelado) return;
+        setAhora(Date.now());
         setItems(r.items);
         setCursor(r.cursor);
         setHayMas(r.hayMas);
@@ -44,7 +51,7 @@ export default function ListaOrdenes() {
         if (!cancelado) setCargando(false);
       });
     return () => { cancelado = true; };
-  }, [tallerId, filtro]);
+  }, [tallerId, filtro, direccion]);
 
   function cambiarFiltro(nuevo) {
     setCargando(true);
@@ -52,10 +59,17 @@ export default function ListaOrdenes() {
     setFiltro(nuevo);
   }
 
+  function cambiarDireccion(nueva) {
+    setCargando(true);
+    setItems([]);
+    setDireccion(nueva);
+  }
+
   function verMas() {
     setCargandoMas(true);
-    listarOrdenes(tallerId, { estado: filtro, cursor })
+    listarOrdenes(tallerId, { estado: filtro, cursor, direccion })
       .then((r) => {
+        setAhora(Date.now());
         setItems((prev) => [...prev, ...r.items]);
         setCursor(r.cursor);
         setHayMas(r.hayMas);
@@ -66,6 +80,9 @@ export default function ListaOrdenes() {
       })
       .finally(() => setCargandoMas(false));
   }
+
+  const conFiltro = filtro !== 'todos';
+  const avisoGeneral = textoAvisoVencimiento(items.filter((o) => porVencer(o.expiraAt, ahora)).length);
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '16px' }}>
@@ -83,11 +100,28 @@ export default function ListaOrdenes() {
           <p style={{ fontSize: '14px', color: '#8A2A1A', margin: '0 0 14px' }}>Solo lectura: no puedes crear ni editar órdenes ahora.</p>
         )}
 
+        <DescargarDocumentos tallerId={tallerId} taller={taller} />
+
+        {avisoGeneral && (
+          <p role="alert" style={{ fontSize: '14px', color: '#8A2A1A', backgroundColor: '#FFF6E8', border: '1px solid #E8720C', borderRadius: '12px', padding: '12px', margin: '0 0 14px' }}>
+            {avisoGeneral}
+          </p>
+        )}
+
         <label htmlFor="filtro-estado" style={{ display: 'block', fontSize: '13px', color: '#555', marginBottom: '4px', fontWeight: 'bold' }}>Estado</label>
         <select id="filtro-estado" value={filtro} onChange={(e) => cambiarFiltro(e.target.value)} style={{ width: '100%', minHeight: '48px', borderRadius: '12px', border: '1px solid #CCC', fontSize: '15px', padding: '0 12px', marginBottom: '14px', backgroundColor: '#fff' }}>
           <option value="todos">Todos los estados</option>
           {ESTADOS_ORDEN.map((e) => <option key={e} value={e}>{NOMBRE_ESTADO_ORDEN[e]}</option>)}
         </select>
+
+        <label htmlFor="orden-lista" style={{ display: 'block', fontSize: '13px', color: '#555', marginBottom: '4px', fontWeight: 'bold' }}>Ordenar</label>
+        <select id="orden-lista" value={conFiltro ? 'desc' : direccion} disabled={conFiltro} onChange={(e) => cambiarDireccion(e.target.value)} style={{ width: '100%', minHeight: '48px', borderRadius: '12px', border: '1px solid #CCC', fontSize: '15px', padding: '0 12px', marginBottom: conFiltro ? '4px' : '14px', backgroundColor: conFiltro ? '#EEE' : '#fff' }}>
+          <option value="desc">Más recientes primero</option>
+          <option value="asc">Más antiguas primero</option>
+        </select>
+        {conFiltro && (
+          <p style={{ fontSize: '12px', color: '#555', margin: '0 0 14px' }}>Para ver las más antiguas primero, elige &quot;Todos los estados&quot;.</p>
+        )}
 
         {error && <p role="alert" style={{ color: '#B3261E', fontSize: '14px' }}>{error}</p>}
         {cargando && <p style={{ color: '#555' }}>Cargando...</p>}
@@ -111,6 +145,13 @@ export default function ListaOrdenes() {
             {o.fallaReportada && (
               <p style={{ margin: '0 0 6px', fontSize: '14px', color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {textoPlano(o.fallaReportada, 120)}
+              </p>
+            )}
+            {porVencer(o.expiraAt, ahora) && (
+              <p style={{ margin: '0 0 6px' }}>
+                <span style={{ display: 'inline-block', backgroundColor: '#FDECEA', color: '#B3261E', fontSize: '12px', fontWeight: 'bold', padding: '3px 9px', borderRadius: '12px' }}>
+                  {textoSeEliminaEn(diasParaBorrado(o.expiraAt, ahora))}
+                </span>
               </p>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>

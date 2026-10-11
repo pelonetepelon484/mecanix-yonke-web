@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { listarCotizaciones } from './datos';
 import { useCotizaciones } from './contexto';
 import { ESTADOS_COTIZACION, formatearPesos, totalConIvaCentavos } from '../../../../lib/cotizaciones';
+import DescargarDocumentos from '../ordenes/DescargarDocumentos';
 
 const MENSAJE_INDICE = 'Falta un índice de Firestore para esta lista. Avisa al equipo técnico (el enlace para crearlo aparece en la consola del navegador).';
 
@@ -14,7 +15,7 @@ function fecha(ts) {
 
 export default function ListaCotizaciones() {
   const router = useRouter();
-  const { tallerId, puedeEditar } = useCotizaciones();
+  const { tallerId, taller, puedeEditar } = useCotizaciones();
   const [pestana, setPestana] = useState('activas');
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [items, setItems] = useState([]);
@@ -82,6 +83,8 @@ export default function ListaCotizaciones() {
         ) : (
           <p style={{ fontSize: '14px', color: '#8A2A1A', margin: '0 0 14px' }}>Solo lectura: no puedes crear ni editar cotizaciones ahora.</p>
         )}
+
+        <DescargarDocumentos tallerId={tallerId} taller={taller} />
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           {[['activas', 'Activas'], ['archivadas', 'Archivadas']].map(([valor, texto]) => (
