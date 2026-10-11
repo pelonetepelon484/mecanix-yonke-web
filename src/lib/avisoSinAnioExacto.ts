@@ -24,4 +24,4 @@ export function tituloAvisoSinAnioExacto({ marca, modelo, anio }: { marca?: unkn
 }
 
 export const MENSAJE_AVISO_SIN_ANIO_EXACTO =
-  'Activaremos una alerta de búsqueda con la pieza que necesitas para que los yonkes te contacten si la tienen.';
+  'Si quieres, activa una alerta de búsqueda: los yonkes verán tu pedido (sin tus datos de contacto) y te responderán aquí si tienen la pieza.';
