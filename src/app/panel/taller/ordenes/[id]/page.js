@@ -6,6 +6,7 @@ import OrdenForm from '../OrdenForm';
 import { useOrdenes } from '../contexto';
 import { borrarOrden, guardarOrden, leerOrden, quitarDatosClienteOrden } from '../datos';
 import { AVISO_COPIA } from '../../../../../lib/ordenes';
+import { descargarPdfOrden } from '../pdf';
 
 export default function DetalleOrden() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function DetalleOrden() {
   const [version, setVersion] = useState(0);
   const [aviso, setAviso] = useState('');
   const [vencida, setVencida] = useState(false);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -32,6 +34,19 @@ export default function DetalleOrden() {
       });
     return () => { cancelado = true; };
   }, [tallerId, folio, version]);
+
+  // El PDF se arma con lo GUARDADO (orden), no con lo que esté a medio editar en el formulario.
+  async function descargarPdf() {
+    setGenerandoPdf(true);
+    try {
+      await descargarPdfOrden({ orden, taller });
+    } catch (err) {
+      console.error(err);
+      setAviso('No pudimos generar el PDF. Intenta de nuevo.');
+    } finally {
+      setGenerandoPdf(false);
+    }
+  }
 
   if (noExiste) {
     return (
@@ -60,6 +75,13 @@ export default function DetalleOrden() {
             Se eliminará el {fechaEliminacion.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}. {AVISO_COPIA}
           </p>
         )}
+
+        <div style={{ marginBottom: '14px' }}>
+          <button type="button" onClick={descargarPdf} disabled={generandoPdf} style={{ width: '100%', minHeight: '52px', borderRadius: '12px', border: '1px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', opacity: generandoPdf ? 0.6 : 1 }}>
+            {generandoPdf ? 'Generando PDF...' : 'Descargar PDF'}
+          </button>
+          <p style={{ fontSize: '13px', color: '#555', margin: '6px 0 0' }}>El PDF usa lo último que guardaste.</p>
+        </div>
 
         <OrdenForm
           key={version}

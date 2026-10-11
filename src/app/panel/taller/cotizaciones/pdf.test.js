@@ -122,4 +122,16 @@ describe('PDF de la cotización', () => {
     expect(todos).toContain('Vehículo:');
     expect(todos.some((t) => t.includes('undefined'))).toBe(false);
   });
+  it('caracteres que la fuente no soporta salen como "?", sin tocar acentos ni la ñ', async () => {
+    const conRaros = {
+      ...cotizacion,
+      cliente: { nombre: 'Ana Muñoz 😀' },
+      observaciones: 'Señor Núñez ✓ llega mañana 🚗',
+      renglones: [{ tipo: 'pieza', descripcion: 'Balata 🔧 ñ á é', cantidad: 1, precioUnitario: 10 }],
+    };
+    await descargarPdfCotizacion({ cotizacion: conRaros, taller: { ...taller, nombre: 'Taller ⭐' } });
+    const todos = registro.textos.map((t) => t.texto);
+    expect(todos).toEqual(expect.arrayContaining(['Ana Muñoz ?', 'Señor Núñez ? llega mañana ?', 'Balata ? ñ á é (Pieza)', 'Taller ?']));
+    expect(todos.join('')).not.toMatch(/[😀✓🚗🔧⭐]/u);
+  });
 });

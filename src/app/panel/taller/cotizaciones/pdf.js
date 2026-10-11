@@ -6,18 +6,20 @@
 // que el taller entrega al cliente al firmar (términos de talleres, 1.3).
 import { IVA_PORCENTAJE, aCentavos, formatearPesos, ivaCentavos, subtotalCentavos, totalCentavos, totalConIvaCentavos } from '../../../../lib/cotizaciones';
 import textosTalleres from '../../../../lib/textosLegalesTalleres.json';
+import { protegerTextos } from '../../../../lib/pdfTexto';
 
 // Dato del taller que falta: línea en blanco para llenarse a mano.
 export const EN_BLANCO = '______________________';
 const INICIO_LINEA_FIRMA = 'Nombre y firma del cliente';
 
-const AZUL = [26, 60, 94];
-const GRIS = [110, 110, 110];
-const NEGRO = [40, 40, 40];
-const MARGEN = 14;
-const DERECHA = 196;
-const ANCHO = DERECHA - MARGEN;
-const LIMITE_Y = 275;
+// Estilo compartido con el PDF de las órdenes de servicio (ordenes/pdf.js).
+export const AZUL = [26, 60, 94];
+export const GRIS = [110, 110, 110];
+export const NEGRO = [40, 40, 40];
+export const MARGEN = 14;
+export const DERECHA = 196;
+export const ANCHO = DERECHA - MARGEN;
+export const LIMITE_Y = 275;
 
 // "6641234567" -> "664 123 4567". Si no son 10 dígitos, se deja como venga.
 export function formatearWhatsapp(whatsapp) {
@@ -26,7 +28,7 @@ export function formatearWhatsapp(whatsapp) {
   return digitos.length === 10 ? `${digitos.slice(0, 3)} ${digitos.slice(3, 6)} ${digitos.slice(6)}` : texto;
 }
 
-function fechaLarga(fecha) {
+export function fechaLarga(fecha) {
   return fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
@@ -66,7 +68,7 @@ export function lineasClienteVehiculo(cotizacion) {
   return lineas;
 }
 
-function estilo(doc, { tamano, negrita = false, color = NEGRO }) {
+export function estilo(doc, { tamano, negrita = false, color = NEGRO }) {
   doc.setFont('helvetica', negrita ? 'bold' : 'normal');
   doc.setFontSize(tamano);
   doc.setTextColor(...color);
@@ -212,12 +214,26 @@ function dibujarAviso(doc, taller) {
   });
 }
 
-// Genera el PDF y lo descarga en el dispositivo. cotizacion: tal como la devuelve leerCotizacion (con folio y renglones).
-export async function descargarPdfCotizacion({ cotizacion, taller }) {
+// Arma el PDF (cotización + hoja del aviso de privacidad). Todo el texto pasa por textoPdf: lo que
+// la fuente no soporta (emojis, símbolos raros) sale como "?" sin tocar acentos ni la ñ.
+// cotizacion: tal como la devuelve leerCotizacion (con folio y renglones).
+async function crearDocCotizacion({ cotizacion, taller }) {
   const { jsPDF } = await import('jspdf');
-  const doc = new jsPDF();
+  const doc = protegerTextos(new jsPDF());
   dibujarCotizacion(doc, cotizacion, taller);
   doc.addPage();
   dibujarAviso(doc, taller);
+  return doc;
+}
+
+// Genera el PDF y lo descarga en el dispositivo.
+export async function descargarPdfCotizacion({ cotizacion, taller }) {
+  const doc = await crearDocCotizacion({ cotizacion, taller });
   doc.save(`cotizacion-${cotizacion.folio}.pdf`);
+}
+
+// Mismo PDF, como bytes (para meterlo al .zip de "Descargar mis documentos").
+export async function bytesPdfCotizacion({ cotizacion, taller }) {
+  const doc = await crearDocCotizacion({ cotizacion, taller });
+  return new Uint8Array(doc.output('arraybuffer'));
 }
