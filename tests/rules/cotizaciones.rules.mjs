@@ -190,10 +190,11 @@ describe('versión vieja: solo lectura, con la excepción de quitar datos', () =
     await assertFails(setDoc(rref('t1', 5), renglon(expiraFutura())));
     await assertFails(setDoc(rref('t1', 0), renglon(expiraFutura(), { precioUnitario: 9 })));
   });
-  it('borrar renglones queda bloqueado', async () => {
+  // Decisión de David (etapa 5): borrar SÍ se permite con términos viejos (solo quita datos).
+  it('borrar renglones SÍ (borrar se permite con términos viejos)', async () => {
     await sembrar();
     await conVersion('v2');
-    await assertFails(deleteDoc(rref('t1', 1)));
+    await assertSucceeds(deleteDoc(rref('t1', 1)));
   });
   it('quitar datos (vaciar cliente y placas) SÍ', async () => {
     await sembrar();
@@ -236,10 +237,10 @@ describe('versión vieja: solo lectura, con la excepción de quitar datos', () =
     await conVersion('v2');
     await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Ford', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
   });
-  it('borrar la cotización completa (taller) NO', async () => {
+  it('borrar la cotización completa (taller) SÍ (borrar se permite con términos viejos)', async () => {
     await sembrar();
     await conVersion('v2');
-    await assertFails(deleteDoc(cref('t1')));
+    await assertSucceeds(deleteDoc(cref('t1')));
   });
   it('quitar datos de una cotización ajena NO', async () => {
     await sembrar();
@@ -462,11 +463,27 @@ describe('el taller borra SUS cotizaciones (activo y versión vigente)', () => {
     await assertFails(deleteDoc(rref('t1', 0)));
     await assertFails(deleteDoc(cref('t1')));
   });
-  it('versión VIEJA no puede borrar cotizaciones ni renglones', async () => {
+  it('versión VIEJA SÍ puede borrar cotizaciones y renglones ("No aprobada: eliminar ahora")', async () => {
     await sembrar();
     await conVersion('v2');
-    await assertFails(deleteDoc(rref('t1', 0)));
-    await assertFails(deleteDoc(cref('t1')));
+    await assertSucceeds(deleteDoc(rref('t1', 0)));
+    await assertSucceeds(deleteDoc(cref('t1')));
+  });
+  it('versión VIEJA: caso máximo, borra una cotización con 20 renglones en un solo lote', async () => {
+    await sembrar();
+    await env.withSecurityRulesDisabled(async (c) => { await escribirCotizacion(c.firestore(), 'T1', 'C251006-MAXI', 20); });
+    await conVersion('v2');
+    const db = como('t1');
+    const b = writeBatch(db);
+    for (let i = 0; i < 20; i++) b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', 'C251006-MAXI', 'renglones', String(i)));
+    b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', 'C251006-MAXI'));
+    await assertSucceeds(b.commit());
+  });
+  it('versión VIEJA sigue SIN poder crear ni editar', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(setDoc(cref('t1', 'C251006-NEW2'), cot('T1')));
+    await assertFails(updateDoc(cref('t1'), { observaciones: 'x', actualizadoAt: serverTimestamp() }));
   });
   it('un taller AJENO no puede borrar cotizaciones ni renglones de otro', async () => {
     await sembrar();

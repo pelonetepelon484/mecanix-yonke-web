@@ -384,9 +384,11 @@ service cloud.firestore {
                             && request.resource.data.actualizadoAt == request.time)
                       );
 
-      // Borrar la cotización completa (primero sus renglones): admin, o el dueño con taller activo y versión vigente
+      // Borrar la cotización completa (primero sus renglones): admin, o el dueño con taller activo,
+      // AUNQUE tenga términos viejos (borrar solo quita datos; el aviso al cliente promete eliminar
+      // de inmediato una cotización no aprobada). Crear y editar siguen exigiendo términos vigentes.
       allow delete: if esAdmin()
-                    || (tallerActivoDeDueno() && versionVigente());
+                    || tallerActivoDeDueno();
 
       match /renglones/{numero} {
         // Cotización padre tal como quedará después del lote (getAfter)
@@ -421,9 +423,10 @@ service cloud.firestore {
                       && request.resource.data.expiraAt == resource.data.expiraAt
                       && request.resource.data.expiraAt == padre().expiraAt;
 
-        // Quitar renglones (al editar o al eliminar la cotización) exige taller activo y versión vigente; el admin siempre puede
+        // Quitar renglones (al editar o al eliminar la cotización): taller activo, aunque tenga términos
+        // viejos (igual que borrar la cotización); el admin siempre puede
         allow delete: if esAdmin()
-                      || (tallerActivoDeDueno() && versionVigente());
+                      || tallerActivoDeDueno();
       }
     }
 
@@ -453,11 +456,13 @@ service cloud.firestore {
       function ordenesHabilitadas() {
         return get(/databases/$(database)/documents/config/ordenes).data.habilitado == true;
       }
-      // Datos del cliente solo si la bandera está encendida; si no, cliente vacío y sin placas
+      // Datos del cliente solo si la bandera está encendida Y la orden tiene la versión de aviso
+      // vigente (config/ordenes.avisoOrdenVersion). Las órdenes viejas (p. ej. aviso-orden-0, sin
+      // aviso entregado) nunca pueden llevar nombre, teléfono ni placas. Si no, cliente vacío y sin placas.
       function datosClienteOk() {
         let c = get(/databases/$(database)/documents/config/ordenes).data;
         let d = request.resource.data;
-        return c.datosClienteHabilitados == true
+        return (c.datosClienteHabilitados == true && d.avisoVersion == c.avisoOrdenVersion)
           || (d.cliente == {} && !('placas' in d.vehiculo));
       }
       function textoOk(v, max) {
@@ -570,9 +575,10 @@ service cloud.firestore {
                             && expiraAlEditar())
                       );
 
-      // Borrar: admin, o el dueño con taller activo y versión vigente
+      // Borrar: admin, o el dueño con taller activo, AUNQUE tenga términos viejos (borrar solo quita
+      // datos). Crear y editar siguen exigiendo términos vigentes.
       allow delete: if esAdmin()
-                    || (tallerActivoDeDueno() && versionVigente());
+                    || tallerActivoDeDueno();
     }
 
     // ---------- Pedido de piezas de talleres a yonkes ----------

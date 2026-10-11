@@ -337,12 +337,17 @@ describe('falla cerrada y términos', () => {
     await assertFails(setDoc(oref('t1', ON), orden()));
     await assertFails(setDoc(oref('t1'), edicion()));
   });
-  it('con la versión de términos vieja no se crea, ni se edita, ni se borra', async () => {
+  it('con la versión de términos vieja no se crea ni se edita, pero SÍ se borra (decisión de David)', async () => {
     await sembrar();
     await conVersion('v2');
     await assertFails(setDoc(oref('t1', ON), orden()));
     await assertFails(setDoc(oref('t1'), edicion()));
-    await assertFails(deleteDoc(oref('t1')));
+    await assertSucceeds(deleteDoc(oref('t1')));
+  });
+  it('taller desactivado no borra, ni con términos viejos', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(deleteDoc(oref('t3', O, 'T3')));
   });
   it('quitar datos del cliente sí se permite con versión vieja (y sin config/ordenes), sin mover el borrado', async () => {
     await sembrar();
@@ -447,6 +452,74 @@ describe('convertir una cotización en orden (un solo guardado)', () => {
     await sembrar();
     await sembrarCotizacion();
     await assertFails(convertirComo('t2'));
+  });
+});
+
+// ---------- Etapa 4: datos del cliente solo con la bandera Y la versión de aviso vigente ----------
+const AVISO_NUEVO = 'aviso-orden-1';
+const conCliente = { cliente: { nombre: 'Juan Pérez', telefono: '664 111 2233' } };
+const vehiculoConPlacas = { vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001, kilometraje: 150000, placas: 'ABC123' } };
+
+describe('etapa 4: datos del cliente en órdenes', () => {
+  it('bandera encendida y aviso vigente: una orden NUEVA lleva nombre, teléfono y placas', async () => {
+    await sembrar();
+    await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
+    await assertSucceeds(setDoc(oref('t1', ON), orden({ ...conCliente, ...vehiculoConPlacas, avisoVersion: AVISO_NUEVO })));
+  });
+  it('bandera APAGADA: aunque la versión coincida, se rechazan', async () => {
+    await sembrar();
+    await conConfig({ datosClienteHabilitados: false, avisoOrdenVersion: AVISO_NUEVO });
+    await assertFails(setDoc(oref('t1', ON), orden({ ...conCliente, avisoVersion: AVISO_NUEVO })));
+    await assertFails(setDoc(oref('t1', ON), orden({ ...vehiculoConPlacas, avisoVersion: AVISO_NUEVO })));
+  });
+  it('orden VIEJA (aviso-orden-0): no se le pueden agregar datos del cliente aunque la bandera esté encendida', async () => {
+    await sembrar();
+    await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
+    await assertFails(setDoc(oref('t1'), edicion(conCliente)));
+    await assertFails(setDoc(oref('t1'), edicion(vehiculoConPlacas)));
+    // ...pero sí se sigue editando sin datos del cliente
+    await assertSucceeds(setDoc(oref('t1'), edicion({ estado: 'diagnostico' })));
+  });
+  it('orden vieja: tampoco puede "actualizarse" a la versión nueva del aviso para colar datos', async () => {
+    await sembrar();
+    await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
+    await assertFails(setDoc(oref('t1'), edicion({ ...conCliente, avisoVersion: AVISO_NUEVO })));
+  });
+  it('orden nueva con datos: se edita y se quitan los datos (también con términos viejos)', async () => {
+    await sembrar();
+    await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
+    await env.withSecurityRulesDisabled(async (c) => {
+      await setDoc(doc(c.firestore(), 'talleres', 'T1', 'ordenes', ON), { ...orden({ ...conCliente, ...vehiculoConPlacas, avisoVersion: AVISO_NUEVO }), creadoAt: CREADO, actualizadoAt: CREADO, expiraAt: enDias(80) });
+    });
+    await assertSucceeds(setDoc(oref('t1', ON), orden({ ...conCliente, ...vehiculoConPlacas, avisoVersion: AVISO_NUEVO, creadoAt: CREADO, observaciones: 'x' })));
+    await conVersion('v2');
+    await assertSucceeds(updateDoc(oref('t1', ON), { cliente: {}, 'vehiculo.placas': deleteField(), actualizadoAt: serverTimestamp() }));
+  });
+  it('caso máximo con datos del cliente: entregada, 20 trabajos y 20 piezas', async () => {
+    await sembrar();
+    await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
+    const veinte = Array.from({ length: 20 }, () => item({ descripcion: 'x'.repeat(200), cantidad: 999, precioUnitario: 1000000 }));
+    await assertSucceeds(setDoc(oref('t1', ON), orden({
+      ...conCliente, ...vehiculoConPlacas, avisoVersion: AVISO_NUEVO, trabajos: veinte, piezas: veinte,
+      estado: 'entregado', garantiaDias: 365, fechaEntrega: serverTimestamp(), expiraAt: enDias(373),
+    })));
+  });
+  it('convertir con la bandera encendida copia los datos: caso máximo (20 renglones) en un solo guardado', async () => {
+    await sembrar();
+    await sembrarCotizacion();
+    await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
+    await assertSucceeds(convertirComo('t1', { extra: { ...conCliente, ...vehiculoConPlacas, avisoVersion: AVISO_NUEVO } }));
+    const r = await quedaCotizacion();
+    if (r.cotizacion || r.renglones !== 0 || !r.orden) throw new Error(`esperaba todo convertido, quedó ${JSON.stringify(r)}`);
+  });
+  it('borrar una orden con datos del cliente con términos viejos: SÍ', async () => {
+    await sembrar();
+    await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
+    await env.withSecurityRulesDisabled(async (c) => {
+      await setDoc(doc(c.firestore(), 'talleres', 'T1', 'ordenes', ON), { ...orden({ ...conCliente, avisoVersion: AVISO_NUEVO }), creadoAt: CREADO, actualizadoAt: CREADO, expiraAt: enDias(80) });
+    });
+    await conVersion('v2');
+    await assertSucceeds(deleteDoc(oref('t1', ON)));
   });
 });
 
