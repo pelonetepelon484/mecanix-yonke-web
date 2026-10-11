@@ -95,7 +95,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
   });
 
   describe('casilla de otros estados', () => {
-    const CASILLA = { name: 'Acepto que me contacten yonkes de otros estados que hagan envíos' };
+    const CASILLA = { name: 'Acepto que yonkes de otros estados que hagan envíos respondan mi alerta' };
     const LISTO = '✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de Baja California la ven en su panel.';
     const OTROS = 'También la pueden ver yonkes Verificados de otros estados con Envíos nacionales.';
     const enviar = async () => {

@@ -139,7 +139,7 @@ export default function AvisarYonkes({
       {otrosEstadosActivo && (
         <label htmlFor="avisar-otros-estados" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.4', cursor: 'pointer' }}>
           <input id="avisar-otros-estados" type="checkbox" checked={aceptaOtrosEstados} onChange={(e) => setAceptaOtrosEstados(e.target.checked)} style={{ marginTop: '2px', width: '18px', height: '18px', flexShrink: 0 }} />
-          Acepto que me contacten yonkes de otros estados que hagan envíos
+          Acepto que yonkes de otros estados que hagan envíos respondan mi alerta
         </label>
       )}
       <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#555', lineHeight: '1.5' }}>

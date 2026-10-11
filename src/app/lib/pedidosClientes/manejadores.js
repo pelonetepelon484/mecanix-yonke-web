@@ -126,7 +126,7 @@ export function crearManejadores(deps) {
 
     const codigo = deps.generarCodigo();
     const expiraAt = calcularExpiraAtPedido(deps.ahora());
-    // Casilla "Acepto que me contacten yonkes de otros estados que hagan envíos" (sin marcar = false).
+    // Casilla "Acepto que yonkes de otros estados que hagan envíos respondan mi alerta" (sin marcar = false).
     const otrosEstados = (await otrosEstadosHabilitados(db)) ? { aceptaOtrosEstados: body?.aceptaOtrosEstados === true } : {};
     let id;
     try {

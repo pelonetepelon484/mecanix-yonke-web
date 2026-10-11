@@ -35,7 +35,7 @@ function lineasPublicables(lineas) {
 
 // Alertas a yonkes de otros estados (aprobado por el abogado el 10 de octubre de 2026): la línea
 // de los Términos que decía que el cliente avisa "únicamente" a los yonkes de su estado.
-const CASILLA = 'Acepto que me contacten yonkes de otros estados que hagan envíos';
+const CASILLA = 'Acepto que yonkes de otros estados que hagan envíos respondan mi alerta';
 const TERMINOS_OTROS_ESTADOS = 'Mecanix permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas. Si el cliente activa la casilla correspondiente, acepta que su alerta de pedido también pueda mostrarse a los yonkes Verificados que tengan activada la opción de Envíos nacionales, en los demás estados, identificados con su insignia.';
 const CAMBIOS_2026_10_10 = {
   'Mecanix únicamente permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas.': TERMINOS_OTROS_ESTADOS,
