@@ -102,7 +102,7 @@ describe('textos legales de "Avisar a los yonkes"', () => {
     }
   });
   it('fecha de última actualización y VERSION_LEGAL de hoy', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-10');
+    expect(VERSION_LEGAL).toBe('2026-10-10b');
     expect(textoDe(Privacidad)).toContain('Última actualización: 10 de octubre de 2026');
     cleanup();
     expect(textoDe(Terminos)).toContain('Última actualización: 10 de octubre de 2026');
