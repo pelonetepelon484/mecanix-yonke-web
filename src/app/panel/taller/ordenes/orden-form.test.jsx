@@ -90,4 +90,30 @@ describe('formulario de orden de servicio', () => {
     render(<OrdenForm inicial={inicial} soloLectura onGuardar={() => {}} onCancelar={() => {}} />);
     expect(screen.queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument();
   });
+  it('con datosCliente: pide nombre, teléfono y placas (opcionales) y los guarda', async () => {
+    const onGuardar = vi.fn();
+    render(<OrdenForm inicial={inicial} datosCliente onGuardar={onGuardar} onCancelar={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Juan Pérez' } });
+    fireEvent.change(screen.getByLabelText('Teléfono'), { target: { value: '664 111 2233' } });
+    fireEvent.change(screen.getByLabelText('Placas (opcional)'), { target: { value: 'abc123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(onGuardar).toHaveBeenCalled());
+    expect(onGuardar.mock.calls[0][0].cliente).toEqual({ nombre: 'Juan Pérez', telefono: '664 111 2233' });
+    expect(onGuardar.mock.calls[0][0].vehiculo.placas).toBe('ABC123');
+  });
+  it('sin datosCliente (bandera apagada, aviso pendiente u orden vieja): no hay campos y no se manda nada del cliente', async () => {
+    const onGuardar = vi.fn();
+    render(<OrdenForm inicial={{ ...inicial, cliente: { nombre: 'Juan' }, vehiculo: { ...inicial.vehiculo, placas: 'ABC123' } }} onGuardar={onGuardar} onCancelar={() => {}} />);
+    expect(screen.queryByLabelText('Nombre')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Placas/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(onGuardar).toHaveBeenCalled());
+    expect(onGuardar.mock.calls[0][0].cliente).toEqual({});
+    expect('placas' in onGuardar.mock.calls[0][0].vehiculo).toBe(false);
+  });
+  it('con datos del cliente guardados aparece "Quitar datos del cliente"', () => {
+    render(<OrdenForm inicial={{ ...inicial, cliente: { nombre: 'Juan' } }} datosCliente onQuitarDatos={() => {}} onGuardar={() => {}} onCancelar={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Quitar datos del cliente' })).toBeInTheDocument();
+  });
 });
+

@@ -9,6 +9,8 @@ import { descargarPdfCotizacion } from '../pdf';
 import { leerConfigSolicitudesPiezas } from '../../../solicitudesPiezasDatos';
 import { convertirCotizacionEnOrden, leerConfigOrdenes } from '../../ordenes/datos';
 import { MENSAJES_CONVERSION, mensajeConfirmarConversion } from '../../../../../lib/ordenes';
+import { datosClienteDisponibles } from '../../../../../lib/avisoOrden';
+import { MENSAJES_COTIZACION } from '../../../../../lib/cotizaciones';
 
 export default function EditarCotizacion() {
   const router = useRouter();
@@ -73,10 +75,13 @@ export default function EditarCotizacion() {
 
   // Crea la orden y borra la cotización en un solo guardado; si algo falla, la cotización queda igual.
   async function convertirEnOrden() {
-    if (!window.confirm(mensajeConfirmarConversion(cot))) return;
+    // Con la bandera de datos del cliente de órdenes encendida y el aviso de órdenes listo, nombre,
+    // teléfono y placas pasan a la orden (y la confirmación ya no avisa de pérdida).
+    const copiarCliente = datosClienteDisponibles(configOrdenes);
+    if (!window.confirm(mensajeConfirmarConversion(cot, { copiarCliente }))) return;
     setConvirtiendo(true);
     try {
-      const folioOrden = await convertirCotizacionEnOrden({ tallerId, folioCotizacion: folio, avisoVersion: configOrdenes?.avisoOrdenVersion ?? '' });
+      const folioOrden = await convertirCotizacionEnOrden({ tallerId, folioCotizacion: folio, avisoVersion: configOrdenes?.avisoOrdenVersion ?? '', copiarCliente });
       router.push(`/panel/taller/ordenes/${folioOrden}`);
     } catch (err) {
       console.error(err);
@@ -132,9 +137,10 @@ export default function EditarCotizacion() {
           datosClienteHabilitados={datosClienteHabilitados}
           mostrarPedirPieza={pedirPiezaHabilitado}
           fechaEliminacion={fechaEliminacion}
-          puedeEliminar={puedeEditar}
+          // "No aprobada: eliminar ahora": el taller activo, aunque tenga términos viejos (las reglas lo permiten).
+          puedeEliminar={taller?.activo === true}
           onEliminar={async () => {
-            if (!window.confirm('¿Eliminar esta cotización y todos sus renglones? Esto no se puede deshacer.')) return;
+            if (!window.confirm(MENSAJES_COTIZACION.confirmarEliminar)) return;
             try {
               await borrarCotizacionCompleta(tallerId, folio);
               router.push('/panel/taller/cotizaciones');

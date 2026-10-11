@@ -55,6 +55,8 @@ export default function OrdenesLayout({ children }) {
     versionVigente,
     puedeEditar,
     avisoVersion: configOrdenes?.avisoOrdenVersion ?? '',
+    // Para decidir, orden por orden, si se pueden capturar datos del cliente (datosClienteDisponibles).
+    configOrdenes,
   };
 
   return (

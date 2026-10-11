@@ -258,7 +258,7 @@ export default function CotizacionForm({
           )}
           {puedeEliminar && onEliminar && (
             <button type="button" onClick={onEliminar} style={{ ...botonGrande, backgroundColor: '#B3261E', color: '#fff' }}>
-              Eliminar cotización
+              {MENSAJES_COTIZACION.botonEliminar}
             </button>
           )}
         </div>

@@ -29,6 +29,9 @@ export const MENSAJES_COTIZACION = {
   tallerDesactivado: 'Tu taller está desactivado, por eso no puedes guardar cambios. Escríbenos para revisarlo.',
   guardarFallo: 'No pudimos guardar la cotización. Revisa tu conexión e intenta de nuevo. Lo que escribiste sigue en pantalla.',
   folioOcupado: 'No pudimos asignar un número a la cotización. Intenta de nuevo.',
+  // Botón "No aprobada: eliminar ahora" (texto aprobado por David).
+  botonEliminar: 'No aprobada: eliminar ahora',
+  confirmarEliminar: 'La cotización y todos sus renglones se eliminarán ahora y no se podrán recuperar. ¿Continuar?',
 } as const;
 
 // Convierte un monto en pesos a centavos enteros, redondeando.

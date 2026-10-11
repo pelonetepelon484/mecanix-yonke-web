@@ -79,7 +79,7 @@ describe('"Convertir en orden" en el detalle de la cotización', () => {
     fireEvent.click(await screen.findByRole('button', BOTON));
     expect(confirmar).toHaveBeenCalledWith(UNA_LINEA);
     await waitFor(() => expect(push).toHaveBeenCalledWith('/panel/taller/ordenes/O261011-ZZZZ'));
-    expect(convertir).toHaveBeenCalledWith({ tallerId: 'T1', folioCotizacion: 'C261008-AB12', avisoVersion: 'aviso-orden-0' });
+    expect(convertir).toHaveBeenCalledWith({ tallerId: 'T1', folioCotizacion: 'C261008-AB12', avisoVersion: 'aviso-orden-0', copiarCliente: false });
   });
   it('CON datos del cliente: la confirmación agrega la segunda línea', async () => {
     cotizacion = { ...base, cliente: { nombre: 'Juan Pérez' }, vehiculo: { ...base.vehiculo, placas: 'ABC1234' } };

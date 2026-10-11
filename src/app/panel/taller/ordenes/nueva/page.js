@@ -4,10 +4,11 @@ import { useRouter } from 'next/navigation';
 import OrdenForm from '../OrdenForm';
 import { useOrdenes } from '../contexto';
 import { guardarOrden } from '../datos';
+import { datosClienteDisponibles } from '../../../../../lib/avisoOrden';
 
 export default function NuevaOrden() {
   const router = useRouter();
-  const { tallerId, taller, puedeEditar, avisoVersion } = useOrdenes();
+  const { tallerId, taller, puedeEditar, avisoVersion, configOrdenes } = useOrdenes();
 
   if (!puedeEditar) {
     return (
@@ -24,6 +25,7 @@ export default function NuevaOrden() {
         <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '4px 0 14px' }}>Nueva orden de servicio</h1>
         <OrdenForm
           tallerActivo={taller?.activo === true}
+          datosCliente={datosClienteDisponibles(configOrdenes)}
           onCancelar={() => router.push('/panel/taller/ordenes')}
           onGuardar={async (datos) => {
             const folio = await guardarOrden({ tallerId, datos, avisoVersion });

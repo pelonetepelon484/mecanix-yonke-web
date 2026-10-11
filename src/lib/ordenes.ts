@@ -1,6 +1,7 @@
-// Lógica pura de las órdenes de servicio del taller (etapa 1). Mismo criterio que cotizaciones.ts:
+// Lógica pura de las órdenes de servicio del taller. Mismo criterio que cotizaciones.ts:
 // dinero en centavos, IVA calculado al mostrar (no se guarda) y validaciones en español.
-// Sin datos del cliente en esta etapa: no hay nombre, teléfono, placas, VIN ni fotos.
+// Datos del cliente (etapa 4): nombre, teléfono y placas, opcionales, SOLO cuando
+// datosClienteDisponibles (avisoOrden.ts) lo permite. Nunca VIN ni fotos.
 import { generarFolio, subtotalCentavos } from './cotizaciones';
 
 export const MAX_TRABAJOS = 20;
@@ -44,6 +45,9 @@ export const MENSAJES_ORDEN = {
   observaciones: `Las observaciones son muy largas (máximo ${MAX_OBSERVACIONES} letras).`,
   estadoRecepcion: `"Estado del vehículo al recibirlo" es muy largo (máximo ${MAX_ESTADO_RECEPCION} letras).`,
   pertenencias: `"Pertenencias dentro del vehículo" es muy largo (máximo ${MAX_PERTENENCIAS} letras).`,
+  nombreCliente: 'El nombre del cliente es muy largo (máximo 100 letras).',
+  telefono: 'El teléfono solo puede tener números, espacios, + y guiones (máximo 20 caracteres).',
+  placas: 'Las placas son muy largas (máximo 12 caracteres).',
   demasiadosTrabajos: `Una orden puede tener hasta ${MAX_TRABAJOS} trabajos.`,
   demasiadasPiezas: `Una orden puede tener hasta ${MAX_PIEZAS} piezas.`,
   descripcion: 'Escribe la descripción de cada trabajo y pieza (máximo 200 letras).',
@@ -57,7 +61,8 @@ export const MENSAJES_ORDEN = {
 
 export type ItemOrden = { descripcion: string; cantidad: number; precioUnitario: number };
 export type DatosOrden = {
-  vehiculo: { marca: string; modelo: string; anio: number; kilometraje?: number };
+  cliente?: { nombre?: string; telefono?: string };
+  vehiculo: { marca: string; modelo: string; anio: number; kilometraje?: number; placas?: string };
   fallaReportada: string;
   observaciones: string;
   estadoRecepcion: string;
@@ -87,8 +92,11 @@ export function garantiaValida(dias: unknown): dias is number {
 // Primer error del formulario, en el orden en que aparecen los campos. null si todo está bien.
 // Una orden recién recibida puede no tener todavía trabajos ni piezas.
 export function validarOrden(d: DatosOrden): string | null {
+  if ((d.cliente?.nombre ?? '').length > 100) return MENSAJES_ORDEN.nombreCliente;
+  if (d.cliente?.telefono !== undefined && !/^[0-9 +()-]{0,20}$/.test(d.cliente.telefono)) return MENSAJES_ORDEN.telefono;
   if (!d.vehiculo.marca.trim() || !d.vehiculo.modelo.trim()) return MENSAJES_ORDEN.vehiculo;
   if (!Number.isInteger(d.vehiculo.anio) || d.vehiculo.anio < 1950 || d.vehiculo.anio > 2100) return MENSAJES_ORDEN.anio;
+  if (d.vehiculo.placas !== undefined && d.vehiculo.placas.length > 12) return MENSAJES_ORDEN.placas;
   if (d.vehiculo.kilometraje !== undefined && (!Number.isInteger(d.vehiculo.kilometraje) || d.vehiculo.kilometraje < 0 || d.vehiculo.kilometraje > 2000000)) return MENSAJES_ORDEN.kilometraje;
   if (d.fallaReportada.length > MAX_FALLA) return MENSAJES_ORDEN.falla;
   if (d.estadoRecepcion.length > MAX_ESTADO_RECEPCION) return MENSAJES_ORDEN.estadoRecepcion;
@@ -172,8 +180,9 @@ export function leerItems(lista: unknown, max = MAX_TRABAJOS): ItemOrden[] {
 // ---------- Etapa 2: convertir una cotización en orden ----------
 // La orden nace "recibido", con folio "O..." y borrado a 88 días (como una creada desde cero).
 // Copia: marca, modelo, año, kilometraje y observaciones; piezas -> "piezas", mano de obra ->
-// "trabajos". NO copia datos del cliente (nombre, teléfono, placas) ni guarda ningún enlace a la
-// cotización, que se borra en el mismo guardado.
+// "trabajos". Nombre, teléfono y placas SOLO con copiarCliente (bandera de datos del cliente de
+// órdenes encendida y aviso de órdenes listo). Nunca guarda un enlace a la cotización, que se
+// borra en el mismo guardado.
 export const MENSAJES_CONVERSION = {
   confirmar: 'Se creará una orden de servicio y esta cotización se eliminará. ¿Continuar?',
   datosCliente: 'Los datos del cliente (nombre, teléfono y placas) no pasan a la orden y se perderán al eliminar la cotización. Si los necesitas, anótalos antes.',
@@ -196,9 +205,10 @@ export function cotizacionTieneDatosCliente(c: CotizacionParaConvertir): boolean
   return hayTexto(c.cliente?.nombre) || hayTexto(c.cliente?.telefono) || hayTexto(c.vehiculo?.placas);
 }
 
-// Texto de la confirmación: la segunda línea solo si la cotización tiene datos del cliente.
-export function mensajeConfirmarConversion(c: CotizacionParaConvertir): string {
-  return cotizacionTieneDatosCliente(c)
+// Texto de la confirmación: la segunda línea solo si la cotización tiene datos del cliente y esos
+// datos NO pasan a la orden (con copiarCliente sí pasan, y no se avisa de pérdida).
+export function mensajeConfirmarConversion(c: CotizacionParaConvertir, { copiarCliente = false } = {}): string {
+  return !copiarCliente && cotizacionTieneDatosCliente(c)
     ? `${MENSAJES_CONVERSION.confirmar}\n${MENSAJES_CONVERSION.datosCliente}`
     : MENSAJES_CONVERSION.confirmar;
 }
@@ -209,7 +219,7 @@ const aItem = (r: RenglonCotizacion): ItemOrden => ({
   precioUnitario: Number(r.precioUnitario),
 });
 
-export function ordenDesdeCotizacion(c: CotizacionParaConvertir): DatosOrden {
+export function ordenDesdeCotizacion(c: CotizacionParaConvertir, { copiarCliente = false } = {}): DatosOrden {
   const renglones = Array.isArray(c.renglones) ? c.renglones : [];
   const vehiculo: DatosOrden['vehiculo'] = {
     marca: typeof c.vehiculo?.marca === 'string' ? c.vehiculo.marca : '',
@@ -217,7 +227,14 @@ export function ordenDesdeCotizacion(c: CotizacionParaConvertir): DatosOrden {
     anio: Number(c.vehiculo?.anio),
   };
   if (c.vehiculo?.kilometraje !== undefined && c.vehiculo?.kilometraje !== null) vehiculo.kilometraje = Number(c.vehiculo.kilometraje);
+  const cliente: NonNullable<DatosOrden['cliente']> = {};
+  if (copiarCliente) {
+    if (hayTexto(c.cliente?.nombre)) cliente.nombre = (c.cliente?.nombre as string).trim();
+    if (hayTexto(c.cliente?.telefono)) cliente.telefono = (c.cliente?.telefono as string).trim();
+    if (hayTexto(c.vehiculo?.placas)) vehiculo.placas = (c.vehiculo?.placas as string).trim();
+  }
   return {
+    cliente,
     vehiculo,
     fallaReportada: '',
     observaciones: typeof c.observaciones === 'string' ? c.observaciones : '',
@@ -231,8 +248,8 @@ export function ordenDesdeCotizacion(c: CotizacionParaConvertir): DatosOrden {
 
 // Primer problema para convertir (null = se puede). Más de 20 de un tipo no debería pasar (una
 // cotización tiene máximo 20 renglones), pero si pasa, no se toca nada.
-export function validarConversion(c: CotizacionParaConvertir): string | null {
-  const datos = ordenDesdeCotizacion(c);
+export function validarConversion(c: CotizacionParaConvertir, { copiarCliente = false } = {}): string | null {
+  const datos = ordenDesdeCotizacion(c, { copiarCliente });
   if (datos.trabajos.length > MAX_TRABAJOS || datos.piezas.length > MAX_PIEZAS) return MENSAJES_CONVERSION.demasiados;
   return validarOrden(datos);
 }

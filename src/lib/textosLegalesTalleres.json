@@ -194,5 +194,20 @@
       }
     ]
   },
-  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir las herramientas de taller y el nuevo flujo de solicitud de piezas a yonkes. Tu taller es el responsable de los datos de sus clientes y Mecanix los almacena por tu petición; las cotizaciones se eliminan a los 90 días; y debes entregar un aviso de privacidad a tus clientes. Además, cuando solicites una pieza a los yonkes, Mecanix compartirá con ellos los datos de tu taller y del vehículo solicitado, pero nunca los datos personales de tu cliente. Para seguir creando cotizaciones o solicitando piezas, lee y acepta la nueva versión. Mientras tanto puedes consultar tus cotizaciones anteriores y quitar datos de tus clientes."
+  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir las herramientas de taller y el nuevo flujo de solicitud de piezas a yonkes. Tu taller es el responsable de los datos de sus clientes y Mecanix los almacena por tu petición; las cotizaciones se eliminan a los 90 días; y debes entregar un aviso de privacidad a tus clientes. Además, cuando solicites una pieza a los yonkes, Mecanix compartirá con ellos los datos de tu taller y del vehículo solicitado, pero nunca los datos personales de tu cliente. Para seguir creando cotizaciones o solicitando piezas, lee y acepta la nueva versión. Mientras tanto puedes consultar tus cotizaciones anteriores y quitar datos de tus clientes.",
+  "avisoOrden": {
+    "version": "aviso-orden-1",
+    "aviso": [
+      {
+        "tipo": "parrafo",
+        "texto": "[TEXTO LEGAL PENDIENTE]"
+      }
+    ],
+    "constancia": [
+      {
+        "tipo": "parrafo",
+        "texto": "[TEXTO LEGAL PENDIENTE]"
+      }
+    ]
+  }
 }

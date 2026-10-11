@@ -29,12 +29,17 @@ describe('formulario de cotización', () => {
     render(<CotizacionForm inicial={inicial} tallerActivo={false} onGuardar={() => {}} onCancelar={() => {}} onQuitarDatos={() => {}} />);
     expect(screen.queryByRole('button', { name: 'Quitar datos del cliente' })).not.toBeInTheDocument();
   });
-  it('muestra "Eliminar cotización" solo si puede eliminar', () => {
+  // Etapa 5: el botón se llama "No aprobada: eliminar ahora" (antes "Eliminar cotización").
+  it('muestra "No aprobada: eliminar ahora" solo si puede eliminar (también en solo lectura)', () => {
     const { unmount } = render(<CotizacionForm inicial={inicial} tallerActivo puedeEliminar onEliminar={() => {}} onGuardar={() => {}} onCancelar={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Eliminar cotización' })).toBeInTheDocument();
-    unmount();
-    render(<CotizacionForm inicial={inicial} tallerActivo puedeEliminar={false} onEliminar={() => {}} onGuardar={() => {}} onCancelar={() => {}} />);
+    expect(screen.getByRole('button', { name: 'No aprobada: eliminar ahora' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Eliminar cotización' })).not.toBeInTheDocument();
+    unmount();
+    const { unmount: u2 } = render(<CotizacionForm inicial={inicial} tallerActivo soloLectura puedeEliminar onEliminar={() => {}} onGuardar={() => {}} onCancelar={() => {}} />);
+    expect(screen.getByRole('button', { name: 'No aprobada: eliminar ahora' })).toBeInTheDocument();
+    u2();
+    render(<CotizacionForm inicial={inicial} tallerActivo puedeEliminar={false} onEliminar={() => {}} onGuardar={() => {}} onCancelar={() => {}} />);
+    expect(screen.queryByRole('button', { name: 'No aprobada: eliminar ahora' })).not.toBeInTheDocument();
   });
   it('en solo lectura no muestra Guardar', () => {
     render(<CotizacionForm inicial={inicial} tallerActivo soloLectura onGuardar={() => {}} onCancelar={() => {}} />);

@@ -49,14 +49,15 @@ export async function leerOrden(tallerId, folio) {
   return snap.exists() ? { folio, ...snap.data() } : null;
 }
 
-// Cuerpo completo de la orden (se escribe con setDoc: lo que no va, desaparece). En esta etapa
-// nunca lleva datos del cliente: cliente vacío y sin placas.
+// Cuerpo completo de la orden (se escribe con setDoc: lo que no va, desaparece). Los datos del
+// cliente (nombre, teléfono, placas) solo llegan aquí si la pantalla los permitió
+// (datosClienteDisponibles); las reglas exigen además la bandera y la versión de aviso vigente.
 function cuerpoOrden({ tallerId, datos, original, avisoVersion }) {
   const plan = planBorrado(original, datos.estado, datos.garantiaDias);
   const cuerpo = {
     tallerId,
     estado: datos.estado,
-    cliente: {},
+    cliente: datos.cliente ?? {},
     vehiculo: datos.vehiculo,
     fallaReportada: datos.fallaReportada,
     observaciones: datos.observaciones,
@@ -115,12 +116,14 @@ export function borrarOrden(tallerId, folio) {
 // Si el guardado falla (sin conexión, términos viejos, taller desactivado...), Firestore no aplica
 // NADA: la cotización queda intacta. Si el folio choca, prueba otro (hasta 3 veces).
 // Lanza un Error con un mensaje en español listo para mostrar.
-export async function convertirCotizacionEnOrden({ tallerId, folioCotizacion, avisoVersion = '' }) {
+// copiarCliente: copiar nombre, teléfono y placas (solo con la bandera de datos del cliente de
+// órdenes encendida y el aviso de órdenes listo; ver datosClienteDisponibles).
+export async function convertirCotizacionEnOrden({ tallerId, folioCotizacion, avisoVersion = '', copiarCliente = false }) {
   const cot = await leerCotizacion(tallerId, folioCotizacion);
   if (!cot) throw new Error(MENSAJES_CONVERSION.noExiste);
-  const problema = validarConversion(cot);
+  const problema = validarConversion(cot, { copiarCliente });
   if (problema) throw new Error(problema);
-  const datos = ordenDesdeCotizacion(cot);
+  const datos = ordenDesdeCotizacion(cot, { copiarCliente });
   const renglones = cot.renglones.map((r) => doc(db, 'talleres', tallerId, 'cotizaciones', folioCotizacion, 'renglones', String(r.numero)));
 
   for (let intento = 0; intento < 3; intento++) {

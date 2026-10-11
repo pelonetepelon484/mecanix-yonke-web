@@ -19,6 +19,7 @@ const cot = (extra = {}) => ({
 describe('convertir una cotización en orden', () => {
   it('copia vehículo y observaciones; piezas a "piezas" y mano de obra a "trabajos"; nace "recibido"', () => {
     expect(ordenDesdeCotizacion(cot())).toEqual({
+      cliente: {},
       vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001, kilometraje: 150000 },
       fallaReportada: '', observaciones: 'Golpe en la defensa', estadoRecepcion: '', pertenencias: '',
       trabajos: [{ descripcion: 'Cambio de balatas', cantidad: 1, precioUnitario: 500 }],
@@ -29,15 +30,30 @@ describe('convertir una cotización en orden', () => {
   it('total en centavos igual al de la cotización (sin IVA)', () => {
     expect(totalOrdenCentavos(ordenDesdeCotizacion(cot()))).toBe(70100 + 50000 + 120000);
   });
-  it('NO copia nombre, teléfono ni placas; tampoco ningún dato que apunte a la cotización', () => {
+  it('SIN copiarCliente (bandera apagada): NO copia nombre, teléfono ni placas; tampoco ningún dato de la cotización', () => {
     const datos = ordenDesdeCotizacion(cot({
       cliente: { nombre: 'Juan Pérez', telefono: '6641112233' },
       vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001, placas: 'ABC123' },
       folio: 'C251011-AAAA',
     }));
+    expect(datos.cliente).toEqual({});
     const texto = JSON.stringify(datos);
-    for (const prohibido of ['Juan', '6641112233', 'ABC123', 'C251011', 'placas', 'cliente', 'folio', 'cotizacion']) expect(texto).not.toContain(prohibido);
+    for (const prohibido of ['Juan', '6641112233', 'ABC123', 'C251011', 'placas', 'folio', 'cotizacion']) expect(texto).not.toContain(prohibido);
     expect('kilometraje' in datos.vehiculo).toBe(false);
+  });
+  it('CON copiarCliente (bandera encendida y aviso listo): copia nombre, teléfono y placas; nada de la cotización', () => {
+    const datos = ordenDesdeCotizacion(cot({
+      cliente: { nombre: ' Juan Pérez ', telefono: '6641112233' },
+      vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001, placas: 'ABC123', kilometraje: 1000 },
+      folio: 'C251011-AAAA',
+    }), { copiarCliente: true });
+    expect(datos.cliente).toEqual({ nombre: 'Juan Pérez', telefono: '6641112233' });
+    expect(datos.vehiculo).toEqual({ marca: 'Nissan', modelo: 'Sentra', anio: 2001, placas: 'ABC123', kilometraje: 1000 });
+    expect(JSON.stringify(datos)).not.toContain('C251011');
+    expect(validarConversion(cot({ cliente: { nombre: 'x'.repeat(101) } }), { copiarCliente: true })).toBe(MENSAJES_ORDEN.nombreCliente);
+  });
+  it('con copiarCliente, la confirmación ya NO avisa de pérdida de datos', () => {
+    expect(mensajeConfirmarConversion(cot({ cliente: { nombre: 'Juan' } }), { copiarCliente: true })).toBe(MENSAJES_CONVERSION.confirmar);
   });
   it('se puede convertir una cotización válida', () => {
     expect(validarConversion(cot())).toBeNull();

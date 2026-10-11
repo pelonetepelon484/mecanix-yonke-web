@@ -9,8 +9,10 @@ import {
   totalOrdenCentavos, validarItem, validarOrden,
 } from '../../../../lib/ordenes';
 
-// Formulario de orden de servicio para celular (etapa 1). Si el guardado falla, NADA de lo escrito
-// se borra. Sin datos del cliente: no hay nombre, teléfono, placas, VIN ni fotos.
+// Formulario de orden de servicio para celular. Si el guardado falla, NADA de lo escrito se borra.
+// datosCliente: nombre, teléfono y placas (opcionales) SOLO si la pantalla lo permite
+// (datosClienteDisponibles: bandera encendida, aviso de órdenes listo y versión vigente en la orden).
+// Nunca VIN ni fotos.
 // soloLectura: el taller tiene la versión vieja, está desactivado o la orden venció.
 // Todo lo que viene de Firestore se lee como texto plano (leerItems/textoPlano) y React lo muestra
 // como texto: nunca se interpreta como HTML.
@@ -20,6 +22,9 @@ const aFormulario = (lista) => leerItems(lista).map((i) => ({ descripcion: i.des
 
 function desdeInicial(o) {
   return {
+    nombre: textoPlano(o?.cliente?.nombre, 100),
+    telefono: textoPlano(o?.cliente?.telefono, 20),
+    placas: textoPlano(o?.vehiculo?.placas, 12),
     marca: textoPlano(o?.vehiculo?.marca, 60),
     modelo: textoPlano(o?.vehiculo?.modelo, 60),
     anio: o?.vehiculo?.anio ? String(o.vehiculo.anio) : '',
@@ -42,10 +47,18 @@ const aItems = (lista) => lista.map((i) => ({
 }));
 
 // Convierte lo escrito en datos para la lógica compartida. Campos vacíos quedan NaN (y fallan).
-function construir(f) {
+// Sin datosCliente, el cliente va vacío y sin placas (igual que en cotizaciones con la bandera apagada).
+function construir(f, datosCliente) {
+  const cliente = {};
   const vehiculo = { marca: f.marca.trim(), modelo: f.modelo.trim(), anio: f.anio.trim() === '' ? Number.NaN : Number(f.anio) };
+  if (datosCliente) {
+    if (f.nombre.trim()) cliente.nombre = f.nombre.trim();
+    if (f.telefono.trim()) cliente.telefono = f.telefono.trim();
+    if (f.placas.trim()) vehiculo.placas = f.placas.trim().toUpperCase();
+  }
   if (f.kilometraje.trim() !== '') vehiculo.kilometraje = Number(f.kilometraje);
   const datos = {
+    cliente,
     vehiculo,
     fallaReportada: f.fallaReportada.trim(),
     estadoRecepcion: f.estadoRecepcion.trim(),
@@ -122,7 +135,7 @@ function ListaItems({ titulo, nombreSingular, lista, max, datos, onCambiar, onQu
 }
 
 export default function OrdenForm({
-  inicial = null, tallerActivo = true, soloLectura = false, puedeEliminar = false,
+  inicial = null, tallerActivo = true, soloLectura = false, puedeEliminar = false, datosCliente = false,
   onGuardar, onQuitarDatos, onEliminar, onCancelar,
 }) {
   const [f, setF] = useState(() => desdeInicial(inicial));
@@ -136,7 +149,7 @@ export default function OrdenForm({
   const quitarItem = (lista) => (i) => setF((prev) => ({ ...prev, [lista]: prev[lista].filter((_, j) => j !== i) }));
   const agregarItem = (lista) => () => setF((prev) => ({ ...prev, [lista]: [...prev[lista], itemVacio()] }));
 
-  const datos = construir(f);
+  const datos = construir(f, datosCliente);
   const itemsValidos = [...datos.trabajos, ...datos.piezas].every((i) => validarItem(i) === null);
   // Precios sin IVA: el IVA se calcula aquí para mostrarlo, no se guarda.
   const subtotal = itemsValidos ? totalOrdenCentavos(datos) : null;
@@ -176,6 +189,16 @@ export default function OrdenForm({
       )}
 
       <fieldset disabled={soloLectura} style={sinBorde}>
+        {datosCliente && (
+          <div style={seccion}>
+            <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E' }}>Cliente (opcional)</p>
+            <label htmlFor="orden-nombre" style={etiqueta}>Nombre</label>
+            <input id="orden-nombre" maxLength={100} value={f.nombre} onChange={set('nombre')} style={inputBase} autoComplete="off" />
+            <label htmlFor="orden-telefono" style={etiqueta}>Teléfono</label>
+            <input id="orden-telefono" type="tel" inputMode="tel" maxLength={20} value={f.telefono} onChange={set('telefono')} style={inputBase} autoComplete="off" />
+          </div>
+        )}
+
         <div style={seccion}>
           <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E' }}>Vehículo</p>
           <SelectorMarcaModelo
@@ -188,6 +211,12 @@ export default function OrdenForm({
           />
           <label htmlFor="orden-anio" style={etiqueta}>Año</label>
           <input id="orden-anio" type="number" inputMode="numeric" value={f.anio} onChange={set('anio')} style={inputBase} />
+          {datosCliente && (
+            <>
+              <label htmlFor="orden-placas" style={etiqueta}>Placas (opcional)</label>
+              <input id="orden-placas" maxLength={12} value={f.placas} onChange={set('placas')} style={inputBase} autoComplete="off" />
+            </>
+          )}
           <label htmlFor="orden-km" style={etiqueta}>Kilometraje (opcional)</label>
           <input id="orden-km" type="number" inputMode="numeric" value={f.kilometraje} onChange={set('kilometraje')} style={inputBase} />
         </div>

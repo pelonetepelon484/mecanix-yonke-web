@@ -82,4 +82,13 @@ describe('convertir en orden: un solo guardado, todo o nada', () => {
     await expect(convertirCotizacionEnOrden({ tallerId: 'T1', folioCotizacion: 'C251011-AAAA' })).rejects.toThrow(MENSAJES_CONVERSION.demasiados);
     expect(lotes).toHaveLength(0);
   });
+  it('con copiarCliente: la orden lleva nombre y placas de la cotización, en el mismo guardado único', async () => {
+    await convertirCotizacionEnOrden({ tallerId: 'T1', folioCotizacion: 'C251011-AAAA', avisoVersion: 'aviso-orden-1', copiarCliente: true });
+    const orden = lotes[0].sets[0][1];
+    expect(orden.cliente).toEqual({ nombre: 'Juan' });
+    expect(orden.vehiculo.placas).toBe('ABC123');
+    expect(orden.avisoVersion).toBe('aviso-orden-1');
+    expect(lotes[0].deletes).toHaveLength(21);
+  });
 });
+

@@ -2,17 +2,27 @@
 
 // PDF de una orden de servicio (etapa 3). Se arma en el navegador con jspdf (se carga solo al
 // usarlo) y se descarga directo: no se sube nada a ningún servidor. Mismo estilo que el de
-// cotizaciones. SIN hoja de aviso de privacidad ni constancia con firma (eso es la etapa 4).
+// cotizaciones. Etapa 4: si el aviso de órdenes está listo (texto final del abogado, misma versión
+// que la orden), agrega la hoja del aviso de privacidad y la constancia de recepción con firma. Si la
+// orden trae datos del cliente y el aviso NO está listo, el PDF no se genera (falla cerrada).
 // Todo el texto es texto plano: lo que venga de Firestore se lee con textoPlano/leerItems
 // (tolerando renglones mal formados) y pasa por textoPdf (lo que la fuente no soporta -> "?").
 // Al pie de CADA hoja: "Esta orden se eliminará de Mecanix el [fecha]. Conserva este documento."
 import { IVA_PORCENTAJE, aCentavos, formatearPesos, ivaCentavos, subtotalCentavos, totalConIvaCentavos } from '../../../../lib/cotizaciones';
 import { MAX_ESTADO_RECEPCION, MAX_FALLA, MAX_OBSERVACIONES, MAX_PERTENENCIAS, NOMBRE_ESTADO_ORDEN, leerItems, textoPlano } from '../../../../lib/ordenes';
 import { protegerTextos } from '../../../../lib/pdfTexto';
+import { armarAvisoOrden } from '../../../../lib/avisoOrden';
 import { ANCHO, AZUL, DERECHA, GRIS, LIMITE_Y, MARGEN, estilo, fechaLarga, formatearWhatsapp } from '../cotizaciones/pdf';
 
 const aFecha = (v) => (v?.toDate ? v.toDate() : v instanceof Date ? v : null);
 const Y_PIE = 288;
+
+export const MENSAJE_SIN_AVISO = 'No podemos generar el PDF de esta orden: falta el texto del aviso de privacidad de órdenes. Escríbenos.';
+
+export function tieneDatosCliente(orden) {
+  const hay = (v) => typeof v === 'string' && v.trim() !== '';
+  return hay(orden?.cliente?.nombre) || hay(orden?.cliente?.telefono) || hay(orden?.vehiculo?.placas);
+}
 
 export function textoPie(orden) {
   const expira = aFecha(orden?.expiraAt);
@@ -25,8 +35,14 @@ export function textoPie(orden) {
 export function lineasOrden(orden) {
   const v = orden?.vehiculo ?? {};
   const lineas = [];
+  const nombre = textoPlano(orden?.cliente?.nombre, 100).trim();
+  const telefono = textoPlano(orden?.cliente?.telefono, 20).trim();
+  const placas = textoPlano(v.placas, 12).trim();
+  if (nombre) lineas.push(['Cliente', nombre]);
+  if (telefono) lineas.push(['Teléfono', telefono]);
   const vehiculo = [textoPlano(v.marca, 60), textoPlano(v.modelo, 60), Number.isInteger(v.anio) ? String(v.anio) : ''].filter(Boolean).join(' ');
   if (vehiculo) lineas.push(['Vehículo', vehiculo]);
+  if (placas) lineas.push(['Placas', placas]);
   if (Number.isInteger(v.kilometraje)) lineas.push(['Kilometraje', `${v.kilometraje.toLocaleString('es-MX')} km`]);
   const estado = NOMBRE_ESTADO_ORDEN[orden?.estado];
   if (estado) lineas.push(['Estado', estado]);
@@ -170,10 +186,46 @@ function dibujarOrden(doc, orden, taller) {
   }
 }
 
+// Hoja de texto legal (aviso o constancia). En la constancia se deja espacio para firmar antes del
+// último párrafo (la línea de firma). La versión del aviso va al pie.
+function dibujarHojaLegal(doc, { titulo, parrafos }, version, { espacioFirma = false } = {}) {
+  doc.addPage();
+  const pie = () => {
+    estilo(doc, { tamano: 8, color: GRIS });
+    doc.text(`Versión del aviso: ${version}`, MARGEN, Y_PIE);
+  };
+  pie();
+  estilo(doc, { tamano: 14, negrita: true, color: AZUL });
+  doc.text(titulo, MARGEN, 22);
+  let y = 32;
+  parrafos.forEach((parrafo, i) => {
+    if (espacioFirma && i === parrafos.length - 1) y += 14;
+    estilo(doc, { tamano: 10 });
+    for (const linea of doc.splitTextToSize(parrafo, ANCHO)) {
+      if (y > LIMITE_Y) {
+        doc.addPage();
+        pie();
+        y = 22;
+        estilo(doc, { tamano: 10 });
+      }
+      doc.text(linea, MARGEN, y);
+      y += 5;
+    }
+    y += 3;
+  });
+}
+
 async function crearDocOrden({ orden, taller }) {
+  // Aviso y constancia SOLO con el texto final y la misma versión que se guardó en la orden.
+  const legal = armarAvisoOrden(taller, orden, orden?.avisoVersion);
+  if (!legal && tieneDatosCliente(orden)) throw new Error(MENSAJE_SIN_AVISO);
   const { jsPDF } = await import('jspdf');
   const doc = protegerTextos(new jsPDF());
   dibujarOrden(doc, orden, taller);
+  if (legal) {
+    dibujarHojaLegal(doc, legal.aviso, legal.version);
+    dibujarHojaLegal(doc, legal.constancia, legal.version, { espacioFirma: true });
+  }
   return doc;
 }
 

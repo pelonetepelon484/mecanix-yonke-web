@@ -7,11 +7,12 @@ import { useOrdenes } from '../contexto';
 import { borrarOrden, guardarOrden, leerOrden, quitarDatosClienteOrden } from '../datos';
 import { AVISO_COPIA } from '../../../../../lib/ordenes';
 import { descargarPdfOrden } from '../pdf';
+import { datosClienteDisponibles } from '../../../../../lib/avisoOrden';
 
 export default function DetalleOrden() {
   const router = useRouter();
   const { id: folio } = useParams();
-  const { tallerId, taller, puedeEditar } = useOrdenes();
+  const { tallerId, taller, puedeEditar, configOrdenes } = useOrdenes();
   const [orden, setOrden] = useState(null);
   const [noExiste, setNoExiste] = useState(false);
   const [version, setVersion] = useState(0);
@@ -88,7 +89,10 @@ export default function DetalleOrden() {
           inicial={orden}
           tallerActivo={taller?.activo === true}
           soloLectura={soloLectura}
-          puedeEliminar={puedeEditar}
+          // Borrar: el taller activo, aunque tenga términos viejos (las reglas lo permiten así).
+          puedeEliminar={taller?.activo === true}
+          // Datos del cliente solo en órdenes con la versión de aviso vigente (las viejas, nunca).
+          datosCliente={datosClienteDisponibles(configOrdenes, orden.avisoVersion)}
           onEliminar={async () => {
             if (!window.confirm('¿Eliminar esta orden? Esto no se puede deshacer.')) return;
             try {
