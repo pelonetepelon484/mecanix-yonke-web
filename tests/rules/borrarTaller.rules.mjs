@@ -37,6 +37,10 @@ async function sembrar() {
         });
       }
     }
+    // Tres órdenes de servicio (sin subcolecciones)
+    for (const folio of ['O251011-AAAA', 'O251011-BBBB', 'O251011-CCCC']) {
+      await setDoc(doc(db, 'talleres', 'T1', 'ordenes', folio), { tallerId: 'T1', estado: 'recibido', expiraAt: new Date(Date.now() + 80 * 86400000) });
+    }
     // Otro taller que NO se debe tocar
     await setDoc(doc(db, 'talleres', 'T2'), { nombre: 'Otro', whatsapp: '6649999999', ciudad: 'Ensenada', logoUrl: '', ownerUid: 't2', activo: true, creadoAt: new Date(), aceptacionVersion: 'v1', avisoPrivacidad: { modo: 'generado', versionPlantilla: 'aviso-1', fecha: new Date() } });
     await setDoc(doc(db, 'talleres', 'T2', 'aceptaciones', 'v1'), { version: 'v1', fecha: new Date() });
@@ -49,10 +53,11 @@ async function conteos(uid, tallerId) {
   const cots = await getDocs(collection(db, 'talleres', tallerId, 'cotizaciones'));
   let renglones = 0;
   for (const c of cots.docs) renglones += (await getDocs(collection(db, 'talleres', tallerId, 'cotizaciones', c.id, 'renglones'))).size;
+  const ords = await getDocs(collection(db, 'talleres', tallerId, 'ordenes'));
   const acs = await getDocs(collection(db, 'talleres', tallerId, 'aceptaciones'));
   const taller = await getDoc(doc(db, 'talleres', tallerId));
   const usuario = await getDoc(doc(db, 'usuarios', tallerId.toLowerCase()));
-  return { cotizaciones: cots.size, renglones, aceptaciones: acs.size, taller: taller.exists(), usuario: usuario.exists() };
+  return { cotizaciones: cots.size, renglones, ordenes: ords.size, aceptaciones: acs.size, taller: taller.exists(), usuario: usuario.exists() };
 }
 
 before(async () => {
@@ -67,11 +72,12 @@ describe('admin borra un taller completo', () => {
     const resumen = await borrarTallerCompleto({ db, fns }, 'T1');
     assert.equal(resumen.cotizaciones, 2);
     assert.equal(resumen.renglones, 23);
+    assert.equal(resumen.ordenes, 3);
     assert.equal(resumen.aceptaciones, 1);
     assert.equal(resumen.taller, true);
     assert.equal(resumen.usuarios, 1);
     const despues = await conteos('adm', 'T1');
-    assert.deepEqual(despues, { cotizaciones: 0, renglones: 0, aceptaciones: 0, taller: false, usuario: false });
+    assert.deepEqual(despues, { cotizaciones: 0, renglones: 0, ordenes: 0, aceptaciones: 0, taller: false, usuario: false });
     const otro = await conteos('adm', 'T2');
     assert.equal(otro.taller, true);
     assert.equal(otro.aceptaciones, 1);

@@ -427,6 +427,154 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Órdenes de servicio del taller (etapa 1) ----------
+    // talleres/{tallerId}/ordenes/{folio}: trabajos y piezas DENTRO de la orden (máximo 20 de cada uno).
+    // Bandera: config/ordenes { habilitado, datosClienteHabilitados, avisoOrdenVersion }. Sin ese
+    // documento, get() falla y la regla DENIEGA crear y editar (falla cerrada).
+    // Términos vigentes: la misma versión de siempre (config/cotizaciones.terminosVersion).
+    // Borrado (TTL sobre expiraAt), con margen de 5 min por el reloj del celular:
+    //  - sin entregar: expiraAt = hora del guardado + 88 días (se recalcula en cada guardado);
+    //  - al entregar: fechaEntrega = hora del servidor y expiraAt = fechaEntrega + garantiaDias + 8 días;
+    //  - ya entregada: fechaEntrega no cambia; expiraAt tampoco, salvo que cambie garantiaDias.
+    match /talleres/{tallerId}/ordenes/{ordenId} {
+      function esDuenoDelTaller() {
+        return request.auth != null
+          && get(/databases/$(database)/documents/talleres/$(tallerId)).data.ownerUid == request.auth.uid;
+      }
+      function tallerActivoDeDueno() {
+        let t = get(/databases/$(database)/documents/talleres/$(tallerId)).data;
+        return request.auth != null && t.ownerUid == request.auth.uid && t.activo == true;
+      }
+      function versionVigente() {
+        let t = get(/databases/$(database)/documents/talleres/$(tallerId)).data;
+        let c = get(/databases/$(database)/documents/config/cotizaciones).data;
+        return t.aceptacionVersion == c.terminosVersion;
+      }
+      function ordenesHabilitadas() {
+        return get(/databases/$(database)/documents/config/ordenes).data.habilitado == true;
+      }
+      // Datos del cliente solo si la bandera está encendida; si no, cliente vacío y sin placas
+      function datosClienteOk() {
+        let c = get(/databases/$(database)/documents/config/ordenes).data;
+        let d = request.resource.data;
+        return c.datosClienteHabilitados == true
+          || (d.cliente == {} && !('placas' in d.vehiculo));
+      }
+      function textoOk(v, max) {
+        return v is string && v.size() <= max;
+      }
+      // IMPORTANTE: trabajos y piezas se revisan aquí SOLO como listas de máximo 20, NO renglón por
+      // renglón. Firestore corta cada evaluación de reglas a 1,000 revisiones ("maximum of 1000
+      // expressions"): revisar los campos de 40 renglones (20 + 20) lo rebasa y Firestore RECHAZA la
+      // orden, incluso una entregada con pocos renglones queda al borde (confirmado en el emulador).
+      // La revisión de cada renglón (descripción 1-200, cantidad 1-999, precio 0-1,000,000) la hace
+      // la app antes de guardar (src/lib/ordenes.ts, validarOrden), y la pantalla y el PDF los tratan
+      // como texto plano y toleran renglones mal formados. Lo peor que puede pasar es que un taller
+      // que manipule su propia app guarde un renglón raro en SU orden, que solo ve él (y Firestore
+      // limita cada documento a 1 MB). NO agregar aquí revisión por renglón sin medir el límite.
+      function listaOk(l) {
+        return l is list && l.size() <= 20;
+      }
+      function ordenValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['tallerId', 'estado', 'cliente', 'vehiculo', 'fallaReportada', 'observaciones', 'estadoRecepcion', 'pertenencias', 'trabajos', 'piezas', 'totalCentavos', 'creadoAt', 'actualizadoAt', 'expiraAt', 'avisoVersion', 'garantiaDias', 'fechaEntrega'])
+          && d.keys().hasAll(['tallerId', 'estado', 'cliente', 'vehiculo', 'fallaReportada', 'observaciones', 'estadoRecepcion', 'pertenencias', 'trabajos', 'piezas', 'totalCentavos', 'creadoAt', 'actualizadoAt', 'expiraAt', 'avisoVersion'])
+          && d.tallerId == tallerId
+          && d.estado in ['recibido', 'diagnostico', 'esperandoPiezas', 'reparacion', 'listo', 'entregado']
+          && d.cliente is map
+          && d.cliente.keys().hasOnly(['nombre', 'telefono'])
+          && (!('nombre' in d.cliente) || (d.cliente.nombre is string && d.cliente.nombre.size() <= 100))
+          && (!('telefono' in d.cliente) || (d.cliente.telefono is string && d.cliente.telefono.matches('^[0-9 +()-]{0,20}$')))
+          && d.vehiculo is map
+          && d.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio', 'placas', 'kilometraje'])
+          && d.vehiculo.marca is string && d.vehiculo.marca.size() >= 1 && d.vehiculo.marca.size() <= 60
+          && d.vehiculo.modelo is string && d.vehiculo.modelo.size() >= 1 && d.vehiculo.modelo.size() <= 60
+          && d.vehiculo.anio is int && d.vehiculo.anio >= 1950 && d.vehiculo.anio <= 2100
+          && (!('placas' in d.vehiculo) || (d.vehiculo.placas is string && d.vehiculo.placas.size() <= 12))
+          && (!('kilometraje' in d.vehiculo) || (d.vehiculo.kilometraje is int && d.vehiculo.kilometraje >= 0 && d.vehiculo.kilometraje <= 2000000))
+          && textoOk(d.fallaReportada, 1000)
+          && textoOk(d.observaciones, 1000)
+          && textoOk(d.estadoRecepcion, 500)
+          && textoOk(d.pertenencias, 500)
+          && listaOk(d.trabajos)
+          && listaOk(d.piezas)
+          && d.totalCentavos is int && d.totalCentavos >= 0 && d.totalCentavos <= 4000000000
+          && d.expiraAt is timestamp
+          && d.avisoVersion is string && d.avisoVersion.size() <= 40
+          // Entregada: garantía de 0 a 365 días y fecha de entrega. Si no, ninguna de las dos.
+          && (d.estado == 'entregado'
+                ? (d.garantiaDias is int && d.garantiaDias >= 0 && d.garantiaDias <= 365 && d.fechaEntrega is timestamp)
+                : (!('garantiaDias' in d) && !('fechaEntrega' in d)))
+          && datosClienteOk();
+      }
+      function cerca(t, objetivo) {
+        return t >= objetivo - duration.value(5, 'm') && t <= objetivo + duration.value(5, 'm');
+      }
+      // Fecha de borrado al crear
+      function expiraAlCrear() {
+        let d = request.resource.data;
+        return d.estado == 'entregado'
+          ? (d.fechaEntrega == request.time && cerca(d.expiraAt, request.time + duration.value(d.garantiaDias + 8, 'd')))
+          : cerca(d.expiraAt, request.time + duration.value(88, 'd'));
+      }
+      // Fecha de borrado al editar
+      function expiraAlEditar() {
+        let d = request.resource.data;
+        let r = resource.data;
+        return d.estado != 'entregado'
+          // Sin entregar (o regresa de entregada): 88 días desde este guardado
+          ? cerca(d.expiraAt, request.time + duration.value(88, 'd'))
+          : (r.estado != 'entregado'
+              // Se entrega ahora
+              ? (d.fechaEntrega == request.time && cerca(d.expiraAt, request.time + duration.value(d.garantiaDias + 8, 'd')))
+              // Ya estaba entregada: misma fecha de entrega; el borrado solo cambia si cambió la garantía
+              : (d.fechaEntrega == r.fechaEntrega
+                  && (d.garantiaDias == r.garantiaDias
+                        ? d.expiraAt == r.expiraAt
+                        : cerca(d.expiraAt, r.fechaEntrega + duration.value(d.garantiaDias + 8, 'd')))));
+      }
+
+      allow read: if esAdmin() || esDuenoDelTaller();
+
+      allow create: if tallerActivoDeDueno()
+                    && versionVigente()
+                    && ordenesHabilitadas()
+                    && ordenId.matches('^O[0-9]{6}-[A-Z0-9]{4}$')
+                    && ordenValida()
+                    && request.resource.data.creadoAt == request.time
+                    && request.resource.data.actualizadoAt == request.time
+                    && expiraAlCrear()
+                    && request.resource.data.avisoVersion == get(/databases/$(database)/documents/config/ordenes).data.avisoOrdenVersion;
+
+      allow update: if (
+                        // A) EXCEPCIÓN: dueño ACTIVO (con versión vieja o vigente). SOLO vaciar cliente y quitar placas.
+                        //    No lee config: funciona aunque la función se apague. No mueve la fecha de borrado.
+                        (tallerActivoDeDueno()
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cliente', 'vehiculo', 'actualizadoAt'])
+                         && request.resource.data.cliente == {}
+                         && request.resource.data.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio', 'kilometraje'])
+                         && request.resource.data.vehiculo.marca == resource.data.vehiculo.marca
+                         && request.resource.data.vehiculo.modelo == resource.data.vehiculo.modelo
+                         && request.resource.data.vehiculo.anio == resource.data.vehiculo.anio
+                         && request.resource.data.vehiculo.get('kilometraje', null) == resource.data.vehiculo.get('kilometraje', null)
+                         && request.resource.data.actualizadoAt == request.time)
+                        // B) EDICIÓN NORMAL: taller activo, versión vigente, función encendida, orden no vencida
+                        || (tallerActivoDeDueno()
+                            && versionVigente()
+                            && ordenesHabilitadas()
+                            && ordenValida()
+                            && resource.data.expiraAt > request.time
+                            && request.resource.data.creadoAt == resource.data.creadoAt
+                            && request.resource.data.avisoVersion == resource.data.avisoVersion
+                            && request.resource.data.actualizadoAt == request.time
+                            && expiraAlEditar())
+                      );
+
+      // Borrar: admin, o el dueño con taller activo y versión vigente
+      allow delete: if esAdmin()
+                    || (tallerActivoDeDueno() && versionVigente());
+    }
+
     // ---------- Pedido de piezas de talleres a yonkes ----------
     // El taller publica una solicitud (vehículo + pieza, SIN datos del cliente final); Mecanix
     // decide a qué yonkes avisar por estado (fuera de las reglas); cada yonke responde una sola
