@@ -9,6 +9,7 @@ import { useAuth } from '../AuthContext';
 import { talleresHabilitados } from '../../../lib/talleresHabilitados';
 import { leerConfigCotizaciones } from './cotizaciones/datos';
 import { leerConfigSolicitudesPiezas } from '../solicitudesPiezasDatos';
+import { leerConfigOrdenes } from './ordenes/datos';
 import AvisoVersion from './AvisoVersion';
 import { OpcionInstalarApp } from '../AvisoInstalarApp';
 
@@ -26,12 +27,17 @@ export default function PanelTaller() {
   const [recarga, setRecarga] = useState(0);
   const [activoTaller, setActivoTaller] = useState(false);
   const [pedirPiezaHabilitado, setPedirPiezaHabilitado] = useState(false);
+  // Órdenes de servicio: solo con config/ordenes.habilitado === true (sin el documento, no aparece).
+  const [ordenesHabilitadas, setOrdenesHabilitadas] = useState(false);
 
   useEffect(() => {
     if (!tallerId) return;
     let cancelado = false;
-    Promise.all([getDoc(doc(db, 'talleres', tallerId)), leerConfigCotizaciones(), leerConfigSolicitudesPiezas()])
-      .then(([snap, config, configPiezas]) => {
+    Promise.all([
+      getDoc(doc(db, 'talleres', tallerId)), leerConfigCotizaciones(), leerConfigSolicitudesPiezas(),
+      leerConfigOrdenes().catch(() => null),
+    ])
+      .then(([snap, config, configPiezas, configOrdenes]) => {
         if (cancelado) return;
         if (snap.exists()) {
           setNombre(snap.data().nombre || '');
@@ -43,6 +49,7 @@ export default function PanelTaller() {
         setVersionVigente(config?.terminosVersion ?? null);
         setResumen(config?.resumenCambios ?? '');
         setPedirPiezaHabilitado(configPiezas?.habilitado === true);
+        setOrdenesHabilitadas(configOrdenes?.habilitado === true);
       })
       .catch(() => { if (!cancelado) setErrorCarga('No pudimos cargar los datos de tu taller. Intenta recargar la página.'); });
     return () => { cancelado = true; };
@@ -75,9 +82,14 @@ export default function PanelTaller() {
         )}
         {talleresHabilitados() && (
           <>
-            <button onClick={() => router.push('/panel/taller/cotizaciones')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado ? '16px 0 10px' : '16px 0 24px' }}>
+            <button onClick={() => router.push('/panel/taller/cotizaciones')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado || ordenesHabilitadas ? '16px 0 10px' : '16px 0 24px' }}>
               Cotizaciones
             </button>
+            {ordenesHabilitadas && (
+              <button onClick={() => router.push('/panel/taller/ordenes')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#1A3C5E', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado ? '0 0 10px' : '0 0 24px' }}>
+                Órdenes de servicio
+              </button>
+            )}
             {pedirPiezaHabilitado && (
               <button onClick={() => router.push('/panel/taller/pedir-pieza')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: '2px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: '0 0 24px' }}>
                 Pedir una pieza
