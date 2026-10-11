@@ -88,7 +88,11 @@ export default function AvisarYonkes({
     const nombreEstado = estados.find((e) => e.id === estado)?.nombre || estado;
     return (
       <div style={caja}>
-        <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px' }}>✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de {nombreEstado} la ven en su panel.</p>
+        <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px' }}>
+          ✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de {nombreEstado} la ven en su panel.
+          {/* Solo si marcó la casilla de otros estados (y la casilla existía: segunda bandera encendida). */}
+          {otrosEstadosActivo && aceptaOtrosEstados && ' También la pueden ver yonkes Verificados de otros estados con Envíos nacionales.'}
+        </p>
         <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
           Guarda este enlace: ahí verás las respuestas con precio, y tú decides a quién escribirle. Vence en 5 días.
         </p>

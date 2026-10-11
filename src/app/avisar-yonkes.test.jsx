@@ -96,6 +96,8 @@ describe('"Avisar a los yonkes" en la página principal', () => {
 
   describe('casilla de otros estados', () => {
     const CASILLA = { name: 'Acepto que me contacten yonkes de otros estados que hagan envíos' };
+    const LISTO = '✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de Baja California la ven en su panel.';
+    const OTROS = 'También la pueden ver yonkes Verificados de otros estados con Envíos nacionales.';
     const enviar = async () => {
       fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
       fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
@@ -122,6 +124,9 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
       expect(await screen.findByRole('checkbox', CASILLA)).not.toBeChecked();
       expect((await enviar()).aceptaOtrosEstados).toBe(false);
+      // Sin marcar: la confirmación de siempre, sin mencionar otros estados.
+      expect(await screen.findByText(LISTO)).toBeInTheDocument();
+      expect(screen.queryByText(/otros estados con Envíos nacionales/)).not.toBeInTheDocument();
     });
     it('marcada: manda true', async () => {
       config = { habilitado: true, otrosEstados: true };
@@ -131,6 +136,8 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
       fireEvent.click(await screen.findByRole('checkbox', CASILLA));
       expect((await enviar()).aceptaOtrosEstados).toBe(true);
+      // La confirmación agrega a los yonkes de otros estados.
+      expect(await screen.findByText(`${LISTO} ${OTROS}`)).toBeInTheDocument();
     });
   });
 });
