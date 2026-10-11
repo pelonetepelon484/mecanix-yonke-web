@@ -168,3 +168,71 @@ export function leerItems(lista: unknown, max = MAX_TRABAJOS): ItemOrden[] {
     };
   });
 }
+
+// ---------- Etapa 2: convertir una cotización en orden ----------
+// La orden nace "recibido", con folio "O..." y borrado a 88 días (como una creada desde cero).
+// Copia: marca, modelo, año, kilometraje y observaciones; piezas -> "piezas", mano de obra ->
+// "trabajos". NO copia datos del cliente (nombre, teléfono, placas) ni guarda ningún enlace a la
+// cotización, que se borra en el mismo guardado.
+export const MENSAJES_CONVERSION = {
+  confirmar: 'Se creará una orden de servicio y esta cotización se eliminará. ¿Continuar?',
+  datosCliente: 'Los datos del cliente (nombre, teléfono y placas) no pasan a la orden y se perderán al eliminar la cotización. Si los necesitas, anótalos antes.',
+  demasiados: `Esta cotización tiene más de ${MAX_PIEZAS} piezas o más de ${MAX_TRABAJOS} trabajos y no se puede convertir. No se cambió nada.`,
+  noExiste: 'La cotización ya no existe. No se cambió nada.',
+  fallo: 'No pudimos convertir la cotización en orden. La cotización no se cambió. Revisa tu conexión e intenta de nuevo.',
+} as const;
+
+type RenglonCotizacion = { tipo?: unknown; descripcion?: unknown; cantidad?: unknown; precioUnitario?: unknown };
+type CotizacionParaConvertir = {
+  cliente?: { nombre?: unknown; telefono?: unknown } | null;
+  vehiculo?: { marca?: unknown; modelo?: unknown; anio?: unknown; placas?: unknown; kilometraje?: unknown } | null;
+  observaciones?: unknown;
+  renglones?: RenglonCotizacion[] | null;
+};
+
+const hayTexto = (v: unknown) => typeof v === 'string' && v.trim() !== '';
+
+export function cotizacionTieneDatosCliente(c: CotizacionParaConvertir): boolean {
+  return hayTexto(c.cliente?.nombre) || hayTexto(c.cliente?.telefono) || hayTexto(c.vehiculo?.placas);
+}
+
+// Texto de la confirmación: la segunda línea solo si la cotización tiene datos del cliente.
+export function mensajeConfirmarConversion(c: CotizacionParaConvertir): string {
+  return cotizacionTieneDatosCliente(c)
+    ? `${MENSAJES_CONVERSION.confirmar}\n${MENSAJES_CONVERSION.datosCliente}`
+    : MENSAJES_CONVERSION.confirmar;
+}
+
+const aItem = (r: RenglonCotizacion): ItemOrden => ({
+  descripcion: typeof r.descripcion === 'string' ? r.descripcion.trim() : '',
+  cantidad: Number(r.cantidad),
+  precioUnitario: Number(r.precioUnitario),
+});
+
+export function ordenDesdeCotizacion(c: CotizacionParaConvertir): DatosOrden {
+  const renglones = Array.isArray(c.renglones) ? c.renglones : [];
+  const vehiculo: DatosOrden['vehiculo'] = {
+    marca: typeof c.vehiculo?.marca === 'string' ? c.vehiculo.marca : '',
+    modelo: typeof c.vehiculo?.modelo === 'string' ? c.vehiculo.modelo : '',
+    anio: Number(c.vehiculo?.anio),
+  };
+  if (c.vehiculo?.kilometraje !== undefined && c.vehiculo?.kilometraje !== null) vehiculo.kilometraje = Number(c.vehiculo.kilometraje);
+  return {
+    vehiculo,
+    fallaReportada: '',
+    observaciones: typeof c.observaciones === 'string' ? c.observaciones : '',
+    estadoRecepcion: '',
+    pertenencias: '',
+    trabajos: renglones.filter((r) => r?.tipo === 'manoObra').map(aItem),
+    piezas: renglones.filter((r) => r?.tipo === 'pieza').map(aItem),
+    estado: 'recibido',
+  };
+}
+
+// Primer problema para convertir (null = se puede). Más de 20 de un tipo no debería pasar (una
+// cotización tiene máximo 20 renglones), pero si pasa, no se toca nada.
+export function validarConversion(c: CotizacionParaConvertir): string | null {
+  const datos = ordenDesdeCotizacion(c);
+  if (datos.trabajos.length > MAX_TRABAJOS || datos.piezas.length > MAX_PIEZAS) return MENSAJES_CONVERSION.demasiados;
+  return validarOrden(datos);
+}

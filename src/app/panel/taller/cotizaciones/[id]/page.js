@@ -7,6 +7,8 @@ import { useCotizaciones } from '../contexto';
 import { borrarCotizacionCompleta, cambiarArchivada, duplicarCotizacion, guardarCotizacion, leerCotizacion, quitarDatosCliente } from '../datos';
 import { descargarPdfCotizacion } from '../pdf';
 import { leerConfigSolicitudesPiezas } from '../../../solicitudesPiezasDatos';
+import { convertirCotizacionEnOrden, leerConfigOrdenes } from '../../ordenes/datos';
+import { MENSAJES_CONVERSION, mensajeConfirmarConversion } from '../../../../../lib/ordenes';
 
 export default function EditarCotizacion() {
   const router = useRouter();
@@ -21,11 +23,17 @@ export default function EditarCotizacion() {
   // "Pedir a los yonkes" en renglones de pieza: solo con config/solicitudesPiezas.habilitado === true
   // (igual que "Pedir una pieza" en el inicio del taller). Apagada, la pantalla queda igual que antes.
   const [pedirPiezaHabilitado, setPedirPiezaHabilitado] = useState(false);
+  // "Convertir en orden": solo con config/ordenes.habilitado === true (sin el documento, no aparece).
+  const [configOrdenes, setConfigOrdenes] = useState(null);
+  const [convirtiendo, setConvirtiendo] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
     leerConfigSolicitudesPiezas()
       .then((config) => { if (!cancelado) setPedirPiezaHabilitado(config?.habilitado === true); })
+      .catch(() => {});
+    leerConfigOrdenes()
+      .then((config) => { if (!cancelado) setConfigOrdenes(config); })
       .catch(() => {});
     return () => { cancelado = true; };
   }, []);
@@ -63,6 +71,20 @@ export default function EditarCotizacion() {
     }
   }
 
+  // Crea la orden y borra la cotización en un solo guardado; si algo falla, la cotización queda igual.
+  async function convertirEnOrden() {
+    if (!window.confirm(mensajeConfirmarConversion(cot))) return;
+    setConvirtiendo(true);
+    try {
+      const folioOrden = await convertirCotizacionEnOrden({ tallerId, folioCotizacion: folio, avisoVersion: configOrdenes?.avisoOrdenVersion ?? '' });
+      router.push(`/panel/taller/ordenes/${folioOrden}`);
+    } catch (err) {
+      console.error(err);
+      setAviso(err?.message || MENSAJES_CONVERSION.fallo);
+      setConvirtiendo(false);
+    }
+  }
+
   if (noExiste) {
     return (
       <main style={{ minHeight: '100vh', padding: '24px' }}>
@@ -77,6 +99,7 @@ export default function EditarCotizacion() {
 
   const fechaEliminacion = cot.expiraAt?.toDate ? cot.expiraAt.toDate() : null;
   const soloLectura = !puedeEditar || vencida;
+  const puedeConvertir = configOrdenes?.habilitado === true && puedeEditar && !vencida;
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '16px' }}>
@@ -93,6 +116,12 @@ export default function EditarCotizacion() {
             </button>
             <p style={{ fontSize: '13px', color: '#555', margin: '6px 0 0' }}>El PDF usa lo último que guardaste e incluye el aviso de privacidad para que el cliente lo firme.</p>
           </div>
+        )}
+
+        {puedeConvertir && (
+          <button type="button" onClick={convertirEnOrden} disabled={convirtiendo} style={{ width: '100%', minHeight: '52px', borderRadius: '12px', border: 'none', backgroundColor: '#1A3C5E', color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '14px', opacity: convirtiendo ? 0.6 : 1 }}>
+            {convirtiendo ? 'Convirtiendo...' : 'Convertir en orden'}
+          </button>
         )}
 
         <CotizacionForm

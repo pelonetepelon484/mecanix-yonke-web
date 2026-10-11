@@ -7,7 +7,7 @@
 import { describe, it, before, after } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 
 const reglas = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
 let env;
@@ -363,3 +363,90 @@ describe('falla cerrada y términos', () => {
     await assertSucceeds(setDoc(oref('t1', ON), orden({ cliente: { nombre: 'Juan', telefono: '6641112233' }, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001, placas: 'ABC123' } })));
   });
 });
+
+// ---------- Etapa 2: convertir una cotización en orden (un solo guardado) ----------
+// Igual que convertirCotizacionEnOrden() en src/app/panel/taller/ordenes/datos.js: en UN lote se
+// crea la orden y se borran la cotización y TODOS sus renglones. Caso máximo: 20 renglones (22 operaciones).
+const CZ = 'C251011-CONV';
+async function sembrarCotizacion(tallerId = 'T1', n = 20) {
+  await env.withSecurityRulesDisabled(async (c) => {
+    const db = c.firestore();
+    const exp = enDias(80);
+    await setDoc(doc(db, 'talleres', tallerId, 'cotizaciones', CZ), {
+      tallerId, estado: 'enviada', archivada: false, cliente: { nombre: 'Juan', telefono: '6641112233' },
+      vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001, placas: 'ABC123', kilometraje: 150000 },
+      observaciones: 'x', vigenciaDias: 15, totalCentavos: 1, numRenglones: n, creadoAt: CREADO, actualizadoAt: CREADO, expiraAt: exp, avisoVersion: 'aviso-1',
+    });
+    for (let i = 0; i < n; i++) {
+      await setDoc(doc(db, 'talleres', tallerId, 'cotizaciones', CZ, 'renglones', String(i)), {
+        tipo: i < n / 2 ? 'pieza' : 'manoObra', descripcion: 'x'.repeat(200), cantidad: 999, precioUnitario: 1000000, expiraAt: exp,
+      });
+    }
+  });
+}
+async function convertirComo(uid, { tallerId = 'T1', n = 20, extra = {} } = {}) {
+  const db = como(uid);
+  const lote = writeBatch(db);
+  const it = (k) => Array.from({ length: k }, () => item({ descripcion: 'x'.repeat(200), cantidad: 999, precioUnitario: 1000000 }));
+  lote.set(doc(db, 'talleres', tallerId, 'ordenes', ON), orden({ tallerId, piezas: it(n / 2), trabajos: it(n / 2), ...extra }));
+  for (let i = 0; i < n; i++) lote.delete(doc(db, 'talleres', tallerId, 'cotizaciones', CZ, 'renglones', String(i)));
+  lote.delete(doc(db, 'talleres', tallerId, 'cotizaciones', CZ));
+  return lote.commit();
+}
+async function quedaCotizacion(tallerId = 'T1') {
+  let r;
+  await env.withSecurityRulesDisabled(async (c) => {
+    const db = c.firestore();
+    const cot = await getDoc(doc(db, 'talleres', tallerId, 'cotizaciones', CZ));
+    const ren = await getDocs(collection(db, 'talleres', tallerId, 'cotizaciones', CZ, 'renglones'));
+    const ord = await getDoc(doc(db, 'talleres', tallerId, 'ordenes', ON));
+    r = { cotizacion: cot.exists(), renglones: ren.size, orden: ord.exists() };
+  });
+  return r;
+}
+
+describe('convertir una cotización en orden (un solo guardado)', () => {
+  it('caso máximo (20 renglones): se crea la orden y se borran la cotización y todos sus renglones', async () => {
+    await sembrar();
+    await sembrarCotizacion();
+    await assertSucceeds(convertirComo('t1'));
+    const r = await quedaCotizacion();
+    if (r.cotizacion || r.renglones !== 0 || !r.orden) throw new Error(`esperaba todo convertido, quedó ${JSON.stringify(r)}`);
+  });
+  it('con términos viejos se rechaza TODO: la cotización y sus 20 renglones quedan intactos', async () => {
+    await sembrar();
+    await sembrarCotizacion();
+    await conVersion('v2');
+    await assertFails(convertirComo('t1'));
+    const r = await quedaCotizacion();
+    if (!r.cotizacion || r.renglones !== 20 || r.orden) throw new Error(`esperaba nada cambiado, quedó ${JSON.stringify(r)}`);
+  });
+  it('taller desactivado: se rechaza todo', async () => {
+    await sembrar();
+    await sembrarCotizacion('T3');
+    await assertFails(convertirComo('t3', { tallerId: 'T3' }));
+    const r = await quedaCotizacion('T3');
+    if (!r.cotizacion || r.renglones !== 20 || r.orden) throw new Error(`esperaba nada cambiado, quedó ${JSON.stringify(r)}`);
+  });
+  it('con las órdenes apagadas (habilitado != true): se rechaza todo', async () => {
+    await sembrar();
+    await sembrarCotizacion();
+    await conConfig({ habilitado: false });
+    await assertFails(convertirComo('t1'));
+    const r = await quedaCotizacion();
+    if (!r.cotizacion || r.renglones !== 20 || r.orden) throw new Error(`esperaba nada cambiado, quedó ${JSON.stringify(r)}`);
+  });
+  it('si la orden llevara datos del cliente (bandera apagada): se rechaza todo', async () => {
+    await sembrar();
+    await sembrarCotizacion();
+    await assertFails(convertirComo('t1', { extra: { cliente: { nombre: 'Juan' } } }));
+    const r = await quedaCotizacion();
+    if (!r.cotizacion || r.renglones !== 20 || r.orden) throw new Error(`esperaba nada cambiado, quedó ${JSON.stringify(r)}`);
+  });
+  it('otro taller no puede convertir una cotización ajena', async () => {
+    await sembrar();
+    await sembrarCotizacion();
+    await assertFails(convertirComo('t2'));
+  });
+});
+

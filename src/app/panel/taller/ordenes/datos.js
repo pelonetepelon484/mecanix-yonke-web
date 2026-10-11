@@ -4,9 +4,10 @@
 // (listas de máximo 20), así que abrir una orden cuesta 1 lectura y guardarla 1 escritura.
 // Las reglas (firestore.rules) son la protección real: esta capa solo prepara datos correctos,
 // incluida la fecha de borrado (expiraAt) que las reglas exigen con sus fórmulas.
-import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, updateDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
-import { generarFolioOrden, planBorrado, totalOrdenCentavos } from '../../../../lib/ordenes';
+import { MENSAJES_CONVERSION, generarFolioOrden, ordenDesdeCotizacion, planBorrado, totalOrdenCentavos, validarConversion } from '../../../../lib/ordenes';
+import { leerCotizacion } from '../cotizaciones/datos';
 
 export const TAMANO_PAGINA = 20;
 
@@ -102,4 +103,34 @@ export function quitarDatosClienteOrden(tallerId, folio) {
 // Borrar: el dueño (taller activo y términos vigentes) o el admin, según las reglas.
 export function borrarOrden(tallerId, folio) {
   return deleteDoc(ordenRef(tallerId, folio));
+}
+
+// Etapa 2: "Convertir en orden". Lee la cotización FRESCA y, en UN solo guardado (todo o nada),
+// crea la orden nueva y borra la cotización con todos sus renglones. Máximo 22 operaciones
+// (1 orden + 20 renglones + 1 cotización), probado en el emulador con las reglas actuales.
+// Si el guardado falla (sin conexión, términos viejos, taller desactivado...), Firestore no aplica
+// NADA: la cotización queda intacta. Si el folio choca, prueba otro (hasta 3 veces).
+// Lanza un Error con un mensaje en español listo para mostrar.
+export async function convertirCotizacionEnOrden({ tallerId, folioCotizacion, avisoVersion = '' }) {
+  const cot = await leerCotizacion(tallerId, folioCotizacion);
+  if (!cot) throw new Error(MENSAJES_CONVERSION.noExiste);
+  const problema = validarConversion(cot);
+  if (problema) throw new Error(problema);
+  const datos = ordenDesdeCotizacion(cot);
+  const renglones = cot.renglones.map((r) => doc(db, 'talleres', tallerId, 'cotizaciones', folioCotizacion, 'renglones', String(r.numero)));
+
+  for (let intento = 0; intento < 3; intento++) {
+    const folio = generarFolioOrden(new Date());
+    const lote = writeBatch(db);
+    lote.set(ordenRef(tallerId, folio), cuerpoOrden({ tallerId, datos, original: null, avisoVersion }));
+    renglones.forEach((ref) => lote.delete(ref));
+    lote.delete(doc(db, 'talleres', tallerId, 'cotizaciones', folioCotizacion));
+    try {
+      await lote.commit();
+      return folio;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  throw new Error(MENSAJES_CONVERSION.fallo);
 }
