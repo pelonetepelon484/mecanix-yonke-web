@@ -26,6 +26,29 @@ service cloud.firestore {
     function yonkeConTerminosVigentes(yonkeId) {
       return terminosYonkesVigentes(get(/databases/$(database)/documents/yonkes/$(yonkeId)).data);
     }
+    // ---------- Límites del plan Básico / Premium (config/planes) ----------
+    // Interruptor: solo si config/planes.limitesActivos es exactamente true. Si el documento no
+    // existe o vale otra cosa, todo sigue como antes (no se exige Premium en nada).
+    // "Premium vigente" = plan 'premium' y (premiumHasta vacío o futuro): misma definición que
+    // esPremiumVigente() en src/lib/planes.js (tests/rules/planes.rules.mjs compara ambas).
+    function planesRef() {
+      return /databases/$(database)/documents/config/planes;
+    }
+    function limitesPlanesActivos() {
+      return exists(planesRef()) && get(planesRef()).data.get('limitesActivos', false) == true;
+    }
+    function premiumVigente(datosYonke) {
+      return datosYonke.get('plan', null) == 'premium'
+        && (datosYonke.get('premiumHasta', null) == null
+            || datosYonke.premiumHasta == ''
+            || datosYonke.premiumHasta > request.time);
+    }
+    function premiumSiHaceFalta(datosYonke) {
+      return !limitesPlanesActivos() || premiumVigente(datosYonke);
+    }
+    function yonkeConPremiumSiHaceFalta(yonkeId) {
+      return !limitesPlanesActivos() || premiumVigente(get(/databases/$(database)/documents/yonkes/$(yonkeId)).data);
+    }
     // ---------- NUEVO: pedido de piezas de talleres a yonkes ----------
     // Un yonke "activo de ese estado" para ver/responder solicitudes: mismo campo yonkes/{id}.estado
     // que usa estadoDeYonke() en el cliente (src/lib/estados.js) -- NO el mapeo de 3 letras que usa
@@ -143,7 +166,10 @@ service cloud.firestore {
                     && request.resource.data.estadoGeografico is string
                     && request.resource.data.conResultado is bool
                     && request.resource.data.sinVehiculo is bool;
-      allow read: if esAdmin() || esYonkeDeEseEstado(resource.data.estadoGeografico);
+      allow read: if esAdmin()
+                  || (esYonkeDeEseEstado(resource.data.estadoGeografico)
+                      // Demanda es del plan Premium cuando config/planes.limitesActivos es true
+                      && yonkeConPremiumSiHaceFalta(get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId));
       allow update, delete: if esAdmin();
     }
     // Colecciones viejas: escritura pública (código legado), lectura solo admin
@@ -935,6 +961,17 @@ service cloud.firestore {
           && request.resource.data.aceptacionLegal.fecha == request.time
           && existsAfter(/databases/$(database)/documents/yonkes/$(yonkeId)/aceptaciones/$(request.resource.data.aceptacionLegal.version));
       }
+      // Página propia (promociones, "sobre nosotros", color y fondo) y datos fiscales de reciclaje:
+      // cambios del plan Premium. El logo (branding.logoUrl) es del plan Básico.
+      function brandingDe(datos) {
+        return datos.get('branding', null) is map ? datos.branding : {};
+      }
+      function cambiaAlgoPremium() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasAny(['promoImagenes', 'sitio', 'fiscalReciclaje'])
+          || (request.resource.data.diff(resource.data).affectedKeys().hasAny(['branding'])
+              && brandingDe(request.resource.data).diff(brandingDe(resource.data)).affectedKeys()
+                   .difference(['logoUrl'].toSet()).size() > 0);
+      }
       allow read: if true;
       // Alta: admin, o un usuario que se registra y queda como dueño (ownerUid = su uid).
       // Un usuario que ya tiene cuenta de rol (yonke o taller) no puede crear yonkes nuevos.
@@ -969,7 +1006,9 @@ service cloud.firestore {
                             || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['aceptacionLegal'])
                                 && aceptacionVigenteEnEsteGuardado())
                             || (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['aceptacionLegal'])
-                                && terminosYonkesVigentes(resource.data))));
+                                && terminosYonkesVigentes(resource.data)))
+                        // Plan: con límites activos, lo de la página propia y lo fiscal pide Premium vigente
+                        && (premiumSiHaceFalta(resource.data) || !cambiaAlgoPremium()));
       // Dueño que se registró: puede borrar su yonke solo mientras su usuario no exista (rollback)
       allow delete: if esAdmin()
                     || (request.auth != null
@@ -1019,15 +1058,18 @@ service cloud.firestore {
       }
       match /materialesReciclaje/{materialId} {
         allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
-        allow write: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
+        allow write: if esAdmin()
+                     || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId) && yonkeConPremiumSiHaceFalta(yonkeId));
       }
       match /comprasReciclaje/{compraId} {
         allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
-        allow write: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
+        allow write: if esAdmin()
+                     || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId) && yonkeConPremiumSiHaceFalta(yonkeId));
       }
       match /notasGarantia/{notaId} {
         allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
-        allow write: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
+        allow write: if esAdmin()
+                     || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId) && yonkeConPremiumSiHaceFalta(yonkeId));
       }
       // ---------- NUEVO: contador de toques al botón de WhatsApp ----------
       match /contactosVehiculo/{docId} {
@@ -1061,9 +1103,13 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/reservaciones/$(request.resource.data.reservaId)).data.estado == 'pendiente';
       }
       allow read: if true;
+      // Venta manual (sin reservación): términos vigentes y, con límites activos, Premium vigente.
+      // La venta que genera confirmar una reservación sigue permitida en el plan Básico.
       allow create: if esAdmin()
                     || (esDuenoDelYonke(request.resource.data.yonkeId)
-                        && (yonkeConTerminosVigentes(request.resource.data.yonkeId) || ventaDeReservacion()));
+                        && (ventaDeReservacion()
+                            || (yonkeConTerminosVigentes(request.resource.data.yonkeId)
+                                && yonkeConPremiumSiHaceFalta(request.resource.data.yonkeId))));
       // CAMBIO: el dueño solo puede cancelar (cancelada + canceladaAt), sin borrar.
       // Sin términos vigentes solo cancela ventas que vienen de una reservación.
       allow update: if esAdmin()
