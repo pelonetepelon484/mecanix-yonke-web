@@ -909,11 +909,14 @@ service cloud.firestore {
       allow create: if esAdmin()
                     || (request.auth != null
                         && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-                        && request.resource.data.ownerUid == request.auth.uid);
+                        && request.resource.data.ownerUid == request.auth.uid
+                        // se registra solo como básico y sin fecha de Premium (eso lo pone el admin)
+                        && request.resource.data.get('plan', 'freemium') == 'freemium'
+                        && !('premiumHasta' in request.resource.data));
       allow update: if esAdmin()
                     || (esDuenoDelYonke(yonkeId)
                         && !request.resource.data.diff(resource.data).affectedKeys()
-                             .hasAny(['verificado', 'entregaInmediata', 'capturaADomicilio', 'ultimaVisitaCaptura', 'subdominio', 'subdominioActivo', 'enviosNacionales', 'ownerUid'])
+                             .hasAny(['verificado', 'entregaInmediata', 'capturaADomicilio', 'ultimaVisitaCaptura', 'subdominio', 'subdominioActivo', 'enviosNacionales', 'ownerUid', 'plan', 'premiumHasta'])
                         // si cambia promoImagenes, debe ser válido
                         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['promoImagenes'])
                             || promosValidas(request.resource.data.get('promoImagenes', []), yonkeId))
