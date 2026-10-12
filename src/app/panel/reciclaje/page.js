@@ -8,6 +8,7 @@ import {
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
+import { BloqueoTerminos, MensajeBloqueoTerminos } from '../BloqueoTerminos';
 import BottomNav from '../BottomNav';
 import { MATERIALES_RECICLAJE_BASE } from '../../lib/materialesReciclajeBase';
 import { ESTADO_DEFAULT, estadoDeYonke } from '../../lib/estados';
@@ -89,7 +90,10 @@ function getFechaInicio(periodo) {
 
 export default function ReciclajePanel() {
   const router = useRouter();
-  const { user, yonkeId, loading } = useAuth();
+  const { user, yonkeId, loading, puedeEditarYonke } = useAuth();
+  // Sin términos vigentes: se ven materiales, compras y reportes (y se reimprimen tickets), pero
+  // no se compra, ni se agregan, editan o eliminan materiales o compras.
+  const sinTerminos = puedeEditarYonke === false;
 
   const [nombreYonke, setNombreYonke] = useState('');
   const [tab, setTab] = useState('comprar'); // 'comprar' | 'materiales' | 'reportes'
@@ -406,6 +410,7 @@ export default function ReciclajePanel() {
 
         {tab === 'comprar' && (
           <div className="no-imprimir" style={sectionStyle}>
+            <BloqueoTerminos>
             {loadingMateriales ? (
               <p style={{ color: '#888' }}>Cargando materiales...</p>
             ) : materiales.length === 0 ? (
@@ -567,6 +572,7 @@ export default function ReciclajePanel() {
                 )}
               </>
             )}
+            </BloqueoTerminos>
 
             {!loadingCompras && compras.length > 0 && (
               <>
@@ -582,7 +588,7 @@ export default function ReciclajePanel() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{formatoMoneda(c.total)}</p>
                       <button onClick={() => setCompraParaTicket(c)} style={ticketBotonStyle}>🖨️</button>
-                      <button onClick={() => eliminarCompra(c)} style={eliminarBotonStyle}>🗑️</button>
+                      {!sinTerminos && <button onClick={() => eliminarCompra(c)} style={eliminarBotonStyle}>🗑️</button>}
                     </div>
                   </div>
                 ))}
@@ -593,9 +599,11 @@ export default function ReciclajePanel() {
 
         {tab === 'materiales' && (
           <div className="no-imprimir" style={sectionStyle}>
+            {sinTerminos ? <MensajeBloqueoTerminos /> : (
             <button onClick={abrirModalAgregarMaterial} style={{ ...addButtonStyle, marginBottom: '16px' }}>
               + Agregar material
             </button>
+            )}
             {loadingMateriales ? (
               <p style={{ color: '#888' }}>Cargando...</p>
             ) : materiales.length === 0 ? (
@@ -609,6 +617,7 @@ export default function ReciclajePanel() {
                       {m.precioPorKilo ? `${formatoMoneda(m.precioPorKilo)} / kg` : 'Sin precio — ponle uno para poder comprarlo'}
                     </p>
                   </div>
+                  {!sinTerminos && (
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button onClick={() => abrirModalEditarMaterial(m)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                       Editar
@@ -617,6 +626,7 @@ export default function ReciclajePanel() {
                       Eliminar
                     </button>
                   </div>
+                  )}
                 </div>
               ))
             )}
@@ -685,7 +695,7 @@ export default function ReciclajePanel() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{formatoMoneda(c.total)}</p>
                     <button onClick={() => setCompraParaTicket(c)} style={ticketBotonStyle}>🖨️</button>
-                    <button onClick={() => eliminarCompra(c)} style={eliminarBotonStyle}>🗑️</button>
+                    {!sinTerminos && <button onClick={() => eliminarCompra(c)} style={eliminarBotonStyle}>🗑️</button>}
                   </div>
                 </div>
               ))

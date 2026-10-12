@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, updateDoc, deleteField, serverTimestamp } from 'fi
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
+import { BloqueoTerminos } from '../BloqueoTerminos';
 import BottomNav from '../BottomNav';
 import { OpcionInstalarApp } from '../AvisoInstalarApp';
 import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
@@ -329,6 +330,9 @@ export default function PerfilPanel() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
+        {/* Sin términos vigentes: todo se ve, pero desactivado (logo, color, promociones, fondo,
+            "sobre nosotros", horario, métodos de pago, garantía y datos fiscales). */}
+        <BloqueoTerminos>
 
         {/* Instalar la app (PWA): siempre disponible aquí, aunque se haya cerrado el aviso */}
         <OpcionInstalarApp estiloSeccion={sectionStyle} estiloTitulo={sectionTitleStyle} />
@@ -625,6 +629,7 @@ export default function PerfilPanel() {
         <button onClick={guardarPerfil} disabled={guardando} style={saveButtonStyle}>
           {guardando ? 'Guardando...' : 'Guardar cambios'}
         </button>
+        </BloqueoTerminos>
       </div>
 
       <BottomNav />

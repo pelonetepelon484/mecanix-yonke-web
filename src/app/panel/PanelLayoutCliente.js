@@ -1,11 +1,13 @@
 'use client';
 
 // Parte cliente del layout del panel (la de servidor, layout.js, pone el manifest y los datos de
-// la app instalable). Aquí van la sesión, la guarda de talleres y el aviso "Instalar app".
+// la app instalable). Aquí van la sesión, la guarda de talleres, el aviso "Instalar app" y, arriba
+// de todo el panel del yonke, el aviso de reaceptación de Términos (AvisoTerminosYonke).
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from './AuthContext';
 import AvisoInstalarApp from './AvisoInstalarApp';
+import AvisoTerminosYonke from './AvisoTerminosYonke';
 
 // Una cuenta de taller solo puede estar en /panel/taller: si intenta abrir el panel de yonkes,
 // la mandamos a su pantalla. Yonke y admin no pasan por aquí.
@@ -28,6 +30,7 @@ export default function PanelLayoutCliente({ children }) {
   return (
     <AuthProvider>
       <GuardaTaller>
+        <AvisoTerminosYonke />
         <AvisoInstalarApp />
         {children}
       </GuardaTaller>

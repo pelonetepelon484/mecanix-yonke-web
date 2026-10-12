@@ -7,6 +7,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import { MensajeBloqueoTerminos } from '../BloqueoTerminos';
 import NotaGarantiaModal from '../NotaGarantiaModal';
 import { sacarDelInventario } from '../../../lib/vehiculoEstado';
 import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
@@ -24,7 +25,7 @@ function registrarEvento(nombre, params = {}) {
 
 export default function VentaManualPanel() {
   const router = useRouter();
-  const { user, yonkeId, yonkePlan, loading } = useAuth();
+  const { user, yonkeId, yonkePlan, loading, puedeEditarYonke } = useAuth();
 
   const [vehiculos, setVehiculos] = useState([]);
   const [loadingVehiculos, setLoadingVehiculos] = useState(true);
@@ -301,6 +302,23 @@ export default function VentaManualPanel() {
           >
             Quiero Premium
           </a>
+        </div>
+        <BottomNav />
+      </main>
+    );
+  }
+
+  // Sin términos vigentes no se registran ventas manuales (las de reservaciones sí, desde Reservaciones).
+  if (puedeEditarYonke === false) {
+    return (
+      <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
+        <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Venta manual</h1>
+          </div>
+        </div>
+        <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
+          <MensajeBloqueoTerminos />
         </div>
         <BottomNav />
       </main>

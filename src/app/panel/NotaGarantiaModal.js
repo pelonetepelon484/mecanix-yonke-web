@@ -11,6 +11,8 @@ import {
   collection, query, where, limit, getDocs, addDoc, updateDoc, doc, Timestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useAuth } from './AuthContext';
+import { MensajeBloqueoTerminos } from './BloqueoTerminos';
 import { GARANTIA_DIAS_DEFAULT, GARANTIA_QUE_CUBRE_DEFAULT, GARANTIA_QUE_NO_CUBRE_DEFAULT } from '../lib/garantiaDefault';
 import { obtenerPoliticasYonke } from '../lib/obtenerPoliticasYonke';
 
@@ -28,6 +30,9 @@ function formatoMoneda(n) {
 
 // venta: { id, numeroPedido, piezaVendida, vehiculo:{marca,modelo,ano}, monto, fecha, nombreCliente? }
 export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl, subdominio, onClose }) {
+  // Sin términos vigentes: la nota que ya existe se ve y se reimprime; no se genera ni se edita.
+  const { puedeEditarYonke } = useAuth();
+  const sinTerminos = puedeEditarYonke === false;
   const [cargando, setCargando] = useState(true);
   const [modo, setModo] = useState('formulario'); // 'formulario' | 'ticket'
   const [notaId, setNotaId] = useState(null);
@@ -182,10 +187,13 @@ export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
               <button onClick={onClose} style={secondaryButtonStyle}>Cancelar</button>
+              {!sinTerminos && (
               <button onClick={generarNota} disabled={guardando} style={primaryButtonStyle}>
                 {guardando ? 'Guardando...' : 'Generar nota'}
               </button>
+              )}
             </div>
+            {sinTerminos && <MensajeBloqueoTerminos style={{ margin: '14px 0 0' }} />}
           </>
         ) : (
           <>
@@ -198,7 +206,7 @@ export default function NotaGarantiaModal({ venta, yonkeId, nombreYonke, logoUrl
             />
             <div className="no-imprimir" style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
               <button onClick={onClose} style={secondaryButtonStyle}>Cerrar</button>
-              <button onClick={() => setModo('formulario')} style={secondaryButtonStyle}>Editar</button>
+              {!sinTerminos && <button onClick={() => setModo('formulario')} style={secondaryButtonStyle}>Editar</button>}
               <button onClick={() => window.print()} style={primaryButtonStyle}>🖨️ Imprimir</button>
             </div>
           </>

@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
 import { generarSubdominioUnico } from '../../lib/generarSubdominio';
 import { subirLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
-import { VERSION_LEGAL, URL_TERMINOS, URL_PRIVACIDAD } from '../../../lib/versionesLegales';
+import { URL_TERMINOS, URL_PRIVACIDAD } from '../../../lib/versionesLegales';
+import { leerTerminosYonkes, versionParaAceptar, crearYonkeConAceptacion } from '../terminosYonke';
 import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 import { esIdPedido } from '../../../lib/pedidosClientes';
 import { avisarAlAdmin } from '../../lib/avisosAdmin/avisarAlAdmin';
@@ -105,6 +106,10 @@ export default function RegistroYonke() {
 
     setRegistrando(true);
     try {
+      // 0. Versión de los Términos a aceptar: la de config/terminosYonkes si existe (la que exigen
+      // las reglas), si no VERSION_LEGAL. Se lee antes de crear la cuenta: si falla, no queda nada a medias.
+      const versionAceptada = versionParaAceptar(await leerTerminosYonkes(db));
+
       // 1. Crear cuenta en Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       const uid = userCredential.user.uid;
@@ -125,12 +130,22 @@ export default function RegistroYonke() {
         // Dueño del yonke: solo este uid podrá crear después su usuario de yonke (reglas de Firestore).
         ownerUid: uid,
       };
-      // Aceptación de Términos y Aviso de Privacidad: qué versión y cuándo. Si las reglas de
-      // Firestore aún no permiten ese campo, el registro sigue sin él (no se bloquea al yonke).
+      // Aceptación de Términos y Aviso de Privacidad: qué versión y cuándo, con su entrada en el
+      // historial (yonkes/{id}/aceptaciones/{versión}) en el mismo guardado. Si las reglas de
+      // Firestore aún no conocen el historial, se guarda como antes (solo aceptacionLegal) y, si
+      // tampoco ese campo, sin él: el registro no se bloquea mientras se publican las reglas.
       const yonkeRef = await conFallbackDePermisos(
-        () => addDoc(collection(db, 'yonkes'), { ...datosYonke, aceptacionLegal: { version: VERSION_LEGAL, fecha: new Date() } }),
-        () => addDoc(collection(db, 'yonkes'), datosYonke),
-        'registro de yonke + aceptacionLegal',
+        async () => {
+          const ref = doc(collection(db, 'yonkes'));
+          await crearYonkeConAceptacion(db, ref, datosYonke, versionAceptada);
+          return ref;
+        },
+        () => conFallbackDePermisos(
+          () => addDoc(collection(db, 'yonkes'), { ...datosYonke, aceptacionLegal: { version: versionAceptada, fecha: serverTimestamp() } }),
+          () => addDoc(collection(db, 'yonkes'), datosYonke),
+          'registro de yonke + aceptacionLegal',
+        ),
+        'registro de yonke + historial de aceptación',
       );
 
       // 3. Crear documento del usuario en Firestore

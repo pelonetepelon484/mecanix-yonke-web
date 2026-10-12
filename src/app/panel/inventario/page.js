@@ -8,6 +8,7 @@ import {
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
+import { BloqueoTerminos, MensajeBloqueoTerminos } from '../BloqueoTerminos';
 import BottomNav from '../BottomNav';
 import ItemFreshnessBadge from '../../lib/ItemFreshnessBadge';
 import SelectorMarcaModelo, { registrarEnCatalogo } from '../../lib/SelectorMarcaModelo';
@@ -45,7 +46,9 @@ async function crearPiezasComunes(vehiculoRef) {
 
 export default function InventarioPanel() {
   const router = useRouter();
-  const { user, yonkeId, loading } = useAuth();
+  const { user, yonkeId, loading, puedeEditarYonke } = useAuth();
+  // Sin términos vigentes: se ve todo, pero no se agrega, edita, saca, reactiva ni elimina nada.
+  const sinTerminos = puedeEditarYonke === false;
 
   const [vehiculos, setVehiculos] = useState([]);
   const [motores, setMotores] = useState([]);
@@ -469,6 +472,7 @@ export default function InventarioPanel() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
+        {sinTerminos ? <MensajeBloqueoTerminos /> : (
         <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
           <button onClick={abrirModalAgregar} style={{ ...addButtonStyle, flex: 1, minWidth: '140px' }}>
             🚗 Agregar vehículo
@@ -480,6 +484,7 @@ export default function InventarioPanel() {
             🔩 Pieza suelta
           </button>
         </div>
+        )}
 
         {/* Vehículos */}
         {loadingVehiculos ? (
@@ -532,10 +537,11 @@ export default function InventarioPanel() {
                       </div>
                     )}
                     <p style={{ color: '#E8720C', fontSize: '12px', fontWeight: 'bold', marginTop: '6px' }}>
-                      Ver / editar piezas →
+                      {sinTerminos ? 'Ver piezas →' : 'Ver / editar piezas →'}
                     </p>
                   </div>
                 </div>
+                {!sinTerminos && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
                   <button onClick={() => abrirModalEditar(v)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                     Editar
@@ -553,6 +559,7 @@ export default function InventarioPanel() {
                     Eliminar (error de captura)
                   </button>
                 </div>
+                )}
               </div>
               );
             })}
@@ -593,6 +600,7 @@ export default function InventarioPanel() {
                     </div>
                   )}
                 </div>
+                {!sinTerminos && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
                   <button onClick={() => abrirModalEditarMotor(m)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                     Editar
@@ -604,6 +612,7 @@ export default function InventarioPanel() {
                     Eliminar
                   </button>
                 </div>
+                )}
               </div>
             ))}
           </>
@@ -639,6 +648,7 @@ export default function InventarioPanel() {
                     </div>
                   )}
                 </div>
+                {!sinTerminos && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
                   <button onClick={() => abrirModalEditarPiezaSuelta(p)} style={{ background: 'none', border: 'none', color: '#1A3C5E', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
                     Editar
@@ -650,6 +660,7 @@ export default function InventarioPanel() {
                     Eliminar
                   </button>
                 </div>
+                )}
               </div>
             ))}
           </>
@@ -834,7 +845,8 @@ export default function InventarioPanel() {
             {loadingPiezas ? (
               <p style={{ textAlign: 'center', color: '#888' }}>Cargando...</p>
             ) : (
-              piezas.map((p) => (
+              <BloqueoTerminos>
+              {piezas.map((p) => (
                 <div key={p.id} style={{ ...piezaRowStyle, flexWrap: 'wrap', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '140px' }}>
                     <FotoPiezaEditor
@@ -854,7 +866,8 @@ export default function InventarioPanel() {
                     </label>
                   </div>
                 </div>
-              ))
+              ))}
+              </BloqueoTerminos>
             )}
             <button onClick={cerrarPiezas} style={{ ...buttonStyle, backgroundColor: '#1A3C5E', marginTop: '16px' }}>
               Listo

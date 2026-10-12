@@ -6,6 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { debeRegistrarActividad } from '../../lib/inventoryStatus';
 import { registrarActividadYonke } from '../../lib/registrarActividadYonke';
+import { leerTerminosYonkes, terminosAceptados } from './terminosYonke';
 
 const AuthContext = createContext({});
 
@@ -15,6 +16,9 @@ export function AuthProvider({ children }) {
   const [yonkeId, setYonkeId] = useState(null);
   const [tallerId, setTallerId] = useState(null);
   const [yonkePlan, setYonkePlan] = useState(null);
+  // Solo para el dueño (rol 'yonke'): { requerida, version, resumenCambios, aceptada } según
+  // config/terminosYonkes. null = no aplica o no se pudo leer (las reglas deciden igual).
+  const [terminosYonke, setTerminosYonke] = useState(null);
   const [loading, setLoading] = useState(true);
   // true cuando ya se leyó usuarios/{uid} (con o sin documento). Mientras sea false, el rol
   // todavía no se sabe y no hay que decidir redirecciones por rol.
@@ -30,6 +34,7 @@ export function AuthProvider({ children }) {
       setYonkeId(null);
       setTallerId(null);
       setYonkePlan(null);
+      setTerminosYonke(null);
       setRolListo(true);
       return null;
     }
@@ -40,10 +45,19 @@ export function AuthProvider({ children }) {
     setTallerId(data.tallerId || null);
     setRolListo(true);
 
-    // Leer el plan del yonke
+    // Leer el plan del yonke (y, si es el dueño, si ya aceptó los términos vigentes)
     if (data.yonkeId) {
       const yonkeRef = doc(db, 'yonkes', data.yonkeId);
-      const yonkeSnap = await getDoc(yonkeRef);
+      const [yonkeSnap, terminos] = await Promise.all([
+        getDoc(yonkeRef),
+        data.rol === 'yonke' ? leerTerminosYonkes(db).catch(() => null) : null,
+      ]);
+      setTerminosYonke(terminos && terminos.existe ? {
+        requerida: true,
+        version: terminos.version,
+        resumenCambios: terminos.resumenCambios,
+        aceptada: terminosAceptados(yonkeSnap.exists() ? yonkeSnap.data() : null, terminos),
+      } : null);
       if (yonkeSnap.exists()) {
         setYonkePlan(yonkeSnap.data().plan || 'freemium');
         // ultimaActividadAt: SOLO cuando quien entra es el dueño (rol 'yonke'). Este
@@ -58,6 +72,7 @@ export function AuthProvider({ children }) {
       }
     } else {
       setYonkePlan(null);
+      setTerminosYonke(null);
     }
     return data.rol;
   }, []);
@@ -73,6 +88,7 @@ export function AuthProvider({ children }) {
         setYonkeId(null);
         setTallerId(null);
         setYonkePlan(null);
+        setTerminosYonke(null);
         setRolListo(false);
       }
       setLoading(false);
@@ -86,8 +102,18 @@ export function AuthProvider({ children }) {
     return cargarUsuario(auth.currentUser);
   }, [cargarUsuario]);
 
+  // Tras aceptar en el aviso: desbloquea la pantalla sin volver a leer nada.
+  const marcarTerminosAceptados = useCallback(() => {
+    setTerminosYonke((t) => (t ? { ...t, aceptada: true } : t));
+  }, []);
+  // false solo para un yonke dueño con términos exigidos y sin aceptar (admin y demás: true).
+  const puedeEditarYonke = !(userRole === 'yonke' && terminosYonke?.requerida && !terminosYonke.aceptada);
+
   return (
-    <AuthContext.Provider value={{ user, userRole, yonkeId, tallerId, yonkePlan, loading, rolListo, recargarRol }}>
+    <AuthContext.Provider value={{
+      user, userRole, yonkeId, tallerId, yonkePlan, loading, rolListo, recargarRol,
+      terminosYonke, puedeEditarYonke, marcarTerminosAceptados,
+    }}>
       {children}
     </AuthContext.Provider>
   );

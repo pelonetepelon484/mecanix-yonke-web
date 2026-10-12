@@ -17,6 +17,8 @@ import {
   responderPedido, yaRespondioPedido,
 } from './pedidosClientesDatos';
 import { cargarEstados } from '../lib/estados';
+import { useAuth } from './AuthContext';
+import { MensajeBloqueoTerminos } from './BloqueoTerminos';
 
 function fechaCorta(ts) {
   return ts?.toDate ? ts.toDate().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
@@ -25,6 +27,8 @@ function fechaCorta(ts) {
 export const TEXTO_INTERRUPTOR_OTROS_ESTADOS = 'Ver también alertas de otros estados con envío';
 
 export default function PedidosClientesYonke({ yonkeId }) {
+  // Sin términos vigentes el interruptor se ve pero no se cambia; responder alertas sí se puede.
+  const sinTerminos = useAuth().puedeEditarYonke === false;
   const [config, setConfig] = useState(null);
   const [estadoActivo, setEstadoActivo] = useState(null);
   const [verOtros, setVerOtros] = useState(false);
@@ -149,13 +153,14 @@ export default function PedidosClientesYonke({ yonkeId }) {
           </div>
           <button
             type="button" role="switch" aria-checked={verOtros} aria-label={TEXTO_INTERRUPTOR_OTROS_ESTADOS}
-            onClick={cambiarVerOtros} disabled={guardandoOtros}
-            style={{ ...interruptor, backgroundColor: verOtros ? '#2E7D32' : '#BDBDBD', opacity: guardandoOtros ? 0.6 : 1 }}
+            onClick={cambiarVerOtros} disabled={guardandoOtros || sinTerminos}
+            style={{ ...interruptor, backgroundColor: verOtros ? '#2E7D32' : '#BDBDBD', opacity: guardandoOtros || sinTerminos ? 0.6 : 1 }}
           >
             <span style={{ ...perilla, left: verOtros ? '22px' : '2px' }} />
           </button>
         </div>
       )}
+      {puedeOtros && sinTerminos && <MensajeBloqueoTerminos />}
 
       {estadoActivo?.activo && pendientes.length > 0 && (
         <div style={seccion}>
