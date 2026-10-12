@@ -177,7 +177,8 @@ describe('taller desactivado', () => {
   });
 });
 
-describe('versión vieja: solo lectura, con la excepción de quitar datos', () => {
+// Decisión del abogado: sin términos vigentes SOLO se ve, reimprime y descarga (ni quitar datos ni borrar).
+describe('versión vieja: solo lectura (ni quitar datos ni borrar)', () => {
   it('crear y editar quedan bloqueados', async () => {
     await sembrar();
     await conVersion('v2');
@@ -191,15 +192,15 @@ describe('versión vieja: solo lectura, con la excepción de quitar datos', () =
     await assertFails(setDoc(rref('t1', 0), renglon(expiraFutura(), { precioUnitario: 9 })));
   });
   // Decisión de David (etapa 5): borrar SÍ se permite con términos viejos (solo quita datos).
-  it('borrar renglones SÍ (borrar se permite con términos viejos)', async () => {
+  it('borrar renglones NO (sin términos vigentes)', async () => {
     await sembrar();
     await conVersion('v2');
-    await assertSucceeds(deleteDoc(rref('t1', 1)));
+    await assertFails(deleteDoc(rref('t1', 1)));
   });
-  it('quitar datos (vaciar cliente y placas) SÍ', async () => {
+  it('quitar datos (vaciar cliente y placas) NO (sin términos vigentes)', async () => {
     await sembrar();
     await conVersion('v2');
-    await assertSucceeds(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
   });
   it('quitar datos + cambiar observaciones NO', async () => {
     await sembrar();
@@ -237,19 +238,32 @@ describe('versión vieja: solo lectura, con la excepción de quitar datos', () =
     await conVersion('v2');
     await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Ford', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
   });
-  it('borrar la cotización completa (taller) SÍ (borrar se permite con términos viejos)', async () => {
+  it('borrar la cotización completa (taller) NO (sin términos vigentes)', async () => {
     await sembrar();
     await conVersion('v2');
-    await assertSucceeds(deleteDoc(cref('t1')));
+    await assertFails(deleteDoc(cref('t1')));
   });
   it('quitar datos de una cotización ajena NO', async () => {
     await sembrar();
     await conVersion('v2');
     await assertFails(updateDoc(cref('t2'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
   });
-  it('sin config/cotizaciones, quitar datos sigue permitido (la excepción no lee config)', async () => {
+  it('sin config/cotizaciones, quitar datos tampoco se permite (no se puede comprobar la versión: falla cerrada)', async () => {
     await sembrar({ config: false });
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+  });
+});
+
+describe('quitar datos del cliente con términos vigentes', () => {
+  it('SÍ, también en una cotización vencida (la edición normal ya no la dejaría)', async () => {
+    await sembrar();
+    await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), 'talleres', 'T1', 'cotizaciones', C), { expiraAt: new Date(Date.now() - DIA) }); });
     await assertSucceeds(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, actualizadoAt: serverTimestamp() }));
+  });
+  it('en una cotización vencida, colar otro cambio junto con quitar datos NO', async () => {
+    await sembrar();
+    await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), 'talleres', 'T1', 'cotizaciones', C), { expiraAt: new Date(Date.now() - DIA) }); });
+    await assertFails(updateDoc(cref('t1'), { cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, observaciones: 'x', actualizadoAt: serverTimestamp() }));
   });
 });
 
@@ -463,21 +477,28 @@ describe('el taller borra SUS cotizaciones (activo y versión vigente)', () => {
     await assertFails(deleteDoc(rref('t1', 0)));
     await assertFails(deleteDoc(cref('t1')));
   });
-  it('versión VIEJA SÍ puede borrar cotizaciones y renglones ("No aprobada: eliminar ahora")', async () => {
+  it('versión VIEJA NO puede borrar cotizaciones ni renglones (solo ver, reimprimir y descargar)', async () => {
     await sembrar();
     await conVersion('v2');
-    await assertSucceeds(deleteDoc(rref('t1', 0)));
-    await assertSucceeds(deleteDoc(cref('t1')));
+    await assertFails(deleteDoc(rref('t1', 0)));
+    await assertFails(deleteDoc(cref('t1')));
   });
-  it('versión VIEJA: caso máximo, borra una cotización con 20 renglones en un solo lote', async () => {
-    await sembrar();
+  const borrarMaxima = async () => {
     await env.withSecurityRulesDisabled(async (c) => { await escribirCotizacion(c.firestore(), 'T1', 'C251006-MAXI', 20); });
-    await conVersion('v2');
     const db = como('t1');
     const b = writeBatch(db);
     for (let i = 0; i < 20; i++) b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', 'C251006-MAXI', 'renglones', String(i)));
     b.delete(doc(db, 'talleres', 'T1', 'cotizaciones', 'C251006-MAXI'));
-    await assertSucceeds(b.commit());
+    return b.commit();
+  };
+  it('caso máximo con términos vigentes: borra una cotización con 20 renglones en un solo lote ("No aprobada: eliminar ahora")', async () => {
+    await sembrar();
+    await assertSucceeds(borrarMaxima());
+  });
+  it('caso máximo con versión VIEJA: NO', async () => {
+    await sembrar();
+    await conVersion('v2');
+    await assertFails(borrarMaxima());
   });
   it('versión VIEJA sigue SIN poder crear ni editar', async () => {
     await sembrar();

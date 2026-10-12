@@ -355,8 +355,11 @@ service cloud.firestore {
                     && request.resource.data.avisoVersion == get(/databases/$(database)/documents/talleres/$(tallerId)).data.avisoPrivacidad.versionPlantilla;
 
       allow update: if (
-                        // A) EXCEPCIÓN: dueño ACTIVO (con versión vieja o vigente). SOLO vaciar cliente y quitar placas.
+                        // A) "Quitar datos del cliente": dueño ACTIVO y con términos VIGENTES (decisión del
+                        //    abogado: sin términos vigentes solo se ve, reimprime y descarga). SOLO vaciar
+                        //    cliente y quitar placas; aunque la cotización esté vencida.
                         (tallerActivoDeDueno()
+                         && versionVigente()
                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cliente', 'vehiculo', 'actualizadoAt'])
                          && request.resource.data.cliente == {}
                          && request.resource.data.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio', 'kilometraje'])
@@ -384,11 +387,10 @@ service cloud.firestore {
                             && request.resource.data.actualizadoAt == request.time)
                       );
 
-      // Borrar la cotización completa (primero sus renglones): admin, o el dueño con taller activo,
-      // AUNQUE tenga términos viejos (borrar solo quita datos; el aviso al cliente promete eliminar
-      // de inmediato una cotización no aprobada). Crear y editar siguen exigiendo términos vigentes.
+      // Borrar la cotización completa (primero sus renglones): admin, o el dueño con taller activo y
+      // términos vigentes (sin términos vigentes solo se ve, reimprime y descarga).
       allow delete: if esAdmin()
-                    || tallerActivoDeDueno();
+                    || (tallerActivoDeDueno() && versionVigente());
 
       match /renglones/{numero} {
         // Cotización padre tal como quedará después del lote (getAfter)
@@ -423,10 +425,10 @@ service cloud.firestore {
                       && request.resource.data.expiraAt == resource.data.expiraAt
                       && request.resource.data.expiraAt == padre().expiraAt;
 
-        // Quitar renglones (al editar o al eliminar la cotización): taller activo, aunque tenga términos
-        // viejos (igual que borrar la cotización); el admin siempre puede
+        // Quitar renglones (al editar o al eliminar la cotización) exige taller activo y términos
+        // vigentes; el admin siempre puede
         allow delete: if esAdmin()
-                      || tallerActivoDeDueno();
+                      || (tallerActivoDeDueno() && versionVigente());
       }
     }
 
@@ -552,9 +554,11 @@ service cloud.firestore {
                     && request.resource.data.avisoVersion == get(/databases/$(database)/documents/config/ordenes).data.avisoOrdenVersion;
 
       allow update: if (
-                        // A) EXCEPCIÓN: dueño ACTIVO (con versión vieja o vigente). SOLO vaciar cliente y quitar placas.
-                        //    No lee config: funciona aunque la función se apague. No mueve la fecha de borrado.
+                        // A) "Quitar datos del cliente": dueño ACTIVO y con términos VIGENTES. SOLO vaciar
+                        //    cliente y quitar placas. No lee config/ordenes: funciona aunque la función se
+                        //    apague. No mueve la fecha de borrado.
                         (tallerActivoDeDueno()
+                         && versionVigente()
                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cliente', 'vehiculo', 'actualizadoAt'])
                          && request.resource.data.cliente == {}
                          && request.resource.data.vehiculo.keys().hasOnly(['marca', 'modelo', 'anio', 'kilometraje'])
@@ -575,10 +579,9 @@ service cloud.firestore {
                             && expiraAlEditar())
                       );
 
-      // Borrar: admin, o el dueño con taller activo, AUNQUE tenga términos viejos (borrar solo quita
-      // datos). Crear y editar siguen exigiendo términos vigentes.
+      // Borrar: admin, o el dueño con taller activo y términos vigentes.
       allow delete: if esAdmin()
-                    || tallerActivoDeDueno();
+                    || (tallerActivoDeDueno() && versionVigente());
     }
 
     // ---------- Pedido de piezas de talleres a yonkes ----------

@@ -337,22 +337,28 @@ describe('falla cerrada y términos', () => {
     await assertFails(setDoc(oref('t1', ON), orden()));
     await assertFails(setDoc(oref('t1'), edicion()));
   });
-  it('con la versión de términos vieja no se crea ni se edita, pero SÍ se borra (decisión de David)', async () => {
+  // Decisión del abogado: sin términos vigentes SOLO se ve, reimprime y descarga.
+  it('con la versión de términos vieja no se crea, ni se edita, ni se borra', async () => {
     await sembrar();
     await conVersion('v2');
     await assertFails(setDoc(oref('t1', ON), orden()));
     await assertFails(setDoc(oref('t1'), edicion()));
-    await assertSucceeds(deleteDoc(oref('t1')));
+    await assertFails(deleteDoc(oref('t1')));
   });
   it('taller desactivado no borra, ni con términos viejos', async () => {
     await sembrar();
     await conVersion('v2');
     await assertFails(deleteDoc(oref('t3', O, 'T3')));
   });
-  it('quitar datos del cliente sí se permite con versión vieja (y sin config/ordenes), sin mover el borrado', async () => {
+  it('quitar datos del cliente con versión vieja: NO', async () => {
     await sembrar();
     await sembrarDatoCliente();
     await conVersion('v2');
+    await assertFails(updateDoc(oref('t1'), { cliente: {}, 'vehiculo.placas': deleteField(), actualizadoAt: serverTimestamp() }));
+  });
+  it('quitar datos del cliente con términos vigentes: SÍ, aunque la función de órdenes esté apagada, sin mover el borrado', async () => {
+    await sembrar();
+    await sembrarDatoCliente();
     await env.withSecurityRulesDisabled(async (c) => { await deleteDoc(doc(c.firestore(), 'config', 'ordenes')); });
     await assertSucceeds(updateDoc(oref('t1'), { cliente: {}, 'vehiculo.placas': deleteField(), actualizadoAt: serverTimestamp() }));
   });
@@ -485,7 +491,7 @@ describe('etapa 4: datos del cliente en órdenes', () => {
     await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
     await assertFails(setDoc(oref('t1'), edicion({ ...conCliente, avisoVersion: AVISO_NUEVO })));
   });
-  it('orden nueva con datos: se edita y se quitan los datos (también con términos viejos)', async () => {
+  it('orden nueva con datos: se edita y se quitan los datos con términos vigentes; con términos viejos, no', async () => {
     await sembrar();
     await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
     await env.withSecurityRulesDisabled(async (c) => {
@@ -493,6 +499,8 @@ describe('etapa 4: datos del cliente en órdenes', () => {
     });
     await assertSucceeds(setDoc(oref('t1', ON), orden({ ...conCliente, ...vehiculoConPlacas, avisoVersion: AVISO_NUEVO, creadoAt: CREADO, observaciones: 'x' })));
     await conVersion('v2');
+    await assertFails(updateDoc(oref('t1', ON), { cliente: {}, 'vehiculo.placas': deleteField(), actualizadoAt: serverTimestamp() }));
+    await conVersion('v1');
     await assertSucceeds(updateDoc(oref('t1', ON), { cliente: {}, 'vehiculo.placas': deleteField(), actualizadoAt: serverTimestamp() }));
   });
   it('caso máximo con datos del cliente: entregada, 20 trabajos y 20 piezas', async () => {
@@ -512,13 +520,15 @@ describe('etapa 4: datos del cliente en órdenes', () => {
     const r = await quedaCotizacion();
     if (r.cotizacion || r.renglones !== 0 || !r.orden) throw new Error(`esperaba todo convertido, quedó ${JSON.stringify(r)}`);
   });
-  it('borrar una orden con datos del cliente con términos viejos: SÍ', async () => {
+  it('borrar una orden con datos del cliente: con términos viejos NO; con vigentes SÍ', async () => {
     await sembrar();
     await conConfig({ datosClienteHabilitados: true, avisoOrdenVersion: AVISO_NUEVO });
     await env.withSecurityRulesDisabled(async (c) => {
       await setDoc(doc(c.firestore(), 'talleres', 'T1', 'ordenes', ON), { ...orden({ ...conCliente, avisoVersion: AVISO_NUEVO }), creadoAt: CREADO, actualizadoAt: CREADO, expiraAt: enDias(80) });
     });
     await conVersion('v2');
+    await assertFails(deleteDoc(oref('t1', ON)));
+    await conVersion('v1');
     await assertSucceeds(deleteDoc(oref('t1', ON)));
   });
 });
