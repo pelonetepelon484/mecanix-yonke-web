@@ -170,3 +170,37 @@ describe('textos finales del 12 de octubre de 2026', () => {
     expect(texto).toContain('es responsable, bajo su propia cuenta, de la veracidad de su respuesta al confirmar que tiene la pieza.');
   });
 });
+
+// Avisos en el dispositivo (notificaciones push): textos aprobados por el abogado, dentro de la
+// versión vigente (VERSION_LEGAL y la fecha no cambian).
+describe('avisos en el dispositivo', () => {
+  const PRIVACIDAD = 'Notificaciones en el dispositivo. Si el yonke activa los avisos, guardamos un identificador técnico (token) del navegador o dispositivo que utiliza, ligado a su cuenta, con el único fin de enviarle avisos de pedidos y alertas de búsqueda de su interés aunque la aplicación esté cerrada. Estos avisos no contienen datos personales del cliente. Para entregarlos utilizamos el servicio Firebase Cloud Messaging de Google, que recibe el identificador y el texto del aviso. El yonke puede desactivar los avisos en cualquier momento desde la aplicación o desde los permisos de su navegador; al hacerlo, o al eliminar su cuenta, eliminamos el identificador.';
+  const PROVEEDOR = '• Firebase Cloud Messaging (Google): entrega de los avisos en el dispositivo a los yonkes que los activan (ver sección 2).';
+  const TERMINOS = 'Los avisos de pedidos y alertas en el dispositivo forman parte de la sección de pedidos del plan Básico. Su entrega depende de la conexión, de los permisos y de la configuración del dispositivo del usuario, por lo que Mecanix no garantiza que cada aviso llegue ni que llegue de inmediato; el yonke puede consultar siempre sus pedidos y alertas dentro del panel.';
+  it('Privacidad, sección 2: el párrafo va justo después de "Yonkes registrados"', () => {
+    const texto = textoDe(Privacidad);
+    expect(texto).toContain(PRIVACIDAD);
+    const yonkes = texto.indexOf('Yonkes registrados:');
+    const avisos = texto.indexOf(PRIVACIDAD);
+    expect(avisos).toBeGreaterThan(yonkes);
+    expect(avisos).toBeLessThan(texto.indexOf('Datos técnicos:'));
+    expect(avisos).toBeLessThan(texto.indexOf('3. Datos que los yonkes registran sobre terceros'));
+  });
+  it('Privacidad, sección 5: Firebase Cloud Messaging (Google) junto a CallMeBot', () => {
+    const texto = textoDe(Privacidad);
+    expect(texto).toContain(PROVEEDOR);
+    const callmebot = texto.indexOf('• CallMeBot:');
+    expect(texto.indexOf(PROVEEDOR)).toBeGreaterThan(callmebot);
+    expect(texto.indexOf(PROVEEDOR)).toBeLessThan(texto.indexOf('Estos proveedores tratan los datos'));
+  });
+  it('Términos, sección 4: el párrafo va después del de los dos planes', () => {
+    const texto = textoDe(Terminos);
+    expect(texto).toContain(TERMINOS);
+    expect(texto.indexOf(TERMINOS)).toBeGreaterThan(texto.indexOf('La Plataforma ofrece dos planes.'));
+    expect(texto.indexOf(TERMINOS)).toBeLessThan(texto.indexOf('Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026'));
+  });
+  it('sin cambiar la versión ni la fecha', () => {
+    expect(VERSION_LEGAL).toBe('2026-10-12');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 12 de octubre de 2026');
+  });
+});
