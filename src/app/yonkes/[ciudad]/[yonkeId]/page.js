@@ -80,7 +80,7 @@ export default async function YonkeDetallePage({ params }) {
       <main style={mainStyle}>
         <div style={{ maxWidth: '620px', margin: '0 auto' }}>
           <div style={cardStyle}>
-            {yonke.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+            {yonke.premiumVigente === true && <div style={premiumBadgeStyle}>⭐ Premium</div>}
             {yonke.verificado && <p style={verificadoStyle}>✅ Yonke verificado</p>}
             {yonke.ultimaActividadAt !== null && (
               <div style={{ marginBottom: '8px' }}><YonkeActividadBadge ultimaActividadAt={yonke.ultimaActividadAt} /></div>

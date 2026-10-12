@@ -3,6 +3,7 @@ import { dbServer } from '../firebase-server';
 import { getRatingParaYonke } from '../yonkesServerData';
 import { buscarVehiculosPorAnio } from '../buscarVehiculosPorAnio';
 import { estadoDeYonke } from './estadosServer';
+import { esPremiumVigente } from '../../../lib/planes';
 import { cilindradaCoincide } from './cilindrada';
 import { CATALOGO_BASE } from '../catalogoBase';
 import { mismoModelo } from '../modeloCompacto';
@@ -109,7 +110,7 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
     enviosNacionales: yonkeData.enviosNacionales === true,
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-    metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+    metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
     ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
     vehiculoId: vDoc.id, vehiculo, calificacion,
@@ -133,7 +134,7 @@ function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
     enviosNacionales: yonkeData.enviosNacionales === true,
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-    metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+    metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
     ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
     vehiculoId: pDoc.id, vehiculo: { marca, modelo, ano }, calificacion,
@@ -160,7 +161,7 @@ function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
     enviosNacionales: yonkeData.enviosNacionales === true,
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-    metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+    metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
     ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null,
     ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
     // esMotor: true -- faltaba. Era inofensivo mientras nada leyera esta bandera (renderTarjetaMotor

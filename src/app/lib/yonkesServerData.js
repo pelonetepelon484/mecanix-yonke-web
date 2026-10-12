@@ -3,6 +3,7 @@ import { dbServer } from './firebase-server';
 import { CIUDADES_BC } from './ciudades';
 import { estadoDeYonke } from './estados';
 import { toMillis } from '../../lib/inventoryStatus';
+import { esPremiumVigente } from '../../lib/planes';
 
 export async function getRatingParaYonke(yonkeId) {
   const q = query(collection(dbServer, 'calificaciones'), where('yonkeId', '==', yonkeId));
@@ -25,6 +26,9 @@ function toYonkePublico(docSnap) {
     whatsapp: d.whatsapp || d.telefono || '',
     ciudad: d.ciudad || '',
     plan: d.plan || 'freemium',
+    // Insignia ⭐ Premium: solo con Premium vigente (misma función que el panel y las reglas),
+    // con o sin config/planes.limitesActivos.
+    premiumVigente: esPremiumVigente(d),
     metodosPago: d.metodosPago || [],
     horario: d.horario || null,
     logoUrl: d.logoUrl || null,

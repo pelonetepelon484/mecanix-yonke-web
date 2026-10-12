@@ -50,7 +50,7 @@ function YonkeCard({ yonke, ciudadKey }) {
 
   return (
     <div style={cardStyle}>
-      {yonke.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+      {yonke.premiumVigente === true && <div style={premiumBadgeStyle}>⭐ Premium</div>}
 
       <a href={`/yonkes/${ciudadKey}/${yonke.id}`} style={{ textDecoration: 'none' }}>
         <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '17px', margin: 0 }}>{yonke.nombre}</p>

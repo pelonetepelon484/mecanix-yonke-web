@@ -21,7 +21,7 @@ import AvisarYonkes from './AvisarYonkes';
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
-import { tarjetaPlanSinCosto, leerLimitesActivos } from '../lib/planes';
+import { tarjetaPlanSinCosto, leerLimitesActivos, esPremiumVigente } from '../lib/planes';
 
 // Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
 // propia foto, una pieza suelta la suya (r.vehiculo es sintético ahí, ver esPiezaSuelta en
@@ -440,7 +440,7 @@ export default function HomeClient({ textoSeoEstados }) {
           telefono: yonkeData.telefono,
           whatsapp: yonkeData.whatsapp || '',
           metodosPago: yonkeData.metodosPago || [],
-          plan: yonkeData.plan,
+          plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
           ciudad: yonkeData.ciudad || '',
           horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
           calificacion,
@@ -515,7 +515,7 @@ export default function HomeClient({ textoSeoEstados }) {
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
           yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-          metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+          metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
           ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
           vehiculo: { marca: m, modelo: mo, ano: a }, calificacion,
           // esPiezaSuelta: true -- r.vehiculo es sintético aquí (sin documento real detrás), a
@@ -589,7 +589,7 @@ export default function HomeClient({ textoSeoEstados }) {
         yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
         yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-        metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+        metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
         ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
         vehiculo: vDoc.data(), calificacion,
       };
@@ -636,7 +636,7 @@ export default function HomeClient({ textoSeoEstados }) {
         yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
         yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
         telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-        metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+        metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
         ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
         vehiculo: vDoc.data(), calificacion,
       };
@@ -726,7 +726,7 @@ export default function HomeClient({ textoSeoEstados }) {
           yonkeId: yonkeDoc.id, vehiculoId: vDoc.id,
           yonkeNombre: yonkeData.nombre, logoUrl: yonkeData.logoUrl || null, subdominio: yonkeData.subdominio || null, subdominioActivo: yonkeData.subdominioActivo !== false, verificado: yonkeData.verificado === true, entregaInmediata: yonkeData.entregaInmediata === true, enviosNacionales: yonkeData.enviosNacionales === true, direccion: yonkeData.direccion,
           telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
-          metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan,
+          metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
           ciudad: yonkeData.ciudad || '', horario: yonkeData.horario || null, ultimaActividadAt: toMillis(yonkeData.ultimaActividadAt),
           vehiculo: vDoc.data(), calificacion,
         };
@@ -1283,9 +1283,9 @@ function obtenerEstadoAbierto(horario) {
       <div key={key} style={resultCardStyle}>
         {r.verificado && <SelloMarcaAgua />}
         <div style={{ position: 'relative', zIndex: 1 }}>
-        {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+        {r.premiumVigente === true && <div style={premiumBadgeStyle}>⭐ Premium</div>}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.premiumVigente === true ? '90px' : 0 }}>
           {r.logoUrl && (
             <img
               src={r.logoUrl}
@@ -1406,8 +1406,8 @@ function obtenerEstadoAbierto(horario) {
       <div key={key} style={resultCardStyle}>
         {r.verificado && <SelloMarcaAgua />}
         <div style={{ position: 'relative', zIndex: 1 }}>
-        {r.plan === 'premium' && <div style={premiumBadgeStyle}>⭐ Premium</div>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.plan === 'premium' ? '90px' : 0 }}>
+        {r.premiumVigente === true && <div style={premiumBadgeStyle}>⭐ Premium</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.premiumVigente === true ? '90px' : 0 }}>
           {r.logoUrl && (
             <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
           )}
