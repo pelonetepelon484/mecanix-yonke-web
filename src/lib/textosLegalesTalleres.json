@@ -153,47 +153,90 @@
       "texto": "Cuando el Taller solicita una pieza, Mecanix comparte con los yonkes que reciben la solicitud los datos del Taller (nombre, WhatsApp y ciudad) y los datos del vehículo y la pieza solicitados, con la única finalidad de que puedan confirmar si la tienen y atender la solicitud. Mecanix no comparte con esos yonkes datos personales del Cliente del Taller."
     }
   ],
-  "avisoTaller": {
-    "version": "aviso-taller-1",
-    "plantilla": [
-      {
-        "tipo": "parrafo",
-        "texto": "Aviso de privacidad"
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para elaborar esta cotización."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Datos y finalidad. Podemos recabar su nombre, teléfono, los datos de su vehículo (marca, modelo, año, placas y kilometraje) y las observaciones del vehículo que se anoten, con la única finalidad de elaborar y dar seguimiento a esta cotización."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Plazo. Sus datos se eliminan de la plataforma a los 90 días de elaborada la cotización y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. Si usted no acepta la cotización, esta se elimina de inmediato."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Aceptación. Al firmar esta cotización, usted acepta los términos y condiciones del taller, los cuales remiten a los de Mecanix Yonke Virtual, y declara haber recibido este aviso."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Versión del aviso: aviso-taller-1"
-      }
-    ]
-  },
+  "avisosTaller": [
+    {
+      "version": "aviso-taller-1",
+      "plantilla": [
+        {
+          "tipo": "parrafo",
+          "texto": "Aviso de privacidad"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para elaborar esta cotización."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Datos y finalidad. Podemos recabar su nombre, teléfono, los datos de su vehículo (marca, modelo, año, placas y kilometraje) y las observaciones del vehículo que se anoten, con la única finalidad de elaborar y dar seguimiento a esta cotización."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Plazo. Sus datos se eliminan de la plataforma a los 90 días de elaborada la cotización y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. Si usted no acepta la cotización, esta se elimina de inmediato."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Aceptación. Al firmar esta cotización, usted acepta los términos y condiciones del taller, los cuales remiten a los de Mecanix Yonke Virtual, y declara haber recibido este aviso."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Versión del aviso: aviso-taller-1"
+        }
+      ]
+    },
+    {
+      "version": "aviso-taller-2",
+      "plantilla": [
+        {
+          "tipo": "parrafo",
+          "texto": "Aviso de privacidad"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para elaborar esta cotización."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Datos y finalidad. Podemos recabar su nombre, teléfono, los datos de su vehículo (marca, modelo, año, placas y kilometraje) y las observaciones del vehículo que se anoten, con la única finalidad de elaborar y dar seguimiento a esta cotización."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Plazo. Si usted aprueba la cotización, esta se convierte en una orden de trabajo y la cotización se elimina de la plataforma para ahorrar espacio de almacenamiento; [nombre del taller] puede imprimirla o conservarla para su contabilidad, lo cual ya no compete a Mecanix. Si usted no la aprueba, esta se elimina de inmediato. En cualquier caso, sus datos se eliminan de la plataforma a más tardar a los 90 días de elaborada la cotización y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Aceptación. Al firmar esta cotización, usted acepta los términos y condiciones del taller, los cuales remiten a los de Mecanix Yonke Virtual, y declara haber recibido este aviso."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Versión del aviso: aviso-taller-2"
+        }
+      ]
+    }
+  ],
   "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir las herramientas de taller y el nuevo flujo de solicitud de piezas a yonkes. Tu taller es el responsable de los datos de sus clientes y Mecanix los almacena por tu petición; las cotizaciones se eliminan a los 90 días; y debes entregar un aviso de privacidad a tus clientes. Además, cuando solicites una pieza a los yonkes, Mecanix compartirá con ellos los datos de tu taller y del vehículo solicitado, pero nunca los datos personales de tu cliente. Para seguir creando cotizaciones o solicitando piezas, lee y acepta la nueva versión. Mientras tanto puedes consultar tus cotizaciones anteriores y quitar datos de tus clientes.",
   "avisoOrden": {
     "version": "aviso-orden-1",

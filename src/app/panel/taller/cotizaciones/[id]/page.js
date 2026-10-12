@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import CotizacionForm from '../CotizacionForm';
 import { useCotizaciones } from '../contexto';
 import { borrarCotizacionCompleta, cambiarArchivada, duplicarCotizacion, guardarCotizacion, leerCotizacion, quitarDatosCliente } from '../datos';
-import { descargarPdfCotizacion } from '../pdf';
+import { MENSAJES_AVISO_COTIZACION, descargarPdfCotizacion } from '../pdf';
 import { leerConfigSolicitudesPiezas } from '../../../solicitudesPiezasDatos';
 import { convertirCotizacionEnOrden, leerConfigOrdenes } from '../../ordenes/datos';
 import { MENSAJES_CONVERSION, mensajeConfirmarConversion } from '../../../../../lib/ordenes';
@@ -64,10 +64,13 @@ export default function EditarCotizacion() {
   async function descargarPdf() {
     setGenerandoPdf(true);
     try {
-      await descargarPdfCotizacion({ cotizacion: cot, taller });
+      const r = await descargarPdfCotizacion({ cotizacion: cot, taller });
+      // Su versión de aviso no está en el archivo: salió sin la hoja del aviso.
+      if (r?.conAviso === false) setAviso(MENSAJES_AVISO_COTIZACION.sinHoja);
     } catch (err) {
       console.error(err);
-      setAviso('No pudimos generar el PDF. Intenta de nuevo.');
+      // Con datos del cliente y sin aviso no se genera (falla cerrada): se explica por qué.
+      setAviso(err?.name === 'CotizacionSinAviso' ? err.message : 'No pudimos generar el PDF. Intenta de nuevo.');
     } finally {
       setGenerandoPdf(false);
     }

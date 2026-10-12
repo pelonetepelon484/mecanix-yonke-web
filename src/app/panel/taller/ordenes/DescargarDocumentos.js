@@ -6,8 +6,8 @@ import { useRef, useState } from 'react';
 import { listarOrdenes } from './datos';
 import { listarCotizaciones, leerRenglones } from '../cotizaciones/datos';
 import { bytesPdfOrden } from './pdf';
-import { bytesPdfCotizacion } from '../cotizaciones/pdf';
-import { DescargaCancelada, DescargaExcedeTope, MENSAJES_DESCARGA, guardarZip, prepararDocumentos, textoProgreso } from './descargaDocumentos';
+import { bytesPdfCotizacion, plantillaAvisoTaller } from '../cotizaciones/pdf';
+import { DescargaCancelada, DescargaExcedeTope, MENSAJES_DESCARGA, guardarZip, prepararDocumentos, textoAvisoCotizaciones, textoProgreso } from './descargaDocumentos';
 
 const boton = { width: '100%', minHeight: '52px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' };
 
@@ -24,6 +24,7 @@ export default function DescargarDocumentos({ tallerId, taller, fuentes: fuentes
       leerRenglones: (folio) => leerRenglones(tallerId, folio),
       pdfOrden: (orden) => bytesPdfOrden({ orden, taller }),
       pdfCotizacion: (cotizacion) => bytesPdfCotizacion({ cotizacion, taller }),
+      tieneAviso: (cotizacion) => plantillaAvisoTaller(cotizacion.avisoVersion) !== null,
     };
     try {
       const r = await prepararDocumentos({
@@ -31,12 +32,14 @@ export default function DescargarDocumentos({ tallerId, taller, fuentes: fuentes
         cancelado: () => cancelar.current,
         onProgreso: (hechos, total) => setEstado({ fase: 'preparando', hechos, total, mensaje: '' }),
       });
+      const avisoCotizaciones = textoAvisoCotizaciones(r);
       if (!r.bytes) {
-        setEstado({ fase: 'listo', hechos: 0, total: 0, mensaje: MENSAJES_DESCARGA.vacio });
+        setEstado({ fase: 'listo', hechos: 0, total: 0, mensaje: avisoCotizaciones || MENSAJES_DESCARGA.vacio });
         return;
       }
       guardarZip(r.bytes, r.nombre);
-      setEstado({ fase: 'listo', hechos: 0, total: 0, mensaje: `Listo: se descargaron ${r.total} ${r.total === 1 ? 'documento' : 'documentos'} en ${r.nombre}.` });
+      const listo = `Listo: se descargaron ${r.total} ${r.total === 1 ? 'documento' : 'documentos'} en ${r.nombre}.`;
+      setEstado({ fase: 'listo', hechos: 0, total: 0, mensaje: avisoCotizaciones ? `${listo} ${avisoCotizaciones}` : listo });
     } catch (err) {
       if (!(err instanceof DescargaCancelada) && !(err instanceof DescargaExcedeTope)) console.error(err);
       const mensaje = err instanceof DescargaCancelada || err instanceof DescargaExcedeTope ? err.message : MENSAJES_DESCARGA.fallo;

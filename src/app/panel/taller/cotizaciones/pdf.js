@@ -32,9 +32,39 @@ export function fechaLarga(fecha) {
   return fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-// Aviso de privacidad con los datos del taller. El cuerpo termina en la línea de firma; la versión
-// del aviso va aparte (en el pie de la página), por eso no se incluye el renglón "Versión del aviso".
-export function armarAvisoPrivacidad(taller) {
+// Avisos de privacidad por versión (textosLegalesTalleres.json -> avisosTaller). Cada cotización
+// imprime el aviso de la versión que tiene guardada (avisoVersion): las viejas siguen con su texto.
+// Si esa versión no está en el archivo, FALLA CERRADA: con datos del cliente (nombre, teléfono o
+// placas) no se genera el PDF; sin datos del cliente sale sin la hoja del aviso y se avisa.
+export function plantillaAvisoTaller(version) {
+  return textosTalleres.avisosTaller.find((a) => a.version === version) ?? null;
+}
+
+export function tieneDatosCliente(cotizacion) {
+  const cliente = cotizacion?.cliente ?? {};
+  return [cliente.nombre, cliente.telefono, cotizacion?.vehiculo?.placas].some((v) => typeof v === 'string' && v.trim() !== '');
+}
+
+export const MENSAJES_AVISO_COTIZACION = {
+  sinPdf: 'No podemos generar el PDF de esta cotización: tiene datos del cliente y no encontramos el texto de su aviso de privacidad. Escríbenos.',
+  sinHoja: 'El PDF se generó sin la hoja del aviso de privacidad porque no encontramos el texto de su versión. Escríbenos si la necesitas.',
+};
+
+// Error de "con datos del cliente y sin aviso" (el .zip deja fuera esa cotización y avisa cuál fue).
+export class CotizacionSinAviso extends Error {
+  constructor(folio) {
+    super(MENSAJES_AVISO_COTIZACION.sinPdf);
+    this.name = 'CotizacionSinAviso';
+    this.folio = folio;
+  }
+}
+
+// Aviso de privacidad con los datos del taller, de la versión pedida (null si no existe). El cuerpo
+// termina en la línea de firma; la versión del aviso va aparte (en el pie de la página), por eso no
+// se incluye el renglón "Versión del aviso".
+export function armarAvisoPrivacidad(taller, versionAviso) {
+  const aviso = plantillaAvisoTaller(versionAviso);
+  if (!aviso) return null;
   const nombre = taller?.nombre?.trim() || EN_BLANCO;
   const ciudad = taller?.ciudad?.trim() || EN_BLANCO;
   const whatsapp = formatearWhatsapp(taller?.whatsapp) || EN_BLANCO;
@@ -45,7 +75,7 @@ export function armarAvisoPrivacidad(taller) {
     [/\[whatsapp del taller\]/gi, whatsapp],
     [/\[medio de contacto del taller\]/gi, contacto],
   ];
-  const { plantilla, version } = textosTalleres.avisoTaller;
+  const { plantilla, version } = aviso;
   const firma = plantilla.findIndex((p) => p.texto.startsWith(INICIO_LINEA_FIRMA));
   const textos = plantilla
     .slice(0, firma === -1 ? plantilla.length : firma + 1)
@@ -185,8 +215,8 @@ function dibujarCotizacion(doc, cotizacion, taller) {
   }
 }
 
-function dibujarAviso(doc, taller) {
-  const { titulo, parrafos, version } = armarAvisoPrivacidad(taller);
+function dibujarAviso(doc, aviso) {
+  const { titulo, parrafos, version } = aviso;
   const pie = () => {
     estilo(doc, { tamano: 8, color: GRIS });
     doc.text(`Versión del aviso: ${version}`, MARGEN, 288);
@@ -214,26 +244,33 @@ function dibujarAviso(doc, taller) {
   });
 }
 
-// Arma el PDF (cotización + hoja del aviso de privacidad). Todo el texto pasa por textoPdf: lo que
-// la fuente no soporta (emojis, símbolos raros) sale como "?" sin tocar acentos ni la ñ.
+// Arma el PDF (cotización + hoja del aviso de privacidad de SU versión). Todo el texto pasa por
+// textoPdf: lo que la fuente no soporta (emojis, símbolos raros) sale como "?" sin tocar acentos ni la ñ.
 // cotizacion: tal como la devuelve leerCotizacion (con folio y renglones).
+// Lanza CotizacionSinAviso si tiene datos del cliente y su versión de aviso no existe.
 async function crearDocCotizacion({ cotizacion, taller }) {
+  const aviso = armarAvisoPrivacidad(taller, cotizacion.avisoVersion);
+  if (!aviso && tieneDatosCliente(cotizacion)) throw new CotizacionSinAviso(cotizacion.folio);
   const { jsPDF } = await import('jspdf');
   const doc = protegerTextos(new jsPDF());
   dibujarCotizacion(doc, cotizacion, taller);
-  doc.addPage();
-  dibujarAviso(doc, taller);
-  return doc;
+  if (aviso) {
+    doc.addPage();
+    dibujarAviso(doc, aviso);
+  }
+  return { doc, conAviso: Boolean(aviso) };
 }
 
-// Genera el PDF y lo descarga en el dispositivo.
+// Genera el PDF y lo descarga en el dispositivo. Devuelve { conAviso } (false = salió sin la hoja
+// del aviso; la pantalla muestra MENSAJES_AVISO_COTIZACION.sinHoja).
 export async function descargarPdfCotizacion({ cotizacion, taller }) {
-  const doc = await crearDocCotizacion({ cotizacion, taller });
+  const { doc, conAviso } = await crearDocCotizacion({ cotizacion, taller });
   doc.save(`cotizacion-${cotizacion.folio}.pdf`);
+  return { conAviso };
 }
 
 // Mismo PDF, como bytes (para meterlo al .zip de "Descargar mis documentos").
 export async function bytesPdfCotizacion({ cotizacion, taller }) {
-  const doc = await crearDocCotizacion({ cotizacion, taller });
+  const { doc } = await crearDocCotizacion({ cotizacion, taller });
   return new Uint8Array(doc.output('arraybuffer'));
 }

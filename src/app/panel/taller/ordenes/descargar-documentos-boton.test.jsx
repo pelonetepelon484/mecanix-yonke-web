@@ -64,4 +64,24 @@ describe('botón "Descargar mis documentos"', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Descargar mis documentos' }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(MENSAJES_DESCARGA.fallo));
   });
+  it('dice qué cotizaciones quedaron fuera (con datos del cliente y sin aviso) y cuáles van sin la hoja del aviso', async () => {
+    const clic = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const f = {
+      ...fuentes({ n: 1 }),
+      listarCotizaciones: vi.fn(async ({ archivada }) => ({ items: archivada ? [] : [{ folio: 'C1' }, { folio: 'C2' }], cursor: null, hayMas: false })),
+      pdfCotizacion: vi.fn(async (c) => {
+        if (c.folio === 'C1') throw Object.assign(new Error('x'), { name: 'CotizacionSinAviso' });
+        return new Uint8Array([1]);
+      }),
+      tieneAviso: () => false,
+    };
+    render(<DescargarDocumentos tallerId="T1" taller={{}} fuentes={f} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Descargar mis documentos' }));
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveTextContent(/Listo: se descargaron 2 documentos/);
+    expect(alerta).toHaveTextContent('No se incluyeron porque tienen datos del cliente y no encontramos el texto de su aviso de privacidad: C1. Escríbenos.');
+    expect(alerta).toHaveTextContent('Salieron sin la hoja del aviso de privacidad porque no encontramos el texto de su versión: C2.');
+    clic.mockRestore();
+  });
 });
+

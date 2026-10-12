@@ -27,7 +27,7 @@ describe('PDF real (jsPDF de verdad)', () => {
   });
   it('cotización real con su hoja de aviso, y ambos caben en un .zip', async () => {
     const cotizacion = {
-      folio: 'C261011-AB12', creadoAt: new Date(), vigenciaDias: 15, cliente: { nombre: 'Ana 😀' }, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 },
+      folio: 'C261011-AB12', creadoAt: new Date(), vigenciaDias: 15, avisoVersion: 'aviso-taller-1', cliente: { nombre: 'Ana 😀' }, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 },
       observaciones: 'ok', renglones: [{ tipo: 'pieza', descripcion: 'Balata', cantidad: 1, precioUnitario: 100 }],
     };
     const bytesCot = await bytesPdfCotizacion({ cotizacion, taller });

@@ -31,10 +31,25 @@ describe('textos legales de talleres (borrador en revisión por el abogado: base
     expect(p).toContain('2.6 Solicitudes de piezas a yonkes');
     expect(p).toContain('Mecanix no comparte con esos yonkes datos personales del Cliente del Taller');
   });
-  it('plantilla aviso-taller-1 completa y con sus marcadores sin llenar', () => {
-    expect(textos.avisoTaller.version).toBe('aviso-taller-1');
-    expect(textos.avisoTaller.plantilla).toHaveLength(9);
-    expect(textos.avisoTaller.plantilla.map((p) => p.texto).join('\n')).toContain('[Nombre del taller]');
+  it('avisos de la cotización por versión: aviso-taller-1 y aviso-taller-2, en ese orden', () => {
+    expect(textos.avisosTaller.map((a) => a.version)).toEqual(['aviso-taller-1', 'aviso-taller-2']);
+  });
+  it('plantilla aviso-taller-1 completa, intacta y con sus marcadores sin llenar', () => {
+    const v1 = textos.avisosTaller[0];
+    expect(v1.plantilla).toHaveLength(9);
+    expect(v1.plantilla.map((p) => p.texto).join('\n')).toContain('[Nombre del taller]');
+    expect(v1.plantilla[4].texto).toBe('Plazo. Sus datos se eliminan de la plataforma a los 90 días de elaborada la cotización y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. Si usted no acepta la cotización, esta se elimina de inmediato.');
+    expect(v1.plantilla[8].texto).toBe('Versión del aviso: aviso-taller-1');
+  });
+  it('aviso-taller-2: igual a aviso-taller-1 salvo el párrafo "Plazo" y la versión al pie', () => {
+    const [v1, v2] = textos.avisosTaller;
+    expect(v2.plantilla).toHaveLength(9);
+    v2.plantilla.forEach((p, i) => {
+      if (i === 4 || i === 8) return;
+      expect(p).toEqual(v1.plantilla[i]);
+    });
+    expect(v2.plantilla[4].texto).toBe('Plazo. Si usted aprueba la cotización, esta se convierte en una orden de trabajo y la cotización se elimina de la plataforma para ahorrar espacio de almacenamiento; [nombre del taller] puede imprimirla o conservarla para su contabilidad, lo cual ya no compete a Mecanix. Si usted no la aprueba, esta se elimina de inmediato. En cualquier caso, sus datos se eliminan de la plataforma a más tardar a los 90 días de elaborada la cotización y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses.');
+    expect(v2.plantilla[8].texto).toBe('Versión del aviso: aviso-taller-2');
   });
   it('aviso de cambios sin las comillas «» del documento', () => {
     expect(textos.resumenCambios.startsWith('Actualizamos los Términos y Condiciones')).toBe(true);

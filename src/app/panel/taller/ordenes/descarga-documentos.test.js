@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { unzipSync, strFromU8 } from 'fflate';
 import {
-  DescargaCancelada, DescargaExcedeTope, MENSAJES_DESCARGA, TOPE_DOCUMENTOS, nombreArchivo, nombreZip, prepararDocumentos, textoProgreso,
+  DescargaCancelada, DescargaExcedeTope, MENSAJES_DESCARGA, TOPE_DOCUMENTOS, nombreArchivo, nombreZip, prepararDocumentos, textoAvisoCotizaciones, textoProgreso,
 } from './descargaDocumentos';
 
 // Listas falsas paginadas de 20 en 20 (como las de verdad) que cuentan cuántas páginas se pidieron.
@@ -77,7 +77,7 @@ describe('Descargar mis documentos (.zip)', () => {
   });
   it('sin documentos: no hay .zip', async () => {
     const r = await prepararDocumentos({ fuentes: fuentes({ nOrdenes: 0, nActivas: 0, nArchivadas: 0 }) });
-    expect(r).toEqual({ bytes: null, nombre: null, total: 0 });
+    expect(r).toEqual({ bytes: null, nombre: null, total: 0, omitidas: [], sinAviso: [] });
   });
   it('nombres de archivo seguros', () => {
     expect(nombreArchivo('orden', 'O261011-7KQ4')).toBe('orden-O261011-7KQ4.pdf');
@@ -85,4 +85,39 @@ describe('Descargar mis documentos (.zip)', () => {
     expect(nombreArchivo('orden', '../../x')).toBe('orden-x.pdf');
     expect(nombreZip(new Date(2026, 9, 11))).toBe('documentos-mecanix-2026-10-11.zip');
   });
+
+  it('cotización con datos del cliente y sin aviso: queda fuera del .zip y se dice cuál', async () => {
+    const f = fuentes({ nOrdenes: 1, nActivas: 2, nArchivadas: 0 });
+    f.pdfCotizacion = vi.fn(async (c) => {
+      if (c.folio === 'C261011-A001') throw Object.assign(new Error('sin aviso'), { name: 'CotizacionSinAviso', folio: c.folio });
+      return new TextEncoder().encode(`PDF ${c.folio}`);
+    });
+    const r = await prepararDocumentos({ fuentes: f });
+    expect(Object.keys(unzipSync(r.bytes)).sort()).toEqual(['cotizacion-C261011-A000.pdf', 'orden-O261011-0000.pdf']);
+    expect(r.total).toBe(2);
+    expect(r.omitidas).toEqual(['C261011-A001']);
+    expect(textoAvisoCotizaciones(r)).toBe('No se incluyeron porque tienen datos del cliente y no encontramos el texto de su aviso de privacidad: C261011-A001. Escríbenos.');
+  });
+  it('cotización sin datos del cliente y sin aviso: entra al .zip y se dice que va sin la hoja del aviso', async () => {
+    const f = { ...fuentes({ nOrdenes: 0, nActivas: 2, nArchivadas: 0 }), tieneAviso: (c) => c.folio !== 'C261011-A000' };
+    const r = await prepararDocumentos({ fuentes: f });
+    expect(r.total).toBe(2);
+    expect(r.sinAviso).toEqual(['C261011-A000']);
+    expect(textoAvisoCotizaciones(r)).toBe('Salieron sin la hoja del aviso de privacidad porque no encontramos el texto de su versión: C261011-A000.');
+  });
+  it('si TODAS se quedan fuera, no hay .zip pero sí se dice cuáles', async () => {
+    const f = fuentes({ nOrdenes: 0, nActivas: 1, nArchivadas: 0 });
+    f.pdfCotizacion = vi.fn(async () => { throw Object.assign(new Error('x'), { name: 'CotizacionSinAviso' }); });
+    const r = await prepararDocumentos({ fuentes: f });
+    expect(r).toEqual({ bytes: null, nombre: null, total: 0, omitidas: ['C261011-A000'], sinAviso: [] });
+  });
+  it('cualquier otro error al armar una cotización sigue deteniendo la descarga', async () => {
+    const f = fuentes({ nOrdenes: 0, nActivas: 1, nArchivadas: 0 });
+    f.pdfCotizacion = vi.fn(async () => { throw new Error('jsPDF falló'); });
+    await expect(prepararDocumentos({ fuentes: f })).rejects.toThrow('jsPDF falló');
+  });
+  it('sin cotizaciones con problemas, no hay aviso extra', () => {
+    expect(textoAvisoCotizaciones({ omitidas: [], sinAviso: [] })).toBe('');
+  });
 });
+
