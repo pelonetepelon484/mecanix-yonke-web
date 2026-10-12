@@ -13,6 +13,12 @@ export async function leerConfigPedidosClientes() {
   return snap.exists() ? snap.data() : null;
 }
 
+// La misma bandera, en vivo (contador de "Pedidos": una conexión por sesión). cb(null) si no existe
+// o si la lectura falla.
+export function escucharConfigPedidosClientes(cb) {
+  return onSnapshot(doc(db, 'config', 'pedidosClientes'), (snap) => cb(snap.exists() ? snap.data() : null), () => cb(null));
+}
+
 const vencido = (p) => !(p.expiraAt?.toDate && p.expiraAt.toDate().getTime() > Date.now());
 
 // Pedidos abiertos del estado del yonke, en vivo (recién creados primero). Los vencidos que la

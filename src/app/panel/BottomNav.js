@@ -1,13 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from './AuthContext';
-import { escucharSolicitudesAbiertas, leerConfigSolicitudesPiezas, leerYonkeEstadoActivo } from './solicitudesPiezasDatos';
-import {
-  EVENTO_OTROS_ESTADOS, escucharPedidosClientesAbiertos, escucharPedidosClientesOtrosEstados, leerConfigPedidosClientes,
-} from './pedidosClientesDatos';
-import { puedeVerOtrosEstados } from '../../lib/pedidosClientes';
+import { useConteoPedidos } from './ConteoPedidos';
 
 const TABS = [
   { path: '/panel/inventario', icon: '🚗', label: 'Inventario' },
@@ -19,74 +13,12 @@ const TABS = [
   { path: '/panel/perfil', icon: '⚙️', label: 'Negocio' },
 ];
 
-// Conteo de solicitudes de piezas abiertas del estado del yonke, para el badge de "Pedidos".
-// Sin config/solicitudesPiezas (función apagada), no se hace NINGUNA otra lectura de Firestore
-// de este módulo -- ni el documento del yonke ni el listener. Un yonke inactivo o sin estado
-// tampoco ve ninguna (mismas reglas que protegen la lectura real).
-function useConteoSolicitudes(yonkeId) {
-  const [conteo, setConteo] = useState(0);
-  useEffect(() => {
-    if (!yonkeId) return;
-    let cancelado = false;
-    let dejarDeEscuchar = null;
-    leerConfigSolicitudesPiezas().then((config) => {
-      if (cancelado || config?.habilitado !== true) return;
-      leerYonkeEstadoActivo(yonkeId).then(({ estado, activo }) => {
-        if (cancelado || !activo || !estado) return;
-        dejarDeEscuchar = escucharSolicitudesAbiertas(estado, (lista) => { if (!cancelado) setConteo(lista.length); });
-      });
-    });
-    return () => { cancelado = true; if (dejarDeEscuchar) dejarDeEscuchar(); };
-  }, [yonkeId]);
-  return conteo;
-}
-
-// Mismo conteo para los pedidos de clientes sin cuenta (pedidosClientes), con su propia bandera:
-// sin config/pedidosClientes no se hace ninguna otra lectura. Suma las alertas de otros estados
-// que aceptan envío SOLO con el interruptor del yonke encendido (y la segunda bandera, Verificado
-// y envíos nacionales); al cambiar el interruptor en Pedidos, se vuelve a calcular.
-function useConteoPedidosClientes(yonkeId) {
-  const [conteo, setConteo] = useState(0);
-  const [version, setVersion] = useState(0);
-  useEffect(() => {
-    const alCambiar = () => setVersion((v) => v + 1);
-    window.addEventListener(EVENTO_OTROS_ESTADOS, alCambiar);
-    return () => window.removeEventListener(EVENTO_OTROS_ESTADOS, alCambiar);
-  }, []);
-  useEffect(() => {
-    if (!yonkeId) return;
-    let cancelado = false;
-    const dejarDeEscuchar = [];
-    leerConfigPedidosClientes().then((config) => {
-      if (cancelado || config?.habilitado !== true) return;
-      leerYonkeEstadoActivo(yonkeId).then((yonke) => {
-        const { estado, activo } = yonke;
-        if (cancelado || !activo || !estado) return;
-        const conOtros = puedeVerOtrosEstados(config, yonke) && yonke.verAlertasOtrosEstados === true;
-        let propias = 0;
-        let otras = 0;
-        const actualizar = () => { if (!cancelado) setConteo(propias + otras); };
-        dejarDeEscuchar.push(escucharPedidosClientesAbiertos(estado, (lista) => { propias = lista.length; actualizar(); }));
-        if (conOtros) {
-          dejarDeEscuchar.push(escucharPedidosClientesOtrosEstados((lista) => {
-            otras = lista.filter((p) => p.estado !== estado).length;
-            actualizar();
-          }));
-        } else {
-          actualizar();
-        }
-      });
-    }).catch(() => {});
-    return () => { cancelado = true; dejarDeEscuchar.forEach((f) => f()); };
-  }, [yonkeId, version]);
-  return conteo;
-}
-
+// El número del globo de "Pedidos" lo calcula ConteoPedidosProvider (ConteoPedidos.js), montado
+// una sola vez en el layout del panel: cambiar de pantalla ya no vuelve a conectar ni a leer nada.
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { yonkeId } = useAuth();
-  const conteoSolicitudes = useConteoSolicitudes(yonkeId) + useConteoPedidosClientes(yonkeId);
+  const conteoSolicitudes = useConteoPedidos();
 
   return (
     <nav style={navStyle}>

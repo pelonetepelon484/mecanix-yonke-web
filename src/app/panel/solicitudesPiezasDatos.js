@@ -13,11 +13,26 @@ export async function leerConfigSolicitudesPiezas() {
   return snap.exists() ? snap.data() : null;
 }
 
+// La misma bandera, en vivo (contador de "Pedidos": una conexión por sesión). cb(null) si no existe
+// o si la lectura falla (p. ej. justo al cerrar sesión).
+export function escucharConfigSolicitudesPiezas(cb) {
+  return onSnapshot(doc(db, 'config', 'solicitudesPiezas'), (snap) => cb(snap.exists() ? snap.data() : null), () => cb(null));
+}
+
 // El panel de yonke (AuthContext) no trae `estado`, `activo`, `nombre` ni `whatsapp` del yonke
 // -- se leen aparte, una sola vez, aquí. Un yonke inactivo o sin estado no ve ni responde
 // solicitudes; nombre y whatsapp son los que se mandan al responder (los exige la regla).
 export async function leerYonkeEstadoActivo(yonkeId) {
-  const snap = await getDoc(doc(db, 'yonkes', yonkeId));
+  return yonkeEstadoActivoDe(await getDoc(doc(db, 'yonkes', yonkeId)));
+}
+
+// Lo mismo, en vivo: si el admin cambia estado, activo, Verificado o Envíos nacionales, o el yonke
+// su interruptor de otros estados, cb recibe los datos nuevos. Si la lectura falla, cb(null).
+export function escucharYonkeEstadoActivo(yonkeId, cb) {
+  return onSnapshot(doc(db, 'yonkes', yonkeId), (snap) => cb(yonkeEstadoActivoDe(snap)), () => cb(null));
+}
+
+function yonkeEstadoActivoDe(snap) {
   if (!snap.exists()) return { estado: null, activo: false, nombre: '', whatsapp: '', verificado: false, enviosNacionales: false, verAlertasOtrosEstados: false };
   const d = snap.data();
   return {
