@@ -38,10 +38,21 @@ describe('detalle de la orden: datos del cliente según la versión del aviso', 
     await screen.findByText(/Folio O251011-7KQ4/);
     expect(screen.queryByLabelText('Nombre')).not.toBeInTheDocument();
   });
-  it('con términos viejos el taller activo puede eliminar la orden', async () => {
-    orden = { ...base, avisoVersion: 'aviso-orden-1' };
-    contexto = { tallerId: 'T1', taller: { activo: true }, puedeEditar: false, configOrdenes };
+  // Decisión del abogado: sin términos vigentes solo ver, reimprimir y descargar.
+  it('con términos viejos: sin eliminar ni quitar datos, con mensaje claro; el PDF sigue', async () => {
+    orden = { ...base, avisoVersion: 'aviso-orden-1', cliente: { nombre: 'Juan' } };
+    contexto = { tallerId: 'T1', taller: { activo: true }, puedeEditar: false, versionVigente: false, configOrdenes };
+    render(<DetalleOrden />);
+    expect(await screen.findByRole('button', { name: 'Descargar PDF' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Eliminar orden' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Quitar datos del cliente' })).not.toBeInTheDocument();
+    expect(screen.getByText('Acepta los términos vigentes para hacer cambios. Mientras tanto puedes ver, reimprimir y descargar.')).toBeInTheDocument();
+  });
+  it('con términos vigentes: sí puede eliminar y quitar datos', async () => {
+    orden = { ...base, avisoVersion: 'aviso-orden-1', cliente: { nombre: 'Juan' } };
+    contexto = { tallerId: 'T1', taller: { activo: true }, puedeEditar: true, versionVigente: true, configOrdenes };
     render(<DetalleOrden />);
     expect(await screen.findByRole('button', { name: 'Eliminar orden' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Quitar datos del cliente' })).toBeInTheDocument();
   });
 });

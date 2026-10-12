@@ -71,6 +71,8 @@ export default function CotizacionForm({
   inicial = null, tallerActivo = true, soloLectura = false, datosClienteHabilitados = true, fechaEliminacion = null,
   mostrarPedirPieza = false,
   puedeEliminar = false,
+  // "Quitar datos del cliente" exige taller activo Y términos vigentes (las reglas también).
+  puedeQuitarDatos = true,
   onGuardar, onQuitarDatos, onArchivar, onDuplicar, onEliminar, onCancelar,
 }) {
   const [f, setF] = useState(() => desdeInicial(inicial));
@@ -251,7 +253,7 @@ export default function CotizacionForm({
               </button>
             </>
           )}
-          {tallerActivo && (
+          {tallerActivo && puedeQuitarDatos && (
             <button type="button" onClick={onQuitarDatos} style={{ ...botonGrande, backgroundColor: '#fff', color: '#B3261E', border: '1px solid #E5B8B3' }}>
               Quitar datos del cliente
             </button>

@@ -15,7 +15,7 @@ import { MENSAJES_COTIZACION } from '../../../../../lib/cotizaciones';
 export default function EditarCotizacion() {
   const router = useRouter();
   const { id: folio } = useParams();
-  const { tallerId, taller, puedeEditar, datosClienteHabilitados, avisoVersion, recargar } = useCotizaciones();
+  const { tallerId, taller, puedeEditar, versionVigente, datosClienteHabilitados, avisoVersion, recargar } = useCotizaciones();
   const [cot, setCot] = useState(null);
   const [noExiste, setNoExiste] = useState(false);
   const [version, setVersion] = useState(0);
@@ -113,6 +113,9 @@ export default function EditarCotizacion() {
         <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '0 0 14px' }}>{soloLectura ? 'Ver cotización' : 'Editar cotización'}</h1>
         {vencida && <p role="alert" style={{ color: '#8A2A1A', fontSize: '14px' }}>Esta cotización ya venció y está en solo lectura.</p>}
         {aviso && <p role="status" style={{ color: '#1A3C5E', fontSize: '14px' }}>{aviso}</p>}
+        {taller?.activo === true && !versionVigente && (
+          <p role="note" style={{ color: '#8A2A1A', fontSize: '14px', backgroundColor: '#FFF6E8', borderRadius: '10px', padding: '10px' }}>{MENSAJES_COTIZACION.sinTerminosVigentes}</p>
+        )}
 
         {cot.folio && (
           <div style={{ marginBottom: '14px' }}>
@@ -137,8 +140,10 @@ export default function EditarCotizacion() {
           datosClienteHabilitados={datosClienteHabilitados}
           mostrarPedirPieza={pedirPiezaHabilitado}
           fechaEliminacion={fechaEliminacion}
-          // "No aprobada: eliminar ahora": el taller activo, aunque tenga términos viejos (las reglas lo permiten).
-          puedeEliminar={taller?.activo === true}
+          // "No aprobada: eliminar ahora" y "Quitar datos del cliente": taller activo Y términos
+          // vigentes (sin términos vigentes solo se ve, reimprime y descarga; las reglas exigen lo mismo).
+          puedeEliminar={puedeEditar}
+          puedeQuitarDatos={puedeEditar}
           onEliminar={async () => {
             if (!window.confirm(MENSAJES_COTIZACION.confirmarEliminar)) return;
             try {

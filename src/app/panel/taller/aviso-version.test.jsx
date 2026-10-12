@@ -14,9 +14,11 @@ describe('aviso de cambios de términos', () => {
     render(<AvisoVersion tallerId="T1" versionVigente={{ version: 'talleres-2026-10-1' }} resumen="x" onAceptada={() => {}} />);
     expect(screen.getByRole('link', { name: 'Leer el texto completo' })).toHaveAttribute('href', 'https://mecanixyonkevirtual.com/terminos#talleres');
   });
-  it('taller activo: menciona que puede quitar datos de sus clientes', () => {
+  // Decisión del abogado: sin términos vigentes solo se ve, reimprime y descarga (ya no "quitar datos").
+  it('taller activo: solo visualizar, reimprimir y descargar; ya NO ofrece quitar datos', () => {
     render(<AvisoVersion tallerId="T1" versionVigente={{ version: 'talleres-2026-10-1' }} resumen="x" onAceptada={() => {}} tallerActivo />);
-    expect(screen.getByText(/Puedes quitar los datos de tus clientes/)).toBeInTheDocument();
+    expect(screen.getByText('Mientras no aceptes, solo puedes visualizar, reimprimir y descargar tus documentos anteriores.')).toBeInTheDocument();
+    expect(screen.queryByText(/quitar los datos/)).not.toBeInTheDocument();
   });
   it('taller desactivado: NO menciona quitar datos', () => {
     render(<AvisoVersion tallerId="T1" versionVigente={{ version: 'talleres-2026-10-1' }} resumen="x" onAceptada={() => {}} tallerActivo={false} />);

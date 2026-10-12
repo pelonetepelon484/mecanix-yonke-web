@@ -6,13 +6,14 @@ import OrdenForm from '../OrdenForm';
 import { useOrdenes } from '../contexto';
 import { borrarOrden, guardarOrden, leerOrden, quitarDatosClienteOrden } from '../datos';
 import { AVISO_COPIA } from '../../../../../lib/ordenes';
+import { MENSAJES_COTIZACION } from '../../../../../lib/cotizaciones';
 import { descargarPdfOrden } from '../pdf';
 import { datosClienteDisponibles } from '../../../../../lib/avisoOrden';
 
 export default function DetalleOrden() {
   const router = useRouter();
   const { id: folio } = useParams();
-  const { tallerId, taller, puedeEditar, configOrdenes } = useOrdenes();
+  const { tallerId, taller, puedeEditar, versionVigente, configOrdenes } = useOrdenes();
   const [orden, setOrden] = useState(null);
   const [noExiste, setNoExiste] = useState(false);
   const [version, setVersion] = useState(0);
@@ -71,6 +72,9 @@ export default function DetalleOrden() {
         <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '0 0 14px' }}>{soloLectura ? 'Ver orden' : 'Editar orden'}</h1>
         {vencida && <p role="alert" style={{ color: '#8A2A1A', fontSize: '14px' }}>Esta orden ya venció y está en solo lectura.</p>}
         {aviso && <p role="status" style={{ color: '#1A3C5E', fontSize: '14px' }}>{aviso}</p>}
+        {taller?.activo === true && !versionVigente && (
+          <p role="note" style={{ color: '#8A2A1A', fontSize: '14px', backgroundColor: '#FFF6E8', borderRadius: '10px', padding: '10px' }}>{MENSAJES_COTIZACION.sinTerminosVigentes}</p>
+        )}
         {fechaEliminacion && (
           <p data-testid="se-eliminara" style={{ fontSize: '14px', color: '#8A2A1A', backgroundColor: '#FFF6E8', border: '1px solid #E8720C', borderRadius: '12px', padding: '12px', margin: '0 0 14px', lineHeight: '1.5' }}>
             Se eliminará el {fechaEliminacion.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}. {AVISO_COPIA}
@@ -89,8 +93,8 @@ export default function DetalleOrden() {
           inicial={orden}
           tallerActivo={taller?.activo === true}
           soloLectura={soloLectura}
-          // Borrar: el taller activo, aunque tenga términos viejos (las reglas lo permiten así).
-          puedeEliminar={taller?.activo === true}
+          // Eliminar y quitar datos: taller activo Y términos vigentes (las reglas exigen lo mismo).
+          puedeEliminar={puedeEditar}
           // Datos del cliente solo en órdenes con la versión de aviso vigente (las viejas, nunca).
           datosCliente={datosClienteDisponibles(configOrdenes, orden.avisoVersion)}
           onEliminar={async () => {
@@ -109,7 +113,7 @@ export default function DetalleOrden() {
             setAviso('Cambios guardados.');
             setVersion((v) => v + 1);
           }}
-          onQuitarDatos={async () => {
+          onQuitarDatos={!puedeEditar ? undefined : async () => {
             if (!window.confirm('¿Quitar el nombre, el teléfono y las placas de esta orden? Esto no se puede deshacer.')) return;
             try {
               await quitarDatosClienteOrden(tallerId, folio);

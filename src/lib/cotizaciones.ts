@@ -29,6 +29,9 @@ export const MENSAJES_COTIZACION = {
   tallerDesactivado: 'Tu taller está desactivado, por eso no puedes guardar cambios. Escríbenos para revisarlo.',
   guardarFallo: 'No pudimos guardar la cotización. Revisa tu conexión e intenta de nuevo. Lo que escribiste sigue en pantalla.',
   folioOcupado: 'No pudimos asignar un número a la cotización. Intenta de nuevo.',
+  // Sin términos vigentes: solo ver, reimprimir y descargar (decisión del abogado). Vale para
+  // cotizaciones y órdenes.
+  sinTerminosVigentes: 'Acepta los términos vigentes para hacer cambios. Mientras tanto puedes ver, reimprimir y descargar.',
   // Botón "No aprobada: eliminar ahora" (texto aprobado por David).
   botonEliminar: 'No aprobada: eliminar ahora',
   confirmarEliminar: 'La cotización y todos sus renglones se eliminarán ahora y no se podrán recuperar. ¿Continuar?',

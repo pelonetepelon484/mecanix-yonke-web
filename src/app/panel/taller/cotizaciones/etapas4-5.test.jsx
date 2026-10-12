@@ -32,7 +32,7 @@ vi.mock('../../../../lib/avisoOrden', () => ({ datosClienteDisponibles: () => da
 const { default: EditarCotizacion } = await import('./[id]/page.js');
 
 beforeEach(() => {
-  contexto = { tallerId: 'T1', taller: { activo: true }, puedeEditar: true, datosClienteHabilitados: true, avisoVersion: 'v1', recargar: vi.fn() };
+  contexto = { tallerId: 'T1', taller: { activo: true }, puedeEditar: true, versionVigente: true, datosClienteHabilitados: true, avisoVersion: 'v1', recargar: vi.fn() };
   datosCliente = false;
   convertir.mockReset();
   borrar.mockClear();
@@ -60,11 +60,23 @@ describe('etapa 5: "No aprobada: eliminar ahora"', () => {
     fireEvent.click(screen.getByRole('button', { name: 'No aprobada: eliminar ahora' }));
     expect(borrar).not.toHaveBeenCalled();
   });
-  it('con términos VIEJOS (solo lectura) el taller activo sí ve el botón; desactivado, no', async () => {
-    contexto = { ...contexto, puedeEditar: false };
+  // Decisión del abogado: sin términos vigentes solo ver, reimprimir y descargar.
+  it('con términos VIEJOS: sin eliminar, sin quitar datos y sin convertir; con mensaje claro; el PDF sigue', async () => {
+    contexto = { ...contexto, puedeEditar: false, versionVigente: false };
+    await abrir();
+    expect(screen.queryByRole('button', { name: 'No aprobada: eliminar ahora' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Quitar datos del cliente' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Convertir en orden' })).not.toBeInTheDocument();
+    expect(screen.getByText('Acepta los términos vigentes para hacer cambios. Mientras tanto puedes ver, reimprimir y descargar.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Descargar PDF' })).toBeInTheDocument();
+  });
+  it('con términos vigentes y taller activo: sí puede eliminar y quitar datos', async () => {
     await abrir();
     expect(screen.getByRole('button', { name: 'No aprobada: eliminar ahora' })).toBeInTheDocument();
-    cleanup();
+    expect(screen.getByRole('button', { name: 'Quitar datos del cliente' })).toBeInTheDocument();
+    expect(screen.queryByText(/Acepta los términos vigentes/)).not.toBeInTheDocument();
+  });
+  it('taller desactivado: tampoco puede eliminar', async () => {
     contexto = { ...contexto, puedeEditar: false, taller: { activo: false } };
     await abrir();
     expect(screen.queryByRole('button', { name: 'No aprobada: eliminar ahora' })).not.toBeInTheDocument();
