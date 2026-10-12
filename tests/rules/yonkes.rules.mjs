@@ -5,7 +5,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, updateDoc, getDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, getDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 const reglas = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
 let env;
@@ -188,5 +188,61 @@ describe('admin: crear y revocar accesos', () => {
     // Paso 1 hecho, paso 2 falló: el usuario sigue existiendo y ya no hay ownerUid
     await assertSucceeds(updateDoc(doc(como('adm'), 'yonkes', 'Y1'), { ownerUid: deleteField() }));
     await assertSucceeds(revocar('Y1', 'o1'));
+  });
+});
+
+describe('plan y vencimiento de Premium: solo el admin', () => {
+  const fecha = (iso = '2030-01-01') => Timestamp.fromDate(new Date(`${iso}T00:00:00`));
+  const registro = (uid, yonkeId, extra) => setDoc(doc(como(uid), 'yonkes', yonkeId), {
+    nombre: 'Nuevo', activo: true, fechaRegistro: new Date(), ownerUid: uid, ...extra,
+  });
+  const ponerPremiumSinReglas = (hasta) => env.withSecurityRulesDisabled((ctx) =>
+    updateDoc(doc(ctx.firestore(), 'yonkes', 'Y1'), { plan: 'premium', premiumHasta: hasta }));
+
+  it('al registrarse no puede crearse como premium', async () => {
+    await sembrar();
+    await assertFails(registro('p1', 'P1', { plan: 'premium' }));
+  });
+  it('al registrarse no puede ponerse fecha de vencimiento de Premium', async () => {
+    await sembrar();
+    await assertFails(registro('p2', 'P2', { plan: 'freemium', premiumHasta: fecha() }));
+  });
+  it('al registrarse como freemium y sin fecha sí pasa', async () => {
+    await sembrar();
+    await assertSucceeds(registro('p3', 'P3', { plan: 'freemium' }));
+  });
+  it('el dueño no puede subirse a premium', async () => {
+    await sembrar();
+    await assertFails(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { plan: 'premium' }));
+  });
+  it('el dueño no puede subirse a premium con setDoc merge (como al guardar perfil)', async () => {
+    await sembrar();
+    await assertFails(setDoc(doc(como('o1'), 'yonkes', 'Y1'), { nombre: 'Perfil', plan: 'premium' }, { merge: true }));
+  });
+  it('el dueño no puede ponerse una fecha de Premium', async () => {
+    await sembrar();
+    await assertFails(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { premiumHasta: fecha() }));
+  });
+  it('el dueño premium no puede alargar ni borrar su fecha de vencimiento', async () => {
+    await sembrar();
+    await ponerPremiumSinReglas(fecha('2026-01-01'));
+    await assertFails(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { premiumHasta: fecha() }));
+    await assertFails(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { premiumHasta: deleteField() }));
+  });
+  it('un yonke premium sigue editando su ficha normal', async () => {
+    await sembrar();
+    await ponerPremiumSinReglas(fecha());
+    await assertSucceeds(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { nombre: 'Sigue editando' }));
+  });
+  // Mismas escrituras que subir/bajar plan en src/app/admin/page.js
+  it('el admin sube a premium con fecha y luego baja a básico', async () => {
+    await sembrar();
+    const admin = como('adm');
+    await assertSucceeds(updateDoc(doc(admin, 'yonkes', 'Y1'), { plan: 'premium', premiumHasta: fecha() }));
+    await assertSucceeds(updateDoc(doc(admin, 'yonkes', 'Y1'), { plan: 'freemium', premiumHasta: deleteField() }));
+  });
+  it('el admin puede crear un yonke ya premium', async () => {
+    await sembrar();
+    await assertSucceeds(setDoc(doc(como('adm'), 'yonkes', 'Y11'), { nombre: 'Admin', plan: 'premium', premiumHasta: fecha() }));
   });
 });
