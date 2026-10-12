@@ -235,9 +235,38 @@ describe('resenasPlataforma: públicas solo las aprobadas', () => {
   });
 });
 
-describe('ventas: lectura (antes de cerrarla, sigue abierta)', () => {
-  it('cualquiera la lee todavía (se cierra en el siguiente commit)', async () => {
+describe('ventas: solo el yonke dueño y el admin la leen', () => {
+  it('sin sesión: ni una venta, ni la búsqueda por folio que hacía /calificar, ni la lista', async () => {
     await sembrar();
-    await assertSucceeds(getDoc(doc(como(null), 'ventas', 'V1')));
+    await assertFails(getDoc(doc(como(null), 'ventas', 'V1')));
+    await assertFails(getDocs(query(collection(como(null), 'ventas'), where('numeroPedido', '==', 'MYV-1011-1234'))));
+    await assertFails(getDocs(collection(como(null), 'ventas')));
+  });
+  it('el yonke dueño: "Mis ventas" (where yonkeId == el suyo) y cada venta suya', async () => {
+    await sembrar();
+    await assertSucceeds(getDocs(query(collection(como('o1'), 'ventas'), where('yonkeId', '==', 'Y1'))));
+    await assertSucceeds(getDoc(doc(como('o1'), 'ventas', 'V1')));
+  });
+  it('otro yonke: ni ventas ajenas sueltas, ni la consulta de otro yonke, ni sin filtro', async () => {
+    await sembrar();
+    await assertFails(getDoc(doc(como('o2'), 'ventas', 'V1')));
+    await assertFails(getDocs(query(collection(como('o2'), 'ventas'), where('yonkeId', '==', 'Y1'))));
+    await assertFails(getDocs(collection(como('o2'), 'ventas')));
+    await assertFails(getDocs(query(collection(como('o2'), 'ventas'), where('numeroPedido', '==', 'MYV-1011-1234'))));
+  });
+  it('el admin: todas (botón de copiar) y las de un yonke (conteo y borrado al eliminar un yonke)', async () => {
+    await sembrar();
+    await assertSucceeds(getDocs(collection(como('adm'), 'ventas')));
+    await assertSucceeds(getDocs(query(collection(como('adm'), 'ventas'), where('yonkeId', '==', 'Y1'))));
+  });
+  it('con ventas cerradas, el botón "Copiar ventas a públicas" sigue funcionando (y dos veces)', async () => {
+    await sembrar({ ventasExtra: 5 });
+    const primera = await copiarVentasAPublicas('adm');
+    assert.deepEqual(primera, { copiadas: 8, sinFolio: 1, total: 9 });
+    assert.deepEqual(await copiarVentasAPublicas('adm'), primera);
+  });
+  it('crear ventas no cambia: confirmar una reservación con su copia sigue pasando', async () => {
+    await sembrar();
+    await assertSucceeds(confirmarReservacion('o1', 'Y1', 'MYV-1013-2468'));
   });
 });

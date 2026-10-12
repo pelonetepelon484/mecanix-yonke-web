@@ -996,8 +996,11 @@ service cloud.firestore {
       allow update: if esAdmin() || esDuenoDelYonke(resource.data.yonkeId);
       allow delete: if esAdmin();
     }
+    // Ventas: traen el nombre del cliente y el monto, así que solo las leen el admin y el yonke
+    // dueño (igual que reservaciones). /calificar usa ventasPublicas/{folio}. El panel del yonke
+    // consulta con where('yonkeId', '==', ...) -- sin ese filtro la consulta se rechaza entera.
     match /ventas/{ventaId} {
-      allow read: if true;
+      allow read: if esAdmin() || esDuenoDelYonke(resource.data.yonkeId);
       allow create: if esAdmin() || esDuenoDelYonke(request.resource.data.yonkeId);
       // CAMBIO: el dueño solo puede cancelar (cancelada + canceladaAt), sin borrar
       allow update: if esAdmin()
