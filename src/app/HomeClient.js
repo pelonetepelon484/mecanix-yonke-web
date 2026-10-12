@@ -20,6 +20,7 @@ import { fotosDeItem } from '../lib/fotosPieza';
 import AvisarYonkes from './AvisarYonkes';
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
+import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
 
 // Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
 // propia foto, una pieza suelta la suya (r.vehiculo es sintético ahí, ver esPiezaSuelta en
@@ -1166,11 +1167,11 @@ function obtenerEstadoAbierto(horario) {
     const mensajeCliente = `Hola, quiero entrega inmediata de ${detalle || 'una pieza'} que tiene ${r.yonkeNombre}. Mi taller está en `;
     window.open(`https://wa.me/526611034260?text=${encodeURIComponent(mensajeCliente)}`, '_blank', 'noopener,noreferrer');
 
-    fetch('/api/pedido-entrega-inmediata', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pieza: piezaTexto, marca: marcaTexto, modelo: modeloTexto, anio: anoTexto, yonkeNombre: r.yonkeNombre }),
-    }).catch((e) => console.log('No se pudo enviar el aviso de entrega inmediata', e));
+    // El servidor comprueba que el yonke tenga entrega inmediata y toma su nombre de lo guardado.
+    // Si el aviso falla o se topa con el límite, el WhatsApp de arriba ya se abrió igual.
+    avisarAlAdmin('/api/pedido-entrega-inmediata', {
+      cuerpo: { yonkeId: r.yonkeId, pieza: piezaTexto, marca: marcaTexto, modelo: modeloTexto, anio: anoTexto },
+    });
 
     registrarEvento('pedido_entrega_inmediata', { yonke: r.yonkeNombre, yonke_id: r.yonkeId, ciudad: r.ciudad || 'sin_ciudad' });
   }

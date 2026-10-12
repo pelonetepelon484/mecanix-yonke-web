@@ -5,7 +5,8 @@
 import {
   collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch,
 } from 'firebase/firestore';
-import { db } from '../../../lib/firebase';
+import { auth, db } from '../../../lib/firebase';
+import { avisarAlAdmin } from '../../../lib/avisosAdmin/avisarAlAdmin';
 import { calcularExpiraAtSolicitud } from '../../../../lib/solicitudesPiezas';
 
 const solicitudesRef = () => collection(db, 'solicitudesPiezas');
@@ -27,16 +28,14 @@ export async function crearSolicitud({ tallerId, tallerNombre, tallerWhatsapp, e
   await lote.commit();
 
   // Aviso por WhatsApp al admin (vía endpoint server-side, nunca expone la API key de
-  // CallMeBot). Si falla, la solicitud ya se creó: no se revierte ni se vuelve a intentar.
-  try {
-    await fetch('/api/notificar-solicitud-pieza', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tallerNombre, pieza, vehiculo, estado }),
-    });
-  } catch (error) {
-    console.error('No se pudo enviar el aviso de nuevo pedido de pieza', error);
-  }
+  // CallMeBot). Solo va el número del pedido y el pase de sesión: el servidor comprueba que el
+  // pedido sea de este taller y arma el mensaje con lo guardado. Si el aviso falla o se topa con
+  // el límite, la solicitud ya se creó: no se revierte ni se vuelve a intentar (avisarAlAdmin
+  // nunca lanza).
+  await avisarAlAdmin('/api/notificar-solicitud-pieza', {
+    cuerpo: { solicitudId: nueva.id },
+    obtenerToken: () => auth.currentUser?.getIdToken(),
+  });
 
   return nueva.id;
 }
