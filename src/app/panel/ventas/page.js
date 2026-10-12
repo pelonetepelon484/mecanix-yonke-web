@@ -8,6 +8,7 @@ import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import NotaGarantiaModal from '../NotaGarantiaModal';
+import { AvisoPremium, BotonQuieroPremium } from '../CandadoPremium';
 
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
@@ -17,7 +18,10 @@ function registrarEvento(nombre, params = {}) {
 
 export default function VentasPanel() {
   const router = useRouter();
-  const { user, yonkeId, yonkePlan, loading } = useAuth();
+  const { user, yonkeId, yonkePlan, loading, limitesActivos, soloBasico } = useAuth();
+  // Con los límites del plan encendidos manda "Premium vigente" (un Premium vencido es Básico); con
+  // el interruptor apagado, el plan guardado, como antes.
+  const vistaBasica = limitesActivos ? soloBasico : yonkePlan !== 'premium';
 
   const [ventas, setVentas] = useState([]);
   const [loadingVentas, setLoadingVentas] = useState(true);
@@ -41,11 +45,13 @@ export default function VentasPanel() {
     const q = query(ref, where('yonkeId', '==', yonkeId), orderBy('fecha', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const lista = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setVentas(lista);
+      // Plan Básico con límites encendidos: solo las ventas que nacen de sus reservaciones (las
+      // demás no se borran, solo se ocultan y reaparecen al ser Premium vigente).
+      setVentas(soloBasico ? lista.filter((v) => typeof v.reservaId === 'string') : lista);
       setLoadingVentas(false);
     });
     return unsubscribe;
-  }, [yonkeId, yonkePlan]);
+  }, [yonkeId, yonkePlan, soloBasico]);
 
   // Nombre y logo del yonke — solo para el encabezado de la nota de garantía impresa.
   useEffect(() => {
@@ -270,7 +276,7 @@ export default function VentasPanel() {
     );
   }
 
-  if (yonkePlan !== 'premium' && loadingVentas) {
+  if (vistaBasica && loadingVentas) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A3C5E' }}>
         <p style={{ color: '#fff' }}>Cargando...</p>
@@ -278,7 +284,7 @@ export default function VentasPanel() {
     );
   }
 
-  if (yonkePlan !== 'premium' && ventas.length === 0) {
+  if (vistaBasica && ventas.length === 0) {
     return (
       <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
         <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
@@ -291,6 +297,7 @@ export default function VentasPanel() {
           <h2 style={lockTituloStyle}>Aún no tienes ventas registradas</h2>
           <p style={lockMensajeStyle}>Las ventas generadas por tus reservaciones entregadas aparecerán aquí automáticamente.</p>
           <p style={lockContactoStyle}>Con el Plan Premium además puedes registrar tus ventas de mostrador con Venta Manual.</p>
+          {soloBasico ? <BotonQuieroPremium ubicacion="ventas_sin_ventas" /> : (
           <a
             href="https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual"
             target="_blank"
@@ -303,6 +310,7 @@ export default function VentasPanel() {
           >
             Quiero Premium
           </a>
+          )}
         </div>
         <BottomNav />
       </main>
@@ -322,7 +330,13 @@ export default function VentasPanel() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
 
-        {yonkePlan !== 'premium' && (
+        {soloBasico && (
+          <AvisoPremium
+            ubicacion="ventas_aviso_historial"
+            descripcion="Aquí ves las ventas de tus reservaciones. Con Premium ves tu historial completo, registras ventas de mostrador y generas notas de garantía."
+          />
+        )}
+        {!limitesActivos && yonkePlan !== 'premium' && (
           <div style={avisoBasicoStyle}>
             <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', fontWeight: '600' }}>
               🔒 Estas son tus ventas generadas por reservaciones de la plataforma. Con el Plan Premium también puedes registrar tus ventas de mostrador con Venta Manual.
@@ -465,7 +479,7 @@ export default function VentasPanel() {
                 <p style={{ fontSize: '17px', fontWeight: 'bold', color: '#1A3C5E', margin: 0 }}>
                   ${v.monto?.toLocaleString('es-MX')}
                 </p>
-                <button onClick={() => setVentaParaNota(v)} style={notaBotonStyle}>🛡️ Nota</button>
+                {!soloBasico && <button onClick={() => setVentaParaNota(v)} style={notaBotonStyle}>🛡️ Nota</button>}
               </div>
             </div>
           ))

@@ -103,9 +103,9 @@ export default function AdminEstadosPage() {
         ) : (
           <>
             <p style={{ color: '#666', fontSize: '13px', margin: '0 0 16px', lineHeight: '1.5' }}>
-              El interruptor "Visitas" controla si Premium/Élite incluyen las 2 visitas de
-              captura al mes en ese estado (y su precio). Actívalo solo cuando ya tengas quien
-              las haga ahí.
+              El interruptor "Visitas" controla si en ese estado se ofrece la captura a domicilio
+              ($300 MXN por visita, solo cuando el yonke la pide). Actívalo solo cuando ya tengas
+              quien las haga ahí.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>

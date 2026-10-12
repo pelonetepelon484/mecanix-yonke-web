@@ -7,6 +7,7 @@ import { doc, getDoc, collection, query, where, getDocs, Timestamp } from 'fireb
 import { auth, db } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
+import CandadoPremium from '../CandadoPremium';
 import { codigoGeoDeEstado } from '../../../lib/estadoGeoMapping';
 import { construirReporteDemanda } from '../../../lib/reporteDemandaYonke';
 import { CORTE_BUSQUEDAS_CONFIABLES } from '../../lib/busqueda/corteBusquedasConfiables';
@@ -28,7 +29,7 @@ const INCLUIR_ANIO = false;
 // qué se busca más, tal como lo arma construirReporteDemanda().
 export default function DemandaPanel() {
   const router = useRouter();
-  const { user, userRole, yonkeId, loading } = useAuth();
+  const { user, userRole, yonkeId, loading, soloBasico } = useAuth();
 
   const [periodo, setPeriodo] = useState('7');
   const [intento, setIntento] = useState(0);
@@ -48,7 +49,7 @@ export default function DemandaPanel() {
   }, [user, loading]);
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading || !user || soloBasico) return;
     const idPeticion = ++peticionVigente.current;
     setEstadoCarga('cargando');
 
@@ -107,7 +108,7 @@ export default function DemandaPanel() {
         setEstadoCarga('error');
       }
     })();
-  }, [user, loading, userRole, yonkeId, periodo, intento]);
+  }, [user, loading, userRole, yonkeId, periodo, intento, soloBasico]);
 
   async function handleLogout() {
     await signOut(auth);
@@ -118,6 +119,21 @@ export default function DemandaPanel() {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A3C5E' }}>
         <p style={{ color: '#fff' }}>Cargando...</p>
+      </main>
+    );
+  }
+
+  // Límites del plan encendidos y sin Premium vigente: Demanda es Premium (ni se consulta).
+  if (soloBasico) {
+    return (
+      <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
+        <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Demanda</h1>
+          </div>
+        </div>
+        <CandadoPremium ubicacion="demanda_bloqueada" descripcion="Mira qué piezas buscan los clientes en tu estado." />
+        <BottomNav />
       </main>
     );
   }

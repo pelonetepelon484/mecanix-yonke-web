@@ -9,6 +9,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import { BloqueoTerminos, MensajeBloqueoTerminos } from '../BloqueoTerminos';
+import CandadoPremium from '../CandadoPremium';
 import BottomNav from '../BottomNav';
 import { MATERIALES_RECICLAJE_BASE } from '../../lib/materialesReciclajeBase';
 import { ESTADO_DEFAULT, estadoDeYonke } from '../../lib/estados';
@@ -90,7 +91,7 @@ function getFechaInicio(periodo) {
 
 export default function ReciclajePanel() {
   const router = useRouter();
-  const { user, yonkeId, loading, puedeEditarYonke } = useAuth();
+  const { user, yonkeId, loading, puedeEditarYonke, soloBasico } = useAuth();
   // Sin términos vigentes: se ven materiales, compras y reportes (y se reimprimen tickets), pero
   // no se compra, ni se agregan, editan o eliminan materiales o compras.
   const sinTerminos = puedeEditarYonke === false;
@@ -346,6 +347,22 @@ export default function ReciclajePanel() {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A3C5E' }}>
         <p style={{ color: '#fff' }}>Cargando...</p>
+      </main>
+    );
+  }
+
+  // Límites del plan encendidos y sin Premium vigente: reciclaje es Premium. Lo ya capturado no
+  // se borra; reaparece al volver a ser Premium vigente.
+  if (soloBasico) {
+    return (
+      <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
+        <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>♻️ Compra de reciclables</h1>
+          </div>
+        </div>
+        <CandadoPremium ubicacion="reciclaje_bloqueado" descripcion="Registra compras de material reciclable, tus materiales y precios, y la nota con tus datos fiscales." />
+        <BottomNav />
       </main>
     );
   }

@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { getTenantBySub, resolveBranding, subdominioEstaActivo } from '../../lib/getTenant';
+import { notFound, redirect } from 'next/navigation';
+import { getTenantBySub, resolveBranding, subdominioEstaActivo, redireccionSinPremium } from '../../lib/getTenant';
 import { politicasDesdeGarantia } from '../../../lib/politicasYonke';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +25,10 @@ export default async function PoliticasTenantPage() {
   const sub = (await headers()).get('x-tenant-sub') || '';
   const tenant = await getTenantBySub(sub);
   if (!tenant || !subdominioEstaActivo(tenant)) notFound();
+
+  // Igual que la página del subdominio: sin Premium vigente (con límites encendidos), a su ficha.
+  const destinoSinPremium = await redireccionSinPremium(tenant);
+  if (destinoSinPremium) redirect(destinoSinPremium);
 
   const politicas = politicasDesdeGarantia(tenant.garantia);
   if (!politicas) notFound();

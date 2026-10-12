@@ -11,6 +11,7 @@ import { subirLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
 import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 import { URL_TERMINOS, URL_PRIVACIDAD } from '../../../lib/versionesLegales';
 import { leerTerminosYonkes, versionParaAceptar, crearYonkeConAceptacion } from '../terminosYonke';
+import { leerLimitesActivos } from '../../../lib/planes';
 import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 import { esIdPedido } from '../../../lib/pedidosClientes';
 import { avisarAlAdmin } from '../../lib/avisosAdmin/avisarAlAdmin';
@@ -32,6 +33,13 @@ export default function RegistroYonke() {
   const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [estado, setEstado] = useState(ESTADO_DEFAULT);
   const [aceptaLegal, setAceptaLegal] = useState(false);
+  // config/planes.limitesActivos: con el interruptor apagado, los textos de siempre ("Plan Gratuito").
+  const [limitesPlanes, setLimitesPlanes] = useState(false);
+  useEffect(() => {
+    let vigente = true;
+    leerLimitesActivos(db).then((activos) => { if (vigente) setLimitesPlanes(activos); });
+    return () => { vigente = false; };
+  }, []);
   const [ciudad, setCiudad] = useState('tijuana');
   const [ciudadLibre, setCiudadLibre] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -221,7 +229,7 @@ export default function RegistroYonke() {
             ¡Registro exitoso!
           </h2>
           <p style={{ fontSize: '15px', color: '#555', lineHeight: '1.6', marginBottom: '8px' }}>
-            Tu yonke ya está registrado en la plataforma con el Plan Gratuito.
+            Tu yonke ya está registrado en la plataforma con el {limitesPlanes ? 'Plan Básico' : 'Plan Gratuito'}.
           </p>
           <p style={{ fontSize: '14px', color: '#888', lineHeight: '1.6', marginBottom: '24px' }}>
             Ahora puedes iniciar sesión y empezar a agregar tu inventario para aparecer en las búsquedas.
@@ -255,10 +263,12 @@ export default function RegistroYonke() {
         {/* Banner freemium */}
         <div style={freemiumBannerStyle}>
           <p style={{ margin: 0, fontSize: '14px', color: '#1A3C5E', fontWeight: 'bold' }}>
-            🆓 Plan Gratuito — Completamente gratis
+            {limitesPlanes ? '🆓 Plan Básico — Sin costo' : '🆓 Plan Gratuito — Completamente gratis'}
           </p>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#555' }}>
-            Sube tu inventario y aparece en búsquedas sin costo. Así de simple.
+            {limitesPlanes
+              ? 'Sube tu inventario con fotos, aparece en búsquedas y atiende reservaciones, pedidos de talleres y alertas de clientes sin costo.'
+              : 'Sube tu inventario y aparece en búsquedas sin costo. Así de simple.'}
           </p>
         </div>
 

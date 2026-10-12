@@ -11,6 +11,7 @@ import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from '../lib/estados';
 import YonkeActividadBadge from '../lib/YonkeActividadBadge';
 import { ventaPublicaParaEscribir } from '../../lib/ventaPublicaRef';
 import { refContactoPrivado } from '../../lib/contactoPrivado';
+import { estadoPlan, ETIQUETAS_ESTADO_PLAN } from '../../lib/planes';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -552,13 +553,19 @@ export default function AdminPage() {
                     <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#1A3C5E', margin: 0 }}>
                       {y.nombre || 'Sin nombre'}
                     </h2>
-                    <span style={{
-                      backgroundColor: y.plan === 'premium' ? '#FAEEDA' : '#EEF2F7',
-                      color: y.plan === 'premium' ? '#854F0B' : '#1A3C5E',
-                      fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px'
-                    }}>
-                      {y.plan === 'premium' ? '⭐ Premium' : '🆓 Básico'}
-                    </span>
+                    {/* Premium vigente / Premium vencido / Básico: misma función que usan el
+                        panel, las reglas y la página propia (src/lib/planes.js). */}
+                    {(() => {
+                      const etiqueta = ETIQUETAS_ESTADO_PLAN[estadoPlan(y)];
+                      return (
+                        <span style={{
+                          backgroundColor: etiqueta.bg, color: etiqueta.color,
+                          fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px'
+                        }}>
+                          {etiqueta.texto}
+                        </span>
+                      );
+                    })()}
                     <span style={{
                       backgroundColor: y.activo ? '#E8F5E9' : '#FDECEA',
                       color: y.activo ? '#2E7D32' : '#C62828',

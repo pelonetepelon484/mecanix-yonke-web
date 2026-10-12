@@ -21,6 +21,7 @@ import AvisarYonkes from './AvisarYonkes';
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
+import { tarjetaPlanSinCosto, leerLimitesActivos } from '../lib/planes';
 
 // Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
 // propia foto, una pieza suelta la suya (r.vehiculo es sintético ahí, ver esPiezaSuelta en
@@ -246,6 +247,13 @@ export default function HomeClient({ textoSeoEstados }) {
   // hoy hasta que alguien lo cambie).
   const [estadosDisponibles, setEstadosDisponibles] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California', tieneVisitas: true }]);
   const [estadoPlanes, setEstadoPlanes] = useState(ESTADO_DEFAULT);
+  // config/planes.limitesActivos: con el interruptor apagado (o sin leer) la tarjeta dice lo de antes.
+  const [limitesPlanes, setLimitesPlanes] = useState(false);
+  useEffect(() => {
+    let vigente = true;
+    leerLimitesActivos(db).then((activos) => { if (vigente) setLimitesPlanes(activos); });
+    return () => { vigente = false; };
+  }, []);
   const [estadoBusqueda, setEstadoBusqueda] = useState('todos');
   const [sinYonkesEnEstadoManual, setSinYonkesEnEstadoManual] = useState(false);
   // true cuando los resultados que se ven vienen de "buscar en todos los estados" tras no
@@ -2165,22 +2173,13 @@ function obtenerEstadoAbierto(horario) {
                 {/* Plan Gratuito — única oferta pública hoy. Sin precio aparte ("Gratis"): sería
                     redundante con el nombre del plan y le resta formalidad a la tarjeta. */}
                 <div style={planCardStyle}>
-                  <p style={planNombreStyle}>Plan Gratuito</p>
+                  <p style={planNombreStyle}>{tarjetaPlanSinCosto(limitesPlanes).nombre}</p>
                   <p style={planDescStyle}>
                     Tu yonke aparece en el buscador de Mecanix y los clientes te contactan
                     directo por WhatsApp. Incluye:
                   </p>
                   <ul style={{ margin: '0 0 16px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {[
-                      'Tu yonke visible en el buscador público de Mecanix',
-                      'Inventario sin límite: vehículos, motores y piezas sueltas',
-                      'Reservaciones de clientes desde la plataforma',
-                      'Contacto directo por WhatsApp',
-                      'Demanda: qué buscan los clientes en tu estado',
-                      'Registro de compras de reciclaje',
-                      'Notas de garantía en PDF para tus ventas',
-                      'Calificaciones de tus clientes',
-                    ].map((item) => (
+                    {tarjetaPlanSinCosto(limitesPlanes).funciones.map((item) => (
                       <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
                         <span style={{ color: '#2E7D32', fontWeight: '700' }}>✓</span>
                         {item}

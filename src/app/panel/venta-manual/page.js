@@ -8,6 +8,7 @@ import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import { MensajeBloqueoTerminos } from '../BloqueoTerminos';
+import CandadoPremium from '../CandadoPremium';
 import NotaGarantiaModal from '../NotaGarantiaModal';
 import { sacarDelInventario } from '../../../lib/vehiculoEstado';
 import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
@@ -25,7 +26,7 @@ function registrarEvento(nombre, params = {}) {
 
 export default function VentaManualPanel() {
   const router = useRouter();
-  const { user, yonkeId, yonkePlan, loading, puedeEditarYonke } = useAuth();
+  const { user, yonkeId, yonkePlan, loading, puedeEditarYonke, soloBasico } = useAuth();
 
   const [vehiculos, setVehiculos] = useState([]);
   const [loadingVehiculos, setLoadingVehiculos] = useState(true);
@@ -60,7 +61,7 @@ export default function VentaManualPanel() {
 
   useEffect(() => {
     async function cargarVehiculos() {
-      if (!yonkeId || yonkePlan !== 'premium') return;
+      if (!yonkeId || yonkePlan !== 'premium' || soloBasico) return;
       try {
         const ref = collection(db, 'yonkes', yonkeId, 'vehiculos');
         const q = query(ref, orderBy('marca'));
@@ -78,7 +79,7 @@ export default function VentaManualPanel() {
       }
     }
     cargarVehiculos();
-  }, [yonkeId, yonkePlan]);
+  }, [yonkeId, yonkePlan, soloBasico]);
 
   // Piezas disponibles del vehículo elegido (yonkes/{id}/vehiculos/{id}/piezas: { nombre, disponible }).
   // onSnapshot en vez de getDocs para reflejar en vivo si alguien más vende una pieza mientras el
@@ -268,6 +269,22 @@ export default function VentaManualPanel() {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A3C5E' }}>
         <p style={{ color: '#fff' }}>Cargando...</p>
+      </main>
+    );
+  }
+
+  // Límites del plan encendidos (config/planes) y sin Premium vigente: candado con el precio.
+  // Un Premium vencido también cae aquí. Con el interruptor apagado, sigue el bloqueo de antes.
+  if (soloBasico) {
+    return (
+      <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', paddingBottom: '70px' }}>
+        <div style={{ backgroundColor: '#1A3C5E', padding: '20px 16px', paddingTop: '24px' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h1 style={{ color: '#fff', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>Venta manual</h1>
+          </div>
+        </div>
+        <CandadoPremium ubicacion="venta_manual_bloqueada" descripcion="Registra tus ventas de mostrador con Venta Manual." />
+        <BottomNav />
       </main>
     );
   }

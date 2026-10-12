@@ -4,6 +4,8 @@ import { esPrecioValido } from '../../lib/precio';
 import { sanearPromoImagenes } from '../../lib/promos';
 import { sanearSobreNosotros } from '../../lib/sobreNosotros';
 import { sanearFondoUrl } from '../../lib/fondoTenant';
+import { esPremiumVigente, leerLimitesActivos } from '../../lib/planes';
+import { CIUDADES_BC } from './ciudades';
 
 const DEFAULT_BRANDING = {
   colorPrimario: '#1A3C5E',
@@ -63,6 +65,23 @@ export async function getInventarioDeTenant(yonkeId) {
 // como activos por defecto. Solo se apaga cuando el admin lo pone explícitamente en false.
 export function subdominioEstaActivo(tenant) {
   return tenant.subdominioActivo !== false;
+}
+
+const SITIO_PRINCIPAL = 'https://mecanixyonkevirtual.com';
+
+// Ficha pública del yonke en el sitio principal (/yonkes/{ciudad}/{id}). Esa página solo existe
+// para ciudades de CIUDADES_BC y yonkes con activo === true; si no, la página principal.
+export function urlFichaPublica(tenant) {
+  const tieneFicha = tenant.activo === true && CIUDADES_BC.some((c) => c.key === tenant.ciudad);
+  return tieneFicha ? `${SITIO_PRINCIPAL}/yonkes/${tenant.ciudad}/${tenant.id}` : SITIO_PRINCIPAL;
+}
+
+// Página propia = plan Premium cuando config/planes.limitesActivos es true. Devuelve a dónde
+// mandar a quien entra al subdominio de un yonke sin Premium vigente, o null si se muestra normal
+// (interruptor apagado o Premium vigente). Se revisa DESPUÉS de subdominioEstaActivo().
+export async function redireccionSinPremium(tenant) {
+  if (!(await leerLimitesActivos(dbServer))) return null;
+  return esPremiumVigente(tenant) ? null : urlFichaPublica(tenant);
 }
 
 // Combina el branding del tenant con los defaults campo por campo — nunca todo-o-nada.

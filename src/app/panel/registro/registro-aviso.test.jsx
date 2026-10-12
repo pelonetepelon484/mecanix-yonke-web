@@ -7,6 +7,7 @@ import '@testing-library/jest-dom/vitest';
 // terminar el registro) y, si falla, el registro termina igual.
 const escrituras = [];
 let configTerminos = null; // config/terminosYonkes simulado (null = no existe)
+let configPlanes = null; // config/planes simulado
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 vi.mock('firebase/auth', () => ({
   createUserWithEmailAndPassword: async () => ({ user: { uid: 'uidY1', getIdToken: async () => 'pase-del-yonke' } }),
@@ -17,7 +18,10 @@ vi.mock('firebase/firestore', () => ({
   collection: (_db, ...ruta) => ruta.join('/'),
   addDoc: async (ruta, datos) => { escrituras.push([ruta, datos]); return { id: 'Y1' }; },
   setDoc: async (ruta, datos) => { escrituras.push([String(ruta), datos]); },
-  getDoc: async () => (configTerminos ? { exists: () => true, data: () => configTerminos } : { exists: () => false }),
+  getDoc: async (ruta) => {
+    const datos = ruta === 'config/planes' ? configPlanes : configTerminos;
+    return datos ? { exists: () => true, data: () => datos } : { exists: () => false };
+  },
   serverTimestamp: () => 'HORA_SERVIDOR',
   writeBatch: () => {
     const pendientes = [];
@@ -40,6 +44,7 @@ let llamadas;
 beforeEach(() => {
   escrituras.length = 0;
   configTerminos = null;
+  configPlanes = null;
   llamadas = [];
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -95,5 +100,18 @@ describe('registro de yonke: aceptación de Términos', () => {
     expect(await screen.findByText('¡Registro exitoso!')).toBeInTheDocument();
     expect(escrituras.find(([ruta]) => ruta === 'yonkes/Y1')[1].aceptacionLegal.version).toBe('2099-01-01');
     expect(escrituras.map(([ruta]) => ruta)).toContain('yonkes/Y1/aceptaciones/2099-01-01');
+  });
+});
+
+describe('registro de yonke: nombre del plan sin costo', () => {
+  it('interruptor apagado: "Plan Gratuito" como siempre', async () => {
+    render(<Registro />);
+    expect(await screen.findByText('🆓 Plan Gratuito — Completamente gratis')).toBeInTheDocument();
+  });
+  it('interruptor encendido: "Plan Básico"', async () => {
+    configPlanes = { limitesActivos: true };
+    render(<Registro />);
+    expect(await screen.findByText('🆓 Plan Básico — Sin costo')).toBeInTheDocument();
+    expect(screen.queryByText(/Plan Gratuito/)).not.toBeInTheDocument();
   });
 });

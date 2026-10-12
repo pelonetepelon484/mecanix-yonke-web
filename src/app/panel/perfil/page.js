@@ -7,6 +7,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import { BloqueoTerminos } from '../BloqueoTerminos';
+import { AvisoPremium } from '../CandadoPremium';
 import BottomNav from '../BottomNav';
 import { OpcionInstalarApp } from '../AvisoInstalarApp';
 import { subirLogoYonke, borrarLogoYonke, validarArchivoLogo } from '../../lib/subirLogoYonke';
@@ -54,7 +55,7 @@ const HORARIO_DEFAULT = {
 
 export default function PerfilPanel() {
   const router = useRouter();
-  const { user, yonkeId, loading } = useAuth();
+  const { user, yonkeId, loading, soloBasico } = useAuth();
 
   const [nombre, setNombre] = useState('');
   const [direccion, setDireccion] = useState('');
@@ -376,6 +377,18 @@ export default function PerfilPanel() {
           </div>
         </div>
 
+        {/* Página propia (color, promociones, fondo y "Sobre nosotros"): plan Premium cuando los
+            límites del plan están encendidos. Lo ya guardado no se borra: solo se oculta. */}
+        {soloBasico ? (
+          <div style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>Tu página propia</h2>
+            <AvisoPremium
+              ubicacion="perfil_pagina_propia"
+              descripcion="Tu página con subdominio propio: color, promociones, fondo y Sobre nosotros"
+            />
+          </div>
+        ) : (
+        <>
         {/* Color de tu página */}
         <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Color de tu página</h2>
@@ -407,9 +420,6 @@ export default function PerfilPanel() {
           </div>
         </div>
 
-        {/* Condiciones de garantía — se usan como default en cada nota nueva (panel/venta-manual
-            y panel/ventas, ver NotaGarantiaModal.js). Editar aquí NO cambia notas ya generadas:
-            cada nota guarda su propia copia de estos textos al momento de generarse. */}
         {subdominioActivo && (
           <div style={sectionStyle}>
             <h2 style={sectionTitleStyle}>Promociones de tu página ({promos.length}/{PROMOS_MAX})</h2>
@@ -435,7 +445,12 @@ export default function PerfilPanel() {
             <SobreNosotrosEditor yonkeId={yonkeId} sobreNosotros={sobreNosotros} onChange={setSobreNosotros} />
           </div>
         )}
+        </>
+        )}
 
+        {/* Condiciones de garantía — se usan como default en cada nota nueva (panel/venta-manual
+            y panel/ventas, ver NotaGarantiaModal.js). Editar aquí NO cambia notas ya generadas:
+            cada nota guarda su propia copia de estos textos al momento de generarse. */}
         <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Condiciones de garantía</h2>
           <p style={{ fontSize: '13px', color: '#888', marginBottom: '14px' }}>
@@ -467,6 +482,13 @@ export default function PerfilPanel() {
           </button>
         </div>
 
+        {soloBasico ? (
+          <div style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>Datos fiscales de la nota de reciclaje</h2>
+            <AvisoPremium ubicacion="perfil_datos_fiscales" descripcion="Forma parte de Reciclaje" />
+          </div>
+        ) : (
+        <>
         {/* Configuración fiscal de la nota de reciclaje — se usa como default en cada compra nueva
             (panel/reciclaje). Editar aquí NO cambia notas ya generadas: cada compra guarda su
             propia copia de estos porcentajes al momento de registrarse. */}
@@ -514,6 +536,8 @@ export default function PerfilPanel() {
             {guardandoFiscal ? 'Guardando...' : 'Guardar datos fiscales'}
           </button>
         </div>
+        </>
+        )}
 
         {/* Información del negocio */}
         <div style={sectionStyle}>

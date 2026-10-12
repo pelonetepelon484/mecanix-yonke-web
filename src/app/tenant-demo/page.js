@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { getTenantBySub, getInventarioDeTenant, resolveBranding, subdominioEstaActivo } from '../lib/getTenant';
+import { getTenantBySub, getInventarioDeTenant, resolveBranding, subdominioEstaActivo, redireccionSinPremium } from '../lib/getTenant';
 import { politicasDesdeGarantia } from '../../lib/politicasYonke';
 import TenantPageClient from './TenantPageClient';
 
@@ -36,6 +36,12 @@ export default async function TenantDemoPage() {
   if (!subdominioEstaActivo(tenant)) {
     redirect('https://mecanixyonkevirtual.com');
   }
+
+  // Límites del plan encendidos y sin Premium vigente: redirección TEMPORAL (307) a su ficha
+  // pública en el sitio principal. Temporal a propósito: al volver a ser Premium vigente, su
+  // página propia regresa sola.
+  const destinoSinPremium = await redireccionSinPremium(tenant);
+  if (destinoSinPremium) redirect(destinoSinPremium);
 
   // Solo los campos serializables/públicos que la página necesita — el doc del yonke trae
   // más cosas (premiumHasta, fechaRegistro, etc. son Timestamps y no cruzan a un Client

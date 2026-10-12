@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp, deleteField, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { refContactoPrivado, leerEmailContacto } from '../../../../lib/contactoPrivado';
+import { estadoPlan, ETIQUETAS_ESTADO_PLAN } from '../../../../lib/planes';
 import { conFallbackDePermisos } from '../../../../lib/conFallbackDePermisos';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
 import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
@@ -563,6 +564,15 @@ export default function EditarYonkePage() {
         {/* Plan y estado */}
         <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Plan y estado</h2>
+          {(() => {
+            // Según lo que está en pantalla (plan y fecha elegidos), con la misma función del panel.
+            const etiqueta = ETIQUETAS_ESTADO_PLAN[estadoPlan({ plan, premiumHasta: premiumHasta ? new Date(`${premiumHasta}T00:00:00`) : null })];
+            return (
+              <p style={{ display: 'inline-block', backgroundColor: etiqueta.bg, color: etiqueta.color, fontSize: '12px', fontWeight: '700', padding: '4px 10px', borderRadius: '12px', margin: '0 0 12px' }}>
+                {etiqueta.texto}
+              </p>
+            );
+          })()}
 
           <p style={labelStyle}>Plan</p>
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
@@ -649,8 +659,9 @@ export default function EditarYonkePage() {
             </span>
           </label>
           <p style={{ fontSize: '12px', color: '#999', marginTop: '4px', marginLeft: '28px' }}>
-            Complemento de $800 MXN/mes — visitas tú el yonke ~1 vez al mes para capturar su
-            inventario nuevo. El control de visitas está en{' '}
+            Servicio de $300 MXN por visita, solo cuando el yonke la pide y en los estados donde
+            está disponible: visitas el yonke para capturar su inventario nuevo. El control de
+            visitas está en{' '}
             <a href="/admin/captura-domicilio" style={{ color: '#1A3C5E', fontWeight: '700' }}>
               Captura a domicilio
             </a>.
@@ -707,7 +718,7 @@ export default function EditarYonkePage() {
             </span>
           </label>
           <p style={{ fontSize: '12px', color: '#999', marginTop: '4px', marginLeft: '28px' }}>
-            Solo aplica si este yonke tiene un subdominio configurado (Plan Premium/Élite).
+            Solo aplica si este yonke tiene un subdominio configurado (Plan Premium).
             Desmárcalo para apagarlo sin borrar su configuración — por ejemplo, si dejó de pagar.
             Quien entre a su subdominio será redirigido al sitio principal.
           </p>

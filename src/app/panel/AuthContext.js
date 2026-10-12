@@ -7,6 +7,7 @@ import { auth, db } from '../lib/firebase';
 import { debeRegistrarActividad } from '../../lib/inventoryStatus';
 import { registrarActividadYonke } from '../../lib/registrarActividadYonke';
 import { leerTerminosYonkes, terminosAceptados } from './terminosYonke';
+import { esPremiumVigente, leerLimitesActivos } from '../../lib/planes';
 
 const AuthContext = createContext({});
 
@@ -19,6 +20,10 @@ export function AuthProvider({ children }) {
   // Solo para el dueño (rol 'yonke'): { requerida, version, resumenCambios, aceptada } según
   // config/terminosYonkes. null = no aplica o no se pudo leer (las reglas deciden igual).
   const [terminosYonke, setTerminosYonke] = useState(null);
+  // Límites del plan (config/planes.limitesActivos) y si el yonke es "Premium vigente". Con el
+  // interruptor apagado, soloBasico es false y cada pantalla se comporta como antes.
+  const [limitesActivos, setLimitesActivos] = useState(false);
+  const [premiumVigente, setPremiumVigente] = useState(false);
   const [loading, setLoading] = useState(true);
   // true cuando ya se leyó usuarios/{uid} (con o sin documento). Mientras sea false, el rol
   // todavía no se sabe y no hay que decidir redirecciones por rol.
@@ -35,6 +40,8 @@ export function AuthProvider({ children }) {
       setTallerId(null);
       setYonkePlan(null);
       setTerminosYonke(null);
+      setLimitesActivos(false);
+      setPremiumVigente(false);
       setRolListo(true);
       return null;
     }
@@ -48,10 +55,13 @@ export function AuthProvider({ children }) {
     // Leer el plan del yonke (y, si es el dueño, si ya aceptó los términos vigentes)
     if (data.yonkeId) {
       const yonkeRef = doc(db, 'yonkes', data.yonkeId);
-      const [yonkeSnap, terminos] = await Promise.all([
+      const [yonkeSnap, terminos, limites] = await Promise.all([
         getDoc(yonkeRef),
         data.rol === 'yonke' ? leerTerminosYonkes(db).catch(() => null) : null,
+        data.rol === 'yonke' ? leerLimitesActivos(db) : false,
       ]);
+      setLimitesActivos(limites);
+      setPremiumVigente(yonkeSnap.exists() && esPremiumVigente(yonkeSnap.data()));
       setTerminosYonke(terminos && terminos.existe ? {
         requerida: true,
         version: terminos.version,
@@ -73,6 +83,8 @@ export function AuthProvider({ children }) {
     } else {
       setYonkePlan(null);
       setTerminosYonke(null);
+      setLimitesActivos(false);
+      setPremiumVigente(false);
     }
     return data.rol;
   }, []);
@@ -89,6 +101,8 @@ export function AuthProvider({ children }) {
         setTallerId(null);
         setYonkePlan(null);
         setTerminosYonke(null);
+        setLimitesActivos(false);
+        setPremiumVigente(false);
         setRolListo(false);
       }
       setLoading(false);
@@ -108,11 +122,14 @@ export function AuthProvider({ children }) {
   }, []);
   // false solo para un yonke dueño con términos exigidos y sin aceptar (admin y demás: true).
   const puedeEditarYonke = !(userRole === 'yonke' && terminosYonke?.requerida && !terminosYonke.aceptada);
+  // true solo para un yonke dueño con los límites encendidos y sin Premium vigente.
+  const soloBasico = userRole === 'yonke' && limitesActivos && !premiumVigente;
 
   return (
     <AuthContext.Provider value={{
       user, userRole, yonkeId, tallerId, yonkePlan, loading, rolListo, recargarRol,
       terminosYonke, puedeEditarYonke, marcarTerminosAceptados,
+      limitesActivos, premiumVigente, soloBasico,
     }}>
       {children}
     </AuthContext.Provider>
