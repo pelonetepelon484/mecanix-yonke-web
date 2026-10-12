@@ -12,6 +12,20 @@ service cloud.firestore {
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'yonke' &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId == yonkeId;
     }
+    // ---------- Términos vigentes de yonkes (config/terminosYonkes) ----------
+    // Si config/terminosYonkes NO existe, no se exige nada (así se apaga la exigencia). Si existe,
+    // la versión aceptada del yonke (aceptacionLegal.version) debe ser su campo version. Un yonke
+    // sin aceptacionLegal cuenta como "no aceptado".
+    function terminosYonkesRef() {
+      return /databases/$(database)/documents/config/terminosYonkes;
+    }
+    function terminosYonkesVigentes(datosYonke) {
+      return !exists(terminosYonkesRef())
+        || datosYonke.get('aceptacionLegal', {}).get('version', null) == get(terminosYonkesRef()).data.version;
+    }
+    function yonkeConTerminosVigentes(yonkeId) {
+      return terminosYonkesVigentes(get(/databases/$(database)/documents/yonkes/$(yonkeId)).data);
+    }
     // ---------- NUEVO: pedido de piezas de talleres a yonkes ----------
     // Un yonke "activo de ese estado" para ver/responder solicitudes: mismo campo yonkes/{id}.estado
     // que usa estadoDeYonke() en el cliente (src/lib/estados.js) -- NO el mapeo de 3 letras que usa
@@ -912,6 +926,15 @@ service cloud.firestore {
 
     // ---------- Yonkes e inventario ----------
     match /yonkes/{yonkeId} {
+      // Aceptación de términos (registro o aviso ACEPTO): versión vigente, hora del servidor y su
+      // entrada del historial (aceptaciones/{versión}) en el mismo guardado.
+      function aceptacionVigenteEnEsteGuardado() {
+        return exists(terminosYonkesRef())
+          && request.resource.data.aceptacionLegal.keys().hasOnly(['version', 'fecha'])
+          && request.resource.data.aceptacionLegal.version == get(terminosYonkesRef()).data.version
+          && request.resource.data.aceptacionLegal.fecha == request.time
+          && existsAfter(/databases/$(database)/documents/yonkes/$(yonkeId)/aceptaciones/$(request.resource.data.aceptacionLegal.version));
+      }
       allow read: if true;
       // Alta: admin, o un usuario que se registra y queda como dueño (ownerUid = su uid).
       // Un usuario que ya tiene cuenta de rol (yonke o taller) no puede crear yonkes nuevos.
@@ -921,7 +944,9 @@ service cloud.firestore {
                         && request.resource.data.ownerUid == request.auth.uid
                         // se registra solo como básico y sin fecha de Premium (eso lo pone el admin)
                         && request.resource.data.get('plan', 'freemium') == 'freemium'
-                        && !('premiumHasta' in request.resource.data));
+                        && !('premiumHasta' in request.resource.data)
+                        // con config/terminosYonkes, se registra aceptando la versión vigente
+                        && (!exists(terminosYonkesRef()) || aceptacionVigenteEnEsteGuardado()));
       allow update: if esAdmin()
                     || (esDuenoDelYonke(yonkeId)
                         && !request.resource.data.diff(resource.data).affectedKeys()
@@ -937,17 +962,41 @@ service cloud.firestore {
                             || request.resource.data.verAlertasOtrosEstados is bool)
                         // NUEVO: si cambia branding, el fondo debe ser válido
                         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['branding'])
-                            || brandingValido(request.resource.data.get('branding', null), yonkeId)));
+                            || brandingValido(request.resource.data.get('branding', null), yonkeId))
+                        // Términos: sin la versión vigente solo se permite la marca automática de
+                        // actividad y aceptar los términos; aceptacionLegal solo cambia al aceptar.
+                        && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimaActividadAt'])
+                            || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['aceptacionLegal'])
+                                && aceptacionVigenteEnEsteGuardado())
+                            || (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['aceptacionLegal'])
+                                && terminosYonkesVigentes(resource.data))));
       // Dueño que se registró: puede borrar su yonke solo mientras su usuario no exista (rollback)
       allow delete: if esAdmin()
                     || (request.auth != null
                         && resource.data.ownerUid == request.auth.uid
                         && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
+      // Historial de aceptaciones: una entrada por versión, escrita junto con aceptacionLegal (misma
+      // versión y misma hora del servidor). Nadie la modifica; solo el admin la borra.
+      match /aceptaciones/{version} {
+        allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow create: if request.auth != null
+                      && (esDuenoDelYonke(yonkeId)
+                          || getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.ownerUid == request.auth.uid)
+                      && request.resource.data.keys().hasOnly(['version', 'fecha'])
+                      && request.resource.data.version == version
+                      && request.resource.data.fecha == request.time
+                      && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.aceptacionLegal.version == version
+                      && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.aceptacionLegal.fecha == request.time
+                      && (!exists(terminosYonkesRef()) || version == get(terminosYonkesRef()).data.version);
+        allow update: if false;
+        allow delete: if esAdmin();
+      }
+      // Inventario, reciclaje y notas de garantía: el dueño escribe solo con términos vigentes.
       match /vehiculos/{vehiculoId} {
         allow read: if true;
-        allow create, delete: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow create, delete: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
         allow update: if esAdmin()
-                      || (esDuenoDelYonke(yonkeId) && (
+                      || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId) && (
                             // no se toca vendidoAt (incluye vehículos que nunca lo tuvieron)
                             request.resource.data.get('vendidoAt', null) == resource.data.get('vendidoAt', null)
                             // reactivar: el campo se elimina
@@ -957,25 +1006,28 @@ service cloud.firestore {
                          ));
         match /piezas/{piezaId} {
           allow read: if true;
-          allow write: if esAdmin() || esDuenoDelYonke(yonkeId);
+          allow write: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
         }
       }
       match /motores/{motorId} {
         allow read: if true;
-        allow write: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow write: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
       }
       match /piezasSueltas/{piezaId} {
         allow read: if true;
-        allow write: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow write: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
       }
       match /materialesReciclaje/{materialId} {
-        allow read, write: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow write: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
       }
       match /comprasReciclaje/{compraId} {
-        allow read, write: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow write: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
       }
       match /notasGarantia/{notaId} {
-        allow read, write: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow write: if esAdmin() || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId));
       }
       // ---------- NUEVO: contador de toques al botón de WhatsApp ----------
       match /contactosVehiculo/{docId} {
@@ -1000,11 +1052,23 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
     match /ventas/{ventaId} {
+      // Venta que genera confirmar una reservación pendiente de este mismo yonke: se permite aun
+      // sin términos vigentes (atender reservaciones nunca se bloquea). La venta manual no.
+      function ventaDeReservacion() {
+        return request.resource.data.get('reservaId', null) is string
+          && !('origen' in request.resource.data)
+          && get(/databases/$(database)/documents/reservaciones/$(request.resource.data.reservaId)).data.yonkeId == request.resource.data.yonkeId
+          && get(/databases/$(database)/documents/reservaciones/$(request.resource.data.reservaId)).data.estado == 'pendiente';
+      }
       allow read: if true;
-      allow create: if esAdmin() || esDuenoDelYonke(request.resource.data.yonkeId);
-      // CAMBIO: el dueño solo puede cancelar (cancelada + canceladaAt), sin borrar
+      allow create: if esAdmin()
+                    || (esDuenoDelYonke(request.resource.data.yonkeId)
+                        && (yonkeConTerminosVigentes(request.resource.data.yonkeId) || ventaDeReservacion()));
+      // CAMBIO: el dueño solo puede cancelar (cancelada + canceladaAt), sin borrar.
+      // Sin términos vigentes solo cancela ventas que vienen de una reservación.
       allow update: if esAdmin()
                     || (esDuenoDelYonke(resource.data.yonkeId)
+                        && (resource.data.get('reservaId', null) is string || yonkeConTerminosVigentes(resource.data.yonkeId))
                         && resource.data.get('cancelada', false) != true
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['cancelada', 'canceladaAt'])
