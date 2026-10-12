@@ -114,6 +114,18 @@ export function crearManejadoresAvisos(deps) {
     if (!(await dentroDeLimite(db, 'avisoSolTaller', solicitud.tallerId, MAX_AVISOS_SOLICITUD_TALLER_HORA, HORA))) return sinAviso('limite', 429);
     if (!(await primeraVez(db, 'avisoSol', solicitudId))) return sinAviso('repetido');
 
+    // Avisos en el dispositivo a los yonkes del estado (falla cerrada y nunca lanza; una sola vez
+    // por pedido gracias a la marca de arriba).
+    if (deps.avisarYonkes) {
+      try {
+        await deps.avisarYonkes(db, {
+          tipo: 'pedidoTaller', id: solicitudId, estado: solicitud.estado, vehiculo: solicitud.vehiculo, pieza: solicitud.pieza,
+        });
+      } catch (error) {
+        console.error('[avisosAdmin] No se pudieron mandar los avisos a los yonkes', { message: error?.message });
+      }
+    }
+
     const v = solicitud.vehiculo ?? {};
     const vehiculo = [texto(v.marca, 100), texto(v.modelo, 100), Number.isInteger(v.anio) ? v.anio : ''].filter(Boolean).join(' ');
     return enviar(`🔧 Nuevo pedido de pieza en Mecanix!\n\nTaller: ${texto(solicitud.tallerNombre, 200)}\nPieza: ${texto(solicitud.pieza, 200)}\nVehículo: ${vehiculo}\nEstado: ${texto(solicitud.estado, 100)}\n\nRevisa Firebase si necesitas avisar a los yonkes.`);

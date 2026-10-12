@@ -284,7 +284,7 @@ export default function AdminPage() {
       pasos.push({ nombre: 'Accesos de usuario (Firestore)', ok: false, detalle: e.message });
     }
 
-    for (const [col, etiqueta] of [['reservaciones', 'Reservaciones'], ['ventas', 'Ventas'], ['ventasPublicas', 'Ventas públicas (copia para calificar)'], ['calificaciones', 'Calificaciones']]) {
+    for (const [col, etiqueta] of [['reservaciones', 'Reservaciones'], ['ventas', 'Ventas'], ['ventasPublicas', 'Ventas públicas (copia para calificar)'], ['calificaciones', 'Calificaciones'], ['dispositivosPush', 'Avisos en dispositivos (tokens)']]) {
       try {
         const docs = await borrarPorYonkeId(col, yonke.id);
         pasos.push({ nombre: etiqueta, ok: true, detalle: `${docs.length} documento(s)` });

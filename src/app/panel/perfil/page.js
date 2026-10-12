@@ -7,6 +7,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import { BloqueoTerminos } from '../BloqueoTerminos';
+import BotonAvisos from '../BotonAvisos';
 import { AvisoPremium } from '../CandadoPremium';
 import BottomNav from '../BottomNav';
 import { OpcionInstalarApp } from '../AvisoInstalarApp';
@@ -331,6 +332,8 @@ export default function PerfilPanel() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
+        {/* Avisos en el dispositivo: parte de la sección de pedidos, fuera del bloqueo por términos. */}
+        <BotonAvisos />
         {/* Sin términos vigentes: todo se ve, pero desactivado (logo, color, promociones, fondo,
             "sobre nosotros", horario, métodos de pago, garantía y datos fiscales). */}
         <BloqueoTerminos>

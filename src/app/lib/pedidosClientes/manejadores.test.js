@@ -310,3 +310,41 @@ describe('alertas de otros estados (aceptaOtrosEstados)', () => {
   });
 });
 
+
+describe('avisos en el dispositivo a los yonkes al crear una alerta', () => {
+  it('después de crear la alerta avisa con tipo, id, estado, pieza y vehículo (sin el WhatsApp del cliente)', async () => {
+    const { deps } = crearFalsos();
+    deps.avisarYonkes = vi.fn(async () => ({ enviados: 1 }));
+    const { res, id } = await crearUno(crearManejadores(deps));
+    expect(res.status).toBe(200);
+    expect(deps.avisarYonkes).toHaveBeenCalledTimes(1);
+    const [, evento] = deps.avisarYonkes.mock.calls[0];
+    expect(evento).toEqual({
+      tipo: 'alertaCliente', id, estado: 'baja-california', vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2005 }, pieza: 'Alternador',
+      incluirOtrosEstados: false,
+    });
+    expect(JSON.stringify(evento)).not.toContain('664');
+  });
+  it('solo incluye otros estados si la bandera está encendida y el cliente lo aceptó', async () => {
+    const { deps } = crearFalsos({ otrosEstados: true });
+    deps.avisarYonkes = vi.fn(async () => ({}));
+    await crearUno(crearManejadores(deps), { aceptaOtrosEstados: true });
+    await crearUno(crearManejadores(deps), { aceptaOtrosEstados: false }, '2.2.2.2');
+    expect(deps.avisarYonkes.mock.calls.map(([, e]) => e.incluirOtrosEstados)).toEqual([true, false]);
+  });
+  it('si los avisos fallan, la alerta se crea igual', async () => {
+    const { deps, pedidos } = crearFalsos();
+    deps.avisarYonkes = vi.fn(async () => { throw new Error('FCM caído'); });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { res } = await crearUno(crearManejadores(deps));
+    expect(res.status).toBe(200);
+    expect(pedidos.size).toBe(1);
+  });
+  it('si la alerta no se crea (datos inválidos), no se avisa a nadie', async () => {
+    const { deps } = crearFalsos();
+    deps.avisarYonkes = vi.fn(async () => ({}));
+    const res = await crearManejadores(deps).pedirPieza(post(cuerpo({ pieza: '' })));
+    expect(res.status).toBe(400);
+    expect(deps.avisarYonkes).not.toHaveBeenCalled();
+  });
+});

@@ -8,6 +8,7 @@ import { obtenerEstadosCombinado } from '../busqueda/estadosServer';
 import { notificarAdmin } from '../notificarAdmin';
 import { claveLimite, codigoCoincide, generarCodigo, hashCodigo } from '../../../lib/pedidosClientesServidor';
 import { crearManejadores } from './manejadores';
+import { crearAvisarYonkesReal } from '../avisosPush/servicio';
 
 // Solo servidor. Identidad de servicio para el pedido de clientes: una app de Firebase APARTE
 // (no la de dbServer que usa el buscador, que sigue sin sesión exactamente igual que antes) que
@@ -129,6 +130,7 @@ export function manejadoresReales() {
       obtenerDb: obtenerDbServicio, habilitado, otrosEstados, contar, crearPedido, leerPedido, leerPrivado, leerRespuestas, leerYonkes, listarAbiertos,
       estados: obtenerEstadosCombinado, notificar: notificarAdmin, ahora: () => new Date(),
       generarCodigo, hashCodigo, codigoCoincide, claveLimite,
+      avisarYonkes: crearAvisarYonkesReal({ contar }),
     });
   }
   return manejadores;
