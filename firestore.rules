@@ -950,6 +950,29 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
+    // ---------- Avisos en el dispositivo (notificaciones push) ----------
+    // dispositivosPush/{yonkeId}_{sha256 del token}: un documento por dispositivo del yonke (puede
+    // tener varios). Solo el dueño del yonke lo crea, lo lee y lo borra; el usuario de servicio lo
+    // lee (para enviar) y lo borra (cuando Firebase rechaza el token); el admin lo lee y lo borra
+    // (borrado en cascada). Nadie más. No depende de los términos ni del plan: los avisos son
+    // parte de la sección de pedidos del plan Básico.
+    match /dispositivosPush/{docId} {
+      function dispositivoValido() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['yonkeId', 'token', 'creadoAt'])
+          && d.yonkeId is string && d.yonkeId.size() > 0 && d.yonkeId.size() <= 128
+          && d.token is string && d.token.size() > 0 && d.token.size() <= 4096
+          && d.creadoAt == request.time
+          && docId.matches(d.yonkeId + '_[0-9a-f]{64}');
+      }
+      allow read, delete: if esAdmin() || esServicio() || esDuenoDelYonke(resource.data.yonkeId);
+      allow create: if esDuenoDelYonke(request.resource.data.yonkeId) && dispositivoValido();
+      // Volver a activar en el mismo dispositivo (Firebase puede renovar el token): mismo dueño.
+      allow update: if esDuenoDelYonke(resource.data.yonkeId)
+                    && request.resource.data.yonkeId == resource.data.yonkeId
+                    && dispositivoValido();
+    }
+
     // ---------- Yonkes e inventario ----------
     match /yonkes/{yonkeId} {
       // Aceptación de términos (registro o aviso ACEPTO): versión vigente, hora del servidor y su

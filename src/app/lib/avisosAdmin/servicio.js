@@ -4,6 +4,7 @@ import { claveLimite } from '../../../lib/pedidosClientesServidor';
 import { notificarAdmin } from '../notificarAdmin';
 import { leerComoUsuario, uidDeToken } from './identidadUsuario';
 import { crearManejadoresAvisos } from './manejadores';
+import { crearAvisarYonkesReal } from '../avisosPush/servicio';
 
 // Solo servidor. Dependencias reales de los avisos al admin: el mismo usuario de servicio y los
 // mismos contadores (pedidosClientesLimite) que las alertas de clientes.
@@ -18,6 +19,7 @@ export function manejadoresAvisos() {
     manejadores = crearManejadoresAvisos({
       obtenerDb: obtenerDbServicio, contar, claveLimite, uidDeToken, leerComoUsuario, leerYonke,
       notificar: notificarAdmin, ahora: () => new Date(),
+      avisarYonkes: crearAvisarYonkesReal({ contar }),
     });
   }
   return manejadores;

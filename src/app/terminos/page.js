@@ -41,6 +41,7 @@ export default function Terminos() {
 
         <Seccion titulo="4. Planes del servicio">
           <p style={parrafoStyle}>La Plataforma ofrece dos planes. Plan Básico: sin costo; incluye la administración y publicación del inventario del yonke, la sección de pedidos y la configuración de los datos de su negocio. Plan Premium: $398.00 MXN al mes más IVA; incluye las demás funciones de la Plataforma, incluidas las que se incorporen en el futuro.</p>
+          <p style={parrafoStyle}>Los avisos de pedidos y alertas en el dispositivo forman parte de la sección de pedidos del plan Básico. Su entrega depende de la conexión, de los permisos y de la configuración del dispositivo del usuario, por lo que Mecanix no garantiza que cada aviso llegue ni que llegue de inmediato; el yonke puede consultar siempre sus pedidos y alertas dentro del panel.</p>
           <p style={parrafoStyle}>Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026 reciben un año del plan Premium sin costo, del 1 de noviembre de 2026 al 1 de noviembre de 2027. Al terminar ese año, el yonke decide si contrata el plan Premium o continúa en el plan Básico, y Mecanix se lo avisará con al menos 30 días naturales de anticipación. No se cobra ningún monto sin que el yonke lo acepte expresamente.</p>
           <p style={parrafoStyle}>Mecanix puede modificar las funciones de cada plan e introducir nuevos planes o funciones de pago, avisando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
         </Seccion>

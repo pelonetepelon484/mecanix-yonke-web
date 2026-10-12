@@ -268,3 +268,34 @@ describe('aviso de "entrega inmediata" (cliente sin cuenta)', () => {
     expect([...f.contadores.keys()].join(' ')).not.toContain('200.1.2.3');
   });
 });
+
+describe('avisos en el dispositivo a los yonkes por un pedido de taller', () => {
+  it('con el pase del dueño: avisa una vez con lo guardado (pieza, vehículo, estado), sin el taller', async () => {
+    const f = crearFalsos();
+    f.deps.avisarYonkes = vi.fn(async () => ({ enviados: 2 }));
+    const m = crearManejadoresAvisos(f.deps);
+    const r = await m.solicitudPieza(peticion({ token: 'pase-taller-1', body: { solicitudId: 'S1', pieza: 'spam' } }));
+    expect(r.status).toBe(200);
+    expect(f.deps.avisarYonkes).toHaveBeenCalledTimes(1);
+    const [, evento] = f.deps.avisarYonkes.mock.calls[0];
+    expect(evento).toEqual({ tipo: 'pedidoTaller', id: 'S1', estado: 'baja-california', vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2010 }, pieza: 'Alternador' });
+    expect(JSON.stringify(evento)).not.toContain('El Güero');
+    // El mismo pedido otra vez: no se vuelve a avisar.
+    await m.solicitudPieza(peticion({ token: 'pase-taller-1', body: { solicitudId: 'S1' } }));
+    expect(f.deps.avisarYonkes).toHaveBeenCalledTimes(1);
+  });
+  it('un pase que no es del dueño no dispara avisos', async () => {
+    const f = crearFalsos();
+    f.deps.avisarYonkes = vi.fn(async () => ({}));
+    await crearManejadoresAvisos(f.deps).solicitudPieza(peticion({ token: 'pase-taller-2', body: { solicitudId: 'S1' } }));
+    expect(f.deps.avisarYonkes).not.toHaveBeenCalled();
+  });
+  it('si los avisos fallan, el aviso al admin sale igual', async () => {
+    const f = crearFalsos();
+    f.deps.avisarYonkes = vi.fn(async () => { throw new Error('FCM caído'); });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await crearManejadoresAvisos(f.deps).solicitudPieza(peticion({ token: 'pase-taller-1', body: { solicitudId: 'S1' } }));
+    expect(await r.json()).toEqual({ ok: true, avisado: true });
+    expect(f.deps.notificar).toHaveBeenCalledTimes(1);
+  });
+});

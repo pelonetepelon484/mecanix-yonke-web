@@ -149,6 +149,18 @@ export function crearManejadores(deps) {
       }
     }
 
+    // Avisos en el dispositivo a los yonkes (falla cerrada y nunca lanza): el pedido ya existe.
+    if (deps.avisarYonkes) {
+      try {
+        await deps.avisarYonkes(db, {
+          tipo: 'alertaCliente', id, estado: datos.estado, vehiculo: datos.vehiculo, pieza: datos.pieza,
+          incluirOtrosEstados: otrosEstados.aceptaOtrosEstados === true,
+        });
+      } catch (error) {
+        console.error('[pedidosClientes] No se pudieron mandar los avisos a los yonkes', { message: error?.message });
+      }
+    }
+
     return json({ ok: true, id, enlace: enlaceMiPedido(new URL(request.url).origin, id, codigo) });
   }
 
