@@ -1071,6 +1071,12 @@ service cloud.firestore {
         allow write: if esAdmin()
                      || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId) && yonkeConPremiumSiHaceFalta(yonkeId));
       }
+      // Datos privados del yonke (hoy: privado/contacto con su correo, ver src/lib/contactoPrivado.js).
+      // Solo el admin los lee y escribe. (Los privado/contacto de pedidosClientes y solicitudesPiezas
+      // son otras rutas, con sus propias reglas.)
+      match /privado/{docId} {
+        allow read, write: if esAdmin();
+      }
       // ---------- NUEVO: contador de toques al botón de WhatsApp ----------
       match /contactosVehiculo/{docId} {
         allow read: if false;
@@ -1093,6 +1099,9 @@ service cloud.firestore {
       allow update: if esAdmin() || esDuenoDelYonke(resource.data.yonkeId);
       allow delete: if esAdmin();
     }
+    // Ventas: traen el nombre del cliente y el monto, así que solo las leen el admin y el yonke
+    // dueño (igual que reservaciones). /calificar usa ventasPublicas/{folio}. El panel del yonke
+    // consulta con where('yonkeId', '==', ...) -- sin ese filtro la consulta se rechaza entera.
     match /ventas/{ventaId} {
       // Venta que genera confirmar una reservación pendiente de este mismo yonke: se permite aun
       // sin términos vigentes (atender reservaciones nunca se bloquea). La venta manual no.
@@ -1102,7 +1111,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/reservaciones/$(request.resource.data.reservaId)).data.yonkeId == request.resource.data.yonkeId
           && get(/databases/$(database)/documents/reservaciones/$(request.resource.data.reservaId)).data.estado == 'pendiente';
       }
-      allow read: if true;
+      allow read: if esAdmin() || esDuenoDelYonke(resource.data.yonkeId);
       // Venta manual (sin reservación): términos vigentes y, con límites activos, Premium vigente.
       // La venta que genera confirmar una reservación sigue permitida en el plan Básico.
       allow create: if esAdmin()
@@ -1122,6 +1131,38 @@ service cloud.firestore {
                         && request.resource.data.canceladaAt == request.time);
       allow delete: if esAdmin();
     }
+    // ventasPublicas/{folio}: copia MÍNIMA y sin datos personales de una venta, para que /calificar
+    // (sin sesión) encuentre el pedido por su folio sin leer `ventas` (ver src/lib/ventasPublicas.ts).
+    // Cualquiera lee UNA copia si conoce el folio (get); nadie lista la colección salvo el admin.
+    // Crea la copia el yonke dueño, junto con su venta (misma venta, mismo yonke, mismo folio), o el
+    // admin (botón "Copiar ventas a públicas"). Solo el admin la cambia o la borra.
+    match /ventasPublicas/{folio} {
+      function copiaSinDatosPersonales() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['ventaId', 'yonkeId', 'piezaVendida', 'vehiculo'])
+          && d.keys().hasAll(['ventaId', 'yonkeId'])
+          && d.ventaId is string && d.ventaId.size() > 0
+          && d.yonkeId is string && d.yonkeId.size() > 0
+          && (d.get('piezaVendida', null) == null || (d.piezaVendida is string && d.piezaVendida.size() <= 300))
+          && (d.get('vehiculo', null) == null
+              || (d.vehiculo is map && d.vehiculo.keys().hasOnly(['marca', 'modelo', 'ano'])));
+      }
+      // La venta original (ya guardada o en el mismo lote) es de ese yonke y su folio normalizado
+      // (trim + mayúsculas + "/" por "-", igual que idVentaPublica) es el id de la copia.
+      function coincideConSuVenta() {
+        let v = getAfter(/databases/$(database)/documents/ventas/$(request.resource.data.ventaId)).data;
+        return v.yonkeId == request.resource.data.yonkeId
+          && folio == v.numeroPedido.trim().upper().replace('/', '-');
+      }
+      allow get: if true;
+      allow list: if esAdmin();
+      // El admin copia en lotes de hasta 400: sin leer cada venta (cada lectura cuenta para el
+      // límite de lecturas de las reglas), solo con la forma de la copia.
+      allow create: if (esAdmin() && copiaSinDatosPersonales())
+                    || (esDuenoDelYonke(request.resource.data.yonkeId) && copiaSinDatosPersonales() && coincideConSuVenta());
+      allow update: if esAdmin() && copiaSinDatosPersonales();
+      allow delete: if esAdmin();
+    }
     match /calificaciones/{calificacionId} {
       allow read: if true;
       allow create: if true;
@@ -1129,7 +1170,9 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
     match /resenasPlataforma/{resenaId} {
-      allow read: if true;
+      // Públicas solo las aprobadas (la página principal consulta where('aprobada', '==', true));
+      // el admin las lee todas para moderarlas.
+      allow read: if resource.data.get('aprobada', false) == true || esAdmin();
       allow create: if true;
       allow update: if esAdmin();
       allow delete: if esAdmin();
