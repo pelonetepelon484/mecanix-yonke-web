@@ -21,7 +21,7 @@ export default function Privacidad() {
           Aviso de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 10 de octubre de 2026
+          Última actualización: 12 de octubre de 2026
         </p>
 
         <Seccion titulo="1. Responsable del tratamiento de tus datos">
@@ -74,7 +74,7 @@ export default function Privacidad() {
           <p style={parrafoStyle}>• <strong>Google Analytics 4:</strong> medición del uso del sitio, que se carga en todas las páginas, incluidos los subdominios de los yonkes, el panel y el área de administración.</p>
           <p style={parrafoStyle}>• <strong>Google Fonts:</strong> tu navegador descarga las tipografías desde servidores de Google, que reciben tu IP.</p>
           <p style={parrafoStyle}>• <strong>Google Maps:</strong> algunos sitios muestran un enlace a Google Maps con la dirección del yonke; solo se comunica con Google si haces clic.</p>
-          <p style={parrafoStyle}>• <strong>CallMeBot:</strong> servicio con el que enviamos avisos internos al WhatsApp del administrador (por ejemplo, un nuevo registro de yonke o una búsqueda sin resultados en la que dejaste tu WhatsApp, que puede incluir ese número, lo que buscabas y datos de contacto del yonke registrado).</p>
+          <p style={parrafoStyle}>• <strong>CallMeBot:</strong> servicio con el que enviamos avisos internos al WhatsApp del administrador (por ejemplo, un nuevo registro de yonke o una búsqueda sin resultados en la que dejaste tu WhatsApp, que puede incluir ese número, lo que buscabas y datos de contacto del yonke registrado). También enviamos por ese medio avisos internos al administrador cuando un taller solicita una pieza (nombre del taller, pieza, vehículo y estado) o cuando se solicita una entrega inmediata (pieza, vehículo y nombre del yonke).</p>
           <p style={parrafoStyle}>Estos proveedores tratan los datos bajo sus propias políticas de seguridad y privacidad. Personal autorizado de la Plataforma también puede acceder a los datos para soporte, seguridad y mejora del servicio, incluido el registro individual de búsquedas.</p>
           <p style={parrafoStyle}>Podemos compartir información si una autoridad competente la requiere conforme a la ley.</p>
           <p style={parrafoStyle}>Cuando un taller solicita una pieza a los yonkes, compartimos los datos de esa solicitud conforme a la sección 12.</p>
@@ -110,12 +110,12 @@ export default function Privacidad() {
         </Seccion>
 
         <Seccion titulo="12. Solicitudes de piezas de talleres">
-          <p style={parrafoStyle}>Cuando un taller registrado solicita una pieza, Mecanix comparte con los yonkes que reciben la solicitud los datos del taller (nombre, WhatsApp y ciudad) y los datos del vehículo y la pieza solicitados, con la única finalidad de que puedan confirmar si la tienen y atender la solicitud. No se comparten datos personales del cliente final del taller.</p>
+          <p style={parrafoStyle}>Cuando un taller registrado solicita una pieza, Mecanix muestra la solicitud en el panel de los yonkes registrados en el estado correspondiente, con el nombre del taller, los datos del vehículo, la pieza y la nota del taller, con la única finalidad de que puedan confirmar si la tienen y atender la solicitud. El WhatsApp del taller solo se muestra al yonke que el taller elige. No se comparten datos personales del cliente final del taller.</p>
           <p style={parrafoStyle}>El yonke que recibe una solicitud solo puede usar esos datos para atender esa solicitud, y es responsable, bajo su propia cuenta, de la veracidad de su respuesta al confirmar que tiene la pieza.</p>
           <p style={parrafoStyle}>Esta sección aplica a los yonkes. Los talleres se rigen, además, por la sección 13.</p>
         </Seccion>
 
-        <Seccion titulo="13. Talleres y cotizaciones" id="talleres">
+        <Seccion titulo="13. Talleres, cotizaciones y órdenes de servicio" id="talleres">
           <p style={{ ...parrafoStyle, fontSize: '13px', color: '#888' }}>Versión: {textosTalleres.version} · {textosTalleres.fecha}</p>
           <BloquesTalleres items={textosTalleres.privacidad} />
         </Seccion>

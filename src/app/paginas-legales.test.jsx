@@ -55,7 +55,7 @@ describe('textos legales de "Avisar a los yonkes"', () => {
     for (const linea of lineas) expect(texto).toContain(linea);
     expect(texto).toContain('14. Clientes que piden una pieza a los yonkes ("Avisar a los yonkes")');
     expect(texto).toContain('15. Contacto');
-    expect(texto).toContain('13. Talleres y cotizaciones');
+    expect(texto).toContain('13. Talleres, cotizaciones y órdenes de servicio');
   });
   it('los Términos traen lo de clientes en la sección 8 y lo de yonkes en la 6, tal cual se aprobó', () => {
     const texto = textoDe(Terminos);
@@ -102,10 +102,10 @@ describe('textos legales de "Avisar a los yonkes"', () => {
     }
   });
   it('fecha de última actualización y VERSION_LEGAL de hoy', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-10b');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 10 de octubre de 2026');
+    expect(VERSION_LEGAL).toBe('2026-10-12');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 12 de octubre de 2026');
     cleanup();
-    expect(textoDe(Terminos)).toContain('Última actualización: 10 de octubre de 2026');
+    expect(textoDe(Terminos)).toContain('Última actualización: 12 de octubre de 2026');
   });
 });
 
@@ -131,8 +131,42 @@ describe('alertas a yonkes de otros estados (aprobado el 10 de octubre de 2026)'
     expect(texto).toContain(TERMINOS_OTROS_ESTADOS);
     expect(texto).not.toContain('Mecanix únicamente permite que el cliente avise');
   });
-  it('la sección 13 de talleres y su versión no cambian', () => {
-    expect(textoDe(Privacidad)).toContain('13. Talleres y cotizaciones');
-    expect(textoDe(Privacidad)).toContain('Versión: talleres-2026-10-2');
+  it('la sección 13 de talleres trae su título y versión vigentes', () => {
+    expect(textoDe(Privacidad)).toContain('13. Talleres, cotizaciones y órdenes de servicio');
+    expect(textoDe(Privacidad)).toContain('Versión: talleres-2026-10-3 · 12 de octubre de 2026');
+  });
+});
+
+// Textos finales aprobados por el abogado el 11 de octubre de 2026 (planes, captura a domicilio,
+// insignia Premium, solicitudes de piezas y avisos internos por CallMeBot).
+describe('textos finales del 12 de octubre de 2026', () => {
+  it('Términos, sección 4 «Planes del servicio»: los tres párrafos, sin el texto anterior', () => {
+    const texto = textoDe(Terminos);
+    expect(texto).toContain('4. Planes del servicio');
+    for (const p of ['La Plataforma ofrece dos planes. Plan Básico: sin costo; incluye la administración y publicación del inventario del yonke, la sección de pedidos y la configuración de los datos de su negocio. Plan Premium: $398.00 MXN al mes más IVA; incluye las demás funciones de la Plataforma, incluidas las que se incorporen en el futuro.', 'Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026 reciben un año del plan Premium sin costo, del 1 de noviembre de 2026 al 1 de noviembre de 2027. Al terminar ese año, el yonke decide si contrata el plan Premium o continúa en el plan Básico, y Mecanix se lo avisará con al menos 30 días naturales de anticipación. No se cobra ningún monto sin que el yonke lo acepte expresamente.', 'Mecanix puede modificar las funciones de cada plan e introducir nuevos planes o funciones de pago, avisando a los yonkes registrados con al menos 30 días naturales de anticipación.']) expect(texto).toContain(p);
+    expect(texto).not.toContain('Servicio sin costo y posibles planes de pago');
+    expect(texto).not.toContain('gratuito para los yonkes');
+  });
+  it('Términos, sección 5: la captura a domicilio en los estados donde se ofrece (el resto igual)', () => {
+    const texto = textoDe(Terminos);
+    expect(texto).toContain('Servicio opcional, disponible en los estados donde Mecanix lo ofrezca, que se indican en la Plataforma, y solo a solicitud del yonke: personal de Mecanix visita el negocio para ayudar a capturar su inventario. Tiene un costo de $300 MXN por visita.');
+    expect(texto).not.toContain('únicamente en Baja California');
+    expect(texto).toContain('No es una suscripción ni un cobro periódico');
+  });
+  it('Términos: la insignia Premium es "plan Premium vigente"', () => {
+    const texto = textoDe(Terminos);
+    expect(texto).toContain('• Premium: la cuenta tiene el plan Premium vigente.');
+    expect(texto).not.toContain('designación asignada por Mecanix');
+  });
+  it('Términos, sección 21: los yonkes responden con su precio y el taller elige', () => {
+    const texto = textoDe(Terminos);
+    for (const p of ['Los talleres registrados en la Plataforma pueden solicitar una pieza indicando los datos de un vehículo. La solicitud aparece en el panel de los yonkes registrados en el estado correspondiente, con el nombre del taller, los datos del vehículo, la pieza y la nota del taller. Los yonkes que tienen la pieza responden con su precio, y el taller decide con cuál acuerda la compra, considerando los costos, las garantías y la compatibilidad. Solo al yonke elegido se le muestra el WhatsApp del taller.', 'El yonke solo puede usar los datos de una solicitud para atender esa solicitud, y es el único responsable de la veracidad de su respuesta. La entrega, el pago y cualquier garantía de la pieza se acuerdan directamente entre el taller y el yonke elegido; Mecanix no es parte de ese acuerdo ni garantiza la disponibilidad, el estado o el precio de la pieza.', 'Esta sección aplica a los yonkes. Los talleres se rigen, además, por la sección 22.']) expect(texto).toContain(p);
+    expect(texto).not.toContain('El primer yonke que confirme a Mecanix');
+  });
+  it('Privacidad, sección 12 (primer párrafo) y frase nueva de CallMeBot en la sección 5', () => {
+    const texto = textoDe(Privacidad);
+    expect(texto).toContain('Cuando un taller registrado solicita una pieza, Mecanix muestra la solicitud en el panel de los yonkes registrados en el estado correspondiente, con el nombre del taller, los datos del vehículo, la pieza y la nota del taller, con la única finalidad de que puedan confirmar si la tienen y atender la solicitud. El WhatsApp del taller solo se muestra al yonke que el taller elige. No se comparten datos personales del cliente final del taller.');
+    expect(texto).toContain('datos de contacto del yonke registrado). También enviamos por ese medio avisos internos al administrador cuando un taller solicita una pieza (nombre del taller, pieza, vehículo y estado) o cuando se solicita una entrega inmediata (pieza, vehículo y nombre del yonke).');
+    expect(texto).toContain('es responsable, bajo su propia cuenta, de la veracidad de su respuesta al confirmar que tiene la pieza.');
   });
 });

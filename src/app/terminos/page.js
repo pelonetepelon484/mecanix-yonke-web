@@ -21,7 +21,7 @@ export default function Terminos() {
           Términos y Condiciones de Uso
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 10 de octubre de 2026
+          Última actualización: 12 de octubre de 2026
         </p>
 
         <Seccion titulo="1. Aceptación de los términos">
@@ -39,14 +39,14 @@ export default function Terminos() {
           <p style={parrafoStyle}>Mecanix Yonke Virtual puede verificar, aprobar o rechazar cualquier registro, así como suspender o eliminar cuentas que incumplan estos términos (ver sección 18).</p>
         </Seccion>
 
-        <Seccion titulo="4. Servicio sin costo y posibles planes de pago">
-          <p style={parrafoStyle}>Actualmente el uso de la Plataforma es <strong>gratuito para los yonkes</strong>: incluye publicar y administrar inventario, aparecer en los resultados de búsqueda, recibir contacto por WhatsApp, recibir reservaciones y usar las herramientas de su panel. No hay mensualidad ni suscripción vigente.</p>
-          <p style={parrafoStyle}>Mecanix puede modificar las funciones del servicio gratuito e introducir en el futuro planes o funciones de pago. En ese caso lo notificaremos a los yonkes registrados con al menos 30 días naturales de anticipación, y no se cobrará ningún monto sin que el yonke lo acepte expresamente.</p>
-          <p style={parrafoStyle}>Las funciones anunciadas como “próximamente” son mejoras planeadas sin fecha comprometida; su disponibilidad puede cambiar sin que esto genere obligación alguna para Mecanix.</p>
+        <Seccion titulo="4. Planes del servicio">
+          <p style={parrafoStyle}>La Plataforma ofrece dos planes. Plan Básico: sin costo; incluye la administración y publicación del inventario del yonke, la sección de pedidos y la configuración de los datos de su negocio. Plan Premium: $398.00 MXN al mes más IVA; incluye las demás funciones de la Plataforma, incluidas las que se incorporen en el futuro.</p>
+          <p style={parrafoStyle}>Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026 reciben un año del plan Premium sin costo, del 1 de noviembre de 2026 al 1 de noviembre de 2027. Al terminar ese año, el yonke decide si contrata el plan Premium o continúa en el plan Básico, y Mecanix se lo avisará con al menos 30 días naturales de anticipación. No se cobra ningún monto sin que el yonke lo acepte expresamente.</p>
+          <p style={parrafoStyle}>Mecanix puede modificar las funciones de cada plan e introducir nuevos planes o funciones de pago, avisando a los yonkes registrados con al menos 30 días naturales de anticipación.</p>
         </Seccion>
 
         <Seccion titulo="5. Captura de inventario a domicilio">
-          <p style={parrafoStyle}>Servicio <strong>opcional</strong>, disponible <strong>únicamente en Baja California</strong> y <strong>solo a solicitud del yonke</strong>: personal de Mecanix visita el negocio para ayudar a capturar su inventario. Tiene un costo de <strong>$300 MXN por visita</strong>. No es una suscripción ni un cobro periódico: se contrata y se paga cada vez que el yonke lo solicita, y el pago se acuerda directamente entre el yonke y Mecanix.</p>
+          <p style={parrafoStyle}>Servicio <strong>opcional</strong>, disponible en los estados donde Mecanix lo ofrezca, que se indican en la Plataforma, y <strong>solo a solicitud del yonke</strong>: personal de Mecanix visita el negocio para ayudar a capturar su inventario. Tiene un costo de <strong>$300 MXN por visita</strong>. No es una suscripción ni un cobro periódico: se contrata y se paga cada vez que el yonke lo solicita, y el pago se acuerda directamente entre el yonke y Mecanix.</p>
           <p style={parrafoStyle}>Mecanix puede ofrecer promociones (por ejemplo, una primera visita sin costo para yonkes nuevos), cuyas condiciones vigentes se publican en la Plataforma. Si el yonke necesita cancelar o reagendar una visita acordada, debe avisar con anticipación razonable; no se cobran visitas que no se realicen. La tarifa y la disponibilidad por estado pueden cambiar con aviso previo.</p>
           <p style={parrafoStyle}>Aun cuando el personal de Mecanix capture el inventario, el yonke sigue siendo el único responsable de que la información sea correcta y de mantenerla actualizada.</p>
         </Seccion>
@@ -90,7 +90,7 @@ export default function Terminos() {
           <p style={parrafoStyle}>• <strong>Verificado:</strong> Mecanix confirmó personalmente que el yonke es un negocio real.</p>
           <p style={parrafoStyle}>• <strong>Entrega Inmediata:</strong> el yonke participa en el servicio de entrega descrito en la sección 11.</p>
           <p style={parrafoStyle}>• <strong>Envíos nacionales:</strong> el yonke envía piezas a otros estados.</p>
-          <p style={parrafoStyle}>• <strong>Premium:</strong> la cuenta tiene esa designación asignada por Mecanix.</p>
+          <p style={parrafoStyle}>• <strong>Premium:</strong> la cuenta tiene el plan Premium vigente.</p>
           <p style={parrafoStyle}>Las insignias <strong>no constituyen garantía de calidad, de disponibilidad de piezas ni de precio</strong>, ni una recomendación de Mecanix sobre el yonke. Por ejemplo, “Verificado” significa que Mecanix confirmó que se trata de un negocio real; no significa que todas sus piezas estén disponibles ni que cumplan determinada calidad.</p>
         </Seccion>
 
@@ -148,8 +148,8 @@ export default function Terminos() {
         </Seccion>
 
         <Seccion titulo="21. Solicitudes de piezas de talleres">
-          <p style={parrafoStyle}>Los talleres registrados en la Plataforma pueden solicitar una pieza indicando los datos de un vehículo. Mecanix notifica esa solicitud a los yonkes que podrían tenerla, por WhatsApp u otros medios, compartiendo con ellos los datos del taller y los datos del vehículo y la pieza solicitados. El primer yonke que confirme a Mecanix que tiene la pieza queda asignado a esa solicitud.</p>
-          <p style={parrafoStyle}>El yonke solo puede usar los datos de una solicitud para atender esa solicitud, y es el único responsable de la veracidad de su respuesta al confirmar que tiene la pieza. La entrega, el pago y cualquier garantía de la pieza se acuerdan directamente entre el taller y el yonke asignado; Mecanix no es parte de ese acuerdo ni garantiza la disponibilidad, el estado o el precio de la pieza.</p>
+          <p style={parrafoStyle}>Los talleres registrados en la Plataforma pueden solicitar una pieza indicando los datos de un vehículo. La solicitud aparece en el panel de los yonkes registrados en el estado correspondiente, con el nombre del taller, los datos del vehículo, la pieza y la nota del taller. Los yonkes que tienen la pieza responden con su precio, y el taller decide con cuál acuerda la compra, considerando los costos, las garantías y la compatibilidad. Solo al yonke elegido se le muestra el WhatsApp del taller.</p>
+          <p style={parrafoStyle}>El yonke solo puede usar los datos de una solicitud para atender esa solicitud, y es el único responsable de la veracidad de su respuesta. La entrega, el pago y cualquier garantía de la pieza se acuerdan directamente entre el taller y el yonke elegido; Mecanix no es parte de ese acuerdo ni garantiza la disponibilidad, el estado o el precio de la pieza.</p>
           <p style={parrafoStyle}>Esta sección aplica a los yonkes. Los talleres se rigen, además, por la sección 22.</p>
         </Seccion>
 

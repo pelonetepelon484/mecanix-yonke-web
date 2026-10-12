@@ -76,7 +76,11 @@ export function armarAvisoOrden(taller: Taller, orden: Orden, version?: unknown,
     [/\[folio\]/gi, texto(orden?.folio) || EN_BLANCO],
     [/\[fecha de recepción\]/gi, recibida ? recibida.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : EN_BLANCO],
   ];
-  const llenar = (l: Parrafo[]) => l.map((p) => reemplazos.reduce((t, [marca, valor]) => t.replace(marca, valor), p.texto as string));
+  // El renglón "Versión del aviso: ..." del texto no se repite en el cuerpo: el PDF ya imprime la
+  // versión al pie de cada hoja (igual que el aviso de la cotización).
+  const llenar = (l: Parrafo[]) => l
+    .filter((p) => !(p.texto as string).startsWith('Versión del aviso:'))
+    .map((p) => reemplazos.reduce((t, [marca, valor]) => t.replace(marca, valor), p.texto as string));
   const hoja = (l: Parrafo[]) => {
     const [titulo, ...parrafos] = llenar(l);
     return { titulo, parrafos };

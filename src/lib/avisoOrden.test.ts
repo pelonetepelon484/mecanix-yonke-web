@@ -11,16 +11,39 @@ const listo = {
 const config = { datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-1' };
 
 describe('aviso de privacidad de órdenes (falla cerrada)', () => {
-  it('hoy el archivo trae el marcador "[TEXTO LEGAL PENDIENTE]" y la versión aviso-orden-1', () => {
+  it('el archivo ya trae el texto final aviso-orden-1 (sin el marcador "[TEXTO LEGAL PENDIENTE]")', () => {
     expect(MARCADOR_PENDIENTE).toBe('[TEXTO LEGAL PENDIENTE]');
     expect(VERSION_AVISO_ORDEN).toBe('aviso-orden-1');
-    expect(JSON.stringify((textos as { avisoOrden: unknown }).avisoOrden)).toContain(MARCADOR_PENDIENTE);
+    expect(JSON.stringify((textos as { avisoOrden: unknown }).avisoOrden)).not.toContain(MARCADOR_PENDIENTE);
+    expect(avisoOrdenListo()).toBe(true);
+    expect(avisoOrdenListo('aviso-orden-1')).toBe(true);
+    expect(avisoOrdenListo('aviso-orden-0')).toBe(false);
   });
-  it('con el marcador NO está listo: ni campos del cliente ni hoja de aviso', () => {
-    expect(avisoOrdenListo()).toBe(false);
-    expect(avisoOrdenListo('aviso-orden-1')).toBe(false);
-    expect(datosClienteDisponibles(config)).toBe(false);
-    expect(armarAvisoOrden({ nombre: 'T' }, {}, 'aviso-orden-1')).toBeNull();
+  it('texto final: títulos, primer y último párrafo de cada hoja', () => {
+    const { aviso, constancia } = (textos as { avisoOrden: { aviso: { texto: string }[]; constancia: { texto: string }[] } }).avisoOrden;
+    expect(aviso).toHaveLength(8);
+    expect(aviso[0].texto).toBe('Aviso de privacidad de la orden de servicio');
+    expect(aviso[1].texto.startsWith('Responsable. [Nombre del taller], con domicilio en [ciudad]')).toBe(true);
+    expect(aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-1');
+    expect(constancia).toHaveLength(6);
+    expect(constancia[0].texto).toBe('Constancia de recepción del vehículo');
+    expect(constancia[1].texto).toBe('Orden de servicio [folio]. Fecha de recepción: [fecha de recepción].');
+    expect(constancia.at(-1)?.texto).toBe('Nombre y firma del cliente: ______________________________ Fecha: ______________');
+  });
+  it('los datos del cliente siguen apagados mientras config/ordenes no los encienda (interruptor de la consola)', () => {
+    expect(datosClienteDisponibles(null)).toBe(false);
+    expect(datosClienteDisponibles({ datosClienteHabilitados: false, avisoOrdenVersion: 'aviso-orden-1' })).toBe(false);
+    expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-0' })).toBe(false);
+    expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-1' })).toBe(true);
+  });
+  it('armado con el texto real: llena los datos, no deja marcadores y no repite la versión (va al pie)', () => {
+    const r = armarAvisoOrden({ nombre: 'Taller Peña', ciudad: 'Tijuana', whatsapp: '6641234567' }, { folio: 'O261011-7KQ4', creadoAt: new Date(2026, 9, 11) }, 'aviso-orden-1');
+    expect(r?.aviso.titulo).toBe('Aviso de privacidad de la orden de servicio');
+    expect(r?.aviso.parrafos[0]).toBe('Responsable. Taller Peña, con domicilio en Tijuana y contacto en 664 123 4567, es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio O261011-7KQ4.');
+    expect(r?.aviso.parrafos.some((p) => p.startsWith('Versión del aviso'))).toBe(false);
+    expect(r?.constancia.parrafos[0]).toBe('Orden de servicio O261011-7KQ4. Fecha de recepción: 11 de octubre de 2026.');
+    const todo = [...(r?.aviso.parrafos ?? []), ...(r?.constancia.parrafos ?? [])].join('\n');
+    expect(todo).not.toMatch(/\[[^\]]+\]/);
   });
   it('si queda AUNQUE SEA un párrafo con el marcador, o una lista vacía, sigue cerrado', () => {
     expect(avisoOrdenListo(undefined, { ...listo, constancia: [{ texto: `Algo ${MARCADOR_PENDIENTE}` }] })).toBe(false);

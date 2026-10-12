@@ -1,6 +1,6 @@
 {
-  "version": "talleres-2026-10-2",
-  "fecha": "7 de octubre de 2026",
+  "version": "talleres-2026-10-3",
+  "fecha": "12 de octubre de 2026",
   "urls": {
     "terminosTalleres": "https://mecanixyonkevirtual.com/terminos#talleres",
     "privacidadTalleres": "https://mecanixyonkevirtual.com/privacidad#talleres"
@@ -12,7 +12,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Plataforma: el sitio y las herramientas de Mecanix Yonke Virtual. Mecanix: David Hernández Martínez, persona física, con domicilio en Calle Casiopea #1-C, Colonia Sánchez Taboada, Tijuana, Baja California, C.P. 22185; correo contacto@mecanixyonkevirtual.com; WhatsApp 661 103 4260. Taller: la persona física o moral que crea una cuenta de taller. Cliente del Taller: la persona cuyos datos el Taller captura al elaborar una cotización. Cotización: el documento que el Taller elabora en la Plataforma."
+      "texto": "Plataforma: el sitio y las herramientas de Mecanix Yonke Virtual. Mecanix: David Hernández Martínez, persona física, con domicilio en Calle Casiopea #1-C, Colonia Sánchez Taboada, Tijuana, Baja California, C.P. 22185; correo contacto@mecanixyonkevirtual.com; WhatsApp 661 103 4260. Taller: la persona física o moral que crea una cuenta de taller. Cliente del Taller: la persona cuyos datos el Taller captura al elaborar una cotización o una orden de servicio. Cotización: el documento que el Taller elabora en la Plataforma. Orden de servicio: el documento que el Taller elabora en la Plataforma para registrar la recepción de un vehículo y los trabajos que se le realizarán."
     },
     {
       "tipo": "subtitulo",
@@ -24,7 +24,11 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Mecanix utiliza servicios de terceros para almacenar y alojar la Plataforma: Google LLC (Firebase / Google Cloud) y Vercel Inc. Esos proveedores operan bajo sus propios términos y políticas, y Mecanix no es responsable de actividades que no le competen o que están fuera de su control. El uso de estos proveedores constituye una remisión de datos y no una transferencia."
+      "texto": "Mecanix utiliza servicios de terceros para almacenar y alojar la Plataforma y para enviar avisos automáticos: Google LLC (Firebase / Google Cloud), Vercel Inc. y CallMeBot. Esos proveedores operan bajo sus propios términos y políticas, y Mecanix no es responsable de actividades que no le competen o que están fuera de su control. El uso de estos proveedores constituye una remisión de datos y no una transferencia."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Cuando un Taller solicita una pieza, la Plataforma genera de forma automática un aviso interno para el administrador de Mecanix, que se envía por WhatsApp mediante un servicio de mensajería de terceros (CallMeBot) y contiene el nombre del Taller, la pieza, los datos del vehículo y el estado. Ese aviso no incluye datos personales de los Clientes del Taller ni el WhatsApp del Taller, y Mecanix no participa en las conversaciones entre el Taller y el yonke."
     },
     {
       "tipo": "subtitulo",
@@ -32,7 +36,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "El Taller se obliga a poner a disposición de sus Clientes un aviso de privacidad y a entregárselo al firmar la cotización, ya sea uno propio o el que la Plataforma genera para su Taller. El Taller es responsable del contenido y del cumplimiento de ese aviso. El Cliente que firme la cotización acepta los términos del Taller, los cuales remiten a los Términos y Condiciones de Mecanix. Si el Cliente no acepta la cotización, el Taller deberá eliminarla de inmediato."
+      "texto": "El Taller se obliga a poner a disposición de sus Clientes un aviso de privacidad y a entregárselo, ya sea uno propio o el que la Plataforma genera para su Taller: en las cotizaciones, al firmar la cotización, y en las órdenes de servicio, al recibir el vehículo, junto con la constancia de recepción firmada. El aviso de la cotización informa al Cliente que, si la aprueba, la cotización se convierte en orden de trabajo y se elimina de la Plataforma, y que el Taller puede imprimirla o conservarla para su contabilidad, lo cual ya no compete a Mecanix. El Taller es responsable del contenido y del cumplimiento de ese aviso. El Cliente que firme acepta los términos del Taller, los cuales remiten a los Términos y Condiciones de Mecanix. Si el Cliente no aprueba la cotización, el Taller deberá eliminarla de inmediato."
     },
     {
       "tipo": "subtitulo",
@@ -40,7 +44,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Las solicitudes de los Clientes se presentan ante el Taller, que las atiende como responsable. Mecanix responde al Taller, como proveedor del servicio de almacenamiento, en los plazos que establezca la ley aplicable vigente. Cuando se active la captura de datos personales del Cliente, la Plataforma incluirá la función «Quitar datos del cliente», mediante la cual el Taller activo podrá eliminar nombre, teléfono y placas de una cotización. Si el Taller necesita la eliminación completa de una cotización, puede solicitarla a Mecanix en contacto@mecanixyonkevirtual.com."
+      "texto": "Las solicitudes de los Clientes se presentan ante el Taller, que las atiende como responsable. Mecanix responde al Taller, como proveedor del servicio de almacenamiento, en los plazos que establezca la ley aplicable vigente. La Plataforma incluye la función «Quitar datos del cliente», mediante la cual el Taller activo que haya aceptado la versión vigente de los Términos puede eliminar nombre, teléfono y placas de una cotización o de una orden de servicio. Con esa misma condición, el Taller puede eliminar por completo una cotización o una orden en cualquier momento."
     },
     {
       "tipo": "subtitulo",
@@ -48,7 +52,15 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Las cotizaciones y sus renglones se conservan en la Plataforma por un máximo de 90 días contados desde su creación y después se eliminan automáticamente. Por razones de seguridad y recuperación ante fallas, pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses, tras el cual se eliminan. Si Mecanix restaura una copia de seguridad, eliminará de inmediato la información vencida."
+      "texto": "Cotizaciones. Las cotizaciones y sus renglones se conservan en la Plataforma por un máximo de 90 días contados desde su creación y después se eliminan automáticamente. Una cotización que el Cliente no aprueba la elimina el Taller de inmediato, y una cotización que se convierte en orden de servicio se elimina al convertirla."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Órdenes de servicio. Las órdenes que no se han entregado se eliminan automáticamente 90 días después de su última modificación. Las órdenes entregadas se eliminan automáticamente 10 días después de terminar la garantía que el Taller registró al entregar el vehículo."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Copias de seguridad. Por razones de seguridad y recuperación ante fallas, la información puede permanecer en copias de seguridad por un periodo adicional de hasta seis meses, tras el cual se elimina. Mecanix solo restaura una copia de seguridad cuando los datos actuales se hayan dañado y, si lo hace, eliminará de inmediato la información vencida."
     },
     {
       "tipo": "subtitulo",
@@ -56,7 +68,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Cuando Mecanix actualice estos Términos o el Aviso de Privacidad de manera que afecte a los Talleres, mostrará un aviso de cambios al Taller al acceder a la Plataforma. Para seguir creando o editando cotizaciones, el Taller deberá aceptar la versión vigente. Mientras no la acepte, podrá consultar sus cotizaciones anteriores y quitar datos de sus Clientes, pero no podrá crear ni editar cotizaciones. Mecanix registrará la versión aceptada y la fecha de cada aceptación, y conservará ese historial mientras exista la cuenta del Taller y, como mínimo, mientras exista la última cotización elaborada bajo la versión aceptada, por razones de acreditación legal."
+      "texto": "Cuando Mecanix actualice estos Términos o el Aviso de Privacidad de manera que afecte a los Talleres, mostrará un aviso de cambios al Taller al acceder a la Plataforma. Para seguir creando o editando cotizaciones y órdenes de servicio, el Taller deberá aceptar la versión vigente escribiendo la palabra «ACEPTO». Mientras no la acepte, solo podrá visualizar, reimprimir y descargar sus cotizaciones y órdenes anteriores; no podrá crear ni editar cotizaciones u órdenes, quitar datos de sus Clientes ni eliminarlas. Mecanix registrará la versión aceptada y la fecha de cada aceptación, y conservará ese historial mientras exista la cuenta del Taller y, como mínimo, mientras exista la última cotización u orden elaborada bajo la versión aceptada, por razones de acreditación legal."
     },
     {
       "tipo": "subtitulo",
@@ -64,7 +76,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "El Taller se obliga a capturar únicamente los datos necesarios para elaborar la cotización. El campo de observaciones es exclusivamente para observaciones del vehículo; no debe usarse para datos personales, datos sensibles ni datos innecesarios. El incumplimiento faculta a Mecanix a suspender o desactivar la cuenta del Taller, revocándole de inmediato el acceso a la Plataforma."
+      "texto": "El Taller se obliga a capturar únicamente los datos necesarios para elaborar la cotización o la orden de servicio. Los campos de texto libre (observaciones, falla reportada, estado del vehículo al recibirlo y pertenencias) son exclusivamente para información del vehículo; no deben usarse para datos personales, datos sensibles ni datos innecesarios. El incumplimiento faculta a Mecanix a suspender o desactivar la cuenta del Taller, revocándole de inmediato el acceso a la Plataforma."
     },
     {
       "tipo": "subtitulo",
@@ -76,7 +88,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "1.8.2 Límite máximo de responsabilidad. Para el supuesto extremo en que una autoridad judicial o administrativa competente determine, mediante resolución firme, la responsabilidad de Mecanix por una falla directa atribuible al software, la responsabilidad total acumulada de Mecanix frente al Taller o cualquier tercero derivado del Servicio estará limitada a un monto fijo máximo. Mientras el servicio de talleres sea gratuito, el tope máximo de responsabilidad será de $5,000.00 MXN. Si Mecanix ofrece planes de pago, el tope será el establecido para el plan contratado al momento del evento: Plan Básico hasta $5,000.00 MXN, Plan Pro hasta $15,000.00 MXN y Plan Empresarial hasta $30,000.00 MXN."
+      "texto": "1.8.2 Límite máximo de responsabilidad. Para el supuesto extremo en que una autoridad judicial o administrativa competente determine, mediante resolución firme, la responsabilidad de Mecanix por una falla directa atribuible al software, la responsabilidad total acumulada de Mecanix frente al Taller o cualquier tercero derivado del Servicio estará limitada a un monto fijo máximo. Mientras el servicio de talleres sea gratuito, el tope máximo de responsabilidad será de $5,000.00 MXN. Si el Taller contrata un plan de pago, el tope será el del plan contratado al momento del evento: plan Básico hasta $5,000.00 MXN y plan Premium hasta $15,000.00 MXN."
     },
     {
       "tipo": "parrafo",
@@ -92,11 +104,27 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "El Taller puede solicitar en la Plataforma una pieza, indicando los datos del vehículo (marca, modelo y año) y la pieza buscada. Mecanix notifica la solicitud a los yonkes registrados que podrían tenerla, por WhatsApp u otros medios, compartiendo con ellos los datos del Taller (nombre, WhatsApp y ciudad) y los datos del vehículo y la pieza solicitados, sin incluir datos personales del Cliente del Taller. El primer yonke que confirme a Mecanix que tiene la pieza queda asignado a esa solicitud."
+      "texto": "El Taller puede solicitar en la Plataforma una pieza, indicando los datos del vehículo (marca, modelo y año), la pieza buscada y, si lo desea, una nota. La solicitud aparece en el panel de la Plataforma de los yonkes registrados en el estado correspondiente, con el nombre del Taller, los datos del vehículo, la pieza y la nota, sin incluir datos personales del Cliente del Taller. Los yonkes que tienen la pieza responden en la Plataforma con su precio. El Taller revisa las respuestas y decide a qué yonke le compra, considerando los costos, las garantías y la compatibilidad de la pieza; la elección es definitiva. Solo al yonke elegido se le muestra el WhatsApp del Taller, para acordar la entrega y el pago. Mecanix no asigna la pieza a ningún yonke y no garantiza que algún yonke vea o responda la solicitud."
     },
     {
       "tipo": "parrafo",
       "texto": "Respecto de esta función, Mecanix actúa únicamente como intermediario tecnológico: no vende piezas, no interviene en la negociación y no garantiza que algún yonke tenga la pieza, su estado, su precio ni su disponibilidad. La entrega, el pago y cualquier garantía de la pieza se acuerdan directamente entre el Taller y el yonke asignado; Mecanix no es parte de ese acuerdo ni responde por su cumplimiento."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.10 Documentos y expediente propio del Taller"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Mecanix elimina de la Plataforma las cotizaciones y órdenes conforme a la cláusula 1.5 y no conserva los documentos después de esa eliminación. Antes de ella, la Plataforma permite al Taller descargar cada documento en PDF, o todos sus documentos activos en un solo archivo. El Taller es responsable de descargar y conservar, en su propio expediente, en formato físico y durante el tiempo que la ley le exija (garantías, reclamaciones, obligaciones fiscales y cualquier otra), los documentos que la ley le obligue a guardar. La eliminación de un documento de la Plataforma no implica la destrucción de los documentos que el Taller deba conservar en sus propios archivos. Cuando el Cliente aprueba una cotización, esta se convierte en orden de trabajo y la cotización se elimina de la Plataforma; el Taller puede imprimirla antes para su contabilidad, lo cual ya no compete a Mecanix."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.11 Planes y funciones de pago"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La Plataforma ofrece un plan Básico, sin costo, y un plan Premium, de pago, con un precio de $398.00 MXN al mes más IVA. Las cotizaciones y la solicitud de piezas a yonkes están incluidas en el plan Básico. Las órdenes de servicio y las demás funciones de la Plataforma, incluidas las que se incorporen en el futuro, forman parte del plan Premium. Mientras Mecanix no comience a cobrarlas, las órdenes de servicio están disponibles sin costo para los Talleres registrados. Mecanix avisará al Taller con al menos 30 días naturales de anticipación antes de empezar a cobrar una función que hoy es gratuita, y no hará ningún cobro sin la aceptación expresa del Taller. Si el Taller no contrata el plan Premium, podrá seguir consultando, descargando y eliminando las órdenes ya creadas."
     }
   ],
   "privacidad": [
@@ -114,11 +142,11 @@
     },
     {
       "tipo": "subtitulo",
-      "texto": "2.2 Datos de las cotizaciones"
+      "texto": "2.2 Datos de las cotizaciones y de las órdenes"
     },
     {
       "tipo": "parrafo",
-      "texto": "El Taller captura datos de vehículos (marca, modelo, año, kilometraje), renglones, observaciones del vehículo y vigencia. Cuando se active la función, también el nombre y teléfono del Cliente y las placas del vehículo. Respecto de los datos personales de los Clientes, el responsable es el Taller y Mecanix actúa como proveedor del servicio de almacenamiento, conforme a los Términos."
+      "texto": "En las cotizaciones, el Taller captura datos del vehículo (marca, modelo, año, kilometraje), renglones, observaciones del vehículo y vigencia. En las órdenes de servicio captura, además, la falla reportada, el estado del vehículo al recibirlo, las pertenencias dentro del vehículo, los trabajos y piezas con sus precios, el estado de la orden, la fecha de entrega y los días de garantía. En ambas puede capturar el nombre y teléfono del Cliente y las placas del vehículo. Respecto de los datos personales de los Clientes, el responsable es el Taller y Mecanix actúa como proveedor del servicio de almacenamiento, conforme a los Términos."
     },
     {
       "tipo": "subtitulo",
@@ -126,7 +154,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Los datos de las cotizaciones solo son visibles para el Taller que los capturó y para el administrador de Mecanix. No se comparten con yonkes, con otros talleres ni con terceros, salvo cuando el Taller solicita una pieza a los yonkes, conforme a la sección 2.6. Mecanix utiliza proveedores de infraestructura (Google LLC, mediante Firebase / Google Cloud, y Vercel Inc.) para almacenar y alojar la Plataforma, y no es responsable de actividades de esos proveedores que no le competan. El uso de estos proveedores constituye una remisión de datos y no una transferencia."
+      "texto": "Los datos de las cotizaciones y de las órdenes solo son visibles para el Taller que los capturó y para el administrador de Mecanix. No se comparten con yonkes, con otros talleres ni con terceros, salvo cuando el Taller solicita una pieza a los yonkes, conforme a la sección 2.6. Mecanix utiliza servicios de terceros para almacenar y alojar la Plataforma y para enviar avisos automáticos: Google LLC (Firebase / Google Cloud), Vercel Inc. y CallMeBot, y no es responsable de actividades de esos proveedores que no le competan. El uso de estos proveedores constituye una remisión de datos y no una transferencia. Cuando un Taller solicita una pieza, la Plataforma genera de forma automática un aviso interno para el administrador de Mecanix, que se envía por WhatsApp mediante CallMeBot y contiene el nombre del Taller, la pieza, los datos del vehículo y el estado. Ese aviso no incluye datos personales de los Clientes del Taller ni el WhatsApp del Taller, y Mecanix no participa en las conversaciones entre el Taller y el yonke."
     },
     {
       "tipo": "subtitulo",
@@ -134,7 +162,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Cotizaciones y renglones: hasta 90 días desde su creación, más el periodo adicional en copias de seguridad de hasta seis meses. Datos de la cuenta del Taller: mientras la cuenta esté activa. Historial de aceptaciones: mientras exista la cuenta del Taller y, como mínimo, mientras exista la última cotización elaborada bajo la versión aceptada, por razones de acreditación legal."
+      "texto": "Cotizaciones y renglones: hasta 90 días desde su creación. Una cotización que el Cliente no aprueba la elimina el Taller de inmediato, y una cotización convertida en orden se elimina al convertirla. Órdenes sin entregar: 90 días desde su última modificación. Órdenes entregadas: 10 días después de terminar la garantía registrada por el Taller. En todos los casos, hasta seis meses adicionales en copias de seguridad. Datos de la cuenta del Taller: mientras la cuenta esté activa. Historial de aceptaciones: mientras exista la cuenta del Taller y, como mínimo, mientras exista la última cotización u orden elaborada bajo la versión aceptada, por razones de acreditación legal."
     },
     {
       "tipo": "subtitulo",
@@ -142,7 +170,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Datos de la cuenta del Taller: ante Mecanix, en contacto@mecanixyonkevirtual.com o WhatsApp 661 103 4260. Datos de los Clientes del Taller: ante el Taller que los capturó; Mecanix apoya al Taller en la atención de la solicitud."
+      "texto": "Datos de la cuenta del Taller: ante Mecanix, en contacto@mecanixyonkevirtual.com o WhatsApp 661 103 4260. Datos de los Clientes del Taller: ante el Taller que los capturó, que puede quitar los datos del Cliente o eliminar la cotización o la orden desde la Plataforma. Mecanix apoya al Taller en la atención de la solicitud."
     },
     {
       "tipo": "subtitulo",
@@ -150,7 +178,15 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Cuando el Taller solicita una pieza, Mecanix comparte con los yonkes que reciben la solicitud los datos del Taller (nombre, WhatsApp y ciudad) y los datos del vehículo y la pieza solicitados, con la única finalidad de que puedan confirmar si la tienen y atender la solicitud. Mecanix no comparte con esos yonkes datos personales del Cliente del Taller."
+      "texto": "Cuando el Taller solicita una pieza, la solicitud se muestra en el panel de los yonkes registrados en el estado correspondiente, con el nombre del Taller, los datos del vehículo, la pieza y la nota que el Taller haya escrito, con la única finalidad de que respondan si la tienen y a qué precio. El WhatsApp del Taller solo se muestra al yonke que el Taller elige, para acordar la entrega y el pago. Mecanix no comparte con los yonkes datos personales del Cliente del Taller."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "2.7 Descarga de documentos"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Antes de que una cotización u orden se elimine, el Taller puede descargarla en PDF, o descargar todos sus documentos activos en un solo archivo. Mecanix no conserva los documentos después de su eliminación; el Taller es responsable de conservar su propio expediente."
     }
   ],
   "avisosTaller": [
@@ -237,19 +273,67 @@
       ]
     }
   ],
-  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir las herramientas de taller y el nuevo flujo de solicitud de piezas a yonkes. Tu taller es el responsable de los datos de sus clientes y Mecanix los almacena por tu petición; las cotizaciones se eliminan a los 90 días; y debes entregar un aviso de privacidad a tus clientes. Además, cuando solicites una pieza a los yonkes, Mecanix compartirá con ellos los datos de tu taller y del vehículo solicitado, pero nunca los datos personales de tu cliente. Para seguir creando cotizaciones o solicitando piezas, lee y acepta la nueva versión. Mientras tanto puedes consultar tus cotizaciones anteriores y quitar datos de tus clientes.",
+  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir las órdenes de servicio. Las órdenes se eliminan 90 días después de su última modificación, o 10 días después de terminar la garantía que registres al entregar el vehículo. Las cotizaciones se eliminan a los 90 días de su creación; si tu cliente aprueba una, se convierte en orden y la cotización se elimina, y debes eliminar de inmediato las que no apruebe. Antes de que se eliminen puedes descargar tus documentos; tú eres responsable de conservar, en formato físico, lo que la ley te exija. Al recibir un vehículo debes entregar a tu cliente el aviso de privacidad y la constancia de recepción. También corregimos la descripción de las solicitudes de piezas: los yonkes responden con su precio y tú decides con cuál compras. Las cotizaciones y las solicitudes de piezas están incluidas sin costo en el plan Básico; las órdenes de servicio y las demás funciones, incluidas las futuras, forman parte del plan Premium ($398 al mes más IVA), y las órdenes seguirán sin costo hasta que te avisemos con al menos 30 días de anticipación. Para seguir creando o editando cotizaciones y órdenes, lee y escribe «ACEPTO». Mientras no lo hagas, solo podrás visualizar, reimprimir y descargar tus documentos anteriores.",
   "avisoOrden": {
     "version": "aviso-orden-1",
     "aviso": [
       {
         "tipo": "parrafo",
-        "texto": "[TEXTO LEGAL PENDIENTE]"
+        "texto": "Aviso de privacidad de la orden de servicio"
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio [folio]."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Datos y finalidad. Podemos recabar su nombre y teléfono; los datos de su vehículo (marca, modelo, año, placas y kilometraje); la falla que reporta; el estado del vehículo al recibirlo; las pertenencias que se anoten; los trabajos, piezas y costos; y la fecha de entrega y la garantía. Los usamos para identificarlo y contactarlo, documentar el estado del vehículo, elaborar y dar seguimiento a la orden, realizar los diagnósticos y reparaciones que usted autorice, informarle de costos, avances y entrega, documentar trabajos, pagos, garantías y reclamaciones, y cumplir obligaciones legales o ejercer y defender derechos derivados del servicio. No usaremos sus datos con fines publicitarios."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Plazo. Sus datos se eliminan de la plataforma 10 días después de terminar la garantía del servicio, o 90 días después de la última modificación de la orden si el vehículo no se ha entregado, y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. La eliminación de la plataforma no implica la destrucción de los documentos que [nombre del taller] deba conservar en sus propios archivos por obligación legal."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Aceptación. Al firmar la constancia de recepción, usted declara haber recibido este aviso. Esa firma no implica renuncia a derechos del consumidor, ni autoriza trabajos adicionales ni el uso de sus datos con fines promocionales."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Versión del aviso: aviso-orden-1"
       }
     ],
     "constancia": [
       {
         "tipo": "parrafo",
-        "texto": "[TEXTO LEGAL PENDIENTE]"
+        "texto": "Constancia de recepción del vehículo"
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Orden de servicio [folio]. Fecha de recepción: [fecha de recepción]."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Declaro que entregué a [nombre del taller] el vehículo identificado en esta orden de servicio, en el estado físico y con las pertenencias que se anotaron al recibirlo, y que recibí el aviso de privacidad de la orden de servicio."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Esta firma acredita la recepción del vehículo, la entrega del aviso de privacidad y los hechos que se anotaron expresamente en la orden. No implica renuncia a derechos del consumidor ni autorización de trabajos adicionales distintos de los acordados."
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Nombre y firma del representante del taller: ______________________________"
+      },
+      {
+        "tipo": "parrafo",
+        "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
       }
     ]
   }

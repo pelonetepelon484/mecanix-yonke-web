@@ -53,6 +53,8 @@ const orden = {
   observaciones: 'Balatas al 10 %',
   trabajos: [{ descripcion: 'Cambio de balatas', cantidad: 1, precioUnitario: 500 }],
   piezas: [{ descripcion: 'Balatas delanteras', cantidad: 2, precioUnitario: 350.5 }],
+  // Orden con la versión de aviso de antes del texto final: el PDF no lleva hojas legales.
+  avisoVersion: 'aviso-orden-0',
 };
 const todos = () => registro.textos.map((t) => t.texto);
 const pie = `Esta orden se eliminará de Mecanix el ${expira.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}. Conserva este documento.`;
