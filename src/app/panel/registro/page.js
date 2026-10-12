@@ -12,6 +12,7 @@ import { TEMAS_COLOR, TEMA_DEFAULT_ID } from '../../lib/temasColor';
 import { VERSION_LEGAL, URL_TERMINOS, URL_PRIVACIDAD } from '../../../lib/versionesLegales';
 import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 import { esIdPedido } from '../../../lib/pedidosClientes';
+import { avisarAlAdmin } from '../../lib/avisosAdmin/avisarAlAdmin';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -171,21 +172,11 @@ export default function RegistroYonke() {
       }
 
       // Notificación por WhatsApp — vía endpoint server-side (nunca expone la API key de
-      // CallMeBot en el navegador; ver src/app/lib/notificarAdmin.js).
-      try {
-        await fetch('/api/notificar-registro', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            nombre: nombre.trim(),
-            ciudad: esBC ? (CIUDADES_BC.find(c => c.key === ciudad)?.label || ciudad) : ciudadFinal,
-            telefono: telefono.trim(),
-            email: email.trim(),
-          }),
-        });
-      } catch (e) {
-        console.log('WhatsApp notification failed', e);
-      }
+      // CallMeBot en el navegador; ver src/app/lib/notificarAdmin.js). Aquí el yonke ya tiene
+      // sesión (crear la cuenta inicia sesión) y su ficha y su usuario ya están guardados: va solo
+      // su pase de sesión y el servidor arma el mensaje con lo guardado. Si el aviso falla, el
+      // registro sigue igual (avisarAlAdmin nunca lanza).
+      await avisarAlAdmin('/api/notificar-registro', { obtenerToken: () => userCredential.user.getIdToken() });
 
       if (pedidoId.current) {
         router.replace(`/panel/reservaciones?pedido=${pedidoId.current}`);
