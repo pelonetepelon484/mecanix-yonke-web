@@ -671,8 +671,8 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           )}
           {/* Crédito discreto de Mecanix -- nunca debe competir visualmente con el contenido del
               yonke ni con "Políticas y garantía" de arriba, por eso va aparte, chico y gris. Logo
-              blanco si el fondo del yonke es oscuro (colorFondo personalizable por el yonke),
-              si no la versión normal (azul) del wordmark. */}
+              blanco si el fondo del yonke es oscuro (colorFondo personalizable por el yonke); si
+              no, el logo de Mecanix con engrane (logo-mecanix-solo, sin textos). */}
           <a
             href="https://mecanixyonkevirtual.com"
             target="_blank"
@@ -681,7 +681,7 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           >
             Con tecnología
             <img
-              src={esColorOscuro(branding.colorFondo) ? '/logo-mecanix-blanco.webp' : '/logo-mecanix-palabra.webp'}
+              src={esColorOscuro(branding.colorFondo) ? '/logo-mecanix-blanco.webp' : '/logo-mecanix-solo.webp'}
               alt="Mecanix"
               style={{ height: '17px', width: 'auto', verticalAlign: 'middle' }}
             />
