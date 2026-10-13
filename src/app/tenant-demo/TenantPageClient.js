@@ -95,23 +95,27 @@ function generarNumeroPedido() {
   return `MYV-${mes}${dia}-${random}`;
 }
 
-// Marca de agua del sello "Yonke Verificado": capa de fondo, MUY baja opacidad para que
+// Marca de agua del sello "Mecanix verificado": capa de fondo, MUY baja opacidad para que
 // nunca compita con el texto. Va como primer hijo de una tarjeta con position:'relative' +
 // overflow:'hidden'; el resto del contenido debe ir en un wrapper position:'relative',
-// zIndex:1 para quedar garantizadamente encima.
+// zIndex:1 para quedar garantizadamente encima. Esquina superior derecha (64 px); el nombre,
+// la dirección y el teléfono dejan libre ese espacio (ESPACIO_SELLO) para no quedar detrás.
 function SelloMarcaAgua() {
   return (
     <img
-      src="/sello_verificado.png"
+      src="/sello-verificado-nuevo.png"
       alt=""
       aria-hidden="true"
       style={{
-        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: '65%', maxWidth: '200px', opacity: 0.17, pointerEvents: 'none', zIndex: 0,
+        position: 'absolute', top: '12px', right: '12px',
+        width: '64px', height: 'auto', opacity: 0.17, pointerEvents: 'none', zIndex: 0,
       }}
     />
   );
 }
+
+// 64 px del sello + 12 de margen: un texto largo pasa al siguiente renglón antes de llegar al sello.
+const ESPACIO_SELLO = { paddingRight: '76px' };
 
 // Insignia visible "Verificado" — junto al nombre del negocio, no confundir con la marca de agua.
 function BadgeVerificado() {
@@ -365,7 +369,7 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
         <div style={infoCardStyle}>
           {negocio.verificado && <SelloMarcaAgua />}
           <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', margin: '0 0 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', margin: '0 0 8px', ...(negocio.verificado ? ESPACIO_SELLO : {}) }}>
             <p style={{ fontWeight: '700', color: branding.colorPrimario, fontSize: '18px', margin: 0 }}>
               {negocio.nombre}
             </p>
@@ -387,16 +391,16 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
 
           {negocio.direccion && (
             mapsHref ? (
-              <a href={mapsHref} target="_blank" rel="noopener noreferrer" style={infoLineLinkStyle(branding.colorPrimario)}>
+              <a href={mapsHref} target="_blank" rel="noopener noreferrer" style={{ ...infoLineLinkStyle(branding.colorPrimario), ...(negocio.verificado ? ESPACIO_SELLO : {}) }}>
                 📍 {negocio.direccion}{ciudadLabel ? `, ${ciudadLabel}` : ''}
               </a>
             ) : (
-              <p style={infoLineStyle}>📍 {negocio.direccion}{ciudadLabel ? `, ${ciudadLabel}` : ''}</p>
+              <p style={{ ...infoLineStyle, ...(negocio.verificado ? ESPACIO_SELLO : {}) }}>📍 {negocio.direccion}{ciudadLabel ? `, ${ciudadLabel}` : ''}</p>
             )
           )}
 
           {negocio.telefono && (
-            <a href={`tel:${negocio.telefono.replace(/\D/g, '')}`} style={infoLineLinkStyle(branding.colorPrimario)}>
+            <a href={`tel:${negocio.telefono.replace(/\D/g, '')}`} style={{ ...infoLineLinkStyle(branding.colorPrimario), ...(negocio.verificado ? ESPACIO_SELLO : {}) }}>
               📞 {negocio.telefono}
             </a>
           )}
@@ -667,8 +671,8 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           )}
           {/* Crédito discreto de Mecanix -- nunca debe competir visualmente con el contenido del
               yonke ni con "Políticas y garantía" de arriba, por eso va aparte, chico y gris. Logo
-              blanco si el fondo del yonke es oscuro (colorFondo personalizable por el yonke),
-              si no la versión normal (azul) del wordmark. */}
+              blanco si el fondo del yonke es oscuro (colorFondo personalizable por el yonke); si
+              no, el logo de Mecanix con engrane (logo-mecanix-solo, sin textos). */}
           <a
             href="https://mecanixyonkevirtual.com"
             target="_blank"
@@ -677,7 +681,7 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           >
             Con tecnología
             <img
-              src={esColorOscuro(branding.colorFondo) ? '/logo-mecanix-blanco.webp' : '/logo-mecanix-palabra.webp'}
+              src={esColorOscuro(branding.colorFondo) ? '/logo-mecanix-blanco.webp' : '/logo-mecanix-solo.webp'}
               alt="Mecanix"
               style={{ height: '17px', width: 'auto', verticalAlign: 'middle' }}
             />

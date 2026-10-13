@@ -96,22 +96,31 @@ function LeyendaVerificados() {
   );
 }
 
-// Marca de agua del sello "Yonke Verificado": capa de fondo, MUY baja opacidad para que
+// Marca de agua del sello "Mecanix verificado": capa de fondo, MUY baja opacidad para que
 // nunca compita con el texto de la tarjeta. Va como primer hijo de una tarjeta con
 // position:'relative' + overflow:'hidden'; el resto del contenido de la tarjeta debe ir en
 // un wrapper con position:'relative', zIndex:1 para quedar garantizadamente encima.
-function SelloMarcaAgua() {
+// Esquina superior derecha (64 px); en tarjetas Premium, justo debajo de "⭐ Premium". El
+// renglón del nombre deja libre ese espacio (ver paddingRightNombre) para no quedar detrás.
+function SelloMarcaAgua({ premium = false }) {
   return (
     <img
-      src="/sello_verificado.png"
+      src="/sello-verificado-nuevo.png"
       alt=""
       aria-hidden="true"
       style={{
-        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: '65%', maxWidth: '200px', opacity: 0.17, pointerEvents: 'none', zIndex: 0,
+        position: 'absolute', top: premium ? '44px' : '12px', right: '12px',
+        width: '64px', height: 'auto', opacity: 0.17, pointerEvents: 'none', zIndex: 0,
       }}
     />
   );
+}
+
+// Espacio libre a la derecha del renglón del nombre: la etiqueta Premium (90 px) o el sello de
+// verificado (76 px = 64 del sello + 12 de margen). Un nombre largo pasa al siguiente renglón.
+function paddingRightNombre(r) {
+  if (r.premiumVigente === true) return '90px';
+  return r.verificado ? '76px' : 0;
 }
 
 // Insignia visible "Verificado" — junto al nombre del yonke, no confundir con la marca de agua.
@@ -1306,11 +1315,11 @@ function obtenerEstadoAbierto(horario) {
   function renderTarjetaVehiculo(r, key) {
     return (
       <div key={key} style={resultCardStyle}>
-        {r.verificado && <SelloMarcaAgua />}
+        {r.verificado && <SelloMarcaAgua premium={r.premiumVigente === true} />}
         <div style={{ position: 'relative', zIndex: 1 }}>
         {r.premiumVigente === true && <div style={premiumBadgeStyle}>⭐ Premium</div>}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.premiumVigente === true ? '90px' : 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: paddingRightNombre(r) }}>
           {r.logoUrl && (
             <img
               src={r.logoUrl}
@@ -1429,10 +1438,10 @@ function obtenerEstadoAbierto(horario) {
   function renderTarjetaMotor(r, key, icono) {
     return (
       <div key={key} style={resultCardStyle}>
-        {r.verificado && <SelloMarcaAgua />}
+        {r.verificado && <SelloMarcaAgua premium={r.premiumVigente === true} />}
         <div style={{ position: 'relative', zIndex: 1 }}>
         {r.premiumVigente === true && <div style={premiumBadgeStyle}>⭐ Premium</div>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: r.premiumVigente === true ? '90px' : 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingRight: paddingRightNombre(r) }}>
           {r.logoUrl && (
             <img src={r.logoUrl} alt={r.yonkeNombre} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
           )}
