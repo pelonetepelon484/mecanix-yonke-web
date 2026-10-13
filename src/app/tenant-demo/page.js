@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getTenantBySub, getInventarioDeTenant, resolveBranding, subdominioEstaActivo, redireccionSinPremium } from '../lib/getTenant';
 import { politicasDesdeGarantia } from '../../lib/politicasYonke';
 import TenantPageClient from './TenantPageClient';
+import { metadataVistaPreviaDeTenant } from '../lib/vistaPreviaTenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,13 +14,16 @@ const resolveDemo = cache(async function resolveDemo() {
   if (!tenant) return null;
   const branding = resolveBranding(tenant);
   const inventario = await getInventarioDeTenant(tenant.id);
-  return { tenant, branding, inventario };
+  return { sub, tenant, branding, inventario };
 });
 
 export async function generateMetadata() {
   const demo = await resolveDemo();
   if (!demo) return {};
+  // Vista previa al compartir (WhatsApp, Facebook): nombre, ciudad e imagen del yonke en lugar de
+  // los de Mecanix. El título de la pestaña y el "no indexar" siguen igual.
   return {
+    ...(await metadataVistaPreviaDeTenant(demo.tenant, demo.sub)),
     title: demo.branding.nombre,
     robots: { index: false, follow: false },
   };
