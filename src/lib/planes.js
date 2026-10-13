@@ -11,16 +11,52 @@ import { doc, getDoc } from 'firebase/firestore';
 
 export const PRECIO_PREMIUM_TEXTO = '$398.00 MXN al mes más IVA';
 export const TITULO_FUNCION_PREMIUM = 'Función del plan Premium';
+// Respuestas a alertas por día del plan Básico, como se anuncia en la tarjeta pública. DEBE
+// coincidir con config/pedidosClientes.limiteRespuestasDiarias en Firestore (ese campo es el que
+// de verdad aplica el límite; este número es solo el texto de la tarjeta).
+export const LIMITE_RESPUESTAS_DIARIAS_BASICO = 50;
+
 // Lo que incluye el plan Básico (textos públicos con el interruptor encendido). Debe coincidir con
-// lo que de verdad deja hacer el panel: inventario con fotos, pedidos, datos del negocio y
-// calificaciones públicas.
+// lo que de verdad deja hacer el panel: inventario con fotos, pedidos, alertas, datos del negocio
+// y calificaciones públicas.
 export const FUNCIONES_PLAN_BASICO = [
   'Tu yonke visible en el buscador público de Mecanix',
   'Inventario sin límite con fotos: vehículos, motores y piezas sueltas',
-  'Pedidos: reservaciones de clientes, pedidos de talleres y alertas de clientes',
+  'Pedidos: reservaciones de clientes y pedidos de talleres',
+  `Alertas de búsqueda en tiempo real: responde hasta ${LIMITE_RESPUESTAS_DIARIAS_BASICO} al día`,
+  'Si tienes el vehículo completo, queda disponible 30 días sin capturarlo',
+  'Avisos en tu celular cuando llega una alerta o un pedido (Android)',
   'Contacto directo por WhatsApp',
   'Datos de tu negocio: logo, información, horario, métodos de pago y garantía',
   'Calificaciones de tus clientes',
+];
+
+// Tarjeta "Plan Premium" de yonkes (solo con config/planes.limitesActivos). Sin el año gratis.
+export const FUNCIONES_PLAN_PREMIUM = [
+  'Todo lo del Plan Básico',
+  'Responde alertas de búsqueda sin límite',
+  'Botón "Sigo manteniendo mis vehículos": renueva tu inventario de alertas con un toque',
+  'Venta manual: registra tus ventas de mostrador',
+  'Historial completo de tus ventas y notas de garantía en PDF',
+  'Demanda: qué piezas buscan los clientes en tu estado',
+  'Reciclaje: compras de material, tus materiales y precios',
+  'Página propia con subdominio: color, promociones, fondo y "Sobre nosotros"',
+  'Insignia ⭐ Premium en tu ficha',
+  'Las demás funciones que se incorporen',
+];
+
+// Tarjetas de talleres (solo con config/planes.tarjetasTalleres). Sin decir que las órdenes de
+// servicio no tienen costo.
+export const FUNCIONES_TALLER_BASICO = [
+  'Cotizaciones para tus clientes, con PDF',
+  'Pide piezas a los yonkes y compara sus respuestas',
+  'Aviso de privacidad para tus clientes incluido',
+];
+export const FUNCIONES_TALLER_PREMIUM = [
+  'Todo lo del Plan Básico',
+  'Órdenes de servicio con PDF',
+  'Descarga de todos tus documentos',
+  'Las demás funciones que se incorporen',
 ];
 
 // Lo que decía la tarjeta antes (se sigue mostrando con el interruptor apagado).
@@ -41,6 +77,7 @@ export const tarjetaPlanSinCosto = (limitesActivos) => (limitesActivos
   : { nombre: 'Plan Gratuito', funciones: FUNCIONES_PLAN_GRATUITO });
 
 export const URL_QUIERO_PREMIUM = 'https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual';
+export const URL_QUIERO_PREMIUM_TALLER = `https://wa.me/5216611034260?text=${encodeURIComponent('Hola, me interesa el Plan Premium de Mecanix para talleres')}`;
 
 // Acepta Timestamp de Firestore, Date, milisegundos o texto de fecha. null si no hay fecha usable.
 function comoFecha(valor) {
@@ -83,6 +120,22 @@ export async function leerLimitesActivos(db) {
   } catch (error) {
     console.warn('[planes] No se pudo leer config/planes; límites apagados.', error?.code || error?.message);
     return false;
+  }
+}
+
+// config/planes completo para la página principal (una sola lectura): límites y tarjetas de
+// talleres. Cada interruptor solo se enciende con true exacto. Si la lectura falla, todo queda
+// APAGADO: la página se ve como hoy (tarjeta de siempre, sin Premium ni tarjetas de talleres).
+export const tarjetasTalleresEncendidas = (configPlanes) => configPlanes?.tarjetasTalleres === true;
+
+export async function leerConfigPlanes(db) {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'planes'));
+    const datos = snap.exists() ? snap.data() : null;
+    return { limitesActivos: limitesEncendidos(datos), tarjetasTalleres: tarjetasTalleresEncendidas(datos) };
+  } catch (error) {
+    console.warn('[planes] No se pudo leer config/planes; todo apagado.', error?.code || error?.message);
+    return { limitesActivos: false, tarjetasTalleres: false };
   }
 }
 

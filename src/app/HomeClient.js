@@ -24,7 +24,10 @@ import { leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
-import { tarjetaPlanSinCosto, leerLimitesActivos, esPremiumVigente } from '../lib/planes';
+import { tarjetaPlanSinCosto, leerConfigPlanes, esPremiumVigente } from '../lib/planes';
+import {
+  TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle, planCardStyle, planDescStyle, planNombreStyle, planNotaAzulStyle, planPrecioStyle,
+} from './TarjetasPlanes';
 
 // Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
 // propia foto, una pieza suelta la suya (r.vehiculo es sintético ahí, ver esPiezaSuelta en
@@ -253,11 +256,18 @@ export default function HomeClient({ textoSeoEstados }) {
   // hoy hasta que alguien lo cambie).
   const [estadosDisponibles, setEstadosDisponibles] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California', tieneVisitas: true }]);
   const [estadoPlanes, setEstadoPlanes] = useState(ESTADO_DEFAULT);
-  // config/planes.limitesActivos: con el interruptor apagado (o sin leer) la tarjeta dice lo de antes.
+  // config/planes.limitesActivos: con el interruptor apagado (o sin leer) la tarjeta dice lo de
+  // antes y no hay tarjeta Premium. config/planes.tarjetasTalleres: tarjetas de planes de talleres.
+  // Una sola lectura; si falla, los dos quedan apagados.
   const [limitesPlanes, setLimitesPlanes] = useState(false);
+  const [tarjetasTalleres, setTarjetasTalleres] = useState(false);
   useEffect(() => {
     let vigente = true;
-    leerLimitesActivos(db).then((activos) => { if (vigente) setLimitesPlanes(activos); });
+    leerConfigPlanes(db).then((c) => {
+      if (!vigente) return;
+      setLimitesPlanes(c.limitesActivos);
+      setTarjetasTalleres(c.tarjetasTalleres);
+    });
     return () => { vigente = false; };
   }, []);
   const [estadoBusqueda, setEstadoBusqueda] = useState('todos');
@@ -2187,13 +2197,12 @@ function obtenerEstadoAbierto(horario) {
                 </select>
               </div>
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: tieneVisitasPlanes ? 'repeat(auto-fit, minmax(260px, 1fr))' : '1fr',
-                gap: '16px',
-                maxWidth: tieneVisitasPlanes ? undefined : '360px',
-                margin: tieneVisitasPlanes ? undefined : '0 auto',
-              }}>
+              {/* Básico, Premium (solo con límites) y Captura a domicilio (solo con visitas): con
+                  una sola tarjeta va centrada; con dos o tres, en columnas que en celular se
+                  acomodan una debajo de otra. */}
+              <div style={tieneVisitasPlanes && limitesPlanes ? gridTresPlanesStyle
+                : (tieneVisitasPlanes || limitesPlanes) ? gridPlanesStyle
+                  : { display: 'grid', gridTemplateColumns: '1fr', gap: '16px', maxWidth: '360px', margin: '0 auto' }}>
 
                 {/* Plan Gratuito — única oferta pública hoy. Sin precio aparte ("Gratis"): sería
                     redundante con el nombre del plan y le resta formalidad a la tarjeta. */}
@@ -2222,6 +2231,9 @@ function obtenerEstadoAbierto(horario) {
                     Registra tu yonke gratis
                   </a>
                 </div>
+
+                {/* Plan Premium: solo con config/planes.limitesActivos encendido. */}
+                {limitesPlanes && <TarjetaPremiumYonke />}
 
                 {/* Servicio de captura a domicilio — PAGO POR VISITA (no mensualidad, no
                     suscripción), solo en estados con tieneVisitas=true. */}
@@ -2291,6 +2303,9 @@ function obtenerEstadoAbierto(horario) {
                 🆓 Registra tu taller gratis
               </a>
             </div>
+
+            {/* Planes de talleres: solo con config/planes.tarjetasTalleres encendido. */}
+            {tarjetasTalleres && <TarjetasPlanesTaller />}
           </>
         )}
 
@@ -2463,12 +2478,6 @@ const compatibilidadBannerStyle = { backgroundColor: '#FFF8E1', border: '1px sol
 const avisoActualizacionStyle = { backgroundColor: '#EEF4FA', border: '1px solid #C5D8EC', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' };
 const yonkeCtaStyle = { background: 'linear-gradient(135deg, #EEF2F7 0%, #E8EFF7 100%)', borderRadius: '20px', padding: '28px', marginTop: '24px', textAlign: 'center', border: '1.5px solid #C5D4E8' };
 const yonkeCtaButtonStyle = { display: 'inline-block', background: 'linear-gradient(135deg, #E8720C 0%, #cf6209 100%)', color: '#fff', fontWeight: '700', fontSize: '14px', padding: '14px 28px', borderRadius: '50px', textDecoration: 'none', boxShadow: '0 4px 14px rgba(232,114,12,0.4)' };
-const planCardStyle = { backgroundColor: '#fff', borderRadius: '20px', padding: '28px 24px', boxShadow: '0 4px 16px rgba(26,60,94,0.08)', position: 'relative' };
-const planPremiumCardStyle = { ...planCardStyle, border: '2px solid #E8720C' };
-const planNombreStyle = { fontSize: '15px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 4px', letterSpacing: '0.3px', textTransform: 'uppercase' };
-const planPrecioStyle = { fontSize: '22px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' };
-const planDescStyle = { fontSize: '13px', color: '#666', lineHeight: '1.6', margin: '0 0 16px' };
 const planListaStyle = { listStyle: 'none', padding: 0, margin: '0 0 4px' };
 const planItemStyle = { display: 'flex', alignItems: 'flex-start', fontSize: '13px', color: '#444', lineHeight: '1.5', marginBottom: '10px' };
-const planNotaAzulStyle = { backgroundColor: '#EEF2F7', border: '1.5px dashed #1A3C5E', borderRadius: '10px', padding: '12px 14px', fontSize: '12px', color: '#1A3C5E', lineHeight: '1.5', fontWeight: '600', marginTop: '16px' };
 const planNotaNaranjaStyle = { backgroundColor: '#FEF3EC', border: '1.5px dashed #E8720C', borderRadius: '10px', padding: '12px 14px', fontSize: '12px', color: '#7A3C0C', lineHeight: '1.5', fontWeight: '600', marginTop: '16px' };
