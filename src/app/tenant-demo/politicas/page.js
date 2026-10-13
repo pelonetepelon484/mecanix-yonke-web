@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getTenantBySub, resolveBranding, subdominioEstaActivo, redireccionSinPremium } from '../../lib/getTenant';
 import { politicasDesdeGarantia } from '../../../lib/politicasYonke';
+import { metadataVistaPreviaDeTenant } from '../../lib/vistaPreviaTenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,8 +11,10 @@ export async function generateMetadata() {
   const sub = (await headers()).get('x-tenant-sub') || '';
   const tenant = await getTenantBySub(sub);
   if (!tenant) return {};
+  const titulo = `Políticas y garantía · ${tenant.nombre || 'Yonke'}`;
   return {
-    title: `Políticas y garantía · ${tenant.nombre || 'Yonke'}`,
+    ...(await metadataVistaPreviaDeTenant(tenant, sub, { ruta: '/politicas', titulo })),
+    title: titulo,
     robots: { index: false, follow: false },
   };
 }
