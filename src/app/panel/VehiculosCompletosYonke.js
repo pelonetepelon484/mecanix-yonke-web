@@ -3,7 +3,10 @@
 // "Vehículos completos": los vehículos que el yonke confirmó al responder alertas
 // (yonkes/{id}/vehiculosAlerta). Cada uno dura 30 días; mientras está vigente, los clientes que
 // buscan una pieza de ese vehículo ven al yonke como "Vehículo disponible, pregunta por la pieza".
-// - "Ya lo vendí": un toque por pieza, la quita de lo que ven los clientes.
+// - Unidades: "+1 / Tengo otro igual" (también renueva 30 días) y "−1" (no baja de 1 ni de las
+//   ventas ya marcadas).
+// - "Ya lo vendí": un toque suma una venta de esa pieza ("alternador (1 de 3)"); los clientes la
+//   dejan de ver cuando se vendió en todas las unidades. "Deshacer" resta una venta.
 // - "Quitar vehículo": se vendió o se desbarató todo.
 // - "Sigo manteniendo mis vehículos": Premium renueva 30 días los vigentes con un toque; en el
 //   plan Básico se ve en gris y al tocarlo explica que es del plan Premium.
@@ -12,10 +15,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { BotonQuieroPremium } from './CandadoPremium';
 import {
-  escucharVehiculosAlerta, leerConfigPedidosClientes, marcarPiezaVendida, quitarVehiculoAlerta, renovarVehiculosVigentes,
+  deshacerVentaPieza, escucharVehiculosAlerta, leerConfigPedidosClientes, marcarPiezaVendida, quitarVehiculoAlerta, renovarVehiculosVigentes,
+  restarUnidad, sumarUnidad,
 } from './pedidosClientesDatos';
 import {
-  MENSAJES_VEHICULO_ALERTA, diasRestantes, estaVigente, inventarioVehiculosActivo, piezasDisponibles,
+  MENSAJES_VEHICULO_ALERTA, diasRestantes, estaVigente, inventarioVehiculosActivo, piezasDelVehiculo, unidadesDe,
 } from '../../lib/vehiculosAlerta';
 
 export const TEXTO_BOTON_RENOVAR = 'Sigo manteniendo mis vehículos';
@@ -55,7 +59,7 @@ export default function VehiculosCompletosYonke({ yonkeId }) {
       await accion();
     } catch (error) {
       console.error(error);
-      setMensaje(textoError);
+      setMensaje(error?.codigo === 'ventas' ? error.message : textoError);
     } finally {
       setOcupado(false);
     }
@@ -102,6 +106,12 @@ export default function VehiculosCompletosYonke({ yonkeId }) {
       {vigentes.map((v) => (
         <TarjetaVehiculo key={v.id} v={v} ahora={ahora} ocupado={ocupado}
           onVendida={(pieza) => ejecutar(() => marcarPiezaVendida(yonkeId, v.id, pieza), 'No se pudo guardar. Intenta de nuevo.')}
+          onDeshacer={(pieza) => ejecutar(() => deshacerVentaPieza(yonkeId, v.id, pieza), 'No se pudo guardar. Intenta de nuevo.')}
+          onMas={() => ejecutar(async () => {
+            await sumarUnidad(yonkeId, v.id);
+            setMensaje(`Listo. ${v.marca} ${v.modelo} ${v.ano}: ${unidadesDe(v) + 1} unidades, vigente 30 días más.`);
+          }, 'No se pudo sumar la unidad. Intenta de nuevo.')}
+          onMenos={() => ejecutar(() => restarUnidad(yonkeId, v.id), 'No se pudo restar la unidad. Intenta de nuevo.')}
           onQuitar={() => quitar(v)}
         />
       ))}
@@ -124,23 +134,44 @@ export default function VehiculosCompletosYonke({ yonkeId }) {
   );
 }
 
-function TarjetaVehiculo({ v, ahora, ocupado, onVendida, onQuitar }) {
+function TarjetaVehiculo({ v, ahora, ocupado, onVendida, onDeshacer, onMas, onMenos, onQuitar }) {
   const [otra, setOtra] = useState('');
   const dias = diasRestantes(v, ahora);
-  const piezas = piezasDisponibles(v);
-  const vendidas = v.piezasVendidas || [];
+  const unidades = unidadesDe(v);
+  const piezas = piezasDelVehiculo(v);
   return (
     <div style={tarjeta}>
-      <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{v.marca} {v.modelo} {v.ano}</p>
+      <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>
+        {v.marca} {v.modelo} {v.ano} · {unidades === 1 ? '1 unidad' : `${unidades} unidades`}
+      </p>
       <p style={{ margin: '2px 0 8px', fontSize: '12px', color: dias <= 5 ? '#B3261E' : '#666' }}>
         Vigente {dias === 1 ? '1 día más' : `${dias} días más`}
       </p>
-      {piezas.map((p) => (
-        <div key={p} style={filaPieza}>
-          <span style={{ fontSize: '14px', color: '#333' }}>{p}</span>
-          <button type="button" onClick={() => onVendida(p)} disabled={ocupado} style={botonVendi}>Ya lo vendí</button>
-        </div>
-      ))}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+        <button type="button" onClick={onMas} disabled={ocupado} style={{ ...botonUnidad, flex: 1 }}>+1 / Tengo otro igual</button>
+        <button type="button" onClick={onMenos} disabled={ocupado} aria-label={`Restar una unidad de ${v.marca} ${v.modelo} ${v.ano}`} style={botonUnidad}>−1</button>
+      </div>
+      {piezas.map((p) => {
+        const agotada = p.vendidas >= p.unidades;
+        return (
+          <div key={p.nombre} style={filaPieza}>
+            <span style={{ fontSize: '14px', color: agotada ? '#999' : '#333' }}>
+              {p.nombre}{p.vendidas > 0 && ` (${p.vendidas} de ${p.unidades})`}
+            </span>
+            <span style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              {p.vendidas > 0 && (
+                <button type="button" onClick={() => onDeshacer(p.nombre)} disabled={ocupado} style={botonDeshacer}>Deshacer</button>
+              )}
+              <button
+                type="button" onClick={() => onVendida(p.nombre)} disabled={ocupado || agotada}
+                style={{ ...botonVendi, ...(agotada ? { backgroundColor: '#BDBDBD', cursor: 'default' } : {}) }}
+              >
+                Ya lo vendí
+              </button>
+            </span>
+          </div>
+        );
+      })}
       <div style={{ ...filaPieza, borderBottom: 'none' }}>
         <input
           value={otra} maxLength={100} onChange={(e) => setOtra(e.target.value)}
@@ -155,9 +186,6 @@ function TarjetaVehiculo({ v, ahora, ocupado, onVendida, onQuitar }) {
           Ya lo vendí
         </button>
       </div>
-      {vendidas.length > 0 && (
-        <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#888' }}>Vendidas: {vendidas.join(', ')}</p>
-      )}
       <button type="button" onClick={onQuitar} disabled={ocupado} style={botonQuitar}>Quitar vehículo</button>
     </div>
   );
@@ -168,6 +196,8 @@ const titulo = { margin: '0 0 6px', fontWeight: 'bold', color: '#1A3C5E' };
 const tarjeta = { border: '1px solid #EEE', borderRadius: '12px', padding: '12px', marginTop: '10px' };
 const filaPieza = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '6px 0', borderBottom: '1px solid #F2F2F2' };
 const botonVendi = { flexShrink: 0, minHeight: '36px', padding: '0 12px', borderRadius: '10px', border: 'none', backgroundColor: '#1A3C5E', color: '#fff', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' };
+const botonUnidad = { minHeight: '36px', padding: '0 12px', borderRadius: '10px', border: '1px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' };
+const botonDeshacer = { minHeight: '36px', padding: '0 10px', borderRadius: '10px', border: '1px solid #CCC', backgroundColor: '#fff', color: '#555', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' };
 const botonQuitar = { marginTop: '10px', minHeight: '36px', padding: '0 12px', borderRadius: '10px', border: '1px solid #E0B4B4', backgroundColor: '#fff', color: '#B3261E', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' };
 const botonRenovar = { width: '100%', minHeight: '44px', borderRadius: '10px', border: 'none', backgroundColor: '#2E7D32', color: '#fff', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' };
 // Básico: gris pero claramente tocable (candado), no "descompuesto".

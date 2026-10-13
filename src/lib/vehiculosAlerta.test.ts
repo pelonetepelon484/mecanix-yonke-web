@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   accionVehiculoCompleto, agregarPieza, calcularVenceEn, despuesDeLaTengo, diaTijuana, diasRestantes, disponibleParaPieza, estaVigente,
-  idVehiculoAlerta, inventarioVehiculosActivo, limiteRespuestasDiarias, llegoAlLimite, normalizarPieza, piezaVendida, piezasDisponibles,
+  idVehiculoAlerta, inventarioVehiculosActivo, limiteRespuestasDiarias, llegoAlLimite, normalizarPieza, piezaVendida,
+  cambiosUnidades, cambiosVenta, maxVentas, piezasDelVehiculo, unidadesDe, vendidasDe, ventasDe,
 } from './vehiculosAlerta';
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -42,11 +43,10 @@ describe('piezas vendidas (nombre normalizado)', () => {
     expect(disponibleParaPieza(vigente({ piezasVendidas: ['Marcha'] }), 'marcha', AHORA)).toBe(false);
     expect(disponibleParaPieza(vencido(), 'Marcha', AHORA)).toBe(false);
   });
-  it('agregarPieza no repite y piezasDisponibles quita las vendidas', () => {
+  it('agregarPieza no repite', () => {
     expect(agregarPieza(['Alternador'], 'alternador')).toEqual(['Alternador']);
     expect(agregarPieza(['Alternador'], ' Faro ')).toEqual(['Alternador', 'Faro']);
     expect(agregarPieza(undefined, '')).toEqual([]);
-    expect(piezasDisponibles(vigente({ piezasAlerta: ['Alternador', 'Faro'], piezasVendidas: ['alternador'] }))).toEqual(['Faro']);
   });
 });
 
@@ -96,5 +96,81 @@ describe('límite diario (plan Básico)', () => {
     expect(inventarioVehiculosActivo({ habilitado: true })).toBe(false);
     expect(inventarioVehiculosActivo({ inventarioVehiculos: true })).toBe(false);
     expect(inventarioVehiculosActivo(null)).toBe(false);
+  });
+});
+
+describe('varias unidades del mismo vehículo', () => {
+  it('registro viejo (sin unidades ni ventasPiezas): 1 unidad y cada pieza de piezasVendidas vendida 1 vez', () => {
+    const viejo = vigente({ piezasVendidas: ['Alternador', 'Faro derecho'] });
+    expect(unidadesDe(viejo)).toBe(1);
+    expect(ventasDe(viejo)).toEqual({ alternador: 1, 'faro derecho': 1 });
+    expect(piezaVendida(viejo, 'ALTERNADOR')).toBe(true);
+    expect(disponibleParaPieza(viejo, 'Marcha', AHORA)).toBe(true);
+  });
+
+  it('unidades inválidas cuentan como 1; ventasPiezas manda sobre la lista vieja', () => {
+    expect(unidadesDe(vigente({ unidades: 0 }))).toBe(1);
+    expect(unidadesDe(vigente({ unidades: '3' }))).toBe(1);
+    expect(vendidasDe(vigente({ ventasPiezas: { alternador: 2 }, piezasVendidas: ['Faro'] }), 'Faro')).toBe(0);
+  });
+
+  it('con 3 unidades la pieza sigue disponible hasta venderse 3 veces', () => {
+    let v = vigente({ unidades: 3, piezasAlerta: ['Alternador'] });
+    for (let i = 1; i <= 3; i++) {
+      expect(disponibleParaPieza(v, 'Alternador', AHORA)).toBe(true);
+      v = { ...v, ...cambiosVenta(v, 'Alternador', 1) };
+      expect(vendidasDe(v, 'alternador')).toBe(i);
+    }
+    expect(disponibleParaPieza(v, 'Alternador', AHORA)).toBe(false);
+    // piezasVendidas (para la versión anterior de la app) solo tiene las agotadas.
+    expect(v.piezasVendidas).toEqual(['Alternador']);
+    expect(cambiosVenta(v, 'Alternador', 1)).toBeNull();
+  });
+
+  it('"Deshacer" resta una venta y no baja de cero', () => {
+    const v = vigente({ unidades: 2, ventasPiezas: { alternador: 2 }, piezasVendidas: ['Alternador'] });
+    const despues = { ...v, ...cambiosVenta(v, 'Alternador', -1) };
+    expect(vendidasDe(despues, 'Alternador')).toBe(1);
+    expect(despues.piezasVendidas).toEqual([]);
+    const sinVentas = { ...despues, ...cambiosVenta(despues, 'Alternador', -1) };
+    expect(sinVentas.ventasPiezas).toEqual({});
+    expect(cambiosVenta(sinVentas, 'Alternador', -1)).toBeNull();
+  });
+
+  it('vender en un registro viejo lo convierte sin perder lo vendido', () => {
+    const viejo = vigente({ piezasAlerta: ['Alternador'], piezasVendidas: ['Faro'] });
+    const cambios = cambiosVenta(viejo, 'Alternador', 1);
+    expect(cambios).toMatchObject({ ventasPiezas: { faro: 1, alternador: 1 } });
+    expect(cambios.piezasVendidas.sort()).toEqual(['Alternador', 'Faro']);
+  });
+
+  it('+1 suma una unidad y libera las piezas agotadas; −1 no baja de 1 ni de las ventas', () => {
+    const v = vigente({ unidades: 1, ventasPiezas: { alternador: 1 }, piezasVendidas: ['Alternador'], piezasAlerta: ['Alternador'] });
+    const mas = cambiosUnidades(v, 1);
+    expect(mas).toMatchObject({ unidades: 2, piezasVendidas: [] });
+    expect(cambiosUnidades(v, -1)).toBeNull(); // no baja de 1
+    const tres = vigente({ unidades: 3, ventasPiezas: { alternador: 3, faro: 1 } });
+    expect(maxVentas(tres)).toBe(3);
+    expect(cambiosUnidades(tres, -1)).toBeNull(); // ventas de alternador = 3
+    expect(cambiosUnidades(vigente({ unidades: 3, ventasPiezas: { faro: 2 } }), -1)).toMatchObject({ unidades: 2, piezasVendidas: ['faro'] });
+    expect(cambiosUnidades(vigente({ unidades: 100 }), 1)).toBeNull();
+  });
+
+  it('"¿Tienes otro igual?" -> +1 y la venta de la alerta cuenta: 3 de 3 queda 4 de 4', () => {
+    const v = vigente({ unidades: 3, ventasPiezas: { alternador: 3 }, piezasAlerta: ['Alternador'] });
+    const conUnidad = { ...v, ...cambiosUnidades(v, 1) };
+    const final = { ...conUnidad, ...cambiosVenta(conUnidad, 'Alternador', 1) };
+    expect(unidadesDe(final)).toBe(4);
+    expect(vendidasDe(final, 'Alternador')).toBe(4);
+    expect(disponibleParaPieza(final, 'Alternador', AHORA)).toBe(false);
+  });
+
+  it('piezas del panel con su conteo, incluidas las vendidas de registros viejos', () => {
+    const v = vigente({ unidades: 3, piezasAlerta: ['Alternador', 'Faro'], ventasPiezas: { alternador: 1, marcha: 3 } });
+    expect(piezasDelVehiculo(v)).toEqual([
+      { nombre: 'Alternador', vendidas: 1, unidades: 3 },
+      { nombre: 'Faro', vendidas: 0, unidades: 3 },
+      { nombre: 'marcha', vendidas: 3, unidades: 3 },
+    ]);
   });
 });
