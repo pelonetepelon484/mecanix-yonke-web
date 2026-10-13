@@ -18,6 +18,9 @@ import VisorFotosVehiculo from './lib/VisorFotosVehiculo';
 import VisorFotos from './lib/VisorFotos';
 import { fotosDeItem } from '../lib/fotosPieza';
 import AvisarYonkes from './AvisarYonkes';
+import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
+import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
+import { leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
@@ -200,6 +203,9 @@ export default function HomeClient({ textoSeoEstados }) {
   const [buscando, setBuscando] = useState(false);
   const [busquedaHecha, setBusquedaHecha] = useState(false);
   const [piezaNoEncontrada, setPiezaNoEncontrada] = useState(false);
+  // Vehículos completos confirmados en alertas ("Vehículo disponible, pregunta por la pieza").
+  // Vacío salvo con config/pedidosClientes.inventarioVehiculos y alguna coincidencia.
+  const [vehiculosAlerta, setVehiculosAlerta] = useState({ lista: [], pieza: '' });
   const [tipoResultado, setTipoResultado] = useState('exacto');
 
   // Reseña de la PLATAFORMA (Mecanix como buscador) — distinta de "calificaciones" (reseñas de
@@ -658,6 +664,7 @@ export default function HomeClient({ textoSeoEstados }) {
       alert('Llena al menos la marca'); return;
     }
     setBuscando(true); setBusquedaHecha(true); setPiezaNoEncontrada(false); setTipoResultado('exacto');
+    setVehiculosAlerta({ lista: [], pieza: '' });
     setResultadosDeOtroEstado(forzarTodos && estadoBusqueda !== 'todos');
     try {
       const yonkesSnap = await getDocs(collection(db, 'yonkes'));
@@ -701,6 +708,16 @@ export default function HomeClient({ textoSeoEstados }) {
       // modelo se sigue haciendo client-side tras traer por año — deuda técnica ya documentada
       // (desperdicia lecturas; irrelevante hasta ~100 yonkes), no se toca aquí, solo se paraleliza
       // el fetch en sí.
+      // Vehículos completos de las alertas: arranca en paralelo y se espera al final. Sin pieza,
+      // sin el interruptor o si falla, queda vacío (la búsqueda sigue igual que siempre).
+      const piezaParaAlerta = piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion;
+      const promesaVehiculosAlerta = piezaParaAlerta
+        ? leerBanderaInventarioVehiculos()
+          .then((activa) => (activa
+            ? buscarVehiculosAlerta(db, yonkesFiltrados, { marca: marca.trim(), modelo: modelo.trim(), anio: parseInt(ano), pieza: piezaParaAlerta })
+            : []))
+          .catch((error) => { console.error(error); return []; })
+        : Promise.resolve([]);
       const candidatosPorYonke = await Promise.all(yonkesFiltrados.map(async (yonkeDoc) => {
         const yonkeData = yonkeDoc.data();
         if (!yonkeData.activo) return [];
@@ -807,6 +824,7 @@ export default function HomeClient({ textoSeoEstados }) {
           if (motoresSueltos.some((r) => r.motor?.tipo === piezaSeleccion)) setPiezaNoEncontrada(false);
         }
       }
+      setVehiculosAlerta({ lista: sinYonkesYaMostrados(await promesaVehiculosAlerta, resultadosFinales), pieza: piezaParaAlerta });
       setResultados(resultadosFinales);
       registrarEvento('busqueda_pieza', {
         tipo: 'vehiculo',
@@ -828,6 +846,7 @@ export default function HomeClient({ textoSeoEstados }) {
   }
 
   function aplicarRespuestaBusquedaLibre(data, { deOtroEstado = false } = {}) {
+    setVehiculosAlerta({ lista: Array.isArray(data.vehiculosAlerta) ? data.vehiculosAlerta : [], pieza: data.piezaVehiculosAlerta || '' });
     if (data.estado === 'resultados') {
       setMensajeLibre(null);
       setResultadosDeOtroEstado(deOtroEstado);
@@ -1647,6 +1666,9 @@ function obtenerEstadoAbierto(horario) {
 
               {/* Pedido de pieza a los yonkes (pedidosClientes). No muestra nada si la función
                   está apagada (config/pedidosClientes): la página queda igual que antes. */}
+              {mensajeLibre && !busquedaHecha && (
+                <VehiculosDisponiblesAlerta lista={vehiculosAlerta.lista} pieza={vehiculosAlerta.pieza} />
+              )}
               {mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && (
                 <AvisarYonkes estadoInicial={estadoBusqueda !== 'todos' ? estadoBusqueda : ''} />
               )}
@@ -1912,6 +1934,9 @@ function obtenerEstadoAbierto(horario) {
                 <h3 style={{ color: '#1A3C5E', fontSize: '15px', marginBottom: '12px', fontWeight: '600' }}>
                   {getHeaderText()}
                 </h3>
+
+                {/* Yonkes con el vehículo completo confirmado en una alerta (solo con el interruptor). */}
+                <VehiculosDisponiblesAlerta lista={vehiculosAlerta.lista} pieza={vehiculosAlerta.pieza} />
 
                 {resultados.length === 0 && resultadosCercanosLibre.length === 0 && resultadosMotoresLibre.length === 0 && resultadosMotoresCercanosLibre.length === 0 && resultadosTransmisionesLibre.length === 0 && resultadosTransmisionesCercanosLibre.length === 0 && (
                   <div style={avisoActualizacionStyle}>

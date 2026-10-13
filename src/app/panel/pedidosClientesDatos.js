@@ -3,8 +3,14 @@
 // Acceso a Firestore para el lado del yonke en el pedido de pieza de clientes sin cuenta.
 // Las reglas (firestore.rules, pedidosClientes) son la protección real: el yonke solo ve
 // vehículo, pieza y estado, nunca el WhatsApp del cliente (vive en privado/contacto).
-import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import {
+  Timestamp, arrayUnion, collection, deleteDoc, doc, getDoc, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc,
+  where, writeBatch,
+} from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import {
+  MENSAJES_VEHICULO_ALERTA, accionVehiculoCompleto, agregarPieza, calcularVenceEn, diaTijuana, estaVigente, idVehiculoAlerta,
+} from '../../lib/vehiculosAlerta';
 
 // Bandera de la función: sin config/pedidosClientes, o con habilitado != true, quien llama no
 // debe hacer ninguna otra lectura de este módulo.
@@ -65,11 +71,123 @@ export async function yaRespondioPedido(id, yonkeId) {
 }
 
 // Una sola respuesta por yonke: la regla rechaza un segundo intento. expiraAt = el del pedido.
-export async function responderPedido(pedido, yonkeId, { yonkeNombre, whatsapp, tieneLaPieza, precio, nota }) {
+// limite (número): plan Básico con config/pedidosClientes.limiteRespuestasDiarias. La respuesta y
+// el contador del día (yonkes/{id}/respuestasDiarias/{AAAAMMDD de Tijuana}) se guardan juntos en
+// una transacción; si ya llegó al límite no se guarda nada y se lanza un error con codigo 'limite'.
+// Sin limite (null), se guarda exactamente como siempre.
+export async function responderPedido(pedido, yonkeId, { yonkeNombre, whatsapp, tieneLaPieza, precio, nota }, { limite = null } = {}) {
   const cuerpo = {
     yonkeId, yonkeNombre, whatsapp, tieneLaPieza, nota,
     creadoAt: serverTimestamp(), expiraAt: pedido.expiraAt,
   };
   if (tieneLaPieza) cuerpo.precio = precio;
-  await setDoc(doc(db, 'pedidosClientes', pedido.id, 'respuestas', yonkeId), cuerpo);
+  const respuestaRef = doc(db, 'pedidosClientes', pedido.id, 'respuestas', yonkeId);
+  if (limite === null) {
+    await setDoc(respuestaRef, cuerpo);
+    return;
+  }
+  const dia = diaTijuana(new Date());
+  const contadorRef = doc(db, 'yonkes', yonkeId, 'respuestasDiarias', dia);
+  await runTransaction(db, async (t) => {
+    const snap = await t.get(contadorRef);
+    const n = snap.exists() ? (snap.data().count || 0) : 0;
+    if (n >= limite) throw errorLimite();
+    t.set(respuestaRef, { ...cuerpo, dia });
+    t.set(contadorRef, { count: n + 1 });
+  });
+}
+
+function errorLimite() {
+  const error = new Error(MENSAJES_VEHICULO_ALERTA.limiteAlcanzado);
+  error.codigo = 'limite';
+  return error;
+}
+
+// Respuestas que el yonke ya dio hoy (día de Tijuana). 0 si no hay contador.
+export async function leerRespuestasHoy(yonkeId) {
+  const snap = await getDoc(doc(db, 'yonkes', yonkeId, 'respuestasDiarias', diaTijuana(new Date())));
+  return snap.exists() ? (snap.data().count || 0) : 0;
+}
+
+// ---------- Inventario de vehículos completos (config/pedidosClientes.inventarioVehiculos) ----------
+// yonkes/{yonkeId}/vehiculosAlerta/{marca_modelo_año}: un documento por vehículo. Las reglas
+// solo dejan al dueño del yonke crearlo, cambiarlo o quitarlo.
+const vehiculoAlertaRef = (yonkeId, id) => doc(db, 'yonkes', yonkeId, 'vehiculosAlerta', id);
+
+export async function leerVehiculoAlertaDePedido(yonkeId, pedido) {
+  const { marca, modelo, anio } = pedido.vehiculo;
+  const snap = await getDoc(vehiculoAlertaRef(yonkeId, idVehiculoAlerta(marca, modelo, anio)));
+  return snap.exists() ? snap.data() : null;
+}
+
+// Ya lo tenía vigente y contestó "La tengo": la pieza de la alerta se descuenta (no cambia el vencimiento).
+export async function descontarPiezaDePedido(yonkeId, pedido) {
+  const { marca, modelo, anio } = pedido.vehiculo;
+  const ref = vehiculoAlertaRef(yonkeId, idVehiculoAlerta(marca, modelo, anio));
+  await runTransaction(db, async (t) => {
+    const snap = await t.get(ref);
+    if (!snap.exists()) return;
+    const v = snap.data();
+    t.update(ref, { piezasVendidas: agregarPieza(v.piezasVendidas, pedido.pieza), piezasAlerta: agregarPieza(v.piezasAlerta, pedido.pieza) });
+  });
+}
+
+// Contestó "Sí" a "¿Tienes el vehículo completo?". Devuelve 'crear' | 'renovar' | 'descontarPieza'.
+// crear: nuevo, 30 días, la pieza de la alerta queda disponible. renovar (estaba vencido): 30 días
+// más desde hoy y las piezas vendidas empiezan de cero.
+export async function guardarVehiculoCompleto(yonkeId, pedido) {
+  const { marca, modelo, anio } = pedido.vehiculo;
+  const ref = vehiculoAlertaRef(yonkeId, idVehiculoAlerta(marca, modelo, anio));
+  return runTransaction(db, async (t) => {
+    const snap = await t.get(ref);
+    const ahora = new Date();
+    const existente = snap.exists() ? snap.data() : null;
+    const accion = accionVehiculoCompleto(existente, ahora);
+    const venceEn = Timestamp.fromDate(calcularVenceEn(ahora));
+    if (accion === 'crear') {
+      t.set(ref, {
+        yonkeId, marca, modelo, ano: anio, piezasAlerta: agregarPieza([], pedido.pieza), piezasVendidas: [],
+        creadoAt: serverTimestamp(), venceEn, estado: 'activo',
+      });
+    } else if (accion === 'renovar') {
+      t.update(ref, {
+        venceEn, estado: 'activo', piezasVendidas: [], piezasAlerta: agregarPieza(existente.piezasAlerta, pedido.pieza), renovadoAt: serverTimestamp(),
+      });
+    } else {
+      t.update(ref, { piezasVendidas: agregarPieza(existente.piezasVendidas, pedido.pieza), piezasAlerta: agregarPieza(existente.piezasAlerta, pedido.pieza) });
+    }
+    return accion;
+  });
+}
+
+// Todos los vehículos del yonke, en vivo (sin índice: una sola colección sin filtros).
+export function escucharVehiculosAlerta(yonkeId, cb) {
+  return onSnapshot(
+    collection(db, 'yonkes', yonkeId, 'vehiculosAlerta'),
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (error) => { console.error('[vehiculosAlerta] No se pudo escuchar el inventario', error); cb([]); },
+  );
+}
+
+// "Ya lo vendí": un toque, sin confirmación.
+export async function marcarPiezaVendida(yonkeId, vehiculoId, pieza) {
+  await updateDoc(vehiculoAlertaRef(yonkeId, vehiculoId), { piezasVendidas: arrayUnion(pieza.trim()) });
+}
+
+// Quitar el vehículo completo del inventario (se vendió o se desbarató todo).
+export async function quitarVehiculoAlerta(yonkeId, vehiculoId) {
+  await deleteDoc(vehiculoAlertaRef(yonkeId, vehiculoId));
+}
+
+// "Sigo manteniendo mis vehículos" (Premium): 30 días más desde hoy a los vigentes. No toca las
+// piezas vendidas ni reactiva los vencidos. Devuelve cuántos renovó.
+export async function renovarVehiculosVigentes(yonkeId, vehiculos) {
+  const ahora = new Date();
+  const vigentes = vehiculos.filter((v) => estaVigente(v, ahora)).slice(0, 450);
+  if (vigentes.length === 0) return 0;
+  const lote = writeBatch(db);
+  const venceEn = Timestamp.fromDate(calcularVenceEn(ahora));
+  for (const v of vigentes) lote.update(vehiculoAlertaRef(yonkeId, v.id), { venceEn, renovadoAt: serverTimestamp() });
+  await lote.commit();
+  return vigentes.length;
 }

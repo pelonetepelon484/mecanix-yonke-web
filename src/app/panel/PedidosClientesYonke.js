@@ -8,14 +8,22 @@
 // Con config/pedidosClientes.otrosEstados, un yonke activo, Verificado y con envíos nacionales
 // ve el interruptor "Ver también alertas de otros estados con envío"; encendido, también ve las
 // alertas de otros estados cuyo cliente aceptó envíos. Sin eso, todo queda exactamente igual.
+// Con config/pedidosClientes.limiteRespuestasDiarias, el plan Básico responde hasta ese número de
+// alertas por día (día de Tijuana); al llegar sigue viéndolas pero no puede responder. Con
+// config/pedidosClientes.inventarioVehiculos, tras "La tengo" se pregunta si tiene el vehículo
+// completo (ver VehiculosCompletosYonke y lib/vehiculosAlerta.ts).
 import { useEffect, useRef, useState } from 'react';
 import { MENSAJES_RESPUESTA, NOTA_MAX, PRECIO_MAX, validarRespuesta } from '../../lib/solicitudesPiezas';
 import { esIdPedido, puedeVerOtrosEstados } from '../../lib/pedidosClientes';
 import { leerYonkeEstadoActivo } from './solicitudesPiezasDatos';
 import {
-  escucharPedidosClientesAbiertos, escucharPedidosClientesOtrosEstados, guardarVerOtrosEstados, leerConfigPedidosClientes,
-  responderPedido, yaRespondioPedido,
+  descontarPiezaDePedido, escucharPedidosClientesAbiertos, escucharPedidosClientesOtrosEstados, guardarVehiculoCompleto, guardarVerOtrosEstados,
+  leerConfigPedidosClientes, leerRespuestasHoy, leerVehiculoAlertaDePedido, responderPedido, yaRespondioPedido,
 } from './pedidosClientesDatos';
+import {
+  MENSAJES_VEHICULO_ALERTA, despuesDeLaTengo, inventarioVehiculosActivo, limiteRespuestasDiarias, llegoAlLimite,
+} from '../../lib/vehiculosAlerta';
+import { BotonQuieroPremium } from './CandadoPremium';
 import { cargarEstados } from '../lib/estados';
 import { useAuth } from './AuthContext';
 import { MensajeBloqueoTerminos } from './BloqueoTerminos';
@@ -28,7 +36,8 @@ export const TEXTO_INTERRUPTOR_OTROS_ESTADOS = 'Ver también alertas de otros es
 
 export default function PedidosClientesYonke({ yonkeId }) {
   // Sin términos vigentes el interruptor se ve pero no se cambia; responder alertas sí se puede.
-  const sinTerminos = useAuth().puedeEditarYonke === false;
+  const { puedeEditarYonke, premiumVigente } = useAuth();
+  const sinTerminos = puedeEditarYonke === false;
   const [config, setConfig] = useState(null);
   const [estadoActivo, setEstadoActivo] = useState(null);
   const [verOtros, setVerOtros] = useState(false);
@@ -38,12 +47,18 @@ export default function PedidosClientesYonke({ yonkeId }) {
   const [respondidos, setRespondidos] = useState({}); // { [pedidoId]: true }
   const [abierto, setAbierto] = useState(null); // pedido que se está respondiendo
   const [aviso, setAviso] = useState('');
+  const [respuestasHoy, setRespuestasHoy] = useState(0);
+  const [preguntaVehiculo, setPreguntaVehiculo] = useState(null); // pedido tras "La tengo"
   // ?pedido={id} de la dirección: se resuelve una sola vez, con la primera lista de pedidos.
   const pedidoBuscado = useRef(null);
 
   const habilitado = config?.habilitado === true;
   const puedeOtros = puedeVerOtrosEstados(config, estadoActivo);
   const conOtros = puedeOtros && verOtros;
+  // Límite diario: solo plan Básico y solo si config/pedidosClientes.limiteRespuestasDiarias existe.
+  const limite = premiumVigente ? null : limiteRespuestasDiarias(config);
+  const sinRespuestasHoy = llegoAlLimite(respuestasHoy, limite, premiumVigente);
+  const conInventario = inventarioVehiculosActivo(config);
 
   // Sin config/pedidosClientes (función apagada), esta sección no hace NINGUNA otra lectura.
   useEffect(() => {
@@ -74,6 +89,30 @@ export default function PedidosClientesYonke({ yonkeId }) {
     });
     return () => { cancelado = true; };
   }, [yonkeId, habilitado]);
+
+  // Respuestas de hoy (solo con límite): para avisar antes de que intente responder.
+  useEffect(() => {
+    if (!yonkeId || !habilitado || limite === null) return;
+    let cancelado = false;
+    leerRespuestasHoy(yonkeId).then((n) => { if (!cancelado) setRespuestasHoy(n); }).catch(() => {});
+    return () => { cancelado = true; };
+  }, [yonkeId, habilitado, limite]);
+
+  // Tras responder "La tengo" con el inventario encendido: si ya tiene el vehículo vigente, la
+  // pieza se descuenta sola; si no (o venció), se pregunta si tiene el vehículo completo.
+  async function despuesDeResponder(pedido) {
+    try {
+      const existente = await leerVehiculoAlertaDePedido(yonkeId, pedido);
+      if (despuesDeLaTengo(existente, new Date()) === 'descontarPieza') {
+        await descontarPiezaDePedido(yonkeId, pedido);
+        setAviso(MENSAJES_VEHICULO_ALERTA.piezaDescontada);
+      } else {
+        setPreguntaVehiculo(pedido);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
   // Nombres de estados para la etiqueta "Desde ..." (solo si puede ver otros estados).
   useEffect(() => {
@@ -134,7 +173,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
   const pendientes = abiertos.filter((p) => !respondidos[p.id]);
 
   if (!habilitado) return null;
-  if (!aviso && !puedeOtros && (!estadoActivo?.activo || pendientes.length === 0)) return null;
+  if (!aviso && !preguntaVehiculo && !puedeOtros && (!estadoActivo?.activo || pendientes.length === 0)) return null;
 
   return (
     <div style={{ marginBottom: '16px' }}>
@@ -165,6 +204,12 @@ export default function PedidosClientesYonke({ yonkeId }) {
       {estadoActivo?.activo && pendientes.length > 0 && (
         <div style={seccion}>
           <p style={titulo}>🙋 Pedidos de clientes ({pendientes.length})</p>
+          {sinRespuestasHoy && (
+            <div role="note" style={avisoLimite}>
+              <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#1A3C5E', fontWeight: 'bold' }}>{MENSAJES_VEHICULO_ALERTA.limiteAlcanzado}</p>
+              <BotonQuieroPremium ubicacion="limite_respuestas_alertas" compacto />
+            </div>
+          )}
           {pendientes.map((p) => (
             <div key={p.id} style={tarjeta}>
               <p style={{ fontWeight: 'bold', color: '#1A3C5E', margin: 0 }}>{p.pieza}</p>
@@ -173,7 +218,12 @@ export default function PedidosClientesYonke({ yonkeId }) {
               </p>
               {p.deOtroEstado && <EtiquetaEnvio estado={nombresEstados[p.estado] || p.estado} />}
               <p style={{ color: '#888', fontSize: '12px', margin: '4px 0 0' }}>Cliente particular · {fechaCorta(p.creadoAt)}</p>
-              <button type="button" onClick={() => setAbierto(p)} style={botonResponder}>Responder</button>
+              <button
+                type="button" onClick={() => setAbierto(p)} disabled={sinRespuestasHoy}
+                style={{ ...botonResponder, ...(sinRespuestasHoy ? { backgroundColor: '#BDBDBD', cursor: 'default' } : {}) }}
+              >
+                Responder
+              </button>
             </div>
           ))}
         </div>
@@ -185,9 +235,36 @@ export default function PedidosClientesYonke({ yonkeId }) {
           estadoNombre={abierto.deOtroEstado ? nombresEstados[abierto.estado] || abierto.estado : ''}
           onCerrar={() => setAbierto(null)}
           onResponder={async (datos) => {
-            await responderPedido(abierto, yonkeId, { yonkeNombre: estadoActivo.nombre, whatsapp: estadoActivo.whatsapp, ...datos });
-            setRespondidos((prev) => ({ ...prev, [abierto.id]: true }));
+            try {
+              const respuesta = { yonkeNombre: estadoActivo.nombre, whatsapp: estadoActivo.whatsapp, ...datos };
+              // Sin límite, la misma llamada de siempre.
+              if (limite === null) await responderPedido(abierto, yonkeId, respuesta);
+              else await responderPedido(abierto, yonkeId, respuesta, { limite });
+            } catch (error) {
+              if (error?.codigo === 'limite') {
+                setRespuestasHoy(limite);
+                setAbierto(null);
+              }
+              throw error;
+            }
+            const pedido = abierto;
+            setRespondidos((prev) => ({ ...prev, [pedido.id]: true }));
+            if (limite !== null) setRespuestasHoy((n) => n + 1);
             setAbierto(null);
+            if (conInventario && datos.tieneLaPieza) despuesDeResponder(pedido);
+          }}
+        />
+      )}
+
+      {preguntaVehiculo && (
+        <ModalVehiculoCompleto
+          pedido={preguntaVehiculo}
+          onNo={() => setPreguntaVehiculo(null)}
+          onSi={async () => {
+            const accion = await guardarVehiculoCompleto(yonkeId, preguntaVehiculo);
+            setPreguntaVehiculo(null);
+            setAviso(accion === 'renovar' ? MENSAJES_VEHICULO_ALERTA.renovado
+              : accion === 'crear' ? MENSAJES_VEHICULO_ALERTA.guardado : MENSAJES_VEHICULO_ALERTA.piezaDescontada);
           }}
         />
       )}
@@ -240,7 +317,7 @@ function ModalResponderPedido({ pedido, estadoNombre = '', onCerrar, onResponder
       await onResponder(datos);
     } catch (err) {
       console.error(err);
-      setError(MENSAJES_RESPUESTA.enviarFallo);
+      setError(err?.codigo === 'limite' ? err.message : MENSAJES_RESPUESTA.enviarFallo);
     } finally {
       setEnviando(false);
     }
@@ -289,6 +366,47 @@ function ModalResponderPedido({ pedido, estadoNombre = '', onCerrar, onResponder
   );
 }
 
+// Segunda pregunta tras "La tengo": ¿tiene el vehículo completo? Sí lo guarda 30 días en su
+// inventario; No solo cierra (su respuesta a la alerta ya quedó guardada).
+function ModalVehiculoCompleto({ pedido, onSi, onNo }) {
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState('');
+
+  async function si() {
+    setGuardando(true);
+    setError('');
+    try {
+      await onSi();
+    } catch (err) {
+      console.error(err);
+      setError(MENSAJES_VEHICULO_ALERTA.guardarFallo);
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div role="dialog" style={fondoModal}>
+      <div style={cajaModal}>
+        <p style={{ fontWeight: 'bold', color: '#1A3C5E', margin: '0 0 4px', fontSize: '17px' }}>{MENSAJES_VEHICULO_ALERTA.preguntaVehiculo}</p>
+        <p style={{ color: '#666', fontSize: '14px', margin: '0 0 6px' }}>
+          🚗 {pedido.vehiculo?.marca} {pedido.vehiculo?.modelo} {pedido.vehiculo?.anio}
+        </p>
+        <p style={{ color: '#888', fontSize: '12px', margin: '0 0 14px', lineHeight: '1.4' }}>
+          Si dices que sí, por 30 días los clientes que busquen otra pieza de este vehículo te verán disponible, sin que te llegue otra alerta.
+        </p>
+        {error && <p role="alert" style={{ color: '#B3261E', fontSize: '13px', margin: '0 0 10px' }}>{error}</p>}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button type="button" onClick={onNo} disabled={guardando} style={{ ...botonToggle, flex: 1, backgroundColor: '#EEF1F5', color: '#333' }}>No, solo la pieza</button>
+          <button type="button" onClick={si} disabled={guardando} style={{ ...botonToggle, flex: 1, backgroundColor: '#2E7D32', color: '#fff', opacity: guardando ? 0.6 : 1 }}>
+            {guardando ? 'Guardando...' : 'Sí, lo tengo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const avisoLimite = { backgroundColor: '#FFF4E8', border: '1px solid #E8720C', borderRadius: '12px', padding: '12px', marginBottom: '10px' };
 const seccion = { backgroundColor: '#fff', borderRadius: '14px', padding: '14px', marginBottom: '12px', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' };
 const titulo = { margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E' };
 const tarjeta = { border: '1px solid #EEE', borderRadius: '12px', padding: '12px', marginBottom: '10px' };

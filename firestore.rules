@@ -782,6 +782,47 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/config/pedidosClientes)
         && get(/databases/$(database)/documents/config/pedidosClientes).data.habilitado == true;
     }
+    // ---------- Límite diario de respuestas a alertas (plan Básico) ----------
+    // config/pedidosClientes.limiteRespuestasDiarias: solo un entero >= 1 lo activa. Sin el campo
+    // no hay límite (como antes). Premium vigente nunca tiene límite. Con límite, la respuesta
+    // trae `dia` (AAAAMMDD de Tijuana) y en el MISMO guardado sube 1 el contador
+    // yonkes/{id}/respuestasDiarias/{dia}, que no puede pasar del límite. Tijuana es UTC-8 en
+    // invierno y UTC-7 en verano: se acepta el día calculado con cualquiera de los dos (como mucho
+    // una hora de holgura alrededor de la medianoche).
+    function limiteRespuestasActivo() {
+      return exists(/databases/$(database)/documents/config/pedidosClientes)
+        && get(/databases/$(database)/documents/config/pedidosClientes).data.get('limiteRespuestasDiarias', null) is int
+        && get(/databases/$(database)/documents/config/pedidosClientes).data.limiteRespuestasDiarias >= 1;
+    }
+    function diaDe(t) {
+      return string(t.year() * 10000 + t.month() * 100 + t.day());
+    }
+    function diaTijuanaValido(dia) {
+      return dia is string
+        && (dia == diaDe(request.time - duration.value(8, 'h')) || dia == diaDe(request.time - duration.value(7, 'h')));
+    }
+    function contadorRespuestas(yonkeId, dia) {
+      return /databases/$(database)/documents/yonkes/$(yonkeId)/respuestasDiarias/$(dia);
+    }
+    function respuestaDentroDelLimite(yonkeId) {
+      return !limiteRespuestasActivo()
+        || premiumVigente(get(/databases/$(database)/documents/yonkes/$(yonkeId)).data)
+        || ('dia' in request.resource.data
+            && diaTijuanaValido(request.resource.data.dia)
+            && getAfter(contadorRespuestas(yonkeId, request.resource.data.dia)).data.count
+                 <= get(/databases/$(database)/documents/config/pedidosClientes).data.limiteRespuestasDiarias
+            && ((!exists(contadorRespuestas(yonkeId, request.resource.data.dia))
+                 && getAfter(contadorRespuestas(yonkeId, request.resource.data.dia)).data.count == 1)
+                || (exists(contadorRespuestas(yonkeId, request.resource.data.dia))
+                    && getAfter(contadorRespuestas(yonkeId, request.resource.data.dia)).data.count
+                         == get(contadorRespuestas(yonkeId, request.resource.data.dia)).data.count + 1)));
+    }
+    // Inventario de vehículos completos de las alertas: tercera bandera
+    // config/pedidosClientes.inventarioVehiculos (además de la primera).
+    function inventarioVehiculosHabilitado() {
+      return pedidosClientesHabilitados()
+        && get(/databases/$(database)/documents/config/pedidosClientes).data.get('inventarioVehiculos', false) == true;
+    }
     // Alertas de otros estados: segunda bandera config/pedidosClientes.otrosEstados (además de la
     // primera). Apagada, todo funciona exactamente como antes.
     function otrosEstadosHabilitados() {
@@ -867,7 +908,9 @@ service cloud.firestore {
         }
         function respuestaPedidoValida() {
           let d = request.resource.data;
-          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precio', 'nota', 'whatsapp', 'creadoAt', 'expiraAt'])
+          // `dia`: solo cuando hay límite diario (ver respuestaDentroDelLimite).
+          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precio', 'nota', 'whatsapp', 'creadoAt', 'expiraAt', 'dia'])
+            && (!('dia' in d) || diaTijuanaValido(d.dia))
             && d.yonkeId == yonkeId
             && d.yonkeNombre is string && d.yonkeNombre.size() >= 1 && d.yonkeNombre.size() <= 100
             && d.tieneLaPieza is bool
@@ -900,7 +943,8 @@ service cloud.firestore {
                       && request.resource.data.yonkeNombre == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.nombre
                       && request.resource.data.whatsapp == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.whatsapp
                       && respuestaPedidoValida()
-                      && expiraIgualAlPedido();
+                      && expiraIgualAlPedido()
+                      && respuestaDentroDelLimite(yonkeId);
         allow update: if false;
         // Admin, al reabrir el pedido en el mismo lote: solo el vencimiento, igual al nuevo del pedido.
         allow update: if esAdmin()
@@ -1093,6 +1137,82 @@ service cloud.firestore {
         allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
         allow write: if esAdmin()
                      || (esDuenoDelYonke(yonkeId) && yonkeConTerminosVigentes(yonkeId) && yonkeConPremiumSiHaceFalta(yonkeId));
+      }
+      // ---------- Vehículos completos de las alertas (yonkes/{id}/vehiculosAlerta) ----------
+      // Lectura pública (el buscador no tiene sesión), igual que vehiculos; sin datos del cliente.
+      // Solo el dueño del yonke escribe (sin exigir términos, igual que responder alertas). Dar de
+      // alta y renovar piden la bandera inventarioVehiculos; marcar vendida y quitar no (para que
+      // siempre pueda limpiar su inventario). El vencimiento es "hoy + 30 días" con ±1 día de
+      // holgura por el reloj del celular.
+      match /vehiculosAlerta/{vehiculoId} {
+        function vehiculoAlertaValido(d) {
+          return d.keys().hasOnly(['yonkeId', 'marca', 'modelo', 'ano', 'piezasAlerta', 'piezasVendidas', 'creadoAt', 'venceEn', 'estado', 'renovadoAt'])
+            && d.keys().hasAll(['yonkeId', 'marca', 'modelo', 'ano', 'piezasAlerta', 'piezasVendidas', 'creadoAt', 'venceEn', 'estado'])
+            && d.yonkeId == yonkeId
+            && d.marca is string && d.marca.size() >= 1 && d.marca.size() <= 60
+            && d.modelo is string && d.modelo.size() >= 1 && d.modelo.size() <= 60
+            && d.ano is int && d.ano >= 1950 && d.ano <= 2100
+            && d.piezasAlerta is list && d.piezasAlerta.size() <= 100
+            && d.piezasVendidas is list && d.piezasVendidas.size() <= 100
+            && d.creadoAt is timestamp
+            && d.venceEn is timestamp
+            && d.estado == 'activo';
+        }
+        function venceEn30Dias(d) {
+          return d.venceEn - request.time >= duration.value(29, 'd')
+            && d.venceEn - request.time <= duration.value(31, 'd');
+        }
+        function sinCambiosDeIdentidad() {
+          return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['yonkeId', 'marca', 'modelo', 'ano', 'creadoAt']);
+        }
+        allow read: if true;
+        allow create: if esDuenoDelYonke(yonkeId)
+                      && inventarioVehiculosHabilitado()
+                      && vehiculoAlertaValido(request.resource.data)
+                      && !('renovadoAt' in request.resource.data)
+                      && request.resource.data.creadoAt == request.time
+                      && venceEn30Dias(request.resource.data)
+                      && request.resource.data.piezasVendidas.size() == 0
+                      && request.resource.data.piezasAlerta.size() <= 1;
+        allow update: if esDuenoDelYonke(yonkeId)
+                      && vehiculoAlertaValido(request.resource.data)
+                      && sinCambiosDeIdentidad()
+                      && (
+                        // "Ya lo vendí" o pieza descontada por una alerta: solo las listas de piezas.
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['piezasVendidas', 'piezasAlerta'])
+                        // Renovar uno vencido (dijo "Sí" a "¿Tienes el vehículo completo?"): 30 días
+                        // desde hoy y las piezas vendidas en cero.
+                        || (inventarioVehiculosHabilitado()
+                            && resource.data.venceEn <= request.time
+                            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['venceEn', 'estado', 'piezasVendidas', 'piezasAlerta', 'renovadoAt'])
+                            && venceEn30Dias(request.resource.data)
+                            && request.resource.data.piezasVendidas.size() == 0
+                            && request.resource.data.renovadoAt == request.time)
+                        // "Sigo manteniendo mis vehículos" (Premium vigente): solo los vigentes, solo
+                        // la fecha; no toca las piezas vendidas.
+                        || (inventarioVehiculosHabilitado()
+                            && resource.data.venceEn > request.time
+                            && premiumVigente(get(/databases/$(database)/documents/yonkes/$(yonkeId)).data)
+                            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['venceEn', 'renovadoAt'])
+                            && venceEn30Dias(request.resource.data)
+                            && request.resource.data.renovadoAt == request.time)
+                      );
+        allow update, delete: if esAdmin();
+        allow delete: if esDuenoDelYonke(yonkeId);
+      }
+      // Contador de respuestas a alertas por día de Tijuana (límite del plan Básico). Solo sube de
+      // 1 en 1 y nadie lo baja ni lo borra (salvo el admin), así el yonke no puede reiniciarlo.
+      match /respuestasDiarias/{dia} {
+        allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow create: if esDuenoDelYonke(yonkeId)
+                      && diaTijuanaValido(dia)
+                      && request.resource.data.keys().hasOnly(['count'])
+                      && request.resource.data.count == 1;
+        allow update: if esDuenoDelYonke(yonkeId)
+                      && diaTijuanaValido(dia)
+                      && request.resource.data.keys().hasOnly(['count'])
+                      && request.resource.data.count == resource.data.count + 1;
+        allow delete: if esAdmin();
       }
       // Datos privados del yonke (hoy: privado/contacto con su correo, ver src/lib/contactoPrivado.js).
       // Solo el admin los lee y escribe. (Los privado/contacto de pedidosClientes y solicitudesPiezas

@@ -11,6 +11,7 @@ import { useAuth } from '../AuthContext';
 import BottomNav from '../BottomNav';
 import SolicitudesPiezasYonke from '../SolicitudesPiezasYonke';
 import PedidosClientesYonke from '../PedidosClientesYonke';
+import VehiculosCompletosYonke from '../VehiculosCompletosYonke';
 import BotonAvisos from '../BotonAvisos';
 import { registrarActividadYonke } from '../../../lib/registrarActividadYonke';
 import { ventaPublicaParaEscribir } from '../../../lib/ventaPublicaRef';
@@ -171,6 +172,7 @@ export default function ReservacionesPanel() {
         <BotonAvisos />
         <SolicitudesPiezasYonke yonkeId={yonkeId} />
         <PedidosClientesYonke yonkeId={yonkeId} />
+        <VehiculosCompletosYonke yonkeId={yonkeId} />
         {loadingReservas ? (
           <p style={{ textAlign: 'center', color: '#888', marginTop: '32px' }}>Cargando...</p>
         ) : reservaciones.length === 0 ? (

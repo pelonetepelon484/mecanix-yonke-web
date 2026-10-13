@@ -29,6 +29,12 @@ export function leerBanderaOtrosEstados() {
   return leerConfig().then((c) => c.habilitado === true && c.otrosEstados === true);
 }
 
+// Tercera bandera (config/pedidosClientes.inventarioVehiculos): vehículos completos de las
+// alertas en el buscador avanzado. Mismo documento y misma lectura; exige también la primera.
+export function leerBanderaInventarioVehiculos() {
+  return leerConfig().then((c) => c.habilitado === true && c.inventarioVehiculos === true);
+}
+
 export function useBanderaPedidosClientes() {
   const [activa, setActiva] = useState(false);
   useEffect(() => {
