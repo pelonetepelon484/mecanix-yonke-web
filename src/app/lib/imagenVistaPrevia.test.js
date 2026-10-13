@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { imagenDeYonke, imagenGenerica } from './imagenVistaPrevia';
-
-const dataUri = (archivo) => `data:image/png;base64,${readFileSync(path.join(process.cwd(), 'public', archivo)).toString('base64')}`;
-const logos = { solo: dataUri('logo-mecanix-solo.png'), blanco: dataUri('logo-mecanix-blanco.png') };
+import { leerRecursosImagen } from './vistaPreviaTenant';
 
 // Ancho y alto del PNG (encabezado IHDR).
 async function medidasPng(respuesta) {
@@ -14,7 +12,10 @@ async function medidasPng(respuesta) {
 }
 
 describe('imagen de vista previa (PNG 1200 × 630, caché de 1 día)', () => {
-  it('yonke sin logo y genérica de Mecanix', async () => {
+  it('yonke sin logo y genérica de Mecanix, con Inter', async () => {
+    const logos = await leerRecursosImagen();
+    expect(logos.fuentes.map((f) => [f.name, f.weight])).toEqual([['Inter', 400], ['Inter', 600]]);
+    expect(logos.solo).toMatch(/^data:image\/png;base64,/);
     const r = imagenDeYonke({ nombre: 'Deshuesadero Norte', lugar: '', colorPrimario: '#FFD54F', logo: null }, logos);
     expect(r.headers.get('content-type')).toBe('image/png');
     expect(r.headers.get('cache-control')).toBe('public, max-age=86400, s-maxage=86400');

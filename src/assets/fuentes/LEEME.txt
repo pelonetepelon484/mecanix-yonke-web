@@ -1,0 +1,6 @@
+Inter (Regular y SemiBold), tipografía de la imagen de vista previa de los subdominios
+(/api/vista-previa/[sub], ver src/app/lib/imagenVistaPrevia.js). No se sirve como archivo público.
+
+Inter — Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter).
+Licencia: SIL Open Font License, versión 1.1 (https://openfontlicense.org). Se puede usar,
+incluir y redistribuir libremente con este aviso; no se puede vender la tipografía por sí sola.

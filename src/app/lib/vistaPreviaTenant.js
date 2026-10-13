@@ -54,14 +54,23 @@ export async function descargarLogoComoDataUri(url) {
   }
 }
 
-// Logos de Mecanix desde public/ (incluidos en la función por next.config.mjs). Se leen una vez.
-let logosMecanix = null;
-export async function leerLogosMecanix() {
-  if (!logosMecanix) {
-    const leer = async (archivo) => `data:image/png;base64,${(await readFile(path.join(process.cwd(), 'public', archivo))).toString('base64')}`;
-    logosMecanix = Promise.all([leer('logo-mecanix-solo.png'), leer('logo-mecanix-blanco.png')])
-      .then(([solo, blanco]) => ({ solo, blanco }))
-      .catch((error) => { logosMecanix = null; throw error; });
+// Logos de Mecanix (public/) y tipografía Inter (src/assets/fuentes/), incluidos en la función por
+// next.config.mjs. Se leen una vez por instancia del servidor.
+let recursos = null;
+export async function leerRecursosImagen() {
+  if (!recursos) {
+    const raiz = process.cwd();
+    const logo = async (archivo) => `data:image/png;base64,${(await readFile(path.join(raiz, 'public', archivo))).toString('base64')}`;
+    const fuente = (archivo) => readFile(path.join(raiz, 'src', 'assets', 'fuentes', archivo));
+    recursos = Promise.all([logo('logo-mecanix-solo.png'), logo('logo-mecanix-blanco.png'), fuente('inter-regular.ttf'), fuente('inter-semibold.ttf')])
+      .then(([solo, blanco, regular, seminegrita]) => ({
+        solo, blanco,
+        fuentes: [
+          { name: 'Inter', data: regular, weight: 400, style: 'normal' },
+          { name: 'Inter', data: seminegrita, weight: 600, style: 'normal' },
+        ],
+      }))
+      .catch((error) => { recursos = null; throw error; });
   }
-  return logosMecanix;
+  return recursos;
 }

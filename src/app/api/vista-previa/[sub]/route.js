@@ -1,5 +1,5 @@
 import { imagenDeYonke, imagenGenerica } from '../../../lib/imagenVistaPrevia';
-import { datosImagenDeSubdominio, leerLogosMecanix } from '../../../lib/vistaPreviaTenant';
+import { datosImagenDeSubdominio, leerRecursosImagen } from '../../../lib/vistaPreviaTenant';
 
 // GET /api/vista-previa/{subdominio}: imagen de 1200 × 630 (PNG) que WhatsApp y Facebook muestran
 // al compartir el enlace del subdominio de un yonke (la piden las etiquetas de tenant-demo). Vive
@@ -9,12 +9,12 @@ export const runtime = 'nodejs';
 
 export async function GET(request, { params }) {
   const { sub } = await params;
-  const logos = await leerLogosMecanix();
+  const recursos = await leerRecursosImagen();
   let datos = null;
   try {
     datos = await datosImagenDeSubdominio(sub);
   } catch (error) {
     console.error('[vista-previa] No se pudieron leer los datos del yonke; imagen genérica', { sub, message: error?.message });
   }
-  return datos ? imagenDeYonke(datos, logos) : imagenGenerica(logos);
+  return datos ? imagenDeYonke(datos, recursos) : imagenGenerica(recursos);
 }
