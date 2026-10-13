@@ -52,13 +52,10 @@ export default async function VerificadosPage() {
 
         <div style={{ textAlign: 'center', margin: '20px 0 28px' }}>
           <img
-            src="/sello_verificado.png"
+            src="/sello-verificado-nuevo.png"
             alt=""
             aria-hidden="true"
-            style={{
-              width: '220px', maxWidth: '90%', height: 'auto', display: 'block', margin: '0 auto 12px',
-              border: '3px solid #1A1A1A', borderRadius: '8px', backgroundColor: '#fff',
-            }}
+            style={{ width: '180px', maxWidth: '70%', height: 'auto', display: 'block', margin: '0 auto 12px' }}
           />
           <h1 style={{ color: '#1A3C5E', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>
             Yonkes Verificados por Mecanix
@@ -118,7 +115,7 @@ function TarjetaYonkeVerificado({ yonke }) {
           <div style={{ marginTop: '6px' }}><YonkeActividadBadge ultimaActividadAt={yonke.ultimaActividadAt} /></div>
         )}
       </div>
-      <img src="/sello_verificado.png" alt="Verificado" style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }} />
+      <img src="/sello-verificado-nuevo.png" alt="Verificado" style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }} />
     </div>
   );
 
