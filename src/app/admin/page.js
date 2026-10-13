@@ -265,6 +265,8 @@ export default function AdminPage() {
       ['comprasReciclaje', 'Compras de reciclaje'],
       ['materialesReciclaje', 'Materiales de reciclaje'],
       ['privado', 'Datos privados de contacto'],
+      ['vehiculosAlerta', 'Vehículos completos de alertas'],
+      ['respuestasDiarias', 'Contador de respuestas a alertas'],
     ]) {
       try {
         const n = await borrarSubcoleccionCompleta(collection(db, 'yonkes', yonke.id, sub));

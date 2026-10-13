@@ -9,6 +9,7 @@ import { CATALOGO_BASE } from '../catalogoBase';
 import { mismoModelo } from '../modeloCompacto';
 import { toMillis } from '../../../lib/inventoryStatus';
 import { elegirPiezaParaPrecio, esPrecioValido } from '../../../lib/precio';
+import { buscarVehiculosAlerta } from '../buscarVehiculosAlerta';
 
 // Un modelo REAL y conocido (ej. Volkswagen Atlas, Dodge Stratus) que nadie ha registrado nunca
 // en vivo no debe verse igual que un texto que no se entendió en absoluto — antes, ambos casos
@@ -523,4 +524,20 @@ export async function consultarInventarioVehiculo({ marca, modelo, anio, estado 
   const cualquierAno = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));
   ordenarPorPlan(cualquierAno);
   return { resultados: cualquierAno, resultadosCercanos: [], tipoResultado: 'cualquierAno' };
+}
+
+// Vehículos completos confirmados en alertas (yonkes/{id}/vehiculosAlerta): solo con el interruptor
+// config/pedidosClientes.inventarioVehiculos (quien llama lo revisa) y con marca, modelo, año y
+// pieza. Nunca tumba la búsqueda: si falla, se comporta como si no hubiera ninguno.
+// Ver la nota en buscarVehiculosAlerta.js sobre cuándo cambiar a una consulta con índice.
+export async function consultarVehiculosAlerta({ marca, modelo, anio, pieza, estado }) {
+  if (!marca || !modelo || anio == null || !pieza) return [];
+  try {
+    const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
+    const { yonkesDocs } = filtrarPorEstado(yonkesSnap.docs, estado);
+    return await buscarVehiculosAlerta(dbServer, yonkesDocs, { marca, modelo, anio, pieza });
+  } catch (error) {
+    console.error('[consultarInventario] No se pudo leer vehiculosAlerta', { code: error?.code, message: error?.message });
+    return [];
+  }
 }

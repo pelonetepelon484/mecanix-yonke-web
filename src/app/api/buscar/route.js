@@ -7,7 +7,7 @@ import { obtenerSinonimosCombinados } from '../../lib/busqueda/sinonimosPiezas';
 import { detectarFueraDeGiro } from '../../lib/busqueda/detectarFueraDeGiro';
 import { registrarBusqueda } from '../../lib/busqueda/registrarBusqueda';
 import { geoDesdeHeadersVercel } from '../../../lib/geoVercel';
-import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones } from '../../lib/busqueda/consultarInventario';
+import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones, consultarVehiculosAlerta } from '../../lib/busqueda/consultarInventario';
 import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLimit';
 import { MENSAJE_NUMERO_DE_PARTE } from '../../lib/busqueda/numeroDeParte';
 import { obtenerEstadosCombinado } from '../../lib/busqueda/estadosServer';
@@ -15,7 +15,8 @@ import { notificarAdmin } from '../../lib/notificarAdmin';
 import { debeMostrarAvisoPiezaSinVehiculo } from '../../../lib/piezaSinVehiculo';
 import { EJEMPLO_BUSQUEDA_CORRECTA } from '../../lib/busqueda/ejemploBusqueda';
 import { crearPersistirContacto, mensajeSinInventario } from '../../lib/busqueda/contactoPendiente';
-import { pedidosClientesActivos } from '../../lib/busqueda/banderaPedidosClientesServer';
+import { inventarioVehiculosActivoServer, pedidosClientesActivos } from '../../lib/busqueda/banderaPedidosClientesServer';
+import { sinYonkesYaMostrados } from '../../lib/buscarVehiculosAlerta';
 
 // Nota de nombres: en este archivo `estado` (minúscula, sin más calificación) siempre significa
 // el ESTADO DE LA BÚSQUEDA ('ok', 'sin_inventario', 'fuera_de_catalogo', etc. — ver
@@ -184,12 +185,18 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
   // Yukon/Dodge Charger SÍ están en el catálogo. Ahora existeEnCatalogoVivo() corre igual que en
   // cualquier otra búsqueda; si el vehículo SÍ es conocido pero no hay un motor/transmisión suelto
   // con esa cilindrada, el flujo cae más abajo en el mensaje correcto ("sin_inventario"), no aquí.
-  const [enCatalogo, resultadoMotores, resultadoInventario] = await Promise.all([
+  // Vehículos completos de las alertas (config/pedidosClientes.inventarioVehiculos): corre en
+  // paralelo y SOLO agrega el campo vehiculosAlerta a la respuesta cuando hay alguno; sin el
+  // interruptor, o sin coincidencias, la respuesta queda idéntica a la de siempre.
+  const [enCatalogo, resultadoMotores, resultadoInventario, vehiculosAlertaTodos] = await Promise.all([
     existeEnCatalogoVivo(marca, modelo),
     consultarMotoresTransmisiones({ marca, modelo, anio, cilindrada, estado: estadoFiltro }),
     esBusquedaMotorPorCilindrada
       ? Promise.resolve({ resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false })
       : consultarInventario({ marca, modelo, anio, pieza, cilindrada, estado: estadoFiltro }),
+    (cilindrada == null && marca && modelo && anio != null && pieza && await inventarioVehiculosActivoServer())
+      ? consultarVehiculosAlerta({ marca, modelo, anio, pieza, estado: estadoFiltro })
+      : Promise.resolve([]),
   ]);
 
   // El estado elegido no tiene NINGÚN yonke (distinto de "tiene yonkes pero nada coincide") —
@@ -202,6 +209,8 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
   const { motores, transmisiones, motoresCercanos, transmisionesCercanos } = resultadoMotores;
   const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
   const { resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada } = resultadoInventario;
+  const vehiculosAlerta = sinYonkesYaMostrados(vehiculosAlertaTodos, resultados);
+  const extraVehiculosAlerta = vehiculosAlerta.length > 0 ? { vehiculosAlerta, piezaVehiculosAlerta: pieza } : {};
 
   if (!enCatalogo && totalMotoresTransmisiones === 0 && resultados.length === 0 && resultadosCercanos.length === 0) {
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: 'fuera_de_catalogo' });
@@ -229,7 +238,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     });
     return NextResponse.json(esNumeroDeParte
       ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
-      : { estado: 'sin_inventario', mensaje: mensajeSinInventario({ pedidosClientesActivos: await pedidosClientesActivos() }) });
+      : { estado: 'sin_inventario', mensaje: mensajeSinInventario({ pedidosClientesActivos: await pedidosClientesActivos() }), ...extraVehiculosAlerta });
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
@@ -244,6 +253,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     resultadosMotores: motores, resultadosMotoresCercanos: motoresCercanos,
     resultadosTransmisiones: transmisiones, resultadosTransmisionesCercanos: transmisionesCercanos,
     marca, modelo, anio, pieza, cilindrada,
+    ...extraVehiculosAlerta,
   });
 }
 
