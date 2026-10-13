@@ -108,7 +108,7 @@ function SelloMarcaAgua() {
       aria-hidden="true"
       style={{
         position: 'absolute', top: '12px', right: '12px',
-        width: '64px', height: 'auto', opacity: 0.17, pointerEvents: 'none', zIndex: 0,
+        width: '64px', height: 'auto', opacity: 0.27, pointerEvents: 'none', zIndex: 0,
       }}
     />
   );
