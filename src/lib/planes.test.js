@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   esPremiumVigente, estadoPlan, limitesEncendidos, casosPremiumVigente, tarjetaPlanSinCosto, FUNCIONES_PLAN_BASICO, PRECIO_PREMIUM_TEXTO,
+  FUNCIONES_PLAN_PREMIUM, FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, LIMITE_RESPUESTAS_DIARIAS_BASICO, URL_QUIERO_PREMIUM,
+  URL_QUIERO_PREMIUM_TALLER, tarjetasTalleresEncendidas,
 } from './planes';
 
 const AHORA = new Date('2026-10-12T12:00:00');
@@ -60,5 +62,47 @@ describe('textos públicos de la tarjeta del plan sin costo', () => {
   });
   it('precio de Premium', () => {
     expect(PRECIO_PREMIUM_TEXTO).toBe('$398.00 MXN al mes más IVA');
+  });
+});
+
+describe('textos nuevos de las tarjetas', () => {
+  it('Básico de yonkes: pedidos y alertas por separado, con el límite diario, vehículo completo y avisos', () => {
+    expect(LIMITE_RESPUESTAS_DIARIAS_BASICO).toBe(50);
+    expect(FUNCIONES_PLAN_BASICO).toEqual([
+      'Tu yonke visible en el buscador público de Mecanix',
+      'Inventario sin límite con fotos: vehículos, motores y piezas sueltas',
+      'Pedidos: reservaciones de clientes y pedidos de talleres',
+      'Alertas de búsqueda en tiempo real: responde hasta 50 al día',
+      'Si tienes el vehículo completo, queda disponible 30 días sin capturarlo',
+      'Avisos en tu celular cuando llega una alerta o un pedido (Android)',
+      'Contacto directo por WhatsApp',
+      'Datos de tu negocio: logo, información, horario, métodos de pago y garantía',
+      'Calificaciones de tus clientes',
+    ]);
+  });
+  it('Premium de yonkes: las funciones de pago, sin el año gratis', () => {
+    expect(FUNCIONES_PLAN_PREMIUM[0]).toBe('Todo lo del Plan Básico');
+    const todo = FUNCIONES_PLAN_PREMIUM.join(' ');
+    for (const f of ['sin límite', 'Sigo manteniendo mis vehículos', 'Venta manual', 'notas de garantía', 'Demanda', 'Reciclaje', 'subdominio', '⭐ Premium', 'Las demás funciones']) {
+      expect(todo).toContain(f);
+    }
+    expect(todo).not.toMatch(/gratis|sin costo|noviembre|año/i);
+    expect(URL_QUIERO_PREMIUM).toBe('https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual');
+  });
+  it('talleres: Básico y Premium, sin decir que las órdenes de servicio no tienen costo', () => {
+    expect(FUNCIONES_TALLER_BASICO).toEqual([
+      'Cotizaciones para tus clientes, con PDF',
+      'Pide piezas a los yonkes y compara sus respuestas',
+      'Aviso de privacidad para tus clientes incluido',
+    ]);
+    expect(FUNCIONES_TALLER_PREMIUM).toEqual(['Todo lo del Plan Básico', 'Órdenes de servicio con PDF', 'Descarga de todos tus documentos', 'Las demás funciones que se incorporen']);
+    expect([...FUNCIONES_TALLER_BASICO, ...FUNCIONES_TALLER_PREMIUM].join(' ')).not.toMatch(/sin costo|gratis/i);
+    expect(decodeURIComponent(URL_QUIERO_PREMIUM_TALLER)).toBe('https://wa.me/5216611034260?text=Hola, me interesa el Plan Premium de Mecanix para talleres');
+  });
+  it('interruptor tarjetasTalleres: solo true exacto', () => {
+    expect(tarjetasTalleresEncendidas({ tarjetasTalleres: true })).toBe(true);
+    for (const c of [null, undefined, {}, { tarjetasTalleres: false }, { tarjetasTalleres: 'true' }, { tarjetasTalleres: 1 }]) {
+      expect(tarjetasTalleresEncendidas(c)).toBe(false);
+    }
   });
 });
