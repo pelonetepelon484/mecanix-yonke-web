@@ -233,3 +233,60 @@ describe('vehiculosAlerta: cambios', () => {
     await assertSucceeds(deleteDoc(doc(como('adm'), 'yonkes', 'Y1', 'vehiculosAlerta', ID)));
   });
 });
+
+describe('vehiculosAlerta: varias unidades', () => {
+  const ref = (uid, yonkeId = 'Y1') => doc(como(uid), 'yonkes', yonkeId, 'vehiculosAlerta', ID);
+
+  it('alta con 1 unidad y sin ventas (y también sin los campos nuevos, como la versión anterior)', async () => {
+    await assertSucceeds(setDoc(ref('o1'), nuevo('Y1', { unidades: 1, ventasPiezas: {} })));
+    await sembrar();
+    await assertSucceeds(setDoc(ref('o1'), nuevo('Y1')));
+    await sembrar();
+    await assertFails(setDoc(ref('o1'), nuevo('Y1', { unidades: 3 })));
+    await assertFails(setDoc(ref('o1'), nuevo('Y1', { ventasPiezas: { alternador: 1 } })));
+  });
+
+  it('vender y deshacer: el dueño cambia el conteo, también en un registro viejo; otro yonke no', async () => {
+    await sembrarVehiculo('Y1', ID, { piezasVendidas: ['Faro'] });
+    await assertSucceeds(updateDoc(ref('o1'), { ventasPiezas: { faro: 1, alternador: 1 }, piezasVendidas: ['Faro', 'Alternador'] }));
+    await assertSucceeds(updateDoc(ref('o1'), { ventasPiezas: { faro: 1 }, piezasVendidas: ['Faro'] }));
+    await assertFails(updateDoc(ref('o2'), { ventasPiezas: {} }));
+  });
+
+  it('"+1" en un vigente: una unidad más y 30 días; no de dos en dos, no en vencidos, no sin la bandera', async () => {
+    await sembrarVehiculo('Y1', ID);
+    await assertFails(updateDoc(ref('o1'), { unidades: 3, venceEn: enDias(30), renovadoAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref('o1'), { unidades: 2 }));
+    await assertSucceeds(updateDoc(ref('o1'), { unidades: 2, venceEn: enDias(30), renovadoAt: serverTimestamp() }));
+    // Desde "¿Tienes otro igual?": la unidad y la venta en el mismo guardado.
+    await assertSucceeds(updateDoc(ref('o1'), {
+      unidades: 3, venceEn: enDias(30), renovadoAt: serverTimestamp(), ventasPiezas: { alternador: 3 }, piezasVendidas: ['Alternador'],
+    }));
+    await assertFails(updateDoc(ref('o2'), { unidades: 4, venceEn: enDias(30), renovadoAt: serverTimestamp() }));
+
+    await sembrarVehiculo('Y1', ID, { venceEn: enDias(-1) });
+    await assertFails(updateDoc(ref('o1'), { unidades: 2, venceEn: enDias(30), renovadoAt: serverTimestamp() }));
+
+    await sembrar({ config: { habilitado: true } });
+    await sembrarVehiculo('Y1', ID);
+    await assertFails(updateDoc(ref('o1'), { unidades: 2, venceEn: enDias(30), renovadoAt: serverTimestamp() }));
+  });
+
+  it('"−1": de uno en uno y nunca menos de 1 (también en un registro viejo sin el campo)', async () => {
+    await sembrarVehiculo('Y1', ID, { unidades: 3 });
+    await assertSucceeds(updateDoc(ref('o1'), { unidades: 2 }));
+    await assertFails(updateDoc(ref('o1'), { unidades: 0 }));
+    await assertSucceeds(updateDoc(ref('o1'), { unidades: 1 }));
+    await assertFails(updateDoc(ref('o1'), { unidades: 0 }));
+    await sembrarVehiculo('Y1', ID);
+    await assertFails(updateDoc(ref('o1'), { unidades: 0 }));
+  });
+
+  it('renovar uno vencido lo deja en 1 unidad y sin ventas', async () => {
+    await sembrarVehiculo('Y1', ID, { venceEn: enDias(-2), unidades: 3, ventasPiezas: { alternador: 2 } });
+    const base = { venceEn: enDias(30), piezasVendidas: [], renovadoAt: serverTimestamp(), estado: 'activo' };
+    await assertFails(updateDoc(ref('o1'), base));
+    await assertFails(updateDoc(ref('o1'), { ...base, unidades: 1 }));
+    await assertSucceeds(updateDoc(ref('o1'), { ...base, unidades: 1, ventasPiezas: {} }));
+  });
+});

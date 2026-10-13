@@ -32,6 +32,19 @@ describe('buscarVehiculosAlerta', () => {
     expect(lista[1]).toMatchObject({ yonkeNombre: 'Yonke Y1', whatsapp: '6641111111', vehiculo: { marca: 'Honda', modelo: 'Civic', ano: 2020 } });
   });
 
+  it('con varias unidades, el yonke sigue apareciendo hasta que esa pieza se vende en todas', async () => {
+    pares.splice(0, pares.length,
+      { yonkeDoc: yonke('Y1'), vDoc: vehiculo('v1', { unidades: 3, ventasPiezas: { alternador: 2 } }) },
+      { yonkeDoc: yonke('Y2'), vDoc: vehiculo('v2', { unidades: 3, ventasPiezas: { alternador: 3 } }) },
+      // Registro viejo: 1 unidad y "alternador" vendido 1 vez.
+      { yonkeDoc: yonke('Y3'), vDoc: vehiculo('v3', { piezasVendidas: ['Alternador'] }) });
+    const lista = await buscarVehiculosAlerta('db', [], { marca: 'Honda', modelo: 'Civic', anio: 2020, pieza: 'Alternador' }, AHORA);
+    expect(lista.map((v) => v.yonkeId)).toEqual(['Y1']);
+    // El comprador nunca ve el número de unidades.
+    expect(lista[0]).not.toHaveProperty('unidades');
+    expect(lista[0].vehiculo).not.toHaveProperty('unidades');
+  });
+
   it('no repite un yonke que ya sale en los resultados con un vehículo del mismo año', () => {
     const lista = [{ yonkeId: 'Y1', vehiculo: { ano: 2020 } }, { yonkeId: 'Y2', vehiculo: { ano: 2020 } }];
     expect(sinYonkesYaMostrados(lista, [{ yonkeId: 'Y1', vehiculo: { ano: 2020 } }, { yonkeId: 'Y2', vehiculo: { ano: 2018 } }]).map((v) => v.yonkeId)).toEqual(['Y2']);

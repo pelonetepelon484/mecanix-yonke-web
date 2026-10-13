@@ -4,12 +4,13 @@
 // Las reglas (firestore.rules, pedidosClientes) son la protección real: el yonke solo ve
 // vehículo, pieza y estado, nunca el WhatsApp del cliente (vive en privado/contacto).
 import {
-  Timestamp, arrayUnion, collection, deleteDoc, doc, getDoc, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc,
+  Timestamp, collection, deleteDoc, doc, getDoc, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc,
   where, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
-  MENSAJES_VEHICULO_ALERTA, accionVehiculoCompleto, agregarPieza, calcularVenceEn, diaTijuana, estaVigente, idVehiculoAlerta,
+  MENSAJES_VEHICULO_ALERTA, accionVehiculoCompleto, agregarPieza, calcularVenceEn, cambiosUnidades, cambiosVenta, diaTijuana, estaVigente,
+  idVehiculoAlerta, unidadesDe, vendidasDe,
 } from '../../lib/vehiculosAlerta';
 
 // Bandera de la función: sin config/pedidosClientes, o con habilitado != true, quien llama no
@@ -120,15 +121,68 @@ export async function leerVehiculoAlertaDePedido(yonkeId, pedido) {
   return snap.exists() ? snap.data() : null;
 }
 
-// Ya lo tenía vigente y contestó "La tengo": la pieza de la alerta se descuenta (no cambia el vencimiento).
-export async function descontarPiezaDePedido(yonkeId, pedido) {
+const refDePedido = (yonkeId, pedido) => {
   const { marca, modelo, anio } = pedido.vehiculo;
-  const ref = vehiculoAlertaRef(yonkeId, idVehiculoAlerta(marca, modelo, anio));
+  return vehiculoAlertaRef(yonkeId, idVehiculoAlerta(marca, modelo, anio));
+};
+
+// Suma (+1) o resta (−1) una venta de la pieza en una transacción. Devuelve null si se guardó, o
+// { agotada: true, vendidas, unidades } si ya estaba vendida en todas las unidades (no guarda nada).
+async function cambiarVenta(ref, pieza, delta) {
+  return runTransaction(db, async (t) => {
+    const snap = await t.get(ref);
+    if (!snap.exists()) return null;
+    const v = snap.data();
+    const cambios = cambiosVenta(v, pieza, delta);
+    if (!cambios) return delta === 1 ? { agotada: true, vendidas: vendidasDe(v, pieza), unidades: unidadesDe(v) } : null;
+    t.update(ref, cambios);
+    return null;
+  });
+}
+
+// Ya lo tenía vigente y contestó "La tengo": se suma una venta de la pieza (no cambia el
+// vencimiento). Si ya estaba vendida en todas las unidades devuelve { agotada, vendidas, unidades }
+// y no cambia nada: quien llama pregunta "¿Tienes otro igual?".
+export async function descontarPiezaDePedido(yonkeId, pedido) {
+  return cambiarVenta(refDePedido(yonkeId, pedido), pedido.pieza, 1);
+}
+
+// "+1 / Tengo otro igual": una unidad más y 30 días más desde hoy (cuenta como confirmación).
+// Con pieza (viene de una alerta), en el mismo guardado se cuenta la venta de esa pieza.
+async function sumarUnidadEn(ref, pieza = null) {
+  await runTransaction(db, async (t) => {
+    const snap = await t.get(ref);
+    if (!snap.exists()) throw new Error('El vehículo ya no está en tu inventario.');
+    const v = snap.data();
+    let cambios = cambiosUnidades(v, 1);
+    if (!cambios) throw new Error('No se pudo sumar otra unidad.');
+    if (pieza) cambios = { ...cambios, ...(cambiosVenta({ ...v, ...cambios }, pieza, 1) || {}) };
+    t.update(ref, { ...cambios, venceEn: Timestamp.fromDate(calcularVenceEn(new Date())), renovadoAt: serverTimestamp() });
+  });
+}
+
+export async function sumarUnidad(yonkeId, vehiculoId) {
+  await sumarUnidadEn(vehiculoAlertaRef(yonkeId, vehiculoId));
+}
+
+// "¿Tienes otro igual?" -> "+1 Tengo otro igual": suma la unidad y cuenta la venta de esa alerta.
+export async function sumarUnidadDePedido(yonkeId, pedido) {
+  await sumarUnidadEn(refDePedido(yonkeId, pedido), pedido.pieza);
+}
+
+// "−1": no baja de 1 ni de las ventas ya marcadas (error con codigo 'ventas').
+export async function restarUnidad(yonkeId, vehiculoId) {
+  const ref = vehiculoAlertaRef(yonkeId, vehiculoId);
   await runTransaction(db, async (t) => {
     const snap = await t.get(ref);
     if (!snap.exists()) return;
-    const v = snap.data();
-    t.update(ref, { piezasVendidas: agregarPieza(v.piezasVendidas, pedido.pieza), piezasAlerta: agregarPieza(v.piezasAlerta, pedido.pieza) });
+    const cambios = cambiosUnidades(snap.data(), -1);
+    if (!cambios) {
+      const error = new Error(MENSAJES_VEHICULO_ALERTA.noBajarUnidades);
+      error.codigo = 'ventas';
+      throw error;
+    }
+    t.update(ref, cambios);
   });
 }
 
@@ -144,17 +198,21 @@ export async function guardarVehiculoCompleto(yonkeId, pedido) {
     const existente = snap.exists() ? snap.data() : null;
     const accion = accionVehiculoCompleto(existente, ahora);
     const venceEn = Timestamp.fromDate(calcularVenceEn(ahora));
+    // Nuevo o vencido: queda con 1 unidad y sin ventas.
     if (accion === 'crear') {
       t.set(ref, {
-        yonkeId, marca, modelo, ano: anio, piezasAlerta: agregarPieza([], pedido.pieza), piezasVendidas: [],
+        yonkeId, marca, modelo, ano: anio, unidades: 1, ventasPiezas: {}, piezasAlerta: agregarPieza([], pedido.pieza), piezasVendidas: [],
         creadoAt: serverTimestamp(), venceEn, estado: 'activo',
       });
     } else if (accion === 'renovar') {
       t.update(ref, {
-        venceEn, estado: 'activo', piezasVendidas: [], piezasAlerta: agregarPieza(existente.piezasAlerta, pedido.pieza), renovadoAt: serverTimestamp(),
+        venceEn, estado: 'activo', unidades: 1, ventasPiezas: {}, piezasVendidas: [],
+        piezasAlerta: agregarPieza(existente.piezasAlerta, pedido.pieza), renovadoAt: serverTimestamp(),
       });
     } else {
-      t.update(ref, { piezasVendidas: agregarPieza(existente.piezasVendidas, pedido.pieza), piezasAlerta: agregarPieza(existente.piezasAlerta, pedido.pieza) });
+      // Quedó vigente mientras tanto (otra pestaña): se cuenta la venta si todavía cabe.
+      const cambios = cambiosVenta(existente, pedido.pieza, 1);
+      if (cambios) t.update(ref, cambios);
     }
     return accion;
   });
@@ -169,9 +227,14 @@ export function escucharVehiculosAlerta(yonkeId, cb) {
   );
 }
 
-// "Ya lo vendí": un toque, sin confirmación.
+// "Ya lo vendí": un toque, sin confirmación. Suma una venta hasta el número de unidades.
 export async function marcarPiezaVendida(yonkeId, vehiculoId, pieza) {
-  await updateDoc(vehiculoAlertaRef(yonkeId, vehiculoId), { piezasVendidas: arrayUnion(pieza.trim()) });
+  await cambiarVenta(vehiculoAlertaRef(yonkeId, vehiculoId), pieza, 1);
+}
+
+// "Deshacer": resta una venta de esa pieza.
+export async function deshacerVentaPieza(yonkeId, vehiculoId, pieza) {
+  await cambiarVenta(vehiculoAlertaRef(yonkeId, vehiculoId), pieza, -1);
 }
 
 // Quitar el vehículo completo del inventario (se vendió o se desbarató todo).

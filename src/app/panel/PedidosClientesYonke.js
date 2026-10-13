@@ -18,7 +18,7 @@ import { esIdPedido, puedeVerOtrosEstados } from '../../lib/pedidosClientes';
 import { leerYonkeEstadoActivo } from './solicitudesPiezasDatos';
 import {
   descontarPiezaDePedido, escucharPedidosClientesAbiertos, escucharPedidosClientesOtrosEstados, guardarVehiculoCompleto, guardarVerOtrosEstados,
-  leerConfigPedidosClientes, leerRespuestasHoy, leerVehiculoAlertaDePedido, responderPedido, yaRespondioPedido,
+  leerConfigPedidosClientes, leerRespuestasHoy, leerVehiculoAlertaDePedido, responderPedido, sumarUnidadDePedido, yaRespondioPedido,
 } from './pedidosClientesDatos';
 import {
   MENSAJES_VEHICULO_ALERTA, despuesDeLaTengo, inventarioVehiculosActivo, limiteRespuestasDiarias, llegoAlLimite,
@@ -49,6 +49,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
   const [aviso, setAviso] = useState('');
   const [respuestasHoy, setRespuestasHoy] = useState(0);
   const [preguntaVehiculo, setPreguntaVehiculo] = useState(null); // pedido tras "La tengo"
+  const [preguntaOtroIgual, setPreguntaOtroIgual] = useState(null); // { pedido, vendidas, unidades }
   // ?pedido={id} de la dirección: se resuelve una sola vez, con la primera lista de pedidos.
   const pedidoBuscado = useRef(null);
 
@@ -104,8 +105,10 @@ export default function PedidosClientesYonke({ yonkeId }) {
     try {
       const existente = await leerVehiculoAlertaDePedido(yonkeId, pedido);
       if (despuesDeLaTengo(existente, new Date()) === 'descontarPieza') {
-        await descontarPiezaDePedido(yonkeId, pedido);
-        setAviso(MENSAJES_VEHICULO_ALERTA.piezaDescontada);
+        const agotada = await descontarPiezaDePedido(yonkeId, pedido);
+        // Ya vendida en todas las unidades: no se suma otra venta; se pregunta si tiene otro igual.
+        if (agotada) setPreguntaOtroIgual({ pedido, vendidas: agotada.vendidas, unidades: agotada.unidades });
+        else setAviso(MENSAJES_VEHICULO_ALERTA.piezaDescontada);
       } else {
         setPreguntaVehiculo(pedido);
       }
@@ -173,7 +176,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
   const pendientes = abiertos.filter((p) => !respondidos[p.id]);
 
   if (!habilitado) return null;
-  if (!aviso && !preguntaVehiculo && !puedeOtros && (!estadoActivo?.activo || pendientes.length === 0)) return null;
+  if (!aviso && !preguntaVehiculo && !preguntaOtroIgual && !puedeOtros && (!estadoActivo?.activo || pendientes.length === 0)) return null;
 
   return (
     <div style={{ marginBottom: '16px' }}>
@@ -265,6 +268,18 @@ export default function PedidosClientesYonke({ yonkeId }) {
             setPreguntaVehiculo(null);
             setAviso(accion === 'renovar' ? MENSAJES_VEHICULO_ALERTA.renovado
               : accion === 'crear' ? MENSAJES_VEHICULO_ALERTA.guardado : MENSAJES_VEHICULO_ALERTA.piezaDescontada);
+          }}
+        />
+      )}
+
+      {preguntaOtroIgual && (
+        <ModalOtroIgual
+          {...preguntaOtroIgual}
+          onNo={() => setPreguntaOtroIgual(null)}
+          onSi={async () => {
+            await sumarUnidadDePedido(yonkeId, preguntaOtroIgual.pedido);
+            setPreguntaOtroIgual(null);
+            setAviso(MENSAJES_VEHICULO_ALERTA.otroIgualSumado);
           }}
         />
       )}
@@ -399,6 +414,45 @@ function ModalVehiculoCompleto({ pedido, onSi, onNo }) {
           <button type="button" onClick={onNo} disabled={guardando} style={{ ...botonToggle, flex: 1, backgroundColor: '#EEF1F5', color: '#333' }}>No, solo la pieza</button>
           <button type="button" onClick={si} disabled={guardando} style={{ ...botonToggle, flex: 1, backgroundColor: '#2E7D32', color: '#fff', opacity: guardando ? 0.6 : 1 }}>
             {guardando ? 'Guardando...' : 'Sí, lo tengo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// "La tengo" de una pieza ya vendida en todas las unidades. La respuesta al cliente ya quedó
+// guardada; esto solo corrige el inventario. "+1" suma una unidad, renueva 30 días y cuenta la
+// venta de esta alerta (3 de 3 -> 4 de 4). "No" no cambia nada.
+function ModalOtroIgual({ pedido, vendidas, unidades, onSi, onNo }) {
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState('');
+  const vehiculo = `${pedido.vehiculo?.marca} ${pedido.vehiculo?.modelo} ${pedido.vehiculo?.anio}`;
+
+  async function si() {
+    setGuardando(true);
+    setError('');
+    try {
+      await onSi();
+    } catch (err) {
+      console.error(err);
+      setError(MENSAJES_VEHICULO_ALERTA.guardarFallo);
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div role="dialog" style={fondoModal}>
+      <div style={cajaModal}>
+        <p style={{ fontWeight: 'bold', color: '#1A3C5E', margin: '0 0 6px', fontSize: '17px' }}>¿Tienes otro igual?</p>
+        <p style={{ color: '#666', fontSize: '14px', margin: '0 0 14px', lineHeight: '1.4' }}>
+          Ya marcaste vendidos todos los “{pedido.pieza}” de tus {vehiculo} ({vendidas} de {unidades}).
+        </p>
+        {error && <p role="alert" style={{ color: '#B3261E', fontSize: '13px', margin: '0 0 10px' }}>{error}</p>}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button type="button" onClick={onNo} disabled={guardando} style={{ ...botonToggle, flex: 1, backgroundColor: '#EEF1F5', color: '#333' }}>No</button>
+          <button type="button" onClick={si} disabled={guardando} style={{ ...botonToggle, flex: 1, backgroundColor: '#2E7D32', color: '#fff', opacity: guardando ? 0.6 : 1 }}>
+            {guardando ? 'Guardando...' : '+1 Tengo otro igual'}
           </button>
         </div>
       </div>

@@ -13,7 +13,11 @@ let vehiculoExistente = null;
 let vehiculos = [];
 const responderPedido = vi.fn(async () => {});
 const guardarVehiculoCompleto = vi.fn(async () => 'crear');
-const descontarPiezaDePedido = vi.fn(async () => {});
+const descontarPiezaDePedido = vi.fn(async () => null);
+const sumarUnidadDePedido = vi.fn(async () => {});
+const sumarUnidad = vi.fn(async () => {});
+const restarUnidad = vi.fn(async () => {});
+const deshacerVentaPieza = vi.fn(async () => {});
 const marcarPiezaVendida = vi.fn(async () => {});
 const quitarVehiculoAlerta = vi.fn(async () => {});
 const renovarVehiculosVigentes = vi.fn(async () => 2);
@@ -33,6 +37,10 @@ vi.mock('./pedidosClientesDatos', () => ({
   leerVehiculoAlertaDePedido: async () => vehiculoExistente,
   guardarVehiculoCompleto: (...a) => guardarVehiculoCompleto(...a),
   descontarPiezaDePedido: (...a) => descontarPiezaDePedido(...a),
+  sumarUnidadDePedido: (...a) => sumarUnidadDePedido(...a),
+  sumarUnidad: (...a) => sumarUnidad(...a),
+  restarUnidad: (...a) => restarUnidad(...a),
+  deshacerVentaPieza: (...a) => deshacerVentaPieza(...a),
   escucharVehiculosAlerta: (yonkeId, cb) => { cb(vehiculos); return () => {}; },
   marcarPiezaVendida: (...a) => marcarPiezaVendida(...a),
   quitarVehiculoAlerta: (...a) => quitarVehiculoAlerta(...a),
@@ -55,6 +63,8 @@ afterEach(() => {
   vehiculoExistente = null;
   vehiculos = [];
   vi.clearAllMocks();
+  descontarPiezaDePedido.mockImplementation(async () => null);
+  restarUnidad.mockImplementation(async () => {});
 });
 
 async function responderLaTengo() {
@@ -142,6 +152,33 @@ describe('¿Tienes el vehículo completo?', () => {
     expect(screen.queryByText('¿Tienes el vehículo completo?')).not.toBeInTheDocument();
   });
 
+  it('pieza ya vendida en todas las unidades: pregunta "¿Tienes otro igual?" y "+1" suma la unidad con la venta', async () => {
+    config = { habilitado: true, inventarioVehiculos: true };
+    vehiculoExistente = { estado: 'activo', venceEn: new Date(Date.now() + 5 * DIA), unidades: 3, ventasPiezas: { alternador: 3 } };
+    descontarPiezaDePedido.mockImplementation(async () => ({ agotada: true, vendidas: 3, unidades: 3 }));
+    abiertos = [pedido];
+    render(<PedidosClientesYonke yonkeId="Y1" />);
+    await responderLaTengo();
+    expect(await screen.findByText('¿Tienes otro igual?')).toBeInTheDocument();
+    expect(screen.getByText(/Ya marcaste vendidos todos los “Alternador” de tus Honda Civic 2020 \(3 de 3\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '+1 Tengo otro igual' }));
+    await waitFor(() => expect(sumarUnidadDePedido).toHaveBeenCalledWith('Y1', pedido));
+    expect(await screen.findByText(/Sumamos otra unidad igual/)).toBeInTheDocument();
+  });
+
+  it('"No" a "¿Tienes otro igual?": la respuesta ya quedó guardada y el inventario no cambia', async () => {
+    config = { habilitado: true, inventarioVehiculos: true };
+    vehiculoExistente = { estado: 'activo', venceEn: new Date(Date.now() + 5 * DIA), unidades: 1, ventasPiezas: { alternador: 1 } };
+    descontarPiezaDePedido.mockImplementation(async () => ({ agotada: true, vendidas: 1, unidades: 1 }));
+    abiertos = [pedido];
+    render(<PedidosClientesYonke yonkeId="Y1" />);
+    await responderLaTengo();
+    await waitFor(() => expect(responderPedido).toHaveBeenCalled());
+    fireEvent.click(await screen.findByRole('button', { name: 'No' }));
+    expect(sumarUnidadDePedido).not.toHaveBeenCalled();
+    expect(screen.queryByText('¿Tienes otro igual?')).not.toBeInTheDocument();
+  });
+
   it('"No la tengo" no pregunta por el vehículo', async () => {
     config = { habilitado: true, inventarioVehiculos: true };
     abiertos = [pedido];
@@ -163,17 +200,47 @@ describe('sección "Vehículos completos"', () => {
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 
-  it('muestra las piezas disponibles con "Ya lo vendí" (un toque) y "Quitar vehículo"', async () => {
+  it('registro viejo: 1 unidad, la pieza vendida sale "(1 de 1)" sin más ventas; "Ya lo vendí" (un toque) y "Quitar vehículo"', async () => {
     config = { habilitado: true, inventarioVehiculos: true };
     vehiculos = [civic];
     render(<VehiculosCompletosYonke yonkeId="Y1" />);
-    expect(await screen.findByText('Honda Civic 2020')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Ya lo vendí' })).toHaveLength(2); // Alternador + "otra pieza"
-    fireEvent.click(screen.getAllByRole('button', { name: 'Ya lo vendí' })[0]);
+    expect(await screen.findByText('Honda Civic 2020 · 1 unidad')).toBeInTheDocument();
+    expect(screen.getByText('Faro (1 de 1)')).toBeInTheDocument();
+    const botones = screen.getAllByRole('button', { name: 'Ya lo vendí' }); // Alternador, Faro y "otra pieza"
+    expect(botones).toHaveLength(3);
+    expect(botones[1]).toBeDisabled();
+    fireEvent.click(botones[0]);
     await waitFor(() => expect(marcarPiezaVendida).toHaveBeenCalledWith('Y1', 'honda_civic_2020', 'Alternador'));
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: 'Quitar vehículo' }));
     await waitFor(() => expect(quitarVehiculoAlerta).toHaveBeenCalledWith('Y1', 'honda_civic_2020'));
+  });
+
+  it('varias unidades: muestra "3 unidades", el conteo, "Deshacer", "+1" y "−1"', async () => {
+    config = { habilitado: true, inventarioVehiculos: true };
+    vehiculos = [{ ...civic, unidades: 3, ventasPiezas: { alternador: 1 }, piezasVendidas: [] }];
+    render(<VehiculosCompletosYonke yonkeId="Y1" />);
+    expect(await screen.findByText('Honda Civic 2020 · 3 unidades')).toBeInTheDocument();
+    expect(screen.getByText('Alternador (1 de 3)')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Ya lo vendí' })[0]).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }));
+    await waitFor(() => expect(deshacerVentaPieza).toHaveBeenCalledWith('Y1', 'honda_civic_2020', 'Alternador'));
+    fireEvent.click(screen.getByRole('button', { name: '+1 / Tengo otro igual' }));
+    await waitFor(() => expect(sumarUnidad).toHaveBeenCalledWith('Y1', 'honda_civic_2020'));
+    expect(await screen.findByText(/4 unidades, vigente 30 días más/)).toBeInTheDocument();
+  });
+
+  it('"−1" sin poder bajar por ventas marcadas muestra el aviso', async () => {
+    config = { habilitado: true, inventarioVehiculos: true };
+    vehiculos = [{ ...civic, unidades: 2, ventasPiezas: { alternador: 2 } }];
+    restarUnidad.mockImplementation(async () => {
+      const error = new Error('Ya marcaste ventas de esa pieza. Primero deshaz una venta.');
+      error.codigo = 'ventas';
+      throw error;
+    });
+    render(<VehiculosCompletosYonke yonkeId="Y1" />);
+    fireEvent.click(await screen.findByRole('button', { name: /Restar una unidad/ }));
+    expect(await screen.findByText('Ya marcaste ventas de esa pieza. Primero deshaz una venta.')).toBeInTheDocument();
   });
 
   it('Básico: "Sigo manteniendo mis vehículos" se ve pero explica que es Premium y no renueva', async () => {

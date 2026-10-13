@@ -1143,10 +1143,11 @@ service cloud.firestore {
       // Solo el dueño del yonke escribe (sin exigir términos, igual que responder alertas). Dar de
       // alta y renovar piden la bandera inventarioVehiculos; marcar vendida y quitar no (para que
       // siempre pueda limpiar su inventario). El vencimiento es "hoy + 30 días" con ±1 día de
-      // holgura por el reloj del celular.
+      // holgura por el reloj del celular. unidades (sin el campo = 1) y ventasPiezas (conteo de
+      // ventas por pieza) son opcionales: los registros de antes no los traen.
       match /vehiculosAlerta/{vehiculoId} {
         function vehiculoAlertaValido(d) {
-          return d.keys().hasOnly(['yonkeId', 'marca', 'modelo', 'ano', 'piezasAlerta', 'piezasVendidas', 'creadoAt', 'venceEn', 'estado', 'renovadoAt'])
+          return d.keys().hasOnly(['yonkeId', 'marca', 'modelo', 'ano', 'unidades', 'ventasPiezas', 'piezasAlerta', 'piezasVendidas', 'creadoAt', 'venceEn', 'estado', 'renovadoAt'])
             && d.keys().hasAll(['yonkeId', 'marca', 'modelo', 'ano', 'piezasAlerta', 'piezasVendidas', 'creadoAt', 'venceEn', 'estado'])
             && d.yonkeId == yonkeId
             && d.marca is string && d.marca.size() >= 1 && d.marca.size() <= 60
@@ -1154,6 +1155,8 @@ service cloud.firestore {
             && d.ano is int && d.ano >= 1950 && d.ano <= 2100
             && d.piezasAlerta is list && d.piezasAlerta.size() <= 100
             && d.piezasVendidas is list && d.piezasVendidas.size() <= 100
+            && (!('unidades' in d) || (d.unidades is int && d.unidades >= 1 && d.unidades <= 100))
+            && (!('ventasPiezas' in d) || (d.ventasPiezas is map && d.ventasPiezas.size() <= 100))
             && d.creadoAt is timestamp
             && d.venceEn is timestamp
             && d.estado == 'activo';
@@ -1161,6 +1164,9 @@ service cloud.firestore {
         function venceEn30Dias(d) {
           return d.venceEn - request.time >= duration.value(29, 'd')
             && d.venceEn - request.time <= duration.value(31, 'd');
+        }
+        function unidadesAntes() {
+          return resource.data.get('unidades', 1);
         }
         function sinCambiosDeIdentidad() {
           return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['yonkeId', 'marca', 'modelo', 'ano', 'creadoAt']);
@@ -1173,21 +1179,37 @@ service cloud.firestore {
                       && request.resource.data.creadoAt == request.time
                       && venceEn30Dias(request.resource.data)
                       && request.resource.data.piezasVendidas.size() == 0
-                      && request.resource.data.piezasAlerta.size() <= 1;
+                      && request.resource.data.piezasAlerta.size() <= 1
+                      && request.resource.data.get('unidades', 1) == 1
+                      && request.resource.data.get('ventasPiezas', {}).size() == 0;
         allow update: if esDuenoDelYonke(yonkeId)
                       && vehiculoAlertaValido(request.resource.data)
                       && sinCambiosDeIdentidad()
                       && (
-                        // "Ya lo vendí" o pieza descontada por una alerta: solo las listas de piezas.
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['piezasVendidas', 'piezasAlerta'])
+                        // "Ya lo vendí", "Deshacer" o pieza descontada por una alerta: solo las piezas.
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['piezasVendidas', 'piezasAlerta', 'ventasPiezas'])
                         // Renovar uno vencido (dijo "Sí" a "¿Tienes el vehículo completo?"): 30 días
-                        // desde hoy y las piezas vendidas en cero.
+                        // desde hoy, 1 unidad y las piezas vendidas en cero.
                         || (inventarioVehiculosHabilitado()
                             && resource.data.venceEn <= request.time
-                            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['venceEn', 'estado', 'piezasVendidas', 'piezasAlerta', 'renovadoAt'])
+                            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['venceEn', 'estado', 'unidades', 'ventasPiezas', 'piezasVendidas', 'piezasAlerta', 'renovadoAt'])
                             && venceEn30Dias(request.resource.data)
                             && request.resource.data.piezasVendidas.size() == 0
+                            && request.resource.data.get('unidades', 1) == 1
+                            && request.resource.data.get('ventasPiezas', {}).size() == 0
                             && request.resource.data.renovadoAt == request.time)
+                        // "+1 / Tengo otro igual" (vigente): una unidad más y 30 días desde hoy. Puede
+                        // contar en el mismo guardado la venta de la alerta.
+                        || (inventarioVehiculosHabilitado()
+                            && resource.data.venceEn > request.time
+                            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unidades', 'venceEn', 'renovadoAt', 'ventasPiezas', 'piezasVendidas', 'piezasAlerta'])
+                            && request.resource.data.get('unidades', 1) == unidadesAntes() + 1
+                            && venceEn30Dias(request.resource.data)
+                            && request.resource.data.renovadoAt == request.time)
+                        // "−1": una unidad menos, nunca menos de 1 (que no baje de las ventas ya
+                        // marcadas lo revisa la app: las reglas no pueden recorrer el conteo).
+                        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unidades', 'ventasPiezas', 'piezasVendidas', 'piezasAlerta'])
+                            && request.resource.data.get('unidades', 1) == unidadesAntes() - 1)
                         // "Sigo manteniendo mis vehículos" (Premium vigente): solo los vigentes, solo
                         // la fecha; no toca las piezas vendidas.
                         || (inventarioVehiculosHabilitado()
