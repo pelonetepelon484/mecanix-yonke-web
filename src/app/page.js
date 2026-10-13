@@ -3,6 +3,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { dbServer } from './lib/firebase-server';
 import { obtenerEstadosCombinado, estadoDeYonke, ESTADO_DEFAULT } from './lib/busqueda/estadosServer';
 import HomeClient from './HomeClient';
+import { textoConteoRedYonkes } from './lib/conteoRedYonkes';
 
 // Misma cadencia que el caché en memoria de estadosServer.js (10 min) — sin esto, Next.js
 // generaría esta página como estática en el build y el texto SEO de cobertura quedaría
@@ -30,13 +31,15 @@ function construirTextoSeoEstados(estados) {
 // y aquí encima solo se ejecuta cada 10 min gracias al revalidate de arriba.
 // cache(): dedupea la lectura entre generateMetadata() y Home() dentro del mismo request —
 // mismo patrón que resolveDemo() en tenant-demo/page.js — para no leer "yonkes" dos veces.
-const obtenerEstadosConCobertura = cache(async function obtenerEstadosConCobertura() {
+// totalYonkes (todos los registrados) sale de esta misma lectura para la línea de confianza
+// del buscador, sin lecturas extra.
+const obtenerCobertura = cache(async function obtenerCobertura() {
   const [estados, yonkesSnap] = await Promise.all([
     obtenerEstadosCombinado(),
     getDocs(collection(dbServer, 'yonkes')),
   ]);
   const estadosConYonkes = new Set(yonkesSnap.docs.map((d) => estadoDeYonke(d.data())));
-  return estados.filter((e) => estadosConYonkes.has(e.id));
+  return { estadosConCobertura: estados.filter((e) => estadosConYonkes.has(e.id)), totalYonkes: yonkesSnap.size };
 });
 
 // Nada de "title" aquí a propósito: se deja heredar el default rico en keywords de layout.js.
@@ -45,7 +48,7 @@ const obtenerEstadosConCobertura = cache(async function obtenerEstadosConCobertu
 export async function generateMetadata() {
   let estadosConCobertura;
   try {
-    estadosConCobertura = await obtenerEstadosConCobertura();
+    ({ estadosConCobertura } = await obtenerCobertura());
   } catch {
     estadosConCobertura = [];
   }
@@ -58,8 +61,12 @@ export async function generateMetadata() {
 
 export default async function Home() {
   let estadosConCobertura;
+  // Sin conteo (la lectura falló), la línea "N yonkes registrados en N estados" no se muestra.
+  let conteo = null;
   try {
-    estadosConCobertura = await obtenerEstadosConCobertura();
+    const cobertura = await obtenerCobertura();
+    estadosConCobertura = cobertura.estadosConCobertura;
+    conteo = { yonkes: cobertura.totalYonkes, estados: cobertura.estadosConCobertura.length };
   } catch (error) {
     // Fail-open: si Firestore falla (yonkes o estados), el mensaje de marca amplio se queda sin
     // la parte de cobertura rota — mínimo Baja California, igual que el resto del sistema.
@@ -71,5 +78,5 @@ export default async function Home() {
   }
   const textoSeoEstados = construirTextoSeoEstados(estadosConCobertura);
 
-  return <HomeClient textoSeoEstados={textoSeoEstados} />;
+  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} />;
 }

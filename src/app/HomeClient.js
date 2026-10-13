@@ -146,21 +146,17 @@ function BadgeEnviosNacionales() {
 // completo con consejos extra vive en /compra-segura; este banner es el mismo texto resumido
 // a los puntos clave para que se lea rápido sin estorbar.
 function AvisoCompraSegura() {
+  // Peso visual suave a propósito (borde delgado, sin ícono): no debe competir con el botón
+  // naranja del buscador.
   return (
     <div style={{
-      backgroundColor: '#FFF4E5', border: '2px solid #E8720C', borderRadius: '20px',
-      padding: '20px 24px', marginBottom: '12px',
+      backgroundColor: '#FFF9F2', border: '1px solid #F2C9A0', borderRadius: '20px',
+      padding: '16px 22px', marginBottom: '12px',
     }}>
-      <p style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '700', color: '#7A4F00' }}>
-        ⚠️ Compra segura — Importante
+      <p style={{ margin: 0, fontSize: '13px', color: '#5C3D00', lineHeight: '1.6' }}>
+        Mecanix es un buscador gratuito: no vendemos piezas ni cobramos por ellas. Paga solo en persona, cuando tengas la pieza en la mano.
       </p>
-      <ul style={{ margin: 0, padding: '0 0 0 20px', fontSize: '13px', color: '#5C3D00', lineHeight: '1.7' }}>
-        <li>Mecanix es un buscador gratuito. <strong>Nunca</strong> te pedimos dinero ni cobramos por las piezas.</li>
-        <li>Paga tu pieza directamente al yonke, en persona, cuando la tengas frente a ti. Nunca pagues por adelantado.</li>
-        <li>Desconfía de cualquiera que te pida un depósito o &quot;apartado&quot; a nombre de Mecanix. Nosotros nunca hacemos eso.</li>
-        <li>Revisa la pieza antes de pagar y confirma que sea la correcta para tu vehículo.</li>
-      </ul>
-      <a href="/compra-segura" style={{ display: 'inline-block', marginTop: '12px', color: '#1A3C5E', fontSize: '12px', fontWeight: '700', textDecoration: 'underline' }}>
+      <a href="/compra-segura" style={{ display: 'inline-block', marginTop: '10px', color: '#1A3C5E', fontSize: '12px', fontWeight: '700', textDecoration: 'underline' }}>
         Ver consejos de compra segura →
       </a>
     </div>
@@ -190,7 +186,7 @@ function AvisoCompraSeguraCorto() {
 // textoSeoEstados llega ya armado desde page.js (Server Component) — lee la colección
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
-export default function HomeClient({ textoSeoEstados }) {
+export default function HomeClient({ textoSeoEstados, textoConteoRed = '' }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
   // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
@@ -1498,10 +1494,14 @@ function obtenerEstadoAbierto(horario) {
         {/* Header de marca — compartido entre las dos pestañas, no se repite ni desaparece
             al cambiar de una a otra. */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img src="/logo-mecanix-v2.webp" alt="Mecanix" style={{ width: '220px', maxWidth: '100%', margin: '0 auto', display: 'block' }} />
-          <p style={{ fontSize: '14px', color: '#E8720C', letterSpacing: '1.5px', marginTop: '8px', fontWeight: '700', maxWidth: '280px', marginLeft: 'auto', marginRight: 'auto' }}>
-            MOTOR DE BÚSQUEDA DE AUTOPARTES
-          </p>
+          {/* El logo ya trae "motor de búsqueda de autopartes" y "Red de yonkes México" dentro de la
+              imagen: todo el ancho en celular (para que se lean las letras chicas), máximo 440 px. */}
+          <img
+            src="/logo-mecanix-red-yonkes.webp"
+            alt="Mecanix, motor de búsqueda de autopartes, red de yonkes de México"
+            width={900} height={318}
+            style={{ width: '100%', maxWidth: '440px', height: 'auto', margin: '0 auto', display: 'block' }}
+          />
         </div>
 
         {/* Pestañas: cliente vs yonke (vs taller, solo con la bandera prendida) — lo primero
@@ -1512,7 +1512,7 @@ function obtenerEstadoAbierto(horario) {
             🔍 Busco una pieza
           </button>
           <button onClick={() => setPestanaActiva('yonke')} style={estiloPestana(pestanaActiva === 'yonke')}>
-            🏪 Tengo un yonke
+            🏪 ¿Tienes un yonke?
           </button>
           {talleresHabilitados() && (
             <button onClick={() => setPestanaActiva('taller')} style={estiloPestana(pestanaActiva === 'taller')}>
@@ -1523,8 +1523,11 @@ function obtenerEstadoAbierto(horario) {
 
         {pestanaActiva === 'cliente' && (
           <>
-            <p style={{ textAlign: 'center', fontSize: '16px', color: '#1A3C5E', fontWeight: '600', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 20px' }}>
+            <p style={{ textAlign: 'center', fontSize: '16px', color: '#1A3C5E', fontWeight: '600', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 8px' }}>
               Encuentra la autoparte usada que necesitas y contacta directo al yonke.
+            </p>
+            <p style={{ textAlign: 'center', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 20px' }}>
+              Mecanix no vende piezas: te conecta directo con el yonke que la tiene.
             </p>
 
             {/* Selector de estado — aplica tanto al buscador inteligente como al avanzado (mismo
@@ -1567,6 +1570,15 @@ function obtenerEstadoAbierto(horario) {
               <button onClick={buscarConTextoLibre} disabled={buscandoLibre} className="mecanix-btn-primary">
                 {buscandoLibre ? 'Buscando...' : '✨ Buscar con IA'}
               </button>
+              <p style={{ textAlign: 'center', fontSize: '13px', color: '#1A3C5E', margin: '12px 0 0', lineHeight: '1.5' }}>
+                ¿No la encuentras? Avisamos a los yonkes y te responden.
+              </p>
+              {/* Conteo real (page.js); si no se pudo leer, la línea no aparece. */}
+              {textoConteoRed && (
+                <p style={{ textAlign: 'center', fontSize: '13px', color: '#1A3C5E', fontWeight: '600', margin: '4px 0 0', lineHeight: '1.5' }}>
+                  {textoConteoRed}
+                </p>
+              )}
 
               {/* Aviso llamativo "pieza sin vehículo" — REEMPLAZA resultados en vez de acompañarlos,
                   con selectores de marca/modelo/año dentro del propio banner para completar la
@@ -1907,7 +1919,7 @@ function obtenerEstadoAbierto(horario) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
                     {[
                       { emoji: '🔍', titulo: 'Busca tu pieza', desc: 'Escribe qué necesitas y para qué auto' },
-                      { emoji: '🏪', titulo: 'Te decimos qué yonke la tiene', desc: 'Buscamos entre todos los yonkes afiliados' },
+                      { emoji: '🏪', titulo: 'Te decimos qué yonke la tiene', desc: 'Buscamos en toda la red de yonkes' },
                       { emoji: '💬', titulo: 'Contáctalo por WhatsApp', desc: 'Tú coordinas directo — Mecanix no vende, conecta' },
                     ].map((paso, i) => (
                       <div key={i} style={{ flex: 1, textAlign: 'center' }}>
@@ -2120,7 +2132,7 @@ function obtenerEstadoAbierto(horario) {
               <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.8', margin: 0 }}>
                 Mecanix Yonke Virtual es el buscador de <strong>refacciones y autopartes usadas</strong> de
                 México: la plataforma que conecta compradores con <strong>yonkes</strong> y
-                deshuesaderos confiables en todo el país. Encuentra motores, transmisiones, puertas, faroles, defensas y más
+                deshuesaderos registrados en todo el país. Encuentra motores, transmisiones, puertas, faroles, defensas y más
                 piezas de carro a precios accesibles, de las marcas Nissan, Toyota, Chevrolet, Honda, Ford y
                 muchas más. {textoSeoEstados}
               </p>
@@ -2150,6 +2162,9 @@ function obtenerEstadoAbierto(horario) {
             {/* CTA yonkeros */}
             <div style={yonkeCtaStyle}>
               <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏪</div>
+              <p style={{ fontSize: '13px', fontWeight: '700', color: '#E8720C', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 6px' }}>
+                Únete a la red de yonkes
+              </p>
               <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
                 ¿Administras un yonke?
               </h3>
