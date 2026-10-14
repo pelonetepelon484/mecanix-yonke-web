@@ -105,7 +105,7 @@ export default function CalificarClient() {
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img
-            src="/mecanix-logo.webp"
+            src="/logo-mecanix-solo.webp"
             alt="Mecanix"
             style={{ width: '240px', maxWidth: '100%', margin: '0 auto', display: 'block' }}
           />

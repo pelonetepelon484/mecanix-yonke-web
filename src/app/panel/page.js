@@ -81,12 +81,12 @@ export default function PanelLogin() {
       <div style={{ maxWidth: '380px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <img
-            src="/mecanix-logo.webp"
+            src="/logo-mecanix-solo.webp"
             alt="Mecanix"
             style={{ width: '220px', maxWidth: '100%', margin: '0 auto', display: 'block' }}
           />
           <p style={{ fontSize: '14px', color: '#E8720C', letterSpacing: '2px', marginTop: '8px', fontWeight: 'bold' }}>
-            PANEL DEL YONKE
+            ACCESO A TU PANEL
           </p>
         </div>
 
