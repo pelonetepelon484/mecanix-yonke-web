@@ -113,7 +113,7 @@ export default function RegistroTaller() {
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ maxWidth: '420px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img src="/mecanix-logo.webp" alt="Mecanix" style={{ width: '220px', maxWidth: '100%', margin: '0 auto', display: 'block' }} />
+          <img src="/logo-mecanix-solo.webp" alt="Mecanix" style={{ width: '220px', maxWidth: '100%', margin: '0 auto', display: 'block' }} />
           <p style={{ fontSize: '14px', color: '#E8720C', letterSpacing: '2px', marginTop: '8px', fontWeight: 'bold' }}>
             REGISTRO DE TALLER
           </p>

@@ -251,7 +251,7 @@ export default function RegistroYonke() {
 
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <img
-            src="/mecanix-logo.webp"
+            src="/logo-mecanix-solo.webp"
             alt="Mecanix"
             style={{ width: '200px', maxWidth: '100%', margin: '0 auto', display: 'block' }}
           />
