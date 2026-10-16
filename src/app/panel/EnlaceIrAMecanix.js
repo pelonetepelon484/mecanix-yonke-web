@@ -5,6 +5,7 @@
 // carga, después de saber que hay sesión (un visitante en la pantalla de acceso no lee nada).
 // No aparece en el acceso ni en los registros.
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { db } from '../lib/firebase';
 import { leerConfigPortada } from '../../lib/configPortada';
@@ -27,7 +28,7 @@ export default function EnlaceIrAMecanix() {
   if (!activo || !user || RUTAS_SIN_ENLACE.includes(pathname)) return null;
   return (
     <div style={barra}>
-      <a href="/" style={enlace}>← Ir a Mecanix</a>
+      <Link href="/" style={enlace}>← Ir a Mecanix</Link>
     </div>
   );
 }

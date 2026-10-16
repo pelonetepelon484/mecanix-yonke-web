@@ -12,14 +12,14 @@ import { auth } from './lib/firebase';
 export const TEXTO_IR_A_MI_PANEL = '🔑 Ir a mi panel';
 
 // 'visitante' | 'sesion' | 'cargando'. Apagado: siempre 'visitante', sin escuchar la sesión.
+// (La bandera llega del servidor y no cambia durante la visita.)
 export function useSesionPortada(activo) {
-  const [estado, setEstado] = useState(activo ? 'cargando' : 'visitante');
+  const [estado, setEstado] = useState('cargando');
   useEffect(() => {
-    if (!activo) { setEstado('visitante'); return undefined; }
-    setEstado('cargando');
+    if (!activo) return undefined;
     return onAuthStateChanged(auth, (usuario) => setEstado(usuario ? 'sesion' : 'visitante'));
   }, [activo]);
-  return estado;
+  return activo ? estado : 'visitante';
 }
 
 export function estiloPestana(activa) {
