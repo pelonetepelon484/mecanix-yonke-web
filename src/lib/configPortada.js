@@ -1,0 +1,17 @@
+// Interruptores de la portada (config/portada). Solo true exacto enciende; sin documento, con otro
+// valor o si falla la lectura, todo apagado: la página se ve como hoy.
+//   botonPanel: con sesión iniciada, "Ir a mi panel" en lugar de "¿Tienes un yonke?" y
+//   "¿Tienes un taller?" en la portada, y "← Ir a Mecanix" dentro del panel.
+import { doc, getDoc } from 'firebase/firestore';
+
+export const banderasPortada = (config) => ({ botonPanel: config?.botonPanel === true });
+
+export async function leerConfigPortada(db) {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'portada'));
+    return banderasPortada(snap.exists() ? snap.data() : null);
+  } catch (error) {
+    console.warn('[portada] No se pudo leer config/portada; todo apagado.', error?.code || error?.message);
+    return banderasPortada(null);
+  }
+}

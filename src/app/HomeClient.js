@@ -18,6 +18,7 @@ import VisorFotosVehiculo from './lib/VisorFotosVehiculo';
 import VisorFotos from './lib/VisorFotos';
 import { fotosDeItem } from '../lib/fotosPieza';
 import AvisarYonkes from './AvisarYonkes';
+import PestanasPortada from './PestanasPortada';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
 import { leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
@@ -195,7 +196,7 @@ function AvisoCompraSeguraCorto() {
 // textoSeoEstados llega ya armado desde page.js (Server Component) — lee la colección
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
-export default function HomeClient({ textoSeoEstados, textoConteoRed = '' }) {
+export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
   // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
@@ -1516,19 +1517,10 @@ function obtenerEstadoAbierto(horario) {
         {/* Pestañas: cliente vs yonke (vs taller, solo con la bandera prendida) — lo primero
             interactivo que ve el usuario, para que quede claro de inmediato si esto es para
             buscar o para afiliar un negocio. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
-          <button onClick={() => setPestanaActiva('cliente')} style={estiloPestana(pestanaActiva === 'cliente')}>
-            🔍 Busco una pieza
-          </button>
-          <button onClick={() => setPestanaActiva('yonke')} style={estiloPestana(pestanaActiva === 'yonke')}>
-            🏪 ¿Tienes un yonke?
-          </button>
-          {talleresHabilitados() && (
-            <button onClick={() => setPestanaActiva('taller')} style={estiloPestana(pestanaActiva === 'taller')}>
-              🔧 ¿Tienes un taller?
-            </button>
-          )}
-        </div>
+        <PestanasPortada
+          pestanaActiva={pestanaActiva} setPestanaActiva={setPestanaActiva}
+          conTalleres={talleresHabilitados()} botonPanel={botonPanel}
+        />
 
         {pestanaActiva === 'cliente' && (
           <>
@@ -2471,17 +2463,6 @@ function obtenerEstadoAbierto(horario) {
       )}
     </main>
   );
-}
-
-function estiloPestana(activa) {
-  return {
-    flex: 1, padding: '14px 12px', borderRadius: '14px', border: '2px solid',
-    borderColor: activa ? '#1A3C5E' : '#ddd',
-    backgroundColor: activa ? '#1A3C5E' : '#fff',
-    color: activa ? '#fff' : '#888',
-    fontWeight: '700', fontSize: '15px', cursor: 'pointer', textAlign: 'center',
-    transition: 'all 0.2s', fontFamily: "'Inter', sans-serif",
-  };
 }
 
 const contactLinkStyle = { fontSize: '12px', color: '#1A3C5E', textDecoration: 'none', fontWeight: '600', backgroundColor: '#fff', padding: '7px 14px', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' };

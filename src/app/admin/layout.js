@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '../panel/AuthContext';
+import EnlaceIrAMecanix from '../panel/EnlaceIrAMecanix';
 
 function AdminGuard({ children }) {
   const { user, userRole, loading } = useAuth();
@@ -24,7 +25,7 @@ function AdminGuard({ children }) {
 
   if (!user || userRole !== 'admin') return null;
 
-  return <>{children}</>;
+  return <><EnlaceIrAMecanix />{children}</>;
 }
 
 export default function AdminLayout({ children }) {
