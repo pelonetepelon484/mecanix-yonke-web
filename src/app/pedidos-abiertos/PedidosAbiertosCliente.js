@@ -3,6 +3,8 @@
 // Pedidos abiertos de clientes, para yonkes con o sin cuenta. Solo vehículo, pieza, estado y
 // fecha (lo que devuelve /api/pedidos-abiertos), nunca datos del cliente. Falla cerrada: si la
 // API dice "no disponible", no se hace ninguna otra lectura (ni siquiera la lista de estados).
+// Arranca con ?estado=auto: el servidor elige el estado del visitante (con alertasPortada, por su
+// ubicación aproximada; sin ella, Baja California como siempre). Si no se sabe, pide elegirlo.
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ESTADO_DEFAULT, cargarEstados } from '../lib/estados';
@@ -12,8 +14,12 @@ function fecha(iso) {
   return iso ? new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
 }
 
+export const TEXTO_ELIGE_ESTADO_PEDIDOS = 'Elige tu estado para ver los pedidos abiertos.';
+
 export default function PedidosAbiertosCliente() {
-  const [estado, setEstado] = useState(ESTADO_DEFAULT);
+  // consulta: lo que se pide al servidor ('auto' la primera vez); seleccion: lo que marca el selector.
+  const [consulta, setConsulta] = useState('auto');
+  const [seleccion, setSeleccion] = useState('');
   const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [situacion, setSituacion] = useState('cargando'); // cargando | listo | noDisponible | error
   const [pedidos, setPedidos] = useState([]);
@@ -21,14 +27,15 @@ export default function PedidosAbiertosCliente() {
 
   useEffect(() => {
     let cancelado = false;
-    fetch(`/api/pedidos-abiertos?estado=${encodeURIComponent(estado)}`, { cache: 'no-store' })
+    fetch(`/api/pedidos-abiertos?estado=${encodeURIComponent(consulta)}`, { cache: 'no-store' })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (cancelado) return;
         if (res.status === 503) { setSituacion('noDisponible'); return; }
         if (!res.ok || !data.ok) { setSituacion('error'); return; }
+        if (consulta === 'auto') setSeleccion(data.estado || '');
         setPedidos(data.pedidos);
-        setSituacion('listo');
+        setSituacion(data.estado === null ? 'sinEstado' : 'listo');
         // La lista de estados solo se pide cuando la función sí está disponible.
         if (!estadosPedidos.current) {
           estadosPedidos.current = true;
@@ -37,11 +44,13 @@ export default function PedidosAbiertosCliente() {
       })
       .catch(() => { if (!cancelado) setSituacion('error'); });
     return () => { cancelado = true; };
-  }, [estado]);
+  }, [consulta]);
 
   function cambiarEstado(nuevo) {
+    if (!nuevo) return;
     setSituacion('cargando');
-    setEstado(nuevo);
+    setSeleccion(nuevo);
+    setConsulta(nuevo);
   }
 
   return (
@@ -57,9 +66,12 @@ export default function PedidosAbiertosCliente() {
             <p style={{ fontSize: '14px', color: '#555', margin: '0 0 14px', lineHeight: '1.5' }}>
               ¿Tienes un yonke? Estos clientes buscan piezas ahora mismo. Regístrate gratis para responderles con tu precio: ellos te escriben directo.
             </p>
-            <select value={estado} onChange={(e) => cambiarEstado(e.target.value)} style={selector} aria-label="Estado">
+            <select value={seleccion} onChange={(e) => cambiarEstado(e.target.value)} style={selector} aria-label="Estado">
+              {seleccion === '' && <option value="">Elige tu estado</option>}
               {estados.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
             </select>
+
+            {situacion === 'sinEstado' && <p style={{ color: '#555' }}>{TEXTO_ELIGE_ESTADO_PEDIDOS}</p>}
 
             {situacion === 'cargando' && <p style={{ color: '#555' }}>Cargando...</p>}
             {situacion === 'error' && <p role="alert" style={{ color: '#B3261E' }}>No pudimos cargar los pedidos. Intenta de nuevo.</p>}

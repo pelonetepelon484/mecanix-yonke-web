@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
@@ -15,6 +15,8 @@ import { leerLimitesActivos } from '../../../lib/planes';
 import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 import { esIdPedido } from '../../../lib/pedidosClientes';
 import { avisarAlAdmin } from '../../lib/avisosAdmin/avisarAlAdmin';
+import { useAuth } from '../AuthContext';
+import { TEXTO_REGISTRO_ALERTAS } from '../../../lib/alertasRecientes';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -25,8 +27,14 @@ const CIUDADES_BC = [
   { key: 'sanquintin', label: 'San Quintín' },
 ];
 
+
+// La dirección no cambia mientras se llena el registro: no hace falta escucharla.
+const sinSuscripcion = () => () => {};
 export default function RegistroYonke() {
   const router = useRouter();
+  // Para volver a leer la cuenta al terminar: Firebase avisa la sesión nueva antes de que exista
+  // usuarios/{uid}, y sin esto el panel no sabría qué yonke es (Pedidos no abriría la alerta).
+  const { recargarRol } = useAuth();
 
   const [nombre, setNombre] = useState('');
   const [direccion, setDireccion] = useState('');
@@ -67,8 +75,13 @@ export default function RegistroYonke() {
   // al terminar, se lleva al yonke directo a responderlo en Pedidos.
   const pedidoId = useRef(null);
   const [pedidoInfo, setPedidoInfo] = useState(null);
+  // Viene de la ventana de alertas de la portada o de su botón "Yo la tengo" (?desde=alertas).
+  // Se lee de la dirección sin estado propio (en el servidor vale '' y no hay desajuste).
+  const busqueda = useSyncExternalStore(sinSuscripcion, () => window.location.search, () => '');
+  const desdeAlertas = new URLSearchParams(busqueda).get('desde') === 'alertas';
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('pedido');
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('pedido');
     if (!esIdPedido(id)) return;
     pedidoId.current = id;
     fetch(`/api/pedidos-abiertos?pedido=${id}`)
@@ -201,6 +214,13 @@ export default function RegistroYonke() {
       // registro sigue igual (avisarAlAdmin nunca lanza).
       await avisarAlAdmin('/api/notificar-registro', { obtenerToken: () => userCredential.user.getIdToken() });
 
+      // Ya con usuarios/{uid}, el yonke y su subdominio guardados: el panel vuelve a leer la cuenta.
+      try {
+        await recargarRol?.();
+      } catch (rolError) {
+        console.error('No se pudo volver a leer la cuenta después del registro', rolError);
+      }
+
       if (pedidoId.current) {
         router.replace(`/panel/reservaciones?pedido=${pedidoId.current}`);
         return;
@@ -271,6 +291,12 @@ export default function RegistroYonke() {
               : 'Sube tu inventario y aparece en búsquedas sin costo. Así de simple.'}
           </p>
         </div>
+
+        {desdeAlertas && (
+          <p style={{ ...freemiumBannerStyle, margin: '0 0 16px', fontSize: '15px', fontWeight: 'bold', color: '#1A3C5E', textAlign: 'center' }}>
+            {TEXTO_REGISTRO_ALERTAS}
+          </p>
+        )}
 
         {pedidoInfo && (
           <div style={{ ...freemiumBannerStyle, backgroundColor: '#FFF4E8', borderColor: '#E8720C' }}>

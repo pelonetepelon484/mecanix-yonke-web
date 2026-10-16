@@ -91,6 +91,21 @@ describe('Pedidos de clientes (lado del yonke)', () => {
       'Este pedido es de Sonora y tu yonke está registrado en Baja California. Solo los yonkes de Sonora pueden responderlo.',
     );
   });
+  it('con ?pedido={id} de otro estado que acepta envíos, sin ser Verificado con Envíos (con alertasPortada): mensaje corto', async () => {
+    leerConfigPedidosClientes.mockResolvedValue({ habilitado: true, alertasPortada: true });
+    window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, pedido: { ...pedido, estado: 'sonora', estadoNombre: 'Sonora', aceptaOtrosEstados: true } }) }));
+    render(<PedidosClientesYonke yonkeId="Y1" />);
+    expect(await screen.findByText('Esta alerta solo la pueden contestar yonkes Verificados con Envíos nacionales.')).toBeInTheDocument();
+  });
+
+  it('sin alertasPortada, ese mismo caso explica como siempre (solo los de ese estado)', async () => {
+    window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, pedido: { ...pedido, estado: 'sonora', estadoNombre: 'Sonora', aceptaOtrosEstados: true } }) }));
+    render(<PedidosClientesYonke yonkeId="Y1" />);
+    expect(await screen.findByText(/Solo los yonkes de Sonora pueden responderlo/)).toBeInTheDocument();
+  });
+
   it('con ?pedido={id} que ya venció, lo dice claro', async () => {
     window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
     global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false }) }));
