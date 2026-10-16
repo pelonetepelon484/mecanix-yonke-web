@@ -98,3 +98,21 @@ describe('bandera encendida', () => {
     expect(data.pedidos[0]).toMatchObject({ pieza: 'Faro', estado: 'baja-california', estadoNombre: 'Baja California', vehiculo: { marca: 'Honda', modelo: 'Civic', anio: 2020 } });
   });
 });
+
+describe('/api/pedidos-abiertos?estado=auto', () => {
+  it('bandera apagada: Baja California, como siempre', async () => {
+    const deps = falsos({ portada: false, geo: 'sonora' });
+    const data = await (await crearManejadores(deps).pedidosAbiertos(get('/api/pedidos-abiertos?estado=auto'))).json();
+    expect(data.estado).toBe('baja-california');
+    expect(deps.listarAbiertos).toHaveBeenCalledWith(expect.anything(), 'baja-california', expect.any(Number));
+  });
+  it('bandera encendida: el estado de la ubicación del visitante, del resumen', async () => {
+    const data = await (await crearManejadores(falsos({ geo: 'sonora' })).pedidosAbiertos(get('/api/pedidos-abiertos?estado=auto'))).json();
+    expect(data.estado).toBe('sonora');
+    expect(data.pedidos.map((p) => p.id)).toEqual(['B']);
+  });
+  it('bandera encendida y sin ubicación: estado null y lista vacía', async () => {
+    const data = await (await crearManejadores(falsos({ geo: null })).pedidosAbiertos(get('/api/pedidos-abiertos?estado=auto'))).json();
+    expect(data).toEqual({ ok: true, estado: null, pedidos: [] });
+  });
+});

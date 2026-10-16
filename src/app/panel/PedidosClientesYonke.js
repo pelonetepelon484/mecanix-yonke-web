@@ -32,6 +32,9 @@ function fechaCorta(ts) {
   return ts?.toDate ? ts.toDate().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
 }
 
+// Solo pasa si el admin lo desactivó: un yonke nace activo al registrarse.
+export const TEXTO_YONKE_DESACTIVADO = 'Tu yonke está desactivado. Escríbenos para revisarlo.';
+
 export const TEXTO_INTERRUPTOR_OTROS_ESTADOS = 'Ver también alertas de otros estados con envío';
 
 export default function PedidosClientesYonke({ yonkeId }) {
@@ -85,7 +88,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
       setVerOtros(d.verAlertasOtrosEstados === true);
       if (pedidoBuscado.current && (!d.activo || !d.estado)) {
         pedidoBuscado.current = null;
-        setAviso('Tu yonke no está activo, por eso todavía no puedes responder pedidos. Escríbenos para revisarlo.');
+        setAviso(TEXTO_YONKE_DESACTIVADO);
       }
     });
     return () => { cancelado = true; };
@@ -149,7 +152,9 @@ export default function PedidosClientesYonke({ yonkeId }) {
       if (!id) return;
       pedidoBuscado.current = null;
       const encontrado = lista.find((p) => p.id === id);
-      if (!encontrado) explicarPedidoNoDisponible(id, estadoYonke, { puedeOtros, verOtros: conOtros }).then(setAviso);
+      if (!encontrado) {
+        explicarPedidoNoDisponible(id, estadoYonke, { puedeOtros, verOtros: conOtros, alertasPortada: config?.alertasPortada === true }).then(setAviso);
+      }
       else if (ya[id]) setAviso('Ya respondiste este pedido. El cliente ya puede ver tu respuesta.');
       else setAbierto(encontrado);
     }
@@ -157,7 +162,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
     const dejarPropias = escucharPedidosClientesAbiertos(estadoYonke, (lista) => { propias = lista; actualizar(); });
     const dejarOtras = conOtros ? escucharPedidosClientesOtrosEstados((lista) => { otras = lista; actualizar(); }) : null;
     return () => { cancelado = true; dejarPropias(); if (dejarOtras) dejarOtras(); };
-  }, [yonkeId, habilitado, estadoActivo?.activo, estadoActivo?.estado, conOtros, puedeOtros]);
+  }, [yonkeId, habilitado, estadoActivo?.activo, estadoActivo?.estado, conOtros, puedeOtros, config?.alertasPortada]);
 
   async function cambiarVerOtros() {
     const nuevo = !verOtros;
@@ -298,7 +303,9 @@ function EtiquetaEnvio({ estado }) {
 }
 
 // El pedido no está entre los que ve el yonke: ¿es de otro estado o ya no está?
-async function explicarPedidoNoDisponible(id, estadoYonke, { puedeOtros = false, verOtros = false } = {}) {
+export const TEXTO_SOLO_VERIFICADOS_CON_ENVIO = 'Esta alerta solo la pueden contestar yonkes Verificados con Envíos nacionales.';
+
+async function explicarPedidoNoDisponible(id, estadoYonke, { puedeOtros = false, verOtros = false, alertasPortada = false } = {}) {
   try {
     const res = await fetch(`/api/pedidos-abiertos?pedido=${id}`);
     const data = await res.json();
@@ -306,6 +313,9 @@ async function explicarPedidoNoDisponible(id, estadoYonke, { puedeOtros = false,
       if (data.pedido.aceptaOtrosEstados && puedeOtros && !verOtros) {
         return `Esta alerta es de ${data.pedido.estadoNombre} y el cliente acepta yonkes de otros estados con envío. Enciende “${TEXTO_INTERRUPTOR_OTROS_ESTADOS}” para responderla.`;
       }
+      // Enlace directo (p. ej. desde la portada) a una alerta de otro estado que acepta envíos,
+      // abierto por un yonke que no es Verificado con Envíos nacionales (con alertasPortada).
+      if (data.pedido.aceptaOtrosEstados && !puedeOtros && alertasPortada) return TEXTO_SOLO_VERIFICADOS_CON_ENVIO;
       const estados = await cargarEstados();
       const tuEstado = estados.find((e) => e.id === estadoYonke)?.nombre || estadoYonke;
       return `Este pedido es de ${data.pedido.estadoNombre} y tu yonke está registrado en ${tuEstado}. Solo los yonkes de ${data.pedido.estadoNombre} pueden responderlo.`;

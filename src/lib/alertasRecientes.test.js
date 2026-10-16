@@ -37,3 +37,43 @@ describe('resumen público de alertas', () => {
     expect(alertasDeEstado(resumen, 'baja-california', AHORA, 1)).toHaveLength(1);
   });
 });
+
+import { haceCuanto, rotacionInicial, rotarUnPaso } from './alertasRecientes';
+
+describe('"hace X minutos" con la hora del servidor', () => {
+  const creado = '2026-10-16T18:00:00.000Z';
+  const t = (min) => Date.parse(creado) + min * 60000;
+  it('menos de 1 minuto: "hace un momento"; luego minutos, horas y días', () => {
+    expect(haceCuanto(creado, t(0.5))).toBe('hace un momento');
+    expect(haceCuanto(creado, t(-3))).toBe('hace un momento');
+    expect(haceCuanto(creado, t(1))).toBe('hace 1 minuto');
+    expect(haceCuanto(creado, t(42))).toBe('hace 42 minutos');
+    expect(haceCuanto(creado, t(60))).toBe('hace 1 hora');
+    expect(haceCuanto(creado, t(185))).toBe('hace 3 horas');
+    expect(haceCuanto(creado, t(60 * 24))).toBe('hace 1 día');
+    expect(haceCuanto(creado, t(60 * 50))).toBe('hace 2 días');
+    expect(haceCuanto('no-fecha', t(5))).toBe('');
+  });
+});
+
+describe('rotación de la ventana', () => {
+  const lista = (n) => Array.from({ length: n }, (_, i) => ({ id: `A${i}` }));
+  it('con 5 o menos: fijas, sin rotar', () => {
+    const l = lista(5);
+    const r = rotacionInicial(l);
+    expect(r.mostradas).toEqual(['A0', 'A1', 'A2', 'A3', 'A4']);
+    expect(rotarUnPaso(r, l)).toBe(r);
+    expect(rotacionInicial(lista(3)).mostradas).toEqual(['A0', 'A1', 'A2']);
+  });
+  it('con más de 5: la siguiente entra arriba, sale la de abajo y da la vuelta', () => {
+    const l = lista(7);
+    let r = rotacionInicial(l);
+    r = rotarUnPaso(r, l);
+    expect(r.mostradas).toEqual(['A5', 'A0', 'A1', 'A2', 'A3']);
+    r = rotarUnPaso(r, l);
+    expect(r.mostradas).toEqual(['A6', 'A5', 'A0', 'A1', 'A2']);
+    r = rotarUnPaso(r, l);
+    expect(r.mostradas).toEqual(['A0', 'A6', 'A5', 'A1', 'A2']);
+    expect(new Set(r.mostradas).size).toBe(5);
+  });
+});

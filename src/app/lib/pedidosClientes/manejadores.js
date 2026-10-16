@@ -14,6 +14,8 @@ import { POOL_PORTADA, alertasDeEstado } from '../../../lib/alertasRecientes';
 // servicio, sin config/pedidosClientes.habilitado == true, o si un contador de límite falla,
 // la respuesta es "no disponible" / "límite" y no se escribe nada.
 
+// Mismo estado por omisión que ESTADO_DEFAULT (src/app/lib/estados.js).
+const ESTADO_POR_OMISION = 'baja-california';
 const MINUTO = 60 * 1000;
 const HORA = 60 * MINUTO;
 const DIA = 24 * HORA;
@@ -246,6 +248,9 @@ export function crearManejadores(deps) {
   }
 
   // GET /api/pedidos-abiertos?estado={id}  -> lista pública (vehículo, pieza, estado y fecha)
+  // GET /api/pedidos-abiertos?estado=auto   -> la del estado del visitante: con alertasPortada, el
+  //   de su ubicación aproximada (o estado null y lista vacía si no se sabe); sin ella, Baja
+  //   California, como siempre. La respuesta dice qué estado se usó.
   // GET /api/pedidos-abiertos?pedido={id}  -> un pedido abierto (para el registro y el panel)
   async function pedidosAbiertos(request) {
     const db = await prepararDb();
@@ -262,18 +267,24 @@ export function crearManejadores(deps) {
         return json({ ok: true, pedido: { ...pedidoPublico(idPedido, d), estadoNombre: await nombreDeEstado(d.estado), aceptaOtrosEstados: d.aceptaOtrosEstados === true } });
       }
 
-      const estado = params.get('estado') || '';
+      let estado = params.get('estado') || '';
       const estados = await deps.estados();
+      const conResumen = await alertasPortadaHabilitadas(db);
+      if (estado === 'auto') {
+        estado = conResumen ? (deps.estadoDesdeGeo ? deps.estadoDesdeGeo(request) : null) ?? '' : ESTADO_POR_OMISION;
+        if (!estados.some((e) => e.id === estado)) return json({ ok: true, estado: null, pedidos: [] });
+      }
       const encontrado = estados.find((e) => e.id === estado);
       if (!encontrado) return json({ ok: false, mensaje: MENSAJES_PEDIDO.estado }, 400);
       const ahora = deps.ahora();
-      if (await alertasPortadaHabilitadas(db)) {
+      if (conResumen) {
         const pedidos = alertasDeEstado(await resumenDeAlertas(db), estado, ahora, MAX_PEDIDOS_ABIERTOS_LISTA);
-        return json({ ok: true, pedidos: pedidos.map((p) => ({ ...p, estadoNombre: encontrado.nombre })) });
+        return json({ ok: true, estado, pedidos: pedidos.map((p) => ({ ...p, estadoNombre: encontrado.nombre })) });
       }
       const lista = await deps.listarAbiertos(db, estado, MAX_PEDIDOS_ABIERTOS_LISTA);
       return json({
         ok: true,
+        estado,
         pedidos: lista
           .filter((p) => p.estadoPedido === 'abierta' && !estaVencido(p.expiraAt, ahora))
           .slice(0, MAX_PEDIDOS_ABIERTOS_LISTA)
