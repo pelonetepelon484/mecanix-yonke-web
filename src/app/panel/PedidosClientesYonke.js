@@ -32,6 +32,9 @@ function fechaCorta(ts) {
   return ts?.toDate ? ts.toDate().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
 }
 
+// Solo pasa si el admin lo desactivó: un yonke nace activo al registrarse.
+export const TEXTO_YONKE_DESACTIVADO = 'Tu yonke está desactivado. Escríbenos para revisarlo.';
+
 export const TEXTO_INTERRUPTOR_OTROS_ESTADOS = 'Ver también alertas de otros estados con envío';
 
 export default function PedidosClientesYonke({ yonkeId }) {
@@ -85,7 +88,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
       setVerOtros(d.verAlertasOtrosEstados === true);
       if (pedidoBuscado.current && (!d.activo || !d.estado)) {
         pedidoBuscado.current = null;
-        setAviso('Tu yonke no está activo, por eso todavía no puedes responder pedidos. Escríbenos para revisarlo.');
+        setAviso(TEXTO_YONKE_DESACTIVADO);
       }
     });
     return () => { cancelado = true; };

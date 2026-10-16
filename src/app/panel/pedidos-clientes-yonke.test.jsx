@@ -106,6 +106,14 @@ describe('Pedidos de clientes (lado del yonke)', () => {
     expect(await screen.findByText(/Solo los yonkes de Sonora pueden responderlo/)).toBeInTheDocument();
   });
 
+  it('con ?pedido={id} y el yonke desactivado por el admin: "Tu yonke está desactivado. Escríbenos para revisarlo."', async () => {
+    leerYonkeEstadoActivo.mockImplementation(async () => ({ estado: 'baja-california', activo: false, nombre: 'Yonke Prueba', whatsapp: '6641234567' }));
+    window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
+    render(<PedidosClientesYonke yonkeId="Y1" />);
+    expect(await screen.findByRole('status')).toHaveTextContent('Tu yonke está desactivado. Escríbenos para revisarlo.');
+    expect(screen.queryByText(/todavía/)).not.toBeInTheDocument();
+  });
+
   it('con ?pedido={id} que ya venció, lo dice claro', async () => {
     window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
     global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false }) }));
