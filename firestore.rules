@@ -1069,8 +1069,10 @@ service cloud.firestore {
                         && (!exists(terminosYonkesRef()) || aceptacionVigenteEnEsteGuardado()));
       allow update: if esAdmin()
                     || (esDuenoDelYonke(yonkeId)
+                        // activo (Activar / Desactivar) y verificado solo los cambia el admin; el
+                        // yonke nace activo al registrarse (create) y no puede reactivarse solo.
                         && !request.resource.data.diff(resource.data).affectedKeys()
-                             .hasAny(['verificado', 'entregaInmediata', 'capturaADomicilio', 'ultimaVisitaCaptura', 'subdominio', 'subdominioActivo', 'enviosNacionales', 'ownerUid', 'plan', 'premiumHasta'])
+                             .hasAny(['activo', 'verificado', 'entregaInmediata', 'capturaADomicilio', 'ultimaVisitaCaptura', 'subdominio', 'subdominioActivo', 'enviosNacionales', 'ownerUid', 'plan', 'premiumHasta'])
                         // si cambia promoImagenes, debe ser válido
                         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['promoImagenes'])
                             || promosValidas(request.resource.data.get('promoImagenes', []), yonkeId))

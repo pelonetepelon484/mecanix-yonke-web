@@ -115,6 +115,19 @@ describe('dueño de un yonke', () => {
       nombre: 'Perfil', direccion: 'Calle', metodosPago: ['efectivo'],
     }, { merge: true }));
   });
+  it('no puede desactivarse ni reactivarse solo: activo lo cambia únicamente el admin', async () => {
+    await sembrar();
+    await assertFails(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { activo: false }));
+    await assertFails(setDoc(doc(como('o1'), 'yonkes', 'Y1'), { nombre: 'Perfil', activo: false }, { merge: true }));
+    // El admin lo desactiva; el dueño no puede volver a prenderse, ni junto con otros cambios.
+    await assertSucceeds(updateDoc(doc(como('adm'), 'yonkes', 'Y1'), { activo: false }));
+    await assertFails(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { activo: true }));
+    await assertFails(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { activo: true, nombre: 'Otra vez' }));
+    await assertFails(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { activo: deleteField() }));
+    // Apagado sigue editando lo demás de su ficha.
+    await assertSucceeds(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { nombre: 'Yonke uno pausado' }));
+    await assertSucceeds(updateDoc(doc(como('adm'), 'yonkes', 'Y1'), { activo: true }));
+  });
   it('no puede cambiar su ownerUid', async () => {
     await sembrar();
     await assertFails(updateDoc(doc(como('o1'), 'yonkes', 'Y1'), { ownerUid: 'x9' }));
