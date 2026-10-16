@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { DURACION_RECARGA_MS, INTERVALO_RECARGA_MS, MENSAJES_PEDIDO, avisoEnvioOtroEstado } from '../../../lib/pedidosClientes';
 
+export const TEXTO_AVISO_PAGO = '🛡️ Antes de pagar, confirma la pieza directamente con el yonke. Con yonkes sin verificar, evita pagos por adelantado. Mecanix no participa en la venta ni en el pago.';
+
 function pesos(n) {
   return `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
@@ -94,6 +96,14 @@ export default function MiPedidoCliente() {
       </div>
 
       <div style={seccion}>
+        {/* Con config/pedidosClientes.avisoPagoCliente (el servidor manda avisoPago): advertencia de
+            pago arriba de las respuestas. Sin la bandera, la página queda como siempre. */}
+        {datos.avisoPago === true && (
+          <div role="note" style={avisoPago}>
+            <p style={{ margin: 0 }}>{TEXTO_AVISO_PAGO}</p>
+            <a href="/compra-segura" style={{ display: 'inline-block', marginTop: '6px', color: '#1A3C5E', fontWeight: 'bold' }}>Ver consejos de compra segura →</a>
+          </div>
+        )}
         <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E' }}>
           Respuestas ({conPieza.length} la tienen{sinPieza > 0 ? `, ${sinPieza} no` : ''})
         </p>
@@ -107,7 +117,7 @@ export default function MiPedidoCliente() {
               {r.tieneLaPieza && <p style={{ margin: 0, fontWeight: 'bold', color: '#E8720C', fontSize: '17px' }}>{pesos(r.precio)}</p>}
             </div>
             <p style={{ margin: '4px 0 0', fontSize: '12px', fontWeight: 'bold', color: r.verificado ? '#2E7D32' : '#8A6D00' }}>
-              {r.verificado ? '✅ Verificado' : '⚠️ Yonke nuevo, sin verificar'}
+              {r.verificado ? '✅ Verificado' : `⚠️ Yonke nuevo, sin verificar${datos.avisoPago === true ? ' · confirma antes de pagar' : ''}`}
             </p>
             {r.estadoYonkeNombre && (
               <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#555' }}>
@@ -157,6 +167,7 @@ function Marco({ children }) {
 }
 
 const seccion = { backgroundColor: '#fff', borderRadius: '14px', padding: '16px', marginBottom: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' };
+const avisoPago = { backgroundColor: '#FFF9F2', border: '1px solid #F2C9A0', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px', fontSize: '13px', color: '#5C3D00', lineHeight: '1.5' };
 const tarjeta = { border: '1px solid #EEE', borderRadius: '12px', padding: '12px', marginBottom: '10px' };
 const botonWhatsapp = { display: 'block', marginTop: '10px', padding: '11px', borderRadius: '50px', backgroundColor: '#25D366', color: '#fff', fontWeight: 'bold', fontSize: '14px', textAlign: 'center', textDecoration: 'none' };
 const botonSecundario = { width: '100%', minHeight: '48px', borderRadius: '12px', border: '1px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
