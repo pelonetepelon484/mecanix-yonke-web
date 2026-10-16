@@ -9,6 +9,10 @@ import { notificarAdmin } from '../notificarAdmin';
 import { claveLimite, codigoCoincide, generarCodigo, hashCodigo } from '../../../lib/pedidosClientesServidor';
 import { crearManejadores } from './manejadores';
 import { crearAvisarYonkesReal } from '../avisosPush/servicio';
+import { actualizarResumenAlertas, leerResumenAlertas } from './resumenAlertas';
+import { CACHE_RESUMEN_MS } from '../../../lib/alertasRecientes';
+import { geoDesdeHeadersVercel } from '../../../lib/geoVercel';
+import { estadoDeCodigoGeo } from '../../../lib/estadoGeoMapping';
 
 // Solo servidor. Identidad de servicio para el pedido de clientes: una app de Firebase APARTE
 // (no la de dbServer que usa el buscador, que sigue sin sesión exactamente igual que antes) que
@@ -55,6 +59,37 @@ export async function habilitado(db) {
   return (await leerConfig(db))?.habilitado === true;
 }
 // Segunda bandera: casilla "yonkes de otros estados que hagan envíos". Exige también la primera.
+// Tercera bandera: resumen público de alertas (portada y /pedidos-abiertos). Exige la primera.
+export async function alertasPortada(db) {
+  const config = await leerConfig(db);
+  return config?.habilitado === true && config?.alertasPortada === true;
+}
+
+// Resumen publico/alertasRecientes con caché de 1 minuto por instancia: la portada lo consulta
+// seguido, pero solo cuesta 1 lectura por minuto (y la CDN guarda la respuesta 60 s más).
+let cacheResumen = { valor: null, en: 0 };
+export async function leerResumen(db) {
+  if (cacheResumen.valor !== null && Date.now() - cacheResumen.en < CACHE_RESUMEN_MS) return cacheResumen.valor;
+  const valor = await leerResumenAlertas(db);
+  if (valor !== null) cacheResumen = { valor, en: Date.now() };
+  return valor;
+}
+export async function actualizarResumen(db) {
+  const valor = await actualizarResumenAlertas(db);
+  cacheResumen = { valor, en: Date.now() };
+  return valor;
+}
+
+// Estado del visitante por su ubicación aproximada (encabezados de Vercel); null si no se sabe.
+export function estadoDesdeGeo(request) {
+  const geo = geoDesdeHeadersVercel({
+    country: request.headers.get('x-vercel-ip-country'),
+    region: request.headers.get('x-vercel-ip-country-region'),
+    city: request.headers.get('x-vercel-ip-city'),
+  });
+  return geo.estado === 'desconocido' ? null : estadoDeCodigoGeo(geo.estado);
+}
+
 export async function otrosEstados(db) {
   const config = await leerConfig(db);
   return config?.habilitado === true && config?.otrosEstados === true;
@@ -131,6 +166,7 @@ export function manejadoresReales() {
       estados: obtenerEstadosCombinado, notificar: notificarAdmin, ahora: () => new Date(),
       generarCodigo, hashCodigo, codigoCoincide, claveLimite,
       avisarYonkes: crearAvisarYonkesReal({ contar }),
+      alertasPortada, leerResumen, actualizarResumen, estadoDesdeGeo,
     });
   }
   return manejadores;

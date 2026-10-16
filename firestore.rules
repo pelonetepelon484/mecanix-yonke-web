@@ -994,6 +994,22 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
+    // ---------- Resumen público de alertas (publico/alertasRecientes) ----------
+    // Las ~30 alertas abiertas más recientes con SOLO pieza, vehículo, estado y fechas (nunca el
+    // WhatsApp del cliente). No se lee desde el navegador: lo escriben el usuario de servicio (al
+    // crear una alerta) y el admin (al cerrar, cancelar, reabrir o borrar), y lo lee el servidor
+    // para /api/alertas-recientes y /api/pedidos-abiertos, que filtran por estado.
+    match /publico/{docId} {
+      allow read: if esServicio() || esAdmin();
+      allow create, update: if (esServicio() || esAdmin())
+                            && docId == 'alertasRecientes'
+                            && request.resource.data.keys().hasOnly(['alertas', 'actualizadoAt'])
+                            && request.resource.data.alertas is list
+                            && request.resource.data.alertas.size() <= 30
+                            && request.resource.data.actualizadoAt == request.time;
+      allow delete: if esAdmin();
+    }
+
     // ---------- Avisos en el dispositivo (notificaciones push) ----------
     // dispositivosPush/{yonkeId}_{sha256 del token}: un documento por dispositivo del yonke (puede
     // tener varios). Solo el dueño del yonke lo crea, lo lee y lo borra; el usuario de servicio lo
