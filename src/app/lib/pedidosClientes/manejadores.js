@@ -104,6 +104,16 @@ export function crearManejadores(deps) {
     return resumen === null ? deps.actualizarResumen(db) : resumen;
   }
 
+  // Bandera de la advertencia de pago en /mi-pedido (config/pedidosClientes.avisoPagoCliente).
+  async function avisoPagoHabilitado(db) {
+    try {
+      return deps.avisoPagoCliente ? (await deps.avisoPagoCliente(db)) === true : false;
+    } catch (error) {
+      console.error('[pedidosClientes] No se pudo leer la bandera avisoPagoCliente', { message: error?.message });
+      return false;
+    }
+  }
+
   async function nombreDeEstado(id) {
     const estados = await deps.estados();
     return estados.find((e) => e.id === id)?.nombre || id;
@@ -226,6 +236,8 @@ export function crearManejadores(deps) {
           vencido: estaVencido(pedido.expiraAt, deps.ahora()),
         },
         respuestas: ordenarRespuestas(respuestas.map((r) => conEstado(respuestaParaCliente(r, yonkes[r.yonkeId])))),
+        // Advertencia "Antes de pagar…" arriba de las respuestas (solo con su bandera).
+        ...((await avisoPagoHabilitado(db)) ? { avisoPago: true } : {}),
       });
     } catch (error) {
       console.error('[pedidosClientes] No se pudo leer el pedido', { code: error?.code, message: error?.message });

@@ -180,6 +180,20 @@ describe('POST /api/pedir-pieza', () => {
 });
 
 describe('GET /api/mi-pedido/{id}?c=', () => {
+  it('advertencia de pago: solo con la bandera avisoPagoCliente manda avisoPago', async () => {
+    const { deps } = crearFalsos();
+    const m = crearManejadores(deps);
+    const { id, codigo } = await crearUno(m);
+    const leer = async (mm) => (await mm.miPedido(get(`/api/mi-pedido/${id}?c=${codigo}`), id)).json();
+    expect(await leer(m)).not.toHaveProperty('avisoPago');
+    expect(await leer(crearManejadores({ ...deps, avisoPagoCliente: vi.fn(async () => false) }))).not.toHaveProperty('avisoPago');
+    expect((await leer(crearManejadores({ ...deps, avisoPagoCliente: vi.fn(async () => true) }))).avisoPago).toBe(true);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const falla = await leer(crearManejadores({ ...deps, avisoPagoCliente: vi.fn(async () => { throw new Error('x'); }) }));
+    expect(falla.ok).toBe(true);
+    expect(falla).not.toHaveProperty('avisoPago');
+  });
+
   it('con el código correcto devuelve el pedido y las respuestas, sin el WhatsApp del cliente', async () => {
     const { deps, respuestas } = crearFalsos();
     const m = crearManejadores(deps);

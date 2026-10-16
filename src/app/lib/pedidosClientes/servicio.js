@@ -59,6 +59,13 @@ export async function habilitado(db) {
   return (await leerConfig(db))?.habilitado === true;
 }
 // Segunda bandera: casilla "yonkes de otros estados que hagan envíos". Exige también la primera.
+// Advertencia de pago para el cliente en /mi-pedido (config/pedidosClientes.avisoPagoCliente).
+// Exige la primera bandera.
+export async function avisoPagoCliente(db) {
+  const config = await leerConfig(db);
+  return config?.habilitado === true && config?.avisoPagoCliente === true;
+}
+
 // Tercera bandera: resumen público de alertas (portada y /pedidos-abiertos). Exige la primera.
 export async function alertasPortada(db) {
   const config = await leerConfig(db);
@@ -166,7 +173,7 @@ export function manejadoresReales() {
       estados: obtenerEstadosCombinado, notificar: notificarAdmin, ahora: () => new Date(),
       generarCodigo, hashCodigo, codigoCoincide, claveLimite,
       avisarYonkes: crearAvisarYonkesReal({ contar }),
-      alertasPortada, leerResumen, actualizarResumen, estadoDesdeGeo,
+      alertasPortada, leerResumen, actualizarResumen, estadoDesdeGeo, avisoPagoCliente,
     });
   }
   return manejadores;

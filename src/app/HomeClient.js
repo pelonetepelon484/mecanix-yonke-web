@@ -2173,7 +2173,7 @@ function obtenerEstadoAbierto(horario) {
                 Tu inventario, tu nombre, tus clientes. Mecanix solo hace que te encuentren.
               </p>
               <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 20px', lineHeight: '1.6' }}>
-                ⚠️ Tu perfil será verificado por nuestro equipo en un plazo de 24 horas antes de aparecer en la plataforma.
+                Tu yonke aparece desde que te registras. Nuestro equipo puede marcarlo después como Verificado.
               </p>
               <a href="/panel/registro" style={yonkeCtaButtonStyle}>
                 🆓 Registra tu yonke gratis
