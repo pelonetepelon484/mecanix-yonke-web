@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './AuthContext';
 import AvisoInstalarApp from './AvisoInstalarApp';
 import AvisoTerminosYonke from './AvisoTerminosYonke';
 import { ConteoPedidosProvider } from './ConteoPedidos';
+import EnlaceIrAMecanix from './EnlaceIrAMecanix';
 
 // Una cuenta de taller solo puede estar en /panel/taller: si intenta abrir el panel de yonkes,
 // la mandamos a su pantalla. Yonke y admin no pasan por aquí.
@@ -33,6 +34,7 @@ export default function PanelLayoutCliente({ children }) {
     <AuthProvider>
       <ConteoPedidosProvider>
         <GuardaTaller>
+          <EnlaceIrAMecanix />
           <AvisoTerminosYonke />
           <AvisoInstalarApp />
           {children}

@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { calcularExpiraAtPedido } from '../../../lib/pedidosClientes';
+import { actualizarResumenAlertas } from '../../lib/pedidosClientes/resumenAlertas';
 
 export const LIMITE_LISTA = 300;
 
@@ -49,12 +50,29 @@ export async function leerDetallePedidoCliente(id) {
   };
 }
 
-export function cerrarPedidoCliente(id) {
-  return updateDoc(doc(db, 'pedidosClientes', id), { estadoPedido: 'cerrada', cerradoAt: serverTimestamp() });
+// Resumen público de alertas (publico/alertasRecientes): con config/pedidosClientes.alertasPortada
+// encendida, después de cerrar, cancelar, reabrir o borrar se rehace para que la portada y
+// /pedidos-abiertos dejen de mostrar (o vuelvan a mostrar) esa alerta. Nunca tumba la acción del
+// admin: si falla, el resumen se corrige con la siguiente alerta nueva.
+async function refrescarResumenAlertas() {
+  try {
+    const config = await getDoc(doc(db, 'config', 'pedidosClientes'));
+    if (config.exists() && config.data().habilitado === true && config.data().alertasPortada === true) {
+      await actualizarResumenAlertas(db);
+    }
+  } catch (error) {
+    console.warn('[admin] No se pudo actualizar el resumen de alertas', error?.code || error?.message);
+  }
 }
 
-export function cancelarPedidoCliente(id) {
-  return updateDoc(doc(db, 'pedidosClientes', id), { estadoPedido: 'cancelada', cerradoAt: serverTimestamp() });
+export async function cerrarPedidoCliente(id) {
+  await updateDoc(doc(db, 'pedidosClientes', id), { estadoPedido: 'cerrada', cerradoAt: serverTimestamp() });
+  await refrescarResumenAlertas();
+}
+
+export async function cancelarPedidoCliente(id) {
+  await updateDoc(doc(db, 'pedidosClientes', id), { estadoPedido: 'cancelada', cerradoAt: serverTimestamp() });
+  await refrescarResumenAlertas();
 }
 
 // Reabrir: vuelve a 'abierta' y vence en 5 días desde hoy. En el MISMO lote se extiende el
@@ -71,12 +89,14 @@ export async function reabrirPedidoCliente(id) {
   if (privado.exists()) lote.update(privado.ref, { expiraAt });
   respuestas.docs.forEach((r) => lote.update(r.ref, { expiraAt }));
   await lote.commit();
+  await refrescarResumenAlertas();
   return expiraAt.toDate();
 }
 
 // Borra el pedido con sus respuestas y su documento privado, en un solo lote.
 export async function borrarPedidoCliente(id) {
   await borrarConSubcolecciones('pedidosClientes', id);
+  await refrescarResumenAlertas();
 }
 
 // ---------- Pedidos de talleres (solo lectura + borrar) ----------

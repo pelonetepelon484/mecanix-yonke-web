@@ -4,6 +4,7 @@ import { dbServer } from './lib/firebase-server';
 import { obtenerEstadosCombinado, estadoDeYonke, ESTADO_DEFAULT } from './lib/busqueda/estadosServer';
 import HomeClient from './HomeClient';
 import { textoConteoRedYonkes } from './lib/conteoRedYonkes';
+import { leerConfigPortada } from '../lib/configPortada';
 
 // Misma cadencia que el caché en memoria de estadosServer.js (10 min) — sin esto, Next.js
 // generaría esta página como estática en el build y el texto SEO de cobertura quedaría
@@ -77,6 +78,9 @@ export default async function Home() {
     estadosConCobertura = [{ id: ESTADO_DEFAULT, nombre: 'Baja California' }];
   }
   const textoSeoEstados = construirTextoSeoEstados(estadosConCobertura);
+  // config/portada se lee aquí, en el servidor, con la misma cadencia de 10 min (revalidate):
+  // ninguna lectura extra por visitante. Un cambio en la consola tarda hasta 10 min en verse.
+  const { botonPanel } = await leerConfigPortada(dbServer);
 
-  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} />;
+  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} />;
 }

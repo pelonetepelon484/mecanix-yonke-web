@@ -4,8 +4,11 @@ import {
   MENSAJES_PEDIDO, calcularExpiraAtPedido, enlaceMiPedido, esCodigo, esIdPedido, estaVencido, mensajeAvisoAdmin, normalizarWhatsapp,
   ordenarRespuestas, pedidoPublico, respuestaParaCliente, validarPedidoCliente,
 } from '../../../lib/pedidosClientes';
+import { POOL_PORTADA, alertasDeEstado } from '../../../lib/alertasRecientes';
 
-// Lógica de las rutas /api/pedir-pieza, /api/mi-pedido/[id] y /api/pedidos-abiertos.
+// Lógica de las rutas /api/pedir-pieza, /api/mi-pedido/[id], /api/pedidos-abiertos y
+// /api/alertas-recientes. Con config/pedidosClientes.alertasPortada encendida, las listas públicas
+// salen del resumen publico/alertasRecientes (1 lectura) en lugar de consultar las alertas.
 // Todo lo que toca Firestore, el reloj, el azar y el aviso al admin llega en `deps` (las reales
 // están en servicio.js): así las pruebas corren sin Firestore. Falla cerrada: sin identidad de
 // servicio, sin config/pedidosClientes.habilitado == true, o si un contador de límite falla,
@@ -82,6 +85,23 @@ export function crearManejadores(deps) {
       console.error('[pedidosClientes] No se pudo leer la bandera otrosEstados', { message: error?.message });
       return false;
     }
+  }
+
+  // Tercera bandera (config/pedidosClientes.alertasPortada): resumen público de alertas. Apagada,
+  // no se lee ni se escribe el resumen.
+  async function alertasPortadaHabilitadas(db) {
+    try {
+      return deps.alertasPortada ? (await deps.alertasPortada(db)) === true : false;
+    } catch (error) {
+      console.error('[pedidosClientes] No se pudo leer la bandera alertasPortada', { message: error?.message });
+      return false;
+    }
+  }
+
+  // Lista del resumen (con caché en deps.leerResumen). Si todavía no existe, se arma una vez.
+  async function resumenDeAlertas(db) {
+    const resumen = await deps.leerResumen(db);
+    return resumen === null ? deps.actualizarResumen(db) : resumen;
   }
 
   async function nombreDeEstado(id) {
@@ -161,6 +181,15 @@ export function crearManejadores(deps) {
       }
     }
 
+    // Resumen público (solo con su bandera; nunca tumba la respuesta: la alerta ya existe).
+    if (await alertasPortadaHabilitadas(db)) {
+      try {
+        await deps.actualizarResumen(db);
+      } catch (error) {
+        console.error('[pedidosClientes] No se pudo actualizar el resumen de alertas', { message: error?.message });
+      }
+    }
+
     return json({ ok: true, id, enlace: enlaceMiPedido(new URL(request.url).origin, id, codigo) });
   }
 
@@ -225,8 +254,12 @@ export function crearManejadores(deps) {
       const estados = await deps.estados();
       const encontrado = estados.find((e) => e.id === estado);
       if (!encontrado) return json({ ok: false, mensaje: MENSAJES_PEDIDO.estado }, 400);
-      const lista = await deps.listarAbiertos(db, estado, MAX_PEDIDOS_ABIERTOS_LISTA);
       const ahora = deps.ahora();
+      if (await alertasPortadaHabilitadas(db)) {
+        const pedidos = alertasDeEstado(await resumenDeAlertas(db), estado, ahora, MAX_PEDIDOS_ABIERTOS_LISTA);
+        return json({ ok: true, pedidos: pedidos.map((p) => ({ ...p, estadoNombre: encontrado.nombre })) });
+      }
+      const lista = await deps.listarAbiertos(db, estado, MAX_PEDIDOS_ABIERTOS_LISTA);
       return json({
         ok: true,
         pedidos: lista
@@ -240,5 +273,44 @@ export function crearManejadores(deps) {
     }
   }
 
-  return { pedirPieza, miPedido, pedidosAbiertos };
+  // GET /api/alertas-recientes?estado={id} -> las alertas abiertas más recientes de ESE estado
+  // (máx. POOL_PORTADA), solo pieza, vehículo, estado y fecha, más la hora del servidor (`ahora`)
+  // para calcular "hace X minutos" sin depender del reloj del celular. Sin ?estado, el estado sale
+  // de la ubicación aproximada del visitante; si no se puede saber, lista vacía y estado null (la
+  // portada le pide elegirlo). Las alertas que aceptan otros estados NO se muestran fuera de su
+  // estado: esas solo se ven en el panel. Con ?estado, la respuesta se guarda 60 s en la CDN.
+  async function alertasRecientes(request) {
+    const db = await prepararDb();
+    if (!db || !(await alertasPortadaHabilitadas(db))) return noDisponible();
+    if (!consultaPermitida(request)) return json({ ok: false, mensaje: MENSAJES_PEDIDO.limiteConsultas }, 429);
+
+    const params = new URL(request.url).searchParams;
+    const pedido = params.get('estado');
+    const ahora = deps.ahora();
+    try {
+      const estados = await deps.estados();
+      let estado = null;
+      if (pedido !== null) {
+        estado = estados.find((e) => e.id === pedido)?.id ?? null;
+        if (!estado) return json({ ok: false, mensaje: MENSAJES_PEDIDO.estado }, 400);
+      } else {
+        const delVisitante = deps.estadoDesdeGeo ? deps.estadoDesdeGeo(request) : null;
+        estado = estados.find((e) => e.id === delVisitante)?.id ?? null;
+      }
+      const cuerpo = {
+        ok: true,
+        estado,
+        estadoNombre: estado ? estados.find((e) => e.id === estado).nombre : null,
+        alertas: estado ? alertasDeEstado(await resumenDeAlertas(db), estado, ahora, POOL_PORTADA) : [],
+        ahora: ahora.toISOString(),
+      };
+      const cache = pedido !== null ? 'public, max-age=0, s-maxage=60, stale-while-revalidate=60' : 'private, no-store';
+      return NextResponse.json(cuerpo, { status: 200, headers: { 'Cache-Control': cache, 'X-Robots-Tag': 'noindex' } });
+    } catch (error) {
+      console.error('[pedidosClientes] No se pudieron leer las alertas recientes', { code: error?.code, message: error?.message });
+      return json({ ok: false, mensaje: MENSAJES_PEDIDO.noDisponible }, 500);
+    }
+  }
+
+  return { pedirPieza, miPedido, pedidosAbiertos, alertasRecientes };
 }
