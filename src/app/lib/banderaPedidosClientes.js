@@ -35,6 +35,12 @@ export function leerBanderaInventarioVehiculos() {
   return leerConfig().then((c) => c.habilitado === true && c.inventarioVehiculos === true);
 }
 
+// Cuarta bandera (config/pedidosClientes.alertasPortada): ventana de alertas recientes en la
+// portada. Mismo documento y misma lectura; exige también la primera.
+export function leerBanderaAlertasPortada() {
+  return leerConfig().then((c) => c.habilitado === true && c.alertasPortada === true);
+}
+
 export function useBanderaPedidosClientes() {
   const [activa, setActiva] = useState(false);
   useEffect(() => {

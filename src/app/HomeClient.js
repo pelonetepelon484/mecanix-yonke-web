@@ -19,6 +19,7 @@ import VisorFotos from './lib/VisorFotos';
 import { fotosDeItem } from '../lib/fotosPieza';
 import AvisarYonkes from './AvisarYonkes';
 import PestanasPortada from './PestanasPortada';
+import VentanaAlertas from './VentanaAlertas';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
 import { leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
@@ -1913,6 +1914,9 @@ function obtenerEstadoAbierto(horario) {
                 AvisoCompraSeguraCorto) siguen mostrándose junto a los resultados, sin cambio. */}
             {!busquedaHecha && !mensajeLibre && (
               <>
+                {/* Alertas de búsqueda recientes del estado del visitante (config/pedidosClientes.
+                    alertasPortada). Va debajo del buscador: si aparece, no mueve lo de arriba. */}
+                <VentanaAlertas estado={estadoBusqueda} />
                 <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' }}>
                   <h3 style={{ fontSize: '14px', color: '#1A3C5E', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textAlign: 'center' }}>
                     ¿CÓMO FUNCIONA?

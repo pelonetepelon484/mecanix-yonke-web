@@ -56,3 +56,37 @@ export function alertasDeEstado(resumen, estado, ahora, max = POOL_PORTADA) {
       creadoAt: new Date(a.creadoMs).toISOString(),
     }));
 }
+
+// ---------- Ventana de la portada ----------
+// Encabezado del registro de yonke cuando llega desde la ventana o desde "Yo la tengo" (?desde=alertas).
+export const TEXTO_REGISTRO_ALERTAS = 'Regístrate gratis para ver todas las alertas y contestar';
+export const VISIBLES_PORTADA = 5;
+export const ROTACION_MS = 4000;
+export const REFRESCO_PORTADA_MS = 90 * 1000;
+
+// "hace X minutos" con la hora del SERVIDOR: ahoraServidorMs = Date.now() + desfase, donde desfase
+// = (hora que mandó el servidor) - (hora del celular al recibirla). Así un reloj mal puesto no
+// cambia el texto. Menos de 1 minuto: "hace un momento".
+export function haceCuanto(creadoAtIso, ahoraServidorMs) {
+  const creado = Date.parse(creadoAtIso);
+  if (Number.isNaN(creado)) return '';
+  const min = Math.floor(Math.max(0, ahoraServidorMs - creado) / 60000);
+  if (min < 1) return 'hace un momento';
+  if (min < 60) return min === 1 ? 'hace 1 minuto' : `hace ${min} minutos`;
+  const horas = Math.floor(min / 60);
+  if (horas < 24) return horas === 1 ? 'hace 1 hora' : `hace ${horas} horas`;
+  const dias = Math.floor(horas / 24);
+  return dias === 1 ? 'hace 1 día' : `hace ${dias} días`;
+}
+
+// Rotación: { mostradas: [ids, la de arriba primero], siguiente: índice en la lista }. Con 5 o
+// menos alertas, todas fijas. Con más, en cada paso la siguiente entra arriba y sale la de abajo;
+// al llegar al final da la vuelta.
+export function rotacionInicial(lista, visibles = VISIBLES_PORTADA) {
+  return { mostradas: lista.slice(0, visibles).map((a) => a.id), siguiente: lista.length > visibles ? visibles : 0 };
+}
+export function rotarUnPaso(estado, lista, visibles = VISIBLES_PORTADA) {
+  if (lista.length <= visibles) return estado;
+  const entra = lista[estado.siguiente % lista.length].id;
+  return { mostradas: [entra, ...estado.mostradas.filter((id) => id !== entra)].slice(0, visibles), siguiente: (estado.siguiente + 1) % lista.length };
+}
