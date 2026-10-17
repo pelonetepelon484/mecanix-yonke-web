@@ -16,6 +16,7 @@ import { debeMostrarAvisoPiezaSinVehiculo } from '../../../lib/piezaSinVehiculo'
 import { EJEMPLO_BUSQUEDA_CORRECTA } from '../../lib/busqueda/ejemploBusqueda';
 import { crearPersistirContacto, mensajeSinInventario } from '../../lib/busqueda/contactoPendiente';
 import { inventarioVehiculosActivoServer, pedidosClientesActivos } from '../../lib/busqueda/banderaPedidosClientesServer';
+import { rangoAniosServer } from '../../lib/busqueda/configBuscadorServer';
 import { sinYonkesYaMostrados } from '../../lib/buscarVehiculosAlerta';
 
 // Nota de nombres: en este archivo `estado` (minúscula, sin más calificación) siempre significa
@@ -194,12 +195,14 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
   // Vehículos completos de las alertas (config/pedidosClientes.inventarioVehiculos): corre en
   // paralelo y SOLO agrega el campo vehiculosAlerta a la respuesta cuando hay alguno; sin el
   // interruptor, o sin coincidencias, la respuesta queda idéntica a la de siempre.
+  // Rango de años (config/buscador): null = como siempre (±4 y "cualquier año").
+  const rango = await rangoAniosServer();
   const [enCatalogo, resultadoMotores, resultadoInventario, vehiculosAlertaTodos] = await Promise.all([
     existeEnCatalogoVivo(marca, modelo),
-    consultarMotoresTransmisiones({ marca, modelo, anio, cilindrada, estado: estadoFiltro }),
+    consultarMotoresTransmisiones({ marca, modelo, anio, cilindrada, estado: estadoFiltro, rango }),
     esBusquedaMotorPorCilindrada
       ? Promise.resolve({ resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false })
-      : consultarInventario({ marca, modelo, anio, pieza, cilindrada, estado: estadoFiltro }),
+      : consultarInventario({ marca, modelo, anio, pieza, cilindrada, estado: estadoFiltro, rango }),
     (cilindrada == null && marca && modelo && anio != null && pieza && await inventarioVehiculosActivoServer())
       ? consultarVehiculosAlerta({ marca, modelo, anio, pieza, estado: estadoFiltro })
       : Promise.resolve([]),
@@ -256,6 +259,8 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
 
   return NextResponse.json({
     estado: 'resultados', resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada,
+    // Solo con el rango corto: la pantalla lo usa para la etiqueta "Año cercano" y el título ±N.
+    ...(rango ? { rangoAnios: rango } : {}),
     resultadosMotores: motores, resultadosMotoresCercanos: motoresCercanos,
     resultadosTransmisiones: transmisiones, resultadosTransmisionesCercanos: transmisionesCercanos,
     marca, modelo, anio, pieza, cilindrada,
@@ -300,9 +305,10 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
   // Ver nota equivalente en resolverBusqueda(): catálogo vivo y motores en paralelo, para que
   // un motor/transmisión real no quede invisible solo porque su marca/modelo no está en el
   // catálogo (que hoy se nutre principalmente de vehículos).
+  const rango = await rangoAniosServer();
   const [enCatalogo, resultadoMotores] = await Promise.all([
     existeEnCatalogoVivo(marca, modelo),
-    consultarMotoresTransmisiones({ marca, modelo, anio, estado: estadoFiltro }),
+    consultarMotoresTransmisiones({ marca, modelo, anio, estado: estadoFiltro, rango }),
   ]);
 
   if (resultadoMotores.sinYonkesEnEstado) {
@@ -320,7 +326,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
   }
 
   const { resultados, resultadosCercanos, tipoResultado } = enCatalogo
-    ? await consultarInventarioVehiculo({ marca, modelo, anio, estado: estadoFiltro })
+    ? await consultarInventarioVehiculo({ marca, modelo, anio, estado: estadoFiltro, rango })
     : { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno' };
 
   if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
@@ -344,6 +350,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
   return NextResponse.json({
     estado: 'resultados', resultados, resultadosCercanos, tipoResultado,
     piezaNoEncontrada: false,
+    ...(rango ? { rangoAnios: rango } : {}),
     resultadosMotores: motores, resultadosMotoresCercanos: motoresCercanos,
     resultadosTransmisiones: transmisiones, resultadosTransmisionesCercanos: transmisionesCercanos,
     marca, modelo, anio, pieza: null,

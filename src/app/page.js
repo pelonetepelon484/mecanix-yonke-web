@@ -5,6 +5,7 @@ import { obtenerEstadosCombinado, estadoDeYonke, ESTADO_DEFAULT } from './lib/bu
 import HomeClient from './HomeClient';
 import { textoConteoRedYonkes } from './lib/conteoRedYonkes';
 import { leerConfigPortada } from '../lib/configPortada';
+import { rangoAniosServer } from './lib/busqueda/configBuscadorServer';
 
 // Misma cadencia que el caché en memoria de estadosServer.js (10 min) — sin esto, Next.js
 // generaría esta página como estática en el build y el texto SEO de cobertura quedaría
@@ -81,6 +82,8 @@ export default async function Home() {
   // config/portada se lee aquí, en el servidor, con la misma cadencia de 10 min (revalidate):
   // ninguna lectura extra por visitante. Un cambio en la consola tarda hasta 10 min en verse.
   const { botonPanel } = await leerConfigPortada(dbServer);
+  // Rango de años de la búsqueda avanzada (config/buscador; null = el de siempre). Misma cadencia.
+  const rangoAnios = await rangoAniosServer();
 
-  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} />;
+  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} rangoAnios={rangoAnios} />;
 }

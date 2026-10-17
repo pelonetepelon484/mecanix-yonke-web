@@ -19,6 +19,7 @@ import VisorFotos from './lib/VisorFotos';
 import { fotosDeItem } from '../lib/fotosPieza';
 import AvisarYonkes from './AvisarYonkes';
 import PestanasPortada from './PestanasPortada';
+import { aniosCercanos, ordenarPorCercania } from '../lib/rangoAnios';
 import VentanaAlertas from './VentanaAlertas';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
@@ -126,6 +127,16 @@ function paddingRightNombre(r) {
   return r.verificado ? '76px' : 0;
 }
 
+// Etiqueta "Año cercano" (rango corto, config/buscador): en cada resultado que no es del año buscado.
+export const TEXTO_ANIO_CERCANO = 'Año cercano';
+function EtiquetaAnioCercano() {
+  return (
+    <span style={{ display: 'inline-block', marginLeft: '6px', backgroundColor: '#FFF3E0', color: '#B35400', fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '10px', verticalAlign: 'middle' }}>
+      🔄 {TEXTO_ANIO_CERCANO}
+    </span>
+  );
+}
+
 // Insignia visible "Verificado" — junto al nombre del yonke, no confundir con la marca de agua.
 function BadgeVerificado() {
   return (
@@ -198,7 +209,7 @@ function AvisoCompraSeguraCorto() {
 // textoSeoEstados llega ya armado desde page.js (Server Component) — lee la colección
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
-export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false }) {
+export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, rangoAnios = null }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
   // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
@@ -214,6 +225,10 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   const [buscando, setBuscando] = useState(false);
   const [busquedaHecha, setBusquedaHecha] = useState(false);
   const [piezaNoEncontrada, setPiezaNoEncontrada] = useState(false);
+  // Rango de años de la búsqueda mostrada (config/buscador): null = el de siempre (±4 y "cualquier
+  // año"); un número = rango corto, con la etiqueta "Año cercano" y el título "Años cercanos (±N)".
+  // En la búsqueda avanzada viene de page.js (rangoAnios); en la de IA, de la respuesta.
+  const [rangoEnUso, setRangoEnUso] = useState(null);
   // Vehículos completos confirmados en alertas ("Vehículo disponible, pregunta por la pieza").
   // Vacío salvo con config/pedidosClientes.inventarioVehiculos y alguna coincidencia.
   const [vehiculosAlerta, setVehiculosAlerta] = useState({ lista: [], pieza: '' });
@@ -487,7 +502,15 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   // — antes esta función solo hacía año EXACTO, así que un motor/transmisión registrado en un año
   // distinto (ej. 2002 buscando 2004) nunca aparecía aquí aunque el inteligente sí lo mostrara
   // como "cercano". Consolida esa inconsistencia sin duplicar la lógica de niveles otra vez.
-  async function buscarMotoresConNiveles(yonkesDocs, tipoFiltro, anioBuscar) {
+  // rango (config/buscador): año exacto (Premium primero) y luego solo ±rango, del más cercano al
+  // más lejano, sin "cualquier año". Sin rango, los mismos 3 niveles de siempre.
+  async function buscarMotoresConNiveles(yonkesDocs, tipoFiltro, anioBuscar, rango = null) {
+    if (rango && anioBuscar != null) {
+      const exactos = await buscarMotoresOTransmisiones(yonkesDocs, tipoFiltro, anioBuscar);
+      const porAnio = await Promise.all(aniosCercanos(anioBuscar, rango).map((a) => buscarMotoresOTransmisiones(yonkesDocs, tipoFiltro, a)));
+      const encontrados = ordenarPorCercania([...exactos, ...porAnio.flat()], anioBuscar);
+      return { encontrados, tipo: exactos.length > 0 || encontrados.length === 0 ? 'exacto' : 'cercano' };
+    }
     let encontrados = await buscarMotoresOTransmisiones(yonkesDocs, tipoFiltro, anioBuscar);
     let tipo = 'exacto';
     if (encontrados.length === 0 && anioBuscar != null) {
@@ -691,6 +714,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
     }
     setBuscando(true); setBusquedaHecha(true); setPiezaNoEncontrada(false); setTipoResultado('exacto');
     setVehiculosAlerta({ lista: [], pieza: '' });
+    setRangoEnUso(rangoAnios);
     setResultadosDeOtroEstado(forzarTodos && estadoBusqueda !== 'todos');
     try {
       const yonkesSnap = await getDocs(collection(db, 'yonkes'));
@@ -705,13 +729,14 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       // Búsqueda de motor o transmisión
       if (tipoBusqueda === 'motor' || tipoBusqueda === 'transmision') {
         const tipoFiltro = tipoBusqueda === 'motor' ? 'Motor' : 'Transmisión';
-        const { encontrados, tipo } = await buscarMotoresConNiveles(yonkesFiltrados, tipoFiltro, ano ? parseInt(ano) : null);
+        const { encontrados, tipo } = await buscarMotoresConNiveles(yonkesFiltrados, tipoFiltro, ano ? parseInt(ano) : null, rangoAnios);
         const ordenar = (lista) => lista.sort((a, b) => {
           if (a.plan === 'premium' && b.plan !== 'premium') return -1;
           if (a.plan !== 'premium' && b.plan === 'premium') return 1;
           return 0;
         });
-        ordenar(encontrados);
+        // Con rango corto ya vienen en orden (cercanía y, dentro del año, Premium primero).
+        if (!rangoAnios) ordenar(encontrados);
         setResultados(encontrados);
         setTipoResultado(tipo);
         registrarEvento('busqueda_pieza', {
@@ -806,26 +831,43 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       // filtraban por pieza en absoluto, a diferencia del año exacto — inconsistencia corregida
       // junto con la de motores/transmisiones sueltos, mismo espíritu).
       const piezaFiltroNiveles = (piezaSeleccion && piezaSeleccion !== 'OTRA') ? piezaSeleccion : null;
-      if (resultadosFinales.length === 0) {
-        const anosRango = [];
-        for (let d = 1; d <= 4; d++) { anosRango.push(parseInt(ano) - d); anosRango.push(parseInt(ano) + d); }
-        const { conPieza: cercanosConPieza, soloVehiculo: cercanosSoloVehiculo } = await buscarEnAnos(yonkesFiltrados, marca, modelo, anosRango, piezaFiltroNiveles);
-        const cercanos = piezaFiltroNiveles && cercanosConPieza.length > 0 ? cercanosConPieza : cercanosSoloVehiculo;
-        ordenar(cercanos);
-        if (cercanos.length > 0) {
+      if (rangoAnios) {
+        // Rango corto (config/buscador): los años cercanos ±rangoAnios, del más cercano al más
+        // lejano. Con año exacto van aparte, como en el buscador con IA; sin él, ocupan los
+        // resultados. Nada fuera del rango: si no hay nada, queda "sin resultados" con la alerta.
+        setResultadosCercanosLibre([]);
+        const anioNum = parseInt(ano);
+        const { conPieza: cercanosConPieza, soloVehiculo: cercanosSoloVehiculo } = await buscarEnAnos(yonkesFiltrados, marca, modelo, aniosCercanos(anioNum, rangoAnios), piezaFiltroNiveles);
+        const cercanos = ordenarPorCercania(piezaFiltroNiveles && cercanosConPieza.length > 0 ? cercanosConPieza : cercanosSoloVehiculo, anioNum);
+        if (resultadosFinales.length > 0) {
+          setResultadosCercanosLibre(cercanos);
+        } else if (cercanos.length > 0) {
           resultadosFinales = cercanos;
           setTipoResultado('cercano');
           if (piezaFiltroNiveles && cercanosConPieza.length === 0) setPiezaNoEncontrada(true);
         }
-      }
-      if (resultadosFinales.length === 0) {
-        const { conPieza: cualquierAnoConPieza, soloVehiculo: cualquierAnoSoloVehiculo } = await buscarCualquierAno(yonkesFiltrados, marca, modelo, piezaFiltroNiveles);
-        const cualquierAno = piezaFiltroNiveles && cualquierAnoConPieza.length > 0 ? cualquierAnoConPieza : cualquierAnoSoloVehiculo;
-        ordenar(cualquierAno);
-        if (cualquierAno.length > 0) {
-          resultadosFinales = cualquierAno;
-          setTipoResultado('cualquierAno');
-          if (piezaFiltroNiveles && cualquierAnoConPieza.length === 0) setPiezaNoEncontrada(true);
+      } else {
+        if (resultadosFinales.length === 0) {
+          const anosRango = [];
+          for (let d = 1; d <= 4; d++) { anosRango.push(parseInt(ano) - d); anosRango.push(parseInt(ano) + d); }
+          const { conPieza: cercanosConPieza, soloVehiculo: cercanosSoloVehiculo } = await buscarEnAnos(yonkesFiltrados, marca, modelo, anosRango, piezaFiltroNiveles);
+          const cercanos = piezaFiltroNiveles && cercanosConPieza.length > 0 ? cercanosConPieza : cercanosSoloVehiculo;
+          ordenar(cercanos);
+          if (cercanos.length > 0) {
+            resultadosFinales = cercanos;
+            setTipoResultado('cercano');
+            if (piezaFiltroNiveles && cercanosConPieza.length === 0) setPiezaNoEncontrada(true);
+          }
+        }
+        if (resultadosFinales.length === 0) {
+          const { conPieza: cualquierAnoConPieza, soloVehiculo: cualquierAnoSoloVehiculo } = await buscarCualquierAno(yonkesFiltrados, marca, modelo, piezaFiltroNiveles);
+          const cualquierAno = piezaFiltroNiveles && cualquierAnoConPieza.length > 0 ? cualquierAnoConPieza : cualquierAnoSoloVehiculo;
+          ordenar(cualquierAno);
+          if (cualquierAno.length > 0) {
+            resultadosFinales = cualquierAno;
+            setTipoResultado('cualquierAno');
+            if (piezaFiltroNiveles && cualquierAnoConPieza.length === 0) setPiezaNoEncontrada(true);
+          }
         }
       }
       // Motor/Transmisión SUELTOS (yonkes/{id}/motores) son una fuente aparte de "vehiculos +
@@ -838,10 +880,11 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       // renderTarjetaVehiculo ya sabe pintar r.esMotor:true dentro de este mismo arreglo, así
       // que basta con concatenar — no hace falta tocar el render.
       if (piezaSeleccion === 'Motor' || piezaSeleccion === 'Transmisión') {
-        const { encontrados: motoresSueltos } = await buscarMotoresConNiveles(yonkesFiltrados, null, parseInt(ano));
+        const { encontrados: motoresSueltos } = await buscarMotoresConNiveles(yonkesFiltrados, null, parseInt(ano), rangoAnios);
         if (motoresSueltos.length > 0) {
           resultadosFinales = [...resultadosFinales, ...motoresSueltos];
-          ordenar(resultadosFinales);
+          if (rangoAnios) resultadosFinales = ordenarPorCercania(resultadosFinales, parseInt(ano));
+          else ordenar(resultadosFinales);
           // Solo se apaga el aviso de "pieza sin confirmar" si lo que se sumó es del MISMO tipo
           // pedido (ej. pediste Transmisión y sí hay una Transmisión suelta) — si lo único que
           // apareció es un Motor mientras se pedía Transmisión (o viceversa), la pieza pedida
@@ -884,6 +927,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       setPiezaSeleccion(data.pieza || '');
       setResultados(data.resultados);
       setTipoResultado(data.tipoResultado);
+      setRangoEnUso(data.rangoAnios ?? null);
       setPiezaNoEncontrada(Boolean(data.piezaNoEncontrada));
       setResultadosMotoresLibre(data.resultadosMotores || []);
       setResultadosTransmisionesLibre(data.resultadosTransmisiones || []);
@@ -1377,6 +1421,7 @@ function obtenerEstadoAbierto(horario) {
                 </span>
                 <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '15px', margin: '8px 0 2px' }}>
                   {r.motor.marca} {r.motor.modelo} {r.motor.ano}
+                  {rangoEnUso && ano && r.motor.ano != null && Number(r.motor.ano) !== parseInt(ano) && <EtiquetaAnioCercano />}
                 </p>
                 {r.motor.cilindrada && (
                   <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
@@ -1394,6 +1439,7 @@ function obtenerEstadoAbierto(horario) {
                     (confirma compatibilidad con tu {ano})
                   </span>
                 )}
+                {rangoEnUso && ano && r.vehiculo?.ano !== parseInt(ano) && <EtiquetaAnioCercano />}
               </p>
             )}
 
@@ -1484,6 +1530,7 @@ function obtenerEstadoAbierto(horario) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ color: '#1A3C5E', fontSize: '14px', margin: '0 0 2px', fontWeight: '600' }}>
               {icono} {r.motor.marca} {r.motor.modelo} {r.motor.ano}
+              {rangoEnUso && ano && r.motor.ano != null && Number(r.motor.ano) !== parseInt(ano) && <EtiquetaAnioCercano />}
             </p>
             {r.motor.cilindrada && (
               <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>{r.motor.cilindrada}</p>
@@ -2112,7 +2159,7 @@ function obtenerEstadoAbierto(horario) {
 
                 {resultadosCercanosLibre.length > 0 && (
                   <>
-                    <p style={groupHeaderStyle}>🔄 Años cercanos (±4)</p>
+                    <p style={groupHeaderStyle}>🔄 Años cercanos (±{rangoEnUso ?? 4})</p>
                     <p style={groupSubtextStyle}>
                       Estas son alternativas de años próximos a tu búsqueda, no el año exacto — muchas piezas son compatibles entre años cercanos, confirma con el yonke.
                     </p>
@@ -2133,7 +2180,7 @@ function obtenerEstadoAbierto(horario) {
                     {resultadosMotoresLibre.map((r, i) => renderTarjetaMotor(r, `motor-${i}`, '🔧'))}
                     {resultadosMotoresCercanosLibre.length > 0 && (
                       <>
-                        <p style={groupHeaderStyle}>🔄 Años cercanos (±4)</p>
+                        <p style={groupHeaderStyle}>🔄 Años cercanos (±{rangoEnUso ?? 4})</p>
                         {resultadosMotoresCercanosLibre.map((r, i) => renderTarjetaMotor(r, `motor-cercano-${i}`, '🔧'))}
                       </>
                     )}
@@ -2151,7 +2198,7 @@ function obtenerEstadoAbierto(horario) {
                     {resultadosTransmisionesLibre.map((r, i) => renderTarjetaMotor(r, `transmision-${i}`, '⚙️'))}
                     {resultadosTransmisionesCercanosLibre.length > 0 && (
                       <>
-                        <p style={groupHeaderStyle}>🔄 Años cercanos (±4)</p>
+                        <p style={groupHeaderStyle}>🔄 Años cercanos (±{rangoEnUso ?? 4})</p>
                         {resultadosTransmisionesCercanosLibre.map((r, i) => renderTarjetaMotor(r, `transmision-cercano-${i}`, '⚙️'))}
                       </>
                     )}
