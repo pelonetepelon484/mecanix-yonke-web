@@ -126,6 +126,12 @@ const persistirContactoSiExiste = crearPersistirContacto({
   guardar: guardarSinBloquear, notificar: notificarAdmin, pedidosClientesActivos,
 });
 
+// Lo que se entendió de la búsqueda, para prellenar la alerta de un paso (AlertaUnPaso.js) cuando
+// no hay resultados. Solo agrega el campo `busqueda` a la respuesta: lo demás no cambia.
+function datosDeLaBusqueda({ marca = null, modelo = null, anio = null, pieza = null }) {
+  return { marca: marca || '', modelo: modelo || '', anio: anio ?? '', pieza: pieza || '' };
+}
+
 // Paso 3 en adelante (búsqueda CON pieza): ya con {pieza, marca, modelo, anio} resueltos
 // (extracción exacta o confirmación de sugerencia difusa), valida contra el catálogo vivo
 // y consulta inventario filtrado por esa pieza.
@@ -218,7 +224,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     // incluirSospechoso=true: para llegar aquí `modelo` ya está resuelto o la búsqueda es por
     // cilindrada (no necesita modelo) — en ningún caso el número sospechoso puede ser en
     // realidad el modelo, a diferencia del gate de arriba.
-    return NextResponse.json(estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO, true));
+    return NextResponse.json({ ...estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO, true), busqueda: datosDeLaBusqueda({ marca, modelo, anio, pieza }) });
   }
 
   // "Sin inventario" solo cuando NADA se encontró (ni exacto, ni cercano, ni motores/
@@ -238,7 +244,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     });
     return NextResponse.json(esNumeroDeParte
       ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
-      : { estado: 'sin_inventario', mensaje: mensajeSinInventario({ pedidosClientesActivos: await pedidosClientesActivos() }), ...extraVehiculosAlerta });
+      : { estado: 'sin_inventario', mensaje: mensajeSinInventario({ pedidosClientesActivos: await pedidosClientesActivos() }), ...extraVehiculosAlerta, busqueda: datosDeLaBusqueda({ marca, modelo, anio, pieza }) });
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
@@ -310,7 +316,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
     const estadoLog = estadoParaAnalitica('fuera_de_catalogo');
     await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: estadoLog });
     await registrarBusqueda({ texto, estado: estadoLog, pieza: null, marca, modelo, anio, origen, tieneContacto, ...datosGeo });
-    return NextResponse.json(estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO));
+    return NextResponse.json({ ...estadoYMensajeNoEncontrado('no_catalogado', MENSAJE_NO_CATALOGADO), busqueda: datosDeLaBusqueda({ marca, modelo, anio }) });
   }
 
   const { resultados, resultadosCercanos, tipoResultado } = enCatalogo
@@ -324,7 +330,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
       texto, estado: estadoLog, pieza: null, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo,
     });
-    return NextResponse.json(estadoYMensajeNoEncontrado('sin_inventario', mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: await pedidosClientesActivos() })));
+    return NextResponse.json({ ...estadoYMensajeNoEncontrado('sin_inventario', mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: await pedidosClientesActivos() })), busqueda: datosDeLaBusqueda({ marca, modelo, anio }) });
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);

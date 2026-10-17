@@ -22,7 +22,8 @@ import PestanasPortada from './PestanasPortada';
 import VentanaAlertas from './VentanaAlertas';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
-import { leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
+import { leerBanderaAlertaUnPaso, leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
+import AlertaUnPaso from './AlertaUnPaso';
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
@@ -262,6 +263,14 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   // yonke.estado que leer — se pregunta aparte, default Baja California para verse igual que
   // hoy hasta que alguien lo cambie).
   const [estadosDisponibles, setEstadosDisponibles] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California', tieneVisitas: true }]);
+  // config/pedidosClientes.alertaUnPaso: sin resultados, la alerta de un paso va PRIMERO (y una
+  // discreta debajo de los resultados). Apagada (o sin leer), las alertas quedan como siempre.
+  const [alertaUnPaso, setAlertaUnPaso] = useState(false);
+  useEffect(() => {
+    let vigente = true;
+    leerBanderaAlertaUnPaso().then((v) => { if (vigente) setAlertaUnPaso(v); });
+    return () => { vigente = false; };
+  }, []);
   const [estadoPlanes, setEstadoPlanes] = useState(ESTADO_DEFAULT);
   // config/planes.limitesActivos: con el interruptor apagado (o sin leer) la tarjeta dice lo de
   // antes y no hay tarjeta Premium. config/planes.tarjetasTalleres: tarjetas de planes de talleres.
@@ -920,7 +929,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       setResultadosTransmisionesCercanosLibre([]);
       setBusquedaHecha(false);
       setEncabezadoVehiculo(null);
-      setMensajeLibre({ tipo: data.estado, texto: data.mensaje });
+      setMensajeLibre({ tipo: data.estado, texto: data.mensaje, busqueda: data.busqueda || null });
       registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
     }
   }
@@ -1123,6 +1132,11 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   // Nombre de la pieza actual, para el aviso de "vehículo completo para partes" (piezaNoEncontrada)
   // — mismo patrón ya usado en varios lados de este archivo para construir mensajes de WhatsApp.
   const piezaTextoActual = (piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion) || '';
+  // Para la alerta de un paso: la pieza buscada (en las pestañas de motor/transmisión, esa pieza)
+  // y si la búsqueda trajo algo (vehículos, años cercanos, motores o transmisiones).
+  const piezaParaAlerta = tipoBusqueda === 'motor' ? 'Motor' : tipoBusqueda === 'transmision' ? 'Transmisión' : piezaTextoActual;
+  const hayResultadosBusqueda = resultados.length > 0 || resultadosCercanosLibre.length > 0 || resultadosMotoresLibre.length > 0
+    || resultadosMotoresCercanosLibre.length > 0 || resultadosTransmisionesLibre.length > 0 || resultadosTransmisionesCercanosLibre.length > 0;
 
   // Único cálculo de "¿este estado tiene visitas?" para la pestaña "Tengo un yonke" — lo usan
   // juntos el banner de bienvenida y el servicio de captura a domicilio, para que reaccionen al
@@ -1643,15 +1657,30 @@ function obtenerEstadoAbierto(horario) {
                 </div>
               )}
 
-              {mensajeLibre && mensajeLibre.tipo !== 'pieza_sin_vehiculo' && (
+              {/* Alerta de un paso como protagonista, ANTES de cualquier otro aviso (con su bandera). */}
+              {alertaUnPaso && mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && (
+                <AlertaUnPaso
+                  key={`${mensajeLibre.texto}-${JSON.stringify(mensajeLibre.busqueda)}`}
+                  variante="protagonista"
+                  marca={mensajeLibre.busqueda?.marca} modelo={mensajeLibre.busqueda?.modelo}
+                  anio={mensajeLibre.busqueda?.anio} pieza={mensajeLibre.busqueda?.pieza}
+                  estado={estadoBusqueda} estados={estadosDisponibles}
+                />
+              )}
+
+              {mensajeLibre && mensajeLibre.tipo !== 'pieza_sin_vehiculo'
+                && !(alertaUnPaso && mensajeLibre.tipo === 'sin_inventario' && estadoBusqueda === 'todos') && (
                 <div style={{
                   marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
                   backgroundColor: ['sin_inventario', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) ? '#EEF4FA' : '#FFF8E1',
                   border: `1px solid ${['sin_inventario', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) ? '#C5D8EC' : '#FFD54F'}`,
                 }}>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
-                    {mensajeLibre.texto}
-                  </p>
+                  {/* Con la alerta de un paso, "No tenemos esa pieza…" ya lo dice su título. */}
+                  {!(alertaUnPaso && mensajeLibre.tipo === 'sin_inventario') && (
+                    <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
+                      {mensajeLibre.texto}
+                    </p>
+                  )}
                   {mensajeLibre.tipo === 'confirmar' && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                       <button
@@ -1693,7 +1722,7 @@ function obtenerEstadoAbierto(horario) {
               {mensajeLibre && !busquedaHecha && (
                 <VehiculosDisponiblesAlerta lista={vehiculosAlerta.lista} pieza={vehiculosAlerta.pieza} />
               )}
-              {mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && (
+              {!alertaUnPaso && mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && (
                 <AvisarYonkes estadoInicial={estadoBusqueda !== 'todos' ? estadoBusqueda : ''} />
               )}
             </div>
@@ -1953,6 +1982,14 @@ function obtenerEstadoAbierto(horario) {
             {busquedaHecha && !buscando && (
 
               <div style={{ marginTop: '20px' }}>
+                {/* Sin ningún resultado: la alerta de un paso va primero (con su bandera). */}
+                {alertaUnPaso && !hayResultadosBusqueda && (
+                  <AlertaUnPaso
+                    key={`${marca}-${modelo}-${ano}-${piezaParaAlerta}`}
+                    variante="protagonista" marca={marca} modelo={modelo} anio={ano} pieza={piezaParaAlerta}
+                    estado={estadoBusqueda} estados={estadosDisponibles}
+                  />
+                )}
                 {encabezadoVehiculo && (
                   <p style={{ color: '#1A3C5E', fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>
                     {encabezadoVehiculo}
@@ -1973,11 +2010,13 @@ function obtenerEstadoAbierto(horario) {
                         escríbenos por WhatsApp
                       </a>.
                     </p>
-                    <AvisarYonkes
-                      marcaInicial={marca} modeloInicial={modelo} anioInicial={ano}
-                      piezaInicial={piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion}
-                      estadoInicial={estadoBusqueda !== 'todos' ? estadoBusqueda : ''}
-                    />
+                    {!alertaUnPaso && (
+                      <AvisarYonkes
+                        marcaInicial={marca} modeloInicial={modelo} anioInicial={ano}
+                        piezaInicial={piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion}
+                        estadoInicial={estadoBusqueda !== 'todos' ? estadoBusqueda : ''}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -2117,6 +2156,15 @@ function obtenerEstadoAbierto(horario) {
                       </>
                     )}
                   </>
+                )}
+
+                {/* Con resultados: aviso discreto para crear la alerta de un paso (con su bandera). */}
+                {alertaUnPaso && hayResultadosBusqueda && (
+                  <AlertaUnPaso
+                    key={`${marca}-${modelo}-${ano}-${piezaParaAlerta}`}
+                    variante="discreta" marca={marca} modelo={modelo} anio={ano} pieza={piezaParaAlerta}
+                    estado={estadoBusqueda} estados={estadosDisponibles}
+                  />
                 )}
               </div>
             )}

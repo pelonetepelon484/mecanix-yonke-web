@@ -41,6 +41,12 @@ export function leerBanderaAlertasPortada() {
   return leerConfig().then((c) => c.habilitado === true && c.alertasPortada === true);
 }
 
+// Quinta bandera (config/pedidosClientes.alertaUnPaso): alerta en un paso, como protagonista
+// cuando no hay resultados (AlertaUnPaso.js). Mismo documento y misma lectura; exige la primera.
+export function leerBanderaAlertaUnPaso() {
+  return leerConfig().then((c) => c.habilitado === true && c.alertaUnPaso === true);
+}
+
 export function useBanderaPedidosClientes() {
   const [activa, setActiva] = useState(false);
   useEffect(() => {

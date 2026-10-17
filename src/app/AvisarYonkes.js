@@ -15,6 +15,27 @@ import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 // Mismo botón en los dos lugares donde se ofrece (sin resultados y sin el año exacto).
 export const TEXTO_BOTON_ALERTA = '🚨 Activar alerta de búsqueda 🚨';
 
+// Envío compartido por este formulario y el de un paso (AlertaUnPaso.js): valida con
+// validarPedidoCliente y crea la alerta en /api/pedir-pieza. Devuelve { ok: true, enlace } o
+// { ok: false, mensaje, disponible } (disponible === false: la función está apagada).
+export async function enviarAlertaCliente(datos, idsEstados, { otrosEstadosActivo = false, aceptaOtrosEstados = false } = {}) {
+  const problema = validarPedidoCliente(datos, idsEstados);
+  if (problema) return { ok: false, mensaje: problema };
+  try {
+    const res = await fetch('/api/pedir-pieza', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(otrosEstadosActivo ? { ...datos, aceptaOtrosEstados } : datos),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return { ok: false, mensaje: data.mensaje || MENSAJES_PEDIDO.guardarFallo, disponible: data.disponible };
+    return { ok: true, enlace: data.enlace };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, mensaje: MENSAJES_PEDIDO.guardarFallo };
+  }
+}
+
 // titulo (opcional): encabezado en negritas. mensaje (opcional): texto arriba del botón, en lugar del
 // de siempre. destacado: recuadro más visible (lo usa la página principal cuando no hay el año
 // exacto). Sin ellos se ve como siempre.
@@ -61,25 +82,14 @@ export default function AvisarYonkes({
     const problema = validarPedidoCliente(datos, estados.map((e) => e.id));
     if (problema) { setError(problema); return; }
     setEnviando(true);
-    try {
-      const res = await fetch('/api/pedir-pieza', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(otrosEstadosActivo ? { ...datos, aceptaOtrosEstados } : datos),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        if (data.disponible === false) setHabilitado(false);
-        setError(data.mensaje || MENSAJES_PEDIDO.guardarFallo);
-        return;
-      }
-      setEnlace(data.enlace);
-    } catch (err) {
-      console.error(err);
-      setError(MENSAJES_PEDIDO.guardarFallo);
-    } finally {
-      setEnviando(false);
+    const r = await enviarAlertaCliente(datos, estados.map((e) => e.id), { otrosEstadosActivo, aceptaOtrosEstados });
+    setEnviando(false);
+    if (!r.ok) {
+      if (r.disponible === false) setHabilitado(false);
+      setError(r.mensaje);
+      return;
     }
+    setEnlace(r.enlace);
   }
 
   if (!habilitado) return null;
