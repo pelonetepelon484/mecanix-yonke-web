@@ -21,6 +21,7 @@ import AvisarYonkes from './AvisarYonkes';
 import PestanasPortada from './PestanasPortada';
 import { aniosCercanos, ordenarPorCercania } from '../lib/rangoAnios';
 import VentanaAlertas from './VentanaAlertas';
+import ComoFuncionaBuscador from './ComoFuncionaBuscador';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
 import { leerBanderaAlertaUnPaso, leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
@@ -165,7 +166,7 @@ function BadgeEnviosNacionales() {
 }
 
 // Aviso de compra segura — versión completa, en la pestaña "Busco una pieza" debajo de
-// "¿cómo funciona?" (nunca encima del buscador, que sigue siendo el protagonista). El mensaje
+// "¿cómo funciona el buscador?" (nunca encima del buscador, que sigue siendo el protagonista). El mensaje
 // completo con consejos extra vive en /compra-segura; este banner es el mismo texto resumido
 // a los puntos clave para que se lea rápido sin estorbar.
 function AvisoCompraSegura() {
@@ -1993,24 +1994,8 @@ function obtenerEstadoAbierto(horario) {
                 {/* Alertas de búsqueda recientes del estado del visitante (config/pedidosClientes.
                     alertasPortada). Va debajo del buscador: si aparece, no mueve lo de arriba. */}
                 <VentanaAlertas estado={estadoBusqueda} />
-                <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' }}>
-                  <h3 style={{ fontSize: '14px', color: '#1A3C5E', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textAlign: 'center' }}>
-                    ¿CÓMO FUNCIONA?
-                  </h3>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-                    {[
-                      { emoji: '🔍', titulo: 'Busca tu pieza', desc: 'Escribe qué necesitas y para qué auto' },
-                      { emoji: '🏪', titulo: 'Te decimos qué yonke la tiene', desc: 'Buscamos en toda la red de yonkes' },
-                      { emoji: '💬', titulo: 'Contáctalo por WhatsApp', desc: 'Tú coordinas directo — Mecanix no vende, conecta' },
-                    ].map((paso, i) => (
-                      <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ fontSize: '28px', marginBottom: '8px' }}>{paso.emoji}</div>
-                        <p style={{ fontSize: '13px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 4px' }}>{paso.titulo}</p>
-                        <p style={{ fontSize: '11px', color: '#888', margin: 0, lineHeight: '1.4' }}>{paso.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                {/* Diagrama de flujo de cómo funciona el buscador (reemplaza los 3 pasos de antes). */}
+                <ComoFuncionaBuscador />
 
                 <AvisoCompraSegura />
 
