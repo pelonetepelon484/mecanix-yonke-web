@@ -7,6 +7,7 @@ import { db } from '../../lib/firebase';
 import { filtroBusquedasConfiables } from '../../lib/busqueda/corteBusquedasConfiables';
 import { formatearFechaTijuana as formatearFecha } from './mapa/fechas';
 import { TODOS_LOS_ESTADOS, filasSinInventario, opcionesEstado } from './piezasSinInventario';
+import { origenPorPais } from './origenPais';
 
 const ESTADOS = [
   { key: 'ok', label: 'Con resultados', color: '#2E7D32' },
@@ -54,6 +55,8 @@ export default function AdminBusquedasPage() {
   // forma barata de consultar "campo ausente").
   const [totalMx, setTotalMx] = useState(0);
   const [totalFueraDeMexico, setTotalFueraDeMexico] = useState(0);
+  // Todas las búsquedas guardadas, SIN el corte: la base de "Origen por país" (ver origenPais.js).
+  const [totalHistorico, setTotalHistorico] = useState(0);
   const [vista, setVista] = useState('mexico'); // 'mexico' (default) | 'todo'
   // Filtro por estado de "Piezas sin inventario" (desde dónde se conectó el cliente).
   const [estadoSinInventario, setEstadoSinInventario] = useState(TODOS_LOS_ESTADOS);
@@ -80,16 +83,18 @@ export default function AdminBusquedasPage() {
         // "Total de búsquedas" excluye lo anterior al corte de datos confiables (ver
         // corteBusquedasConfiables.js) — el bug de clasificación ya corregido contaminaba la
         // mayoría de los documentos viejos, no queremos que ese ruido infle este número.
-        const [totalSnap, totalMxSnap, totalFueraSnap, ...estadoSnaps] = await Promise.all([
+        const [totalSnap, totalMxSnap, totalFueraSnap, totalHistoricoSnap, ...estadoSnaps] = await Promise.all([
           getCountFromServer(query(ref, filtroBusquedasConfiables())),
           getCountFromServer(query(ref, where('pais', '==', 'MX'))),
           getCountFromServer(query(ref, where('pais', '!=', 'MX'))),
+          getCountFromServer(query(ref)),
           ...ESTADOS.map((e) => getCountFromServer(query(ref, where('estado', '==', e.key)))),
           ...ESTADOS.map((e) => getCountFromServer(query(ref, where('estado', '==', e.key), where('pais', '==', 'MX')))),
         ]);
         setTotal(totalSnap.data().count);
         setTotalMx(totalMxSnap.data().count);
         setTotalFueraDeMexico(totalFueraSnap.data().count);
+        setTotalHistorico(totalHistoricoSnap.data().count);
         const nuevoConteos = {};
         const nuevoConteosMx = {};
         ESTADOS.forEach((e, i) => {
@@ -121,7 +126,7 @@ export default function AdminBusquedasPage() {
     cargar();
   }, []);
 
-  const totalDesconocido = Math.max(0, total - totalMx - totalFueraDeMexico);
+  const origen = origenPorPais({ totalHistorico, totalMx, totalFueraDeMexico });
   const totalVista = vista === 'mexico' ? totalMx : total;
   const conteosVista = vista === 'mexico' ? conteosMx : conteos;
   const tablaFueraCatalogo = agruparPorClave(
@@ -206,9 +211,9 @@ export default function AdminBusquedasPage() {
             <div style={{ marginBottom: '18px' }}>
               <h2 style={{ color: '#1A3C5E', fontSize: '15px', margin: '0 0 10px' }}>Origen por país</h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                <MetricaCard label="🇲🇽 México (confirmado)" valor={totalMx} pct={total > 0 ? Math.round((totalMx / total) * 100) : 0} color="#2E7D32" />
-                <MetricaCard label="🌎 Fuera de México (confirmado)" valor={totalFueraDeMexico} pct={total > 0 ? Math.round((totalFueraDeMexico / total) * 100) : 0} color="#C62828" />
-                <MetricaCard label="❓ País desconocido" valor={totalDesconocido} pct={total > 0 ? Math.round((totalDesconocido / total) * 100) : 0} color="#888" />
+                <MetricaCard label="🇲🇽 México (confirmado)" valor={origen.mexico.valor} pct={origen.mexico.pct} color="#2E7D32" />
+                <MetricaCard label="🌎 Fuera de México (confirmado)" valor={origen.fuera.valor} pct={origen.fuera.pct} color="#C62828" />
+                <MetricaCard label="❓ País desconocido" valor={origen.desconocido.valor} pct={origen.desconocido.pct} color="#888" />
               </div>
             </div>
 
