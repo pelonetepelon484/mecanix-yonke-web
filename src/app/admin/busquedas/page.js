@@ -9,6 +9,8 @@ import { formatearFechaTijuana as formatearFecha } from './mapa/fechas';
 import { TODOS_LOS_ESTADOS, filasSinInventario, opcionesEstado } from './piezasSinInventario';
 import { origenPorPais } from './origenPais';
 
+// TODOS los `estado` que guarda el buscador (registrarBusqueda en api/buscar/route.js): así las
+// tarjetas suman el "Total de búsquedas". Las últimas 3 antes no tenían tarjeta y se perdían.
 const ESTADOS = [
   { key: 'ok', label: 'Con resultados', color: '#2E7D32' },
   { key: 'sin_inventario', label: 'Sin inventario', color: '#E8720C' },
@@ -16,6 +18,9 @@ const ESTADOS = [
   { key: 'parseo_parcial', label: 'Parseo parcial', color: '#C62828' },
   { key: 'fuera_de_giro', label: 'Fuera de giro', color: '#C62828' },
   { key: 'no_interpretada', label: 'No interpretada', color: '#C62828' },
+  { key: 'numero_de_parte', label: 'Número de parte', color: '#E8720C' },
+  { key: 'marca_muy_general', label: 'Marca muy general', color: '#E8720C' },
+  { key: 'pieza_sin_vehiculo', label: 'Pieza sin vehículo', color: '#E8720C' },
 ];
 
 function agruparPorClave(docs, obtenerClave) {
@@ -88,7 +93,9 @@ export default function AdminBusquedasPage() {
           getCountFromServer(query(ref, where('pais', '==', 'MX'))),
           getCountFromServer(query(ref, where('pais', '!=', 'MX'))),
           getCountFromServer(query(ref)),
-          ...ESTADOS.map((e) => getCountFromServer(query(ref, where('estado', '==', e.key)))),
+          // Vista "Todo": con el MISMO corte que su "Total de búsquedas" (índice estado + fecha, ya
+          // existe). La vista "Solo México" queda sin corte, igual que su total (pais == 'MX').
+          ...ESTADOS.map((e) => getCountFromServer(query(ref, where('estado', '==', e.key), filtroBusquedasConfiables()))),
           ...ESTADOS.map((e) => getCountFromServer(query(ref, where('estado', '==', e.key), where('pais', '==', 'MX')))),
         ]);
         setTotal(totalSnap.data().count);
