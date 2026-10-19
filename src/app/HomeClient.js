@@ -27,7 +27,7 @@ import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehicul
 import { leerBanderaAlertaUnPaso, leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
 import AlertaUnPaso from './AlertaUnPaso';
 import OtrosEstadosResultados from './OtrosEstadosResultados';
-import { leerOtrosEstados } from '../lib/otrosEstadosPantalla';
+import { leerOtrosEstados, partesCuadroMensaje, cuadroMensajeTieneContenido } from '../lib/otrosEstadosPantalla';
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
@@ -1589,6 +1589,11 @@ function obtenerEstadoAbierto(horario) {
     );
   }
 
+  // Partes del cuadro de mensaje del buscador inteligente (ver partesCuadroMensaje).
+  const partesCuadro = mensajeLibre
+    ? partesCuadroMensaje({ tipo: mensajeLibre.tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados: Boolean(mensajeLibre.otrosEstados) })
+    : null;
+
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', padding: '32px 16px', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: '620px', margin: '0 auto' }}>
@@ -1747,19 +1752,20 @@ function obtenerEstadoAbierto(horario) {
 
               {/* sin_en_tu_zona (otros estados por IP): sin este cuadro, el título de la sección ya lo dice. */}
               {mensajeLibre && mensajeLibre.tipo !== 'pieza_sin_vehiculo' && mensajeLibre.tipo !== 'sin_en_tu_zona'
-                && !(alertaUnPaso && mensajeLibre.tipo === 'sin_inventario' && estadoBusqueda === 'todos') && (
+                && !(alertaUnPaso && mensajeLibre.tipo === 'sin_inventario' && estadoBusqueda === 'todos')
+                && cuadroMensajeTieneContenido(partesCuadro) && (
                 <div style={{
                   marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
                   backgroundColor: ['sin_inventario', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) ? '#EEF4FA' : '#FFF8E1',
                   border: `1px solid ${['sin_inventario', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) ? '#C5D8EC' : '#FFD54F'}`,
                 }}>
                   {/* Con la alerta de un paso, "No tenemos esa pieza…" ya lo dice su título. */}
-                  {!(alertaUnPaso && mensajeLibre.tipo === 'sin_inventario') && (
+                  {partesCuadro.texto && (
                     <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
                       {mensajeLibre.texto}
                     </p>
                   )}
-                  {mensajeLibre.tipo === 'confirmar' && (
+                  {partesCuadro.confirmar && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                       <button
                         onClick={confirmarSugerenciaLibre}
@@ -1784,7 +1790,7 @@ function obtenerEstadoAbierto(horario) {
                       absoluto) — ofrecer ampliar a todos los estados en vez de solo decir "no
                       hay". Nunca aparece si ya buscaba en "todos los estados" de entrada. */}
                   {/* Con la sección de otros estados ya no hace falta (y así no se repite la búsqueda). */}
-                  {['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && estadoBusqueda !== 'todos' && !mensajeLibre.otrosEstados && (
+                  {partesCuadro.botonTodos && (
                     <button
                       onClick={buscarLibreEnTodosLosEstados}
                       disabled={buscandoLibre}

@@ -5,6 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import OtrosEstadosResultados from './OtrosEstadosResultados';
 import {
   AVISO_ENVIO_SI_LEJOS, AVISO_SIN_ENVIOS, TEXTO_ELIGE_ESTADO_OTROS, leerOtrosEstados, opcionesTarjetaOtroEstado,
+  partesCuadroMensaje, cuadroMensajeTieneContenido,
 } from '../lib/otrosEstadosPantalla';
 import { avisoEnvioOtroEstado } from '../lib/pedidosClientes';
 
@@ -84,5 +85,46 @@ describe('OtrosEstadosResultados', () => {
   it('sin grupos con tarjetas: no dibuja nada', () => {
     const { container } = render(<OtrosEstadosResultados info={{ modo: 'a', grupos: [{ estado: 'sonora', estadoNombre: 'Sonora', resultados: [] }] }} renderTarjeta={renderTarjeta} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('cuadro de mensaje del buscador inteligente (franja vacía)', () => {
+  const TIPOS = ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado', 'confirmar', 'fuera_de_giro', 'parseo_parcial', 'no_interpretada', 'rechazado', 'numero_de_parte', 'error'];
+
+  it('caso a con la alerta de un paso: sin texto ni botón viejo, el cuadro no se dibuja', () => {
+    const partes = partesCuadroMensaje({ tipo: 'sin_inventario', alertaUnPaso: true, estadoBusqueda: 'jalisco', conOtrosEstados: true });
+    expect(partes).toEqual({ texto: false, confirmar: false, botonTodos: false });
+    expect(cuadroMensajeTieneContenido(partes)).toBe(false);
+  });
+
+  it('sin_yonkes_estado con otros estados: sigue mostrando su texto (sin el botón viejo)', () => {
+    const partes = partesCuadroMensaje({ tipo: 'sin_yonkes_estado', alertaUnPaso: true, estadoBusqueda: 'jalisco', conOtrosEstados: true });
+    expect(partes).toMatchObject({ texto: true, botonTodos: false });
+    expect(cuadroMensajeTieneContenido(partes)).toBe(true);
+  });
+
+  it('confirmar siempre se muestra', () => {
+    for (const alertaUnPaso of [false, true]) {
+      expect(cuadroMensajeTieneContenido(partesCuadroMensaje({ tipo: 'confirmar', alertaUnPaso, estadoBusqueda: 'todos', conOtrosEstados: false }))).toBe(true);
+    }
+  });
+
+  it('banderas apagadas (sin otros estados): las partes son las de siempre y el cuadro nunca queda vacío donde hoy se dibuja', () => {
+    for (const tipo of TIPOS) {
+      for (const alertaUnPaso of [false, true]) {
+        for (const estadoBusqueda of ['todos', 'jalisco']) {
+          const partes = partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados: false });
+          // Las condiciones que tenía cada parte antes de este arreglo.
+          expect(partes).toEqual({
+            texto: !(alertaUnPaso && tipo === 'sin_inventario'),
+            confirmar: tipo === 'confirmar',
+            botonTodos: ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(tipo) && estadoBusqueda !== 'todos',
+          });
+          // Donde hoy se dibuja el cuadro (condición de afuera), sigue dibujándose.
+          const seDibujabaHoy = !(alertaUnPaso && tipo === 'sin_inventario' && estadoBusqueda === 'todos');
+          if (seDibujabaHoy) expect(cuadroMensajeTieneContenido(partes)).toBe(true);
+        }
+      }
+    }
   });
 });

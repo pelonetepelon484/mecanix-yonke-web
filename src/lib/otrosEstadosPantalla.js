@@ -44,3 +44,22 @@ export function avisoTarjetaOtroEstado(modo, r, estadoNombre) {
   if (r?.enviosNacionales !== true) return AVISO_SIN_ENVIOS;
   return modo === 'a' ? avisoEnvioOtroEstado(estadoNombre) : AVISO_ENVIO_SI_LEJOS;
 }
+
+// Cuadro de mensaje del buscador inteligente (HomeClient): qué partes se dibujan adentro. Una sola
+// fuente para cada parte y para decidir si el cuadro tiene algo; sin nada adentro no se dibuja
+// (antes quedaba una franja vacía con la alerta de un paso + estado elegido + otros estados).
+// - texto: oculto con la alerta de un paso y sin_inventario (el título de la alerta ya lo dice);
+// - confirmar: "Sí, buscar así / No, corregir";
+// - botonTodos: "Buscar en todos los estados", solo con un estado elegido y sin la sección de
+//   otros estados (así no se repite la búsqueda).
+export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados }) {
+  return {
+    texto: !(alertaUnPaso && tipo === 'sin_inventario'),
+    confirmar: tipo === 'confirmar',
+    botonTodos: ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(tipo) && estadoBusqueda !== 'todos' && !conOtrosEstados,
+  };
+}
+
+export function cuadroMensajeTieneContenido(partes) {
+  return Boolean(partes && (partes.texto || partes.confirmar || partes.botonTodos));
+}
