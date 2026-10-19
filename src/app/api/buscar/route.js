@@ -16,7 +16,8 @@ import { debeMostrarAvisoPiezaSinVehiculo } from '../../../lib/piezaSinVehiculo'
 import { EJEMPLO_BUSQUEDA_CORRECTA } from '../../lib/busqueda/ejemploBusqueda';
 import { crearPersistirContacto, mensajeSinInventario } from '../../lib/busqueda/contactoPendiente';
 import { inventarioVehiculosActivoServer, pedidosClientesActivos } from '../../lib/busqueda/banderaPedidosClientesServer';
-import { rangoAniosServer } from '../../lib/busqueda/configBuscadorServer';
+import { rangoAniosServer, otrosEstadosPorIpServer } from '../../lib/busqueda/configBuscadorServer';
+import { estadoDelVisitante, repartoPorIp, sinEstadoYonke } from '../../lib/busqueda/otrosEstadosPorIp';
 import { sinYonkesYaMostrados } from '../../lib/buscarVehiculosAlerta';
 import { otrosEstadosSiAplica, camposRespuestaOtrosEstados, camposRegistroOtrosEstados } from '../../lib/busqueda/otrosEstados';
 
@@ -45,6 +46,23 @@ async function responderSinYonkesEnEstado({ estadoFiltro, consulta, texto, orige
     });
   }
   return NextResponse.json({ estado: 'sin_yonkes_estado', mensaje: await mensajeSinYonkesEnEstado(estadoFiltro), ...camposRespuestaOtrosEstados(otros) });
+}
+
+// "Todos los estados" con el estado por IP (config/buscador.otrosEstadosPorIp): null si no aplica
+// (otro filtro, estado por IP desconocido, bandera apagada o algún resultado del estado del
+// visitante). Sin lecturas de inventario: reparte la respuesta que ya se tiene.
+async function otrosEstadosPorIpSiAplica(estadoFiltro, geo, respuesta) {
+  if (estadoFiltro !== 'todos') return null;
+  const estadoVisitante = estadoDelVisitante(geo);
+  if (!estadoVisitante) return null;
+  if (!(await otrosEstadosPorIpServer())) return null;
+  return repartoPorIp(respuesta, estadoVisitante, await obtenerEstadosCombinado());
+}
+
+// Respuesta con resultados: si aplica lo de "Todos" por IP, agrega sus campos y los datos para
+// prellenar la alerta; si no, sale sin estadoYonke en las tarjetas (idéntica a la de siempre).
+function respuestaConResultados(respuesta, porIp, busqueda) {
+  return NextResponse.json(porIp ? { ...respuesta, ...porIp, busqueda } : sinEstadoYonke(respuesta));
 }
 
 // Registra y responde el aviso de "pieza sin vehículo" — usado tanto en el flujo normal (recién
@@ -270,13 +288,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
-  await registrarBusqueda({
-    texto, estado: 'ok', pieza, marca, modelo, anio,
-    tipoResultado, totalResultados: resultados.length + resultadosCercanos.length + totalMotoresTransmisiones, piezaNoEncontrada, origen, tieneContacto,
-    ...datosGeo, yonkeIds,
-  });
-
-  return NextResponse.json({
+  const respuesta = {
     estado: 'resultados', resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada,
     // Solo con el rango corto: la pantalla lo usa para la etiqueta "Año cercano" y el título ±N.
     ...(rango ? { rangoAnios: rango } : {}),
@@ -284,7 +296,15 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     resultadosTransmisiones: transmisiones, resultadosTransmisionesCercanos: transmisionesCercanos,
     marca, modelo, anio, pieza, cilindrada,
     ...extraVehiculosAlerta,
+  };
+  const porIp = await otrosEstadosPorIpSiAplica(estadoFiltro, geo, respuesta);
+  await registrarBusqueda({
+    texto, estado: 'ok', pieza, marca, modelo, anio,
+    tipoResultado, totalResultados: resultados.length + resultadosCercanos.length + totalMotoresTransmisiones, piezaNoEncontrada, origen, tieneContacto,
+    ...datosGeo, yonkeIds, ...(porIp ? { soloOtrosEstados: true } : {}),
   });
+
+  return respuestaConResultados(respuesta, porIp, datosDeLaBusqueda({ marca, modelo, anio, pieza }));
 }
 
 // Búsqueda de solo vehículo (sin pieza): el usuario probablemente quiere explorar todo
@@ -365,14 +385,8 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
-  await registrarBusqueda({
-    texto, estado: 'ok', pieza: null, marca, modelo, anio,
-    tipoResultado, totalResultados: resultados.length + resultadosCercanos.length + totalMotoresTransmisiones, piezaNoEncontrada: false, origen, tieneContacto,
-    ...datosGeo, yonkeIds,
-  });
-
   const partesEncabezado = [marca, modelo, anio].filter(Boolean);
-  return NextResponse.json({
+  const respuesta = {
     estado: 'resultados', resultados, resultadosCercanos, tipoResultado,
     piezaNoEncontrada: false,
     ...(rango ? { rangoAnios: rango } : {}),
@@ -382,7 +396,15 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
     encabezadoVehiculo: resultados.length > 0
       ? `Esto es lo que tenemos disponible para ${partesEncabezado.join(' ')}:`
       : null,
+  };
+  const porIp = await otrosEstadosPorIpSiAplica(estadoFiltro, geo, respuesta);
+  await registrarBusqueda({
+    texto, estado: 'ok', pieza: null, marca, modelo, anio,
+    tipoResultado, totalResultados: resultados.length + resultadosCercanos.length + totalMotoresTransmisiones, piezaNoEncontrada: false, origen, tieneContacto,
+    ...datosGeo, yonkeIds, ...(porIp ? { soloOtrosEstados: true } : {}),
   });
+
+  return respuestaConResultados(respuesta, porIp, datosDeLaBusqueda({ marca, modelo, anio }));
 }
 
 export async function POST(request) {

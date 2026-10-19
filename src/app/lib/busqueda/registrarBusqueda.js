@@ -46,6 +46,10 @@ export async function registrarBusqueda({
   // sin_inventario (conResultado false) y yonkeIds de arriba sigue vacío: la demanda no cambia.
   // Sin él, el documento queda idéntico al de siempre. Solo va en busquedas, no en el resumen.
   otrosEstados = null,
+  // soloOtrosEstados: true solo con "Todos los estados" por IP cuando ningún resultado era del
+  // estado del visitante (config/buscador.otrosEstadosPorIp, ver otrosEstadosPorIp.js). estado y
+  // conResultado no cambian (sí hubo resultados en el país). Sin él, documento idéntico.
+  soloOtrosEstados = false,
 }) {
   if (!ESTADOS_VALIDOS.has(estado)) {
     console.error(`[registrarBusqueda] estado inválido, no se guarda: "${estado}"`);
@@ -82,6 +86,7 @@ export async function registrarBusqueda({
         yonkeIds: Array.isArray(otrosEstados.yonkeIds) ? otrosEstados.yonkeIds.filter((id) => typeof id === 'string') : [],
       },
     } : {}),
+    ...(soloOtrosEstados === true ? { soloOtrosEstados: true } : {}),
     fecha: Timestamp.now(),
   };
 

@@ -5,7 +5,8 @@ import { rangoDeConfig } from '../../../lib/rangoAnios';
 // config/buscador del lado del servidor (lectura pública, dbServer sin sesión), con caché de 1
 // minuto por instancia: /api/buscar lo consulta en cada búsqueda. Se lee UNA vez y de ahí salen:
 // - rangoAniosServer(): el rango de años (rangoDeConfig) o null con la bandera apagada;
-// - otrosEstadosSinResultadosServer(): true solo con otrosEstadosSinResultados === true.
+// - otrosEstadosSinResultadosServer(): true solo con otrosEstadosSinResultados === true;
+// - otrosEstadosPorIpServer(): true solo con otrosEstadosPorIp === true.
 // Sin documento o si la lectura falla, todo apagado: el buscador queda exactamente como siempre.
 const TTL_MS = 60 * 1000;
 let cache = { config: null, en: 0 };
@@ -30,4 +31,9 @@ export async function rangoAniosServer() {
 // Resultados de otros estados cuando no hay nada en el del cliente (ver otrosEstados.js).
 export async function otrosEstadosSinResultadosServer() {
   return (await leerConfigBuscador())?.otrosEstadosSinResultados === true;
+}
+
+// "Todos los estados" con el estado por IP del visitante (ver otrosEstadosPorIp.js).
+export async function otrosEstadosPorIpServer() {
+  return (await leerConfigBuscador())?.otrosEstadosPorIp === true;
 }

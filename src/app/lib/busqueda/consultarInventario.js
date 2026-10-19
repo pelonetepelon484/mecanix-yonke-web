@@ -112,6 +112,9 @@ function toResultado(yonkeDoc, vDoc, calificacion) {
     verificado: yonkeData.verificado === true,
     entregaInmediata: yonkeData.entregaInmediata === true,
     enviosNacionales: yonkeData.enviosNacionales === true,
+    // Estado del yonke (sin estado = Baja California): para "Todos los estados" por IP. /api/buscar
+    // lo quita de la respuesta cuando esa función no aplica (respuesta idéntica a la de siempre).
+    estadoYonke: estadoDeYonke(yonkeData),
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
@@ -136,6 +139,9 @@ function toResultadoPiezaSuelta(yonkeDoc, pDoc, calificacion) {
     verificado: yonkeData.verificado === true,
     entregaInmediata: yonkeData.entregaInmediata === true,
     enviosNacionales: yonkeData.enviosNacionales === true,
+    // Estado del yonke (sin estado = Baja California): para "Todos los estados" por IP. /api/buscar
+    // lo quita de la respuesta cuando esa función no aplica (respuesta idéntica a la de siempre).
+    estadoYonke: estadoDeYonke(yonkeData),
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
@@ -163,6 +169,9 @@ function toResultadoMotor(yonkeDoc, mDoc, calificacion) {
     verificado: yonkeData.verificado === true,
     entregaInmediata: yonkeData.entregaInmediata === true,
     enviosNacionales: yonkeData.enviosNacionales === true,
+    // Estado del yonke (sin estado = Baja California): para "Todos los estados" por IP. /api/buscar
+    // lo quita de la respuesta cuando esa función no aplica (respuesta idéntica a la de siempre).
+    estadoYonke: estadoDeYonke(yonkeData),
     direccion: yonkeData.direccion,
     telefono: yonkeData.telefono, whatsapp: yonkeData.whatsapp || '',
     metodosPago: yonkeData.metodosPago || [], plan: yonkeData.plan, premiumVigente: esPremiumVigente(yonkeData),
