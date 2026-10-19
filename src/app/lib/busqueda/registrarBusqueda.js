@@ -41,6 +41,11 @@ export async function registrarBusqueda({
   // reporte "Piezas/vehículos más buscados" y del conteo "Con resultado" (admin/busquedas/mapa),
   // sin dejar de guardarlas (el % de sinVehiculo es en sí un indicador útil).
   sinVehiculo = false,
+  // otrosEstados: { mostrados, yonkeIds } solo cuando aplicó "resultados de otros estados"
+  // (config/buscador.otrosEstadosSinResultados, ver otrosEstados.js). La búsqueda sigue siendo
+  // sin_inventario (conResultado false) y yonkeIds de arriba sigue vacío: la demanda no cambia.
+  // Sin él, el documento queda idéntico al de siempre. Solo va en busquedas, no en el resumen.
+  otrosEstados = null,
 }) {
   if (!ESTADOS_VALIDOS.has(estado)) {
     console.error(`[registrarBusqueda] estado inválido, no se guarda: "${estado}"`);
@@ -71,6 +76,12 @@ export async function registrarBusqueda({
     yonkeIds: Array.isArray(yonkeIds) ? yonkeIds : [],
     conResultado: estado === 'ok',
     sinVehiculo: Boolean(sinVehiculo),
+    ...(otrosEstados ? {
+      otrosEstados: {
+        mostrados: Number.isInteger(otrosEstados.mostrados) && otrosEstados.mostrados >= 0 ? otrosEstados.mostrados : 0,
+        yonkeIds: Array.isArray(otrosEstados.yonkeIds) ? otrosEstados.yonkeIds.filter((id) => typeof id === 'string') : [],
+      },
+    } : {}),
     fecha: Timestamp.now(),
   };
 

@@ -221,7 +221,11 @@ export async function consultarMotoresTransmisiones({ marca, modelo, anio, cilin
   if (sinYonkesEnEstado) {
     return { motores: [], transmisiones: [], motoresCercanos: [], transmisionesCercanos: [], tipoResultadoMotor: 'cualquierAno', sinYonkesEnEstado: true };
   }
+  return consultarMotoresTransmisionesEnYonkes(yonkesDocs, { marca, modelo, anio, cilindrada, rango });
+}
 
+// Lo mismo, sobre una lista de yonkes ya elegida (ej. los de otros estados, ver otrosEstados.js).
+export async function consultarMotoresTransmisionesEnYonkes(yonkesDocs, { marca, modelo, anio, cilindrada = null, rango = null }) {
   if (anio == null) {
     const todos = sinDuplicadosMotor(await buscarMotores(yonkesDocs, marca, modelo, null, cilindrada));
     ordenarPorPlan(todos);
@@ -430,6 +434,11 @@ export async function consultarInventario({ marca, modelo, anio, pieza, cilindra
   if (sinYonkesEnEstado) {
     return { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', piezaNoEncontrada: false, sinYonkesEnEstado: true };
   }
+  return consultarInventarioEnYonkes(yonkesDocs, { marca, modelo, anio, pieza, cilindrada, rango });
+}
+
+// Lo mismo, sobre una lista de yonkes ya elegida (ej. los de otros estados, ver otrosEstados.js).
+export async function consultarInventarioEnYonkes(yonkesDocs, { marca, modelo, anio, pieza, cilindrada = null, rango = null }) {
 
   // Sin año extraído del texto: buscamos en cualquier año directamente (mejor UX que
   // rechazar la búsqueda solo por faltar el dato), igual separando por disponibilidad de pieza.
@@ -510,6 +519,11 @@ export async function consultarInventarioVehiculo({ marca, modelo, anio, estado,
   if (sinYonkesEnEstado) {
     return { resultados: [], resultadosCercanos: [], tipoResultado: 'cualquierAno', sinYonkesEnEstado: true };
   }
+  return consultarInventarioVehiculoEnYonkes(yonkesDocs, { marca, modelo, anio, rango });
+}
+
+// Lo mismo, sobre una lista de yonkes ya elegida (ej. los de otros estados, ver otrosEstados.js).
+export async function consultarInventarioVehiculoEnYonkes(yonkesDocs, { marca, modelo, anio, rango = null }) {
 
   if (anio == null) {
     const resultados = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, null));

@@ -18,6 +18,7 @@ import { crearPersistirContacto, mensajeSinInventario } from '../../lib/busqueda
 import { inventarioVehiculosActivoServer, pedidosClientesActivos } from '../../lib/busqueda/banderaPedidosClientesServer';
 import { rangoAniosServer } from '../../lib/busqueda/configBuscadorServer';
 import { sinYonkesYaMostrados } from '../../lib/buscarVehiculosAlerta';
+import { otrosEstadosSiAplica, camposRespuestaOtrosEstados, camposRegistroOtrosEstados } from '../../lib/busqueda/otrosEstados';
 
 // Nota de nombres: en este archivo `estado` (minúscula, sin más calificación) siempre significa
 // el ESTADO DE LA BÚSQUEDA ('ok', 'sin_inventario', 'fuera_de_catalogo', etc. — ver
@@ -29,6 +30,21 @@ async function mensajeSinYonkesEnEstado(estadoFiltro) {
   const estados = await obtenerEstadosCombinado();
   const nombre = estados.find((e) => e.id === estadoFiltro)?.nombre || estadoFiltro;
   return `Aún no tenemos yonkes registrados en ${nombre} — muy pronto estaremos ahí. Prueba buscando en "Todos los estados".`;
+}
+
+// El estado elegido no tiene NINGÚN yonke. Con config/buscador.otrosEstadosSinResultados (y un
+// estado elegido) busca en yonkes de otros estados que envían y, como la función aplicó, registra
+// la búsqueda como sin_inventario con su campo otrosEstados. Sin la bandera: igual que siempre
+// (esta respuesta no se registraba).
+async function responderSinYonkesEnEstado({ estadoFiltro, consulta, texto, origen, tieneContacto, datosGeo }) {
+  const otros = await otrosEstadosSiAplica(estadoFiltro, consulta);
+  if (otros) {
+    await registrarBusqueda({
+      texto, estado: 'sin_inventario', pieza: consulta.pieza ?? null, marca: consulta.marca, modelo: consulta.modelo, anio: consulta.anio,
+      totalResultados: 0, origen, tieneContacto, ...datosGeo, ...camposRegistroOtrosEstados(otros),
+    });
+  }
+  return NextResponse.json({ estado: 'sin_yonkes_estado', mensaje: await mensajeSinYonkesEnEstado(estadoFiltro), ...camposRespuestaOtrosEstados(otros) });
 }
 
 // Registra y responde el aviso de "pieza sin vehículo" — usado tanto en el flujo normal (recién
@@ -212,7 +228,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
   // se resuelve antes que "no_catalogado" para no decirle a un cliente que el modelo no existe
   // cuando en realidad es que su estado todavía no tiene yonkes registrados.
   if (resultadoMotores.sinYonkesEnEstado) {
-    return NextResponse.json({ estado: 'sin_yonkes_estado', mensaje: await mensajeSinYonkesEnEstado(estadoFiltro) });
+    return responderSinYonkesEnEstado({ estadoFiltro, consulta: { marca, modelo, anio, pieza, cilindrada, rango }, texto, origen, tieneContacto, datosGeo });
   }
 
   const { motores, transmisiones, motoresCercanos, transmisionesCercanos } = resultadoMotores;
@@ -240,14 +256,17 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     // nada, así que un número suelto que sobra ya no puede ser un modelo real sin catalogar —
     // eso se habría resuelto arriba. Es justo el "último recurso" que pide la tarea.
     const esNumeroDeParte = numeroDeParteExplicito || numeroDeParteSospechoso;
+    // Sin nada en el estado del cliente: yonkes de otros estados que envían (solo con la bandera
+    // y un estado elegido; null = no aplica y todo queda como siempre).
+    const otros = esNumeroDeParte ? null : await otrosEstadosSiAplica(estadoFiltro, { marca, modelo, anio, pieza, cilindrada, rango });
     await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo, anio, estado: esNumeroDeParte ? 'numero_de_parte' : 'sin_inventario' });
     await registrarBusqueda({
       texto, estado: esNumeroDeParte ? 'numero_de_parte' : 'sin_inventario', pieza, marca, modelo, anio,
-      tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo,
+      tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo, ...camposRegistroOtrosEstados(otros),
     });
     return NextResponse.json(esNumeroDeParte
       ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
-      : { estado: 'sin_inventario', mensaje: mensajeSinInventario({ pedidosClientesActivos: await pedidosClientesActivos() }), ...extraVehiculosAlerta, busqueda: datosDeLaBusqueda({ marca, modelo, anio, pieza }) });
+      : { estado: 'sin_inventario', mensaje: mensajeSinInventario({ pedidosClientesActivos: await pedidosClientesActivos() }), ...extraVehiculosAlerta, busqueda: datosDeLaBusqueda({ marca, modelo, anio, pieza }), ...camposRespuestaOtrosEstados(otros) });
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
@@ -312,7 +331,11 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
   ]);
 
   if (resultadoMotores.sinYonkesEnEstado) {
-    return NextResponse.json({ estado: 'sin_yonkes_estado', mensaje: await mensajeSinYonkesEnEstado(estadoFiltro) });
+    // Marca sola o número de parte: no hay vehículo con qué buscar en otros estados.
+    if (numeroDeParteExplicito || esMarcaMuyGeneral) {
+      return NextResponse.json({ estado: 'sin_yonkes_estado', mensaje: await mensajeSinYonkesEnEstado(estadoFiltro) });
+    }
+    return responderSinYonkesEnEstado({ estadoFiltro, consulta: { marca, modelo, anio, pieza: null, rango }, texto, origen, tieneContacto, datosGeo });
   }
 
   const { motores, transmisiones, motoresCercanos, transmisionesCercanos } = resultadoMotores;
@@ -331,12 +354,14 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
 
   if (resultados.length === 0 && resultadosCercanos.length === 0 && totalMotoresTransmisiones === 0) {
     const estadoLog = estadoParaAnalitica('sin_inventario');
+    // Solo un sin_inventario de verdad (no marca muy general ni número de parte).
+    const otros = estadoLog === 'sin_inventario' ? await otrosEstadosSiAplica(estadoFiltro, { marca, modelo, anio, pieza: null, rango }) : null;
     await persistirContactoSiExiste(contacto, { texto, pieza: null, marca, modelo, anio, estado: estadoLog });
     await registrarBusqueda({
       texto, estado: estadoLog, pieza: null, marca, modelo, anio,
-      tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo,
+      tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo, ...camposRegistroOtrosEstados(otros),
     });
-    return NextResponse.json({ ...estadoYMensajeNoEncontrado('sin_inventario', mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: await pedidosClientesActivos() })), busqueda: datosDeLaBusqueda({ marca, modelo, anio }) });
+    return NextResponse.json({ ...estadoYMensajeNoEncontrado('sin_inventario', mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: await pedidosClientesActivos() })), busqueda: datosDeLaBusqueda({ marca, modelo, anio }), ...camposRespuestaOtrosEstados(otros) });
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
