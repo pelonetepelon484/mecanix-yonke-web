@@ -109,6 +109,7 @@ describe('bandera encendida', () => {
     const r = await buscar({ estado: 'jalisco' });
     expect(r.estado).toBe('sin_yonkes_estado');
     expect(r.resultadosOtrosEstados[0].estado).toBe('sonora');
+    expect(r.busqueda).toEqual({ marca: 'Honda', modelo: 'Civic', anio: 2016, pieza: 'Alternador' });
     expect(registro()).toMatchObject({ estado: 'sin_inventario', otrosEstados: { mostrados: 1, yonkeIds: ['SON'] } });
   });
 

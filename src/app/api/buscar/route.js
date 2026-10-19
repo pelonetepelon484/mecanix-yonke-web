@@ -45,7 +45,12 @@ async function responderSinYonkesEnEstado({ estadoFiltro, consulta, texto, orige
       totalResultados: 0, origen, tieneContacto, ...datosGeo, ...camposRegistroOtrosEstados(otros),
     });
   }
-  return NextResponse.json({ estado: 'sin_yonkes_estado', mensaje: await mensajeSinYonkesEnEstado(estadoFiltro), ...camposRespuestaOtrosEstados(otros) });
+  // Con resultados de otros estados, también lo que se entendió de la búsqueda (prellenar la
+  // alerta y el mensaje de WhatsApp de esas tarjetas). Sin ellos, la respuesta de siempre.
+  const extra = camposRespuestaOtrosEstados(otros);
+  const busqueda = extra.resultadosOtrosEstados
+    ? { busqueda: datosDeLaBusqueda({ marca: consulta.marca, modelo: consulta.modelo, anio: consulta.anio, pieza: consulta.pieza }) } : {};
+  return NextResponse.json({ estado: 'sin_yonkes_estado', mensaje: await mensajeSinYonkesEnEstado(estadoFiltro), ...extra, ...busqueda });
 }
 
 // "Todos los estados" con el estado por IP (config/buscador.otrosEstadosPorIp): null si no aplica

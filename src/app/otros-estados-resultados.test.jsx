@@ -1,0 +1,88 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import OtrosEstadosResultados from './OtrosEstadosResultados';
+import {
+  AVISO_ENVIO_SI_LEJOS, AVISO_SIN_ENVIOS, TEXTO_ELIGE_ESTADO_OTROS, leerOtrosEstados, opcionesTarjetaOtroEstado,
+} from '../lib/otrosEstadosPantalla';
+import { avisoEnvioOtroEstado } from '../lib/pedidosClientes';
+
+afterEach(cleanup);
+
+const busqueda = { marca: 'Honda', modelo: 'Civic', anio: 2016, pieza: 'Alternador' };
+const grupos = [
+  { estado: 'sonora', estadoNombre: 'Sonora', resultados: [{ yonkeId: 'A', vehiculoId: '1', enviosNacionales: true }, { yonkeId: 'B', vehiculoId: '2', enviosNacionales: false }] },
+  { estado: 'jalisco', estadoNombre: 'Jalisco', resultados: [{ yonkeId: 'C', motorId: 'm', esMotor: true, enviosNacionales: true }] },
+];
+
+describe('leerOtrosEstados (qué caso es)', () => {
+  it('sin los campos nuevos (banderas apagadas): null, la pantalla queda igual', () => {
+    expect(leerOtrosEstados({ estado: 'sin_inventario', mensaje: 'x' })).toBeNull();
+    expect(leerOtrosEstados({ estado: 'resultados', resultados: [] })).toBeNull();
+  });
+  it('listas vacías: null', () => {
+    expect(leerOtrosEstados({ estado: 'sin_inventario', resultadosOtrosEstados: [] })).toBeNull();
+    expect(leerOtrosEstados({ estado: 'sin_inventario', resultadosOtrosEstados: [{ estado: 'sonora', resultados: [] }] })).toBeNull();
+  });
+  it('caso a: sin resultados en el estado elegido', () => {
+    expect(leerOtrosEstados({ estado: 'sin_yonkes_estado', resultadosOtrosEstados: grupos, busqueda })).toEqual({ modo: 'a', grupos, busqueda });
+  });
+  it('caso b: "Todos los estados" y nada del estado por IP', () => {
+    const data = { estado: 'resultados', sinResultadosEnTuEstado: { estado: 'cdmx', estadoNombre: 'CDMX' }, resultadosOtrosEstados: grupos, busqueda };
+    expect(leerOtrosEstados(data)).toMatchObject({ modo: 'b' });
+    // Con resultados normales pero sin sinResultadosEnTuEstado: nada cambia.
+    expect(leerOtrosEstados({ ...data, sinResultadosEnTuEstado: undefined })).toBeNull();
+  });
+});
+
+describe('opciones de las tarjetas: Reservar', () => {
+  it('caso b conserva Reservar y "Pedir entrega"; caso a no', () => {
+    expect(opcionesTarjetaOtroEstado('b', busqueda)).toEqual({ conReservar: true, busqueda });
+    expect(opcionesTarjetaOtroEstado('a', busqueda)).toEqual({ conReservar: false, busqueda });
+  });
+
+  it('el componente pasa esas opciones a cada tarjeta', () => {
+    const renderTarjeta = vi.fn((r, key) => <div key={key}>tarjeta {r.yonkeId}</div>);
+    render(<OtrosEstadosResultados info={{ modo: 'b', grupos, busqueda }} renderTarjeta={renderTarjeta} />);
+    expect(renderTarjeta.mock.calls.every(([, , op]) => op.conReservar === true && op.busqueda === busqueda)).toBe(true);
+    cleanup();
+    renderTarjeta.mockClear();
+    render(<OtrosEstadosResultados info={{ modo: 'a', grupos, busqueda }} nombreEstadoCliente="Chihuahua" renderTarjeta={renderTarjeta} />);
+    expect(renderTarjeta).toHaveBeenCalledTimes(3);
+    expect(renderTarjeta.mock.calls.every(([, , op]) => op.conReservar === false)).toBe(true);
+  });
+});
+
+describe('OtrosEstadosResultados', () => {
+  const renderTarjeta = (r, key) => <div key={key}>tarjeta {r.yonkeId}</div>;
+
+  it('caso a: título con el estado del cliente, grupos "📍" y aviso de envío; sin "Elige tu estado"', () => {
+    render(<OtrosEstadosResultados info={{ modo: 'a', grupos, busqueda }} nombreEstadoCliente="Chihuahua" renderTarjeta={renderTarjeta} onElegirEstado={vi.fn()} />);
+    expect(screen.getByRole('heading')).toHaveTextContent('No hay en Chihuahua. Esto es lo que hay en otros estados');
+    expect(screen.getByText('📍 Sonora')).toBeInTheDocument();
+    expect(screen.getByText('📍 Jalisco')).toBeInTheDocument();
+    expect(screen.getByText(avisoEnvioOtroEstado('Sonora'))).toBeInTheDocument();
+    expect(screen.getByText(AVISO_SIN_ENVIOS)).toBeInTheDocument();
+    expect(screen.queryByText(TEXTO_ELIGE_ESTADO_OTROS)).not.toBeInTheDocument();
+  });
+
+  it('caso b: título suave, aviso condicional y "¿No es tu zona?" que elige estado y repite la búsqueda', () => {
+    const onElegirEstado = vi.fn();
+    render(<OtrosEstadosResultados
+      info={{ modo: 'b', grupos, busqueda }} renderTarjeta={renderTarjeta} onElegirEstado={onElegirEstado}
+      estados={[{ id: 'baja-california', nombre: 'Baja California' }, { id: 'sonora', nombre: 'Sonora' }]}
+    />);
+    expect(screen.getByRole('heading')).toHaveTextContent('No encontramos en tu zona. Esto es lo que hay en otros estados');
+    expect(screen.getAllByText(AVISO_ENVIO_SI_LEJOS)).toHaveLength(2);
+    expect(screen.getByText(AVISO_SIN_ENVIOS)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: TEXTO_ELIGE_ESTADO_OTROS }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Elige tu estado' }), { target: { value: 'baja-california' } });
+    expect(onElegirEstado).toHaveBeenCalledWith('baja-california');
+  });
+
+  it('sin grupos con tarjetas: no dibuja nada', () => {
+    const { container } = render(<OtrosEstadosResultados info={{ modo: 'a', grupos: [{ estado: 'sonora', estadoNombre: 'Sonora', resultados: [] }] }} renderTarjeta={renderTarjeta} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+});

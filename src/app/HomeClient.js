@@ -26,6 +26,8 @@ import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
 import { leerBanderaAlertaUnPaso, leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
 import AlertaUnPaso from './AlertaUnPaso';
+import OtrosEstadosResultados from './OtrosEstadosResultados';
+import { leerOtrosEstados } from '../lib/otrosEstadosPantalla';
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
@@ -917,8 +919,16 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
 
   function aplicarRespuestaBusquedaLibre(data, { deOtroEstado = false } = {}) {
     setVehiculosAlerta({ lista: Array.isArray(data.vehiculosAlerta) ? data.vehiculosAlerta : [], pieza: data.piezaVehiculosAlerta || '' });
+    // "Disponible en otros estados" (OtrosEstadosResultados): null sin los campos nuevos del
+    // servidor (banderas apagadas), y entonces todo queda exactamente como siempre.
+    const otrosEstados = leerOtrosEstados(data);
     if (data.estado === 'resultados') {
-      setMensajeLibre(null);
+      // Caso b ("Todos los estados" y nada del estado del visitante por IP): se trata como "sin
+      // resultados" para que salga primero la alerta; las tarjetas van SOLO en la sección de otros
+      // estados (la lista normal queda vacía, sin duplicar). Lo demás (marca, pieza...) se guarda
+      // igual que siempre: lo usan Reservar y el mensaje de WhatsApp.
+      const enOtraZona = otrosEstados?.modo === 'b';
+      setMensajeLibre(enOtraZona ? { tipo: 'sin_en_tu_zona', texto: '', busqueda: data.busqueda || null, otrosEstados } : null);
       setResultadosDeOtroEstado(deOtroEstado);
       setEncabezadoVehiculo(data.encabezadoVehiculo || null);
       setTipoBusqueda('vehiculo');
@@ -926,16 +936,17 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       setModelo(data.modelo || '');
       setAno(data.anio ? String(data.anio) : '');
       setPiezaSeleccion(data.pieza || '');
-      setResultados(data.resultados);
+      const listas = enOtraZona ? { resultados: [] } : data;
+      setResultados(listas.resultados);
       setTipoResultado(data.tipoResultado);
       setRangoEnUso(data.rangoAnios ?? null);
       setPiezaNoEncontrada(Boolean(data.piezaNoEncontrada));
-      setResultadosMotoresLibre(data.resultadosMotores || []);
-      setResultadosTransmisionesLibre(data.resultadosTransmisiones || []);
-      setResultadosCercanosLibre(data.resultadosCercanos || []);
-      setResultadosMotoresCercanosLibre(data.resultadosMotoresCercanos || []);
-      setResultadosTransmisionesCercanosLibre(data.resultadosTransmisionesCercanos || []);
-      setBusquedaHecha(true);
+      setResultadosMotoresLibre(listas.resultadosMotores || []);
+      setResultadosTransmisionesLibre(listas.resultadosTransmisiones || []);
+      setResultadosCercanosLibre(listas.resultadosCercanos || []);
+      setResultadosMotoresCercanosLibre(listas.resultadosMotoresCercanos || []);
+      setResultadosTransmisionesCercanosLibre(listas.resultadosTransmisionesCercanos || []);
+      setBusquedaHecha(!enOtraZona);
       registrarEvento('busqueda_texto_libre', {
         estado: data.estado,
         resultados: data.resultados.length + (data.resultadosMotores?.length || 0) + (data.resultadosTransmisiones?.length || 0)
@@ -974,12 +985,14 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       setResultadosTransmisionesCercanosLibre([]);
       setBusquedaHecha(false);
       setEncabezadoVehiculo(null);
-      setMensajeLibre({ tipo: data.estado, texto: data.mensaje, busqueda: data.busqueda || null });
+      setMensajeLibre({ tipo: data.estado, texto: data.mensaje, busqueda: data.busqueda || null, ...(otrosEstados ? { otrosEstados } : {}) });
       registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
     }
   }
 
-  async function buscarConTextoLibre() {
+  // estadoForzado: solo desde "¿No es tu zona? Elige tu estado" (el selector todavía no se
+  // actualizó en este render); desde el botón llega el evento del clic y se ignora.
+  async function buscarConTextoLibre(estadoForzado) {
     if (!textoLibre.trim()) return;
     setBuscandoLibre(true);
     setMensajeLibre(null);
@@ -988,7 +1001,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       const res = await fetch('/api/buscar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim(), estado: estadoBusqueda }),
+        body: JSON.stringify({ texto: textoLibre.trim(), contacto: contactoLibre.trim(), estado: typeof estadoForzado === 'string' ? estadoForzado : estadoBusqueda }),
       });
       const data = await res.json();
       aplicarRespuestaBusquedaLibre(data);
@@ -1228,19 +1241,21 @@ function obtenerEstadoAbierto(horario) {
     return { abierto: false, texto: 'Cerrado por hoy' };
   }
 
-  function construirMensajeWhatsApp(r) {
+  // busqueda (opcional): lo que se entendió de la búsqueda, para las tarjetas de otros estados
+  // del caso a (ahí la pantalla no guarda marca, modelo ni pieza). Sin ella, como siempre.
+  function construirMensajeWhatsApp(r, busqueda = null) {
     const pieza = r.esMotor
       ? (r.motor?.tipo || '')
-      : (piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion) || '';
+      : busqueda ? (busqueda.pieza || '') : (piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion) || '';
 
     if (!pieza) {
       return 'Hola, los encontré en Mecanix Yonke Virtual. ¿Me pueden ayudar con una pieza?';
     }
 
     const datosVehiculo = r.esMotor ? r.motor : r.vehiculo;
-    const marcaTexto = datosVehiculo?.marca || marca;
-    const modeloTexto = datosVehiculo?.modelo || modelo;
-    const anoTexto = datosVehiculo?.ano || ano;
+    const marcaTexto = datosVehiculo?.marca || (busqueda ? busqueda.marca : marca);
+    const modeloTexto = datosVehiculo?.modelo || (busqueda ? busqueda.modelo : modelo);
+    const anoTexto = datosVehiculo?.ano || (busqueda ? busqueda.anio : ano);
 
     if (marcaTexto && modeloTexto) {
       const anoParte = anoTexto ? ` ${anoTexto}` : '';
@@ -1373,7 +1388,17 @@ function obtenerEstadoAbierto(horario) {
   // "años cercanos" para no mantener dos copias del mismo bloque. El aviso de compatibilidad
   // se decide solo por si el año difiere del buscado (nunca por tipoResultado global), así
   // funciona igual sin importar en qué grupo aparezca la tarjeta.
-  function renderTarjetaVehiculo(r, key) {
+  // opciones (solo desde OtrosEstadosResultados): { conReservar, busqueda }. Sin opciones, la
+  // tarjeta de siempre. conReservar false (caso a) quita Reservar y "Pedir entrega a mi taller";
+  // busqueda da el año y la pieza buscados cuando la pantalla no los tiene guardados.
+  function anioDeTarjeta(opciones) {
+    const a = opciones?.busqueda?.anio;
+    return a != null && a !== '' ? String(a) : ano;
+  }
+
+  function renderTarjetaVehiculo(r, key, opciones = null) {
+    const ano = anioDeTarjeta(opciones);
+    const conReservar = opciones?.conReservar !== false;
     return (
       <div key={key} style={resultCardStyle}>
         {r.verificado && <SelloMarcaAgua premium={r.premiumVigente === true} />}
@@ -1467,7 +1492,7 @@ function obtenerEstadoAbierto(horario) {
         <div style={{ display: 'flex', gap: '8px' }}>
           {r.whatsapp && (
             <a
-              href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp(r))}`}
+              href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp(r, opciones?.busqueda))}`}
               target="_blank"
               rel="noopener noreferrer"
               style={whatsappButtonStyle}
@@ -1481,12 +1506,14 @@ function obtenerEstadoAbierto(horario) {
               💬 WhatsApp
             </a>
           )}
-          <button onClick={() => abrirModalReserva(r)} className="mecanix-btn-secondary" style={{ flex: 1 }}>
-            Reservar
-          </button>
+          {conReservar && (
+            <button onClick={() => abrirModalReserva(r)} className="mecanix-btn-secondary" style={{ flex: 1 }}>
+              Reservar
+            </button>
+          )}
         </div>
 
-        {r.entregaInmediata && (
+        {r.entregaInmediata && conReservar && (
           <button onClick={() => pedirEntregaInmediata(r)} style={entregaButtonStyle}>
             ⚡ Pedir entrega a mi taller
           </button>
@@ -1498,7 +1525,9 @@ function obtenerEstadoAbierto(horario) {
 
   // Tarjeta de un motor/transmisión suelto — solo del buscador inteligente. Compartida entre
   // el grupo "exacto" y el de "años cercanos" por la misma razón que renderTarjetaVehiculo.
-  function renderTarjetaMotor(r, key, icono) {
+  function renderTarjetaMotor(r, key, icono, opciones = null) {
+    const ano = anioDeTarjeta(opciones);
+    const conReservar = opciones?.conReservar !== false;
     return (
       <div key={key} style={resultCardStyle}>
         {r.verificado && <SelloMarcaAgua premium={r.premiumVigente === true} />}
@@ -1541,7 +1570,7 @@ function obtenerEstadoAbierto(horario) {
         </div>
         {r.whatsapp && (
           <a
-            href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp({ ...r, esMotor: true }))}`}
+            href={`https://wa.me/52${r.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(construirMensajeWhatsApp({ ...r, esMotor: true }, opciones?.busqueda))}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{ ...whatsappButtonStyle, marginTop: '12px' }}
@@ -1550,7 +1579,7 @@ function obtenerEstadoAbierto(horario) {
             💬 WhatsApp
           </a>
         )}
-        {r.entregaInmediata && (
+        {r.entregaInmediata && conReservar && (
           <button onClick={() => pedirEntregaInmediata(r)} style={{ ...entregaButtonStyle, marginTop: '8px' }}>
             ⚡ Pedir entrega a mi taller
           </button>
@@ -1706,7 +1735,7 @@ function obtenerEstadoAbierto(horario) {
               )}
 
               {/* Alerta de un paso como protagonista, ANTES de cualquier otro aviso (con su bandera). */}
-              {alertaUnPaso && mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && (
+              {alertaUnPaso && mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado', 'sin_en_tu_zona'].includes(mensajeLibre.tipo) && (
                 <AlertaUnPaso
                   key={`${mensajeLibre.texto}-${JSON.stringify(mensajeLibre.busqueda)}`}
                   variante="protagonista"
@@ -1716,7 +1745,8 @@ function obtenerEstadoAbierto(horario) {
                 />
               )}
 
-              {mensajeLibre && mensajeLibre.tipo !== 'pieza_sin_vehiculo'
+              {/* sin_en_tu_zona (otros estados por IP): sin este cuadro, el título de la sección ya lo dice. */}
+              {mensajeLibre && mensajeLibre.tipo !== 'pieza_sin_vehiculo' && mensajeLibre.tipo !== 'sin_en_tu_zona'
                 && !(alertaUnPaso && mensajeLibre.tipo === 'sin_inventario' && estadoBusqueda === 'todos') && (
                 <div style={{
                   marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
@@ -1753,7 +1783,8 @@ function obtenerEstadoAbierto(horario) {
                   {/* Filtró por estado y no hubo nada ahí (o el estado no tiene yonkes en
                       absoluto) — ofrecer ampliar a todos los estados en vez de solo decir "no
                       hay". Nunca aparece si ya buscaba en "todos los estados" de entrada. */}
-                  {['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && estadoBusqueda !== 'todos' && (
+                  {/* Con la sección de otros estados ya no hace falta (y así no se repite la búsqueda). */}
+                  {['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && estadoBusqueda !== 'todos' && !mensajeLibre.otrosEstados && (
                     <button
                       onClick={buscarLibreEnTodosLosEstados}
                       disabled={buscandoLibre}
@@ -1770,10 +1801,23 @@ function obtenerEstadoAbierto(horario) {
               {mensajeLibre && !busquedaHecha && (
                 <VehiculosDisponiblesAlerta lista={vehiculosAlerta.lista} pieza={vehiculosAlerta.pieza} />
               )}
-              {!alertaUnPaso && mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) && (
+              {!alertaUnPaso && mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado', 'sin_en_tu_zona'].includes(mensajeLibre.tipo) && (
                 <AvisarYonkes estadoInicial={estadoBusqueda !== 'todos' ? estadoBusqueda : ''} />
               )}
             </div>
+
+            {/* "Disponible en otros estados": debajo de la alerta, solo si el servidor la mandó. */}
+            {mensajeLibre?.otrosEstados && (
+              <OtrosEstadosResultados
+                info={mensajeLibre.otrosEstados}
+                nombreEstadoCliente={estadosDisponibles.find((e) => e.id === estadoBusqueda)?.nombre || estadoBusqueda}
+                renderTarjeta={(r, key, opciones) => (r.esMotor
+                  ? renderTarjetaMotor(r, key, r.motor?.tipo === 'Transmisión' ? '⚙️' : '🔧', opciones)
+                  : renderTarjetaVehiculo(r, key, opciones))}
+                estados={estadosDisponibles}
+                onElegirEstado={(id) => { setEstadoBusqueda(id); buscarConTextoLibre(id); }}
+              />
+            )}
 
             {/* Búsqueda avanzada — el buscador estructurado de siempre (marca/modelo/año,
                 motor, transmisión), colapsado por defecto para que el inteligente sea el
