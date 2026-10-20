@@ -4,7 +4,8 @@ import { avisoEnvioOtroEstado } from './pedidosClientes';
 // respuesta de /api/buscar y decide qué mostrar. Sin los campos nuevos (banderas apagadas en el
 // servidor) devuelve null y la pantalla queda idéntica a la de siempre.
 // - Caso 'a': el cliente eligió estado y ahí no hubo nada (etapa 1, resultadosOtrosEstados en una
-//   respuesta sin resultados). Solo yonkes que envían; las tarjetas van solo con WhatsApp.
+//   respuesta sin resultados). Los que envían primero y los que no con su aviso; las tarjetas van
+//   solo con WhatsApp.
 // - Caso 'b': "Todos los estados" y ningún resultado del estado del visitante por IP (etapa 1b,
 //   sinResultadosEnTuEstado). La IP puede equivocarse: las tarjetas conservan Reservar y "Pedir
 //   entrega a mi taller", y el aviso de envío es condicional.
@@ -50,8 +51,9 @@ export function avisoTarjetaOtroEstado(modo, r, estadoNombre) {
 // (antes quedaba una franja vacía con la alerta de un paso + estado elegido + otros estados).
 // - texto: oculto con la alerta de un paso y sin_inventario (el título de la alerta ya lo dice);
 // - confirmar: "Sí, buscar así / No, corregir";
-// - botonTodos: "Buscar en todos los estados", solo con un estado elegido y sin la sección de
-//   otros estados (así no se repite la búsqueda).
+// - botonTodos: "Buscar en todos los estados", solo con un estado elegido y cuando el servidor NO
+//   buscó ya en otros estados (conOtrosEstados: llegó la sección o otrosEstadosRevisados). Así
+//   solo se ve donde hace falta: "no identificamos el modelo", bandera apagada o búsqueda cortada.
 export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados }) {
   return {
     texto: !(alertaUnPaso && tipo === 'sin_inventario'),
