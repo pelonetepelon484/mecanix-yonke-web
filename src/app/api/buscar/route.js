@@ -7,7 +7,7 @@ import { obtenerSinonimosCombinados } from '../../lib/busqueda/sinonimosPiezas';
 import { detectarFueraDeGiro } from '../../lib/busqueda/detectarFueraDeGiro';
 import { registrarBusqueda } from '../../lib/busqueda/registrarBusqueda';
 import { geoDesdeHeadersVercel } from '../../../lib/geoVercel';
-import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones, consultarVehiculosAlerta } from '../../lib/busqueda/consultarInventario';
+import { existeEnCatalogoVivo, consultarInventario, consultarInventarioVehiculo, consultarMotoresTransmisiones, consultarVehiculosAlerta, consultarRespaldoVehiculo } from '../../lib/busqueda/consultarInventario';
 import { permitirBusqueda, MENSAJE_RATE_LIMIT } from '../../lib/busqueda/rateLimit';
 import { MENSAJE_NUMERO_DE_PARTE } from '../../lib/busqueda/numeroDeParte';
 import { obtenerEstadosCombinado } from '../../lib/busqueda/estadosServer';
@@ -16,7 +16,7 @@ import { debeMostrarAvisoPiezaSinVehiculo } from '../../../lib/piezaSinVehiculo'
 import { EJEMPLO_BUSQUEDA_CORRECTA } from '../../lib/busqueda/ejemploBusqueda';
 import { crearPersistirContacto, mensajeSinInventario } from '../../lib/busqueda/contactoPendiente';
 import { inventarioVehiculosActivoServer, pedidosClientesActivos } from '../../lib/busqueda/banderaPedidosClientesServer';
-import { rangoAniosServer, otrosEstadosPorIpServer } from '../../lib/busqueda/configBuscadorServer';
+import { rangoAniosServer, otrosEstadosPorIpServer, respaldoVehiculoServer } from '../../lib/busqueda/configBuscadorServer';
 import { estadoDelVisitante, repartoPorIp, sinEstadoYonke } from '../../lib/busqueda/otrosEstadosPorIp';
 import { sinYonkesYaMostrados } from '../../lib/buscarVehiculosAlerta';
 import { otrosEstadosSiAplica, camposRespuestaOtrosEstados, camposRegistroOtrosEstados } from '../../lib/busqueda/otrosEstados';
@@ -256,7 +256,24 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
 
   const { motores, transmisiones, motoresCercanos, transmisionesCercanos } = resultadoMotores;
   const totalMotoresTransmisiones = motores.length + transmisiones.length + motoresCercanos.length + transmisionesCercanos.length;
-  const { resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada } = resultadoInventario;
+
+  // Respaldo por vehículo (config/buscador.respaldoVehiculo, encendido salvo con false): si NADA
+  // salió y del texto salieron marca, modelo y año, los vehículos de ese año exacto, como el
+  // respaldo de siempre (piezaNoEncontrada: true). También con "motor/transmisión + cilindrada",
+  // que no busca vehículos. Desde aquí sigue el camino normal de "con resultados" (registro ok,
+  // yonkeIds, otros estados por IP); si tampoco hay vehículos, todo queda como siempre.
+  let resultadoFinal = resultadoInventario;
+  let cilindradaDistinta = false;
+  const nadaEncontrado = totalMotoresTransmisiones === 0
+    && resultadoInventario.resultados.length === 0 && resultadoInventario.resultadosCercanos.length === 0;
+  if (nadaEncontrado && marca && modelo && anio != null && await respaldoVehiculoServer()) {
+    const respaldo = await consultarRespaldoVehiculo({ marca, modelo, anio, cilindrada, estado: estadoFiltro });
+    if (respaldo.resultados.length > 0) {
+      resultadoFinal = { resultados: respaldo.resultados, resultadosCercanos: [], tipoResultado: 'exacto', piezaNoEncontrada: true };
+      cilindradaDistinta = respaldo.cilindradaDistinta;
+    }
+  }
+  const { resultados, resultadosCercanos, tipoResultado, piezaNoEncontrada } = resultadoFinal;
   const vehiculosAlerta = sinYonkesYaMostrados(vehiculosAlertaTodos, resultados);
   const extraVehiculosAlerta = vehiculosAlerta.length > 0 ? { vehiculosAlerta, piezaVehiculosAlerta: pieza } : {};
 
@@ -301,6 +318,8 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     resultadosTransmisiones: transmisiones, resultadosTransmisionesCercanos: transmisionesCercanos,
     marca, modelo, anio, pieza, cilindrada,
     ...extraVehiculosAlerta,
+    // Respaldo por vehículo sin ninguno con la cilindrada buscada: la pantalla avisa.
+    ...(cilindradaDistinta ? { avisoCilindradaDistinta: true } : {}),
   };
   const porIp = await otrosEstadosPorIpSiAplica(estadoFiltro, geo, respuesta);
   await registrarBusqueda({

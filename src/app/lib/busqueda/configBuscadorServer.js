@@ -6,7 +6,10 @@ import { rangoDeConfig } from '../../../lib/rangoAnios';
 // minuto por instancia: /api/buscar lo consulta en cada búsqueda. Se lee UNA vez y de ahí salen:
 // - rangoAniosServer(): el rango de años (rangoDeConfig) o null con la bandera apagada;
 // - otrosEstadosSinResultadosServer(): true solo con otrosEstadosSinResultados === true;
-// - otrosEstadosPorIpServer(): true solo con otrosEstadosPorIp === true.
+// - otrosEstadosPorIpServer(): true solo con otrosEstadosPorIp === true;
+// - respaldoVehiculoServer(): AL REVÉS que las demás, encendida por omisión: solo
+//   respaldoVehiculo === false la apaga (sin el campo, sin documento o si la lectura falla, sigue
+//   encendida).
 // Sin documento o si la lectura falla, todo apagado: el buscador queda exactamente como siempre.
 const TTL_MS = 60 * 1000;
 let cache = { config: null, en: 0 };
@@ -36,4 +39,9 @@ export async function otrosEstadosSinResultadosServer() {
 // "Todos los estados" con el estado por IP del visitante (ver otrosEstadosPorIp.js).
 export async function otrosEstadosPorIpServer() {
   return (await leerConfigBuscador())?.otrosEstadosPorIp === true;
+}
+
+// Respaldo por vehículo cuando la búsqueda termina sin nada (ver consultarRespaldoVehiculo).
+export async function respaldoVehiculoServer() {
+  return (await leerConfigBuscador())?.respaldoVehiculo !== false;
 }

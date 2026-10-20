@@ -26,8 +26,12 @@ vi.mock('../../lib/busqueda/estadosServer', async () => {
 });
 let bandera = false;
 let banderaIp = false;
+// Respaldo por vehículo: apagado en las pruebas de otros estados (para no mezclar); sus propias
+// pruebas lo encienden al final del archivo.
+let banderaRespaldo = false;
 vi.mock('../../lib/busqueda/configBuscadorServer', () => ({
   rangoAniosServer: async () => 2, otrosEstadosSinResultadosServer: async () => bandera, otrosEstadosPorIpServer: async () => banderaIp,
+  respaldoVehiculoServer: async () => banderaRespaldo,
 }));
 
 // Inventario: en el estado del cliente nada (o ningún yonke); en otros estados, lo que diga `otros`.
@@ -35,6 +39,8 @@ let enCatalogo = true;
 let sinYonkes = false;
 // Resultados de la búsqueda normal (para "Todos" por IP); vacío = sin inventario.
 let encontrados = { resultados: [], resultadosCercanos: [] };
+let respaldo = { resultados: [], cilindradaDistinta: false };
+const consultarRespaldoVehiculo = vi.fn(async () => respaldo);
 const vacioMotores = { motores: [], transmisiones: [], motoresCercanos: [], transmisionesCercanos: [] };
 vi.mock('../../lib/busqueda/consultarInventario', () => ({
   existeEnCatalogoVivo: async () => enCatalogo,
@@ -42,6 +48,7 @@ vi.mock('../../lib/busqueda/consultarInventario', () => ({
   consultarInventarioVehiculo: async () => ({ resultados: [], resultadosCercanos: [], tipoResultado: 'cercano' }),
   consultarMotoresTransmisiones: async () => ({ ...vacioMotores, sinYonkesEnEstado: sinYonkes }),
   consultarVehiculosAlerta: async () => [],
+  consultarRespaldoVehiculo: (...a) => consultarRespaldoVehiculo(...a),
   consultarInventarioEnYonkes: async (docs) => ({ resultados: docs.map((d) => ({ yonkeId: d.id, vehiculoId: 'v1' })), resultadosCercanos: [], piezaNoEncontrada: false }),
   consultarInventarioVehiculoEnYonkes: async (docs) => ({ resultados: docs.map((d) => ({ yonkeId: d.id, vehiculoId: 'v2' })), resultadosCercanos: [] }),
   consultarMotoresTransmisionesEnYonkes: async () => vacioMotores,
@@ -50,16 +57,18 @@ vi.mock('../../lib/busqueda/consultarInventario', () => ({
 const { POST } = await import('./route.js');
 
 // region: código de Vercel del visitante (ej. 'jal'); sin region = estado por IP desconocido.
-const buscar = async ({ estado, pieza = 'Alternador', region }) => (await POST(new Request('http://x/api/buscar', {
+const buscar = async ({ estado, pieza = 'Alternador', region, anio = 2016, cilindrada }) => (await POST(new Request('http://x/api/buscar', {
   method: 'POST',
   headers: { 'content-type': 'application/json', ...(region ? { 'x-vercel-ip-country': 'MX', 'x-vercel-ip-country-region': region } : {}) },
-  body: JSON.stringify({ texto: 'alternador civic 2016', estado, confirmado: { pieza, marca: 'Honda', modelo: 'Civic', anio: 2016 } }),
+  body: JSON.stringify({ texto: 'alternador civic 2016', estado, confirmado: { pieza, marca: 'Honda', modelo: 'Civic', anio, ...(cilindrada != null ? { cilindrada } : {}) } }),
 }))).json();
 const registro = () => registrarBusqueda.mock.calls.at(-1)?.[0];
 
 beforeEach(() => {
-  bandera = false; banderaIp = false; enCatalogo = true; sinYonkes = false;
+  bandera = false; banderaIp = false; banderaRespaldo = false; enCatalogo = true; sinYonkes = false;
   encontrados = { resultados: [], resultadosCercanos: [] };
+  respaldo = { resultados: [], cilindradaDistinta: false };
+  consultarRespaldoVehiculo.mockClear();
   registrarBusqueda.mockClear(); getDocs.mockClear();
 });
 
@@ -192,5 +201,67 @@ describe('"Todos los estados" con estado por IP', () => {
       expect(r).not.toHaveProperty('sinResultadosEnTuEstado');
       expect(registro()).not.toHaveProperty('soloOtrosEstados');
     });
+  });
+});
+
+describe('respaldo por vehículo (config/buscador.respaldoVehiculo)', () => {
+  const corollaPatos = { yonkeId: 'PATOS', vehiculoId: 'c20', estadoYonke: 'baja-california', enviosNacionales: false, coincidePorCilindrada: true };
+  beforeEach(() => { banderaRespaldo = true; respaldo = { resultados: [corollaPatos], cilindradaDistinta: false }; });
+
+  it('sin nada y con marca, modelo y año: muestra los vehículos como el respaldo actual y se guarda ok', async () => {
+    const r = await buscar({ estado: 'todos' });
+    expect(r.estado).toBe('resultados');
+    expect(r.piezaNoEncontrada).toBe(true);
+    expect(r.resultados).toHaveLength(1);
+    expect(r).not.toHaveProperty('avisoCilindradaDistinta');
+    expect(registro()).toMatchObject({ estado: 'ok', piezaNoEncontrada: true, totalResultados: 1, yonkeIds: ['PATOS'] });
+    expect(consultarRespaldoVehiculo).toHaveBeenCalledWith({ marca: 'Honda', modelo: 'Civic', anio: 2016, cilindrada: null, estado: 'todos' });
+  });
+
+  it('también con transmisión + cilindrada (hoy no busca vehículos), pasando la cilindrada', async () => {
+    const r = await buscar({ estado: 'baja-california', pieza: 'Transmisión', cilindrada: 1.8 });
+    expect(r.estado).toBe('resultados');
+    expect(consultarRespaldoVehiculo).toHaveBeenCalledWith(expect.objectContaining({ cilindrada: 1.8, estado: 'baja-california' }));
+  });
+
+  it('sin ninguno con esa cilindrada: avisa que puede ser distinta', async () => {
+    respaldo = { resultados: [corollaPatos], cilindradaDistinta: true };
+    const r = await buscar({ estado: 'todos', pieza: 'Transmisión', cilindrada: 2.5 });
+    expect(r.avisoCilindradaDistinta).toBe(true);
+  });
+
+  it('bandera apagada (false): igual que hoy, sin buscar el respaldo', async () => {
+    banderaRespaldo = false;
+    const r = await buscar({ estado: 'todos' });
+    expect(r.estado).toBe('sin_inventario');
+    expect(consultarRespaldoVehiculo).not.toHaveBeenCalled();
+  });
+
+  it('sin año en el texto: no aplica', async () => {
+    const r = await buscar({ estado: 'todos', anio: null });
+    expect(r.estado).toBe('sin_inventario');
+    expect(consultarRespaldoVehiculo).not.toHaveBeenCalled();
+  });
+
+  it('si ya hubo resultados normales: no se busca el respaldo', async () => {
+    encontrados = { resultados: [{ yonkeId: 'A', vehiculoId: '1', estadoYonke: 'sonora' }], resultadosCercanos: [] };
+    await buscar({ estado: 'todos' });
+    expect(consultarRespaldoVehiculo).not.toHaveBeenCalled();
+  });
+
+  it('si el respaldo tampoco encuentra nada: sin resultado y otros estados como siempre', async () => {
+    respaldo = { resultados: [], cilindradaDistinta: false };
+    bandera = true;
+    const r = await buscar({ estado: 'jalisco' });
+    expect(r.estado).toBe('sin_inventario');
+    expect(r.resultadosOtrosEstados[0].estado).toBe('sonora');
+    expect(registro()).toMatchObject({ estado: 'sin_inventario', otrosEstados: { mostrados: 1 } });
+  });
+
+  it('con "Todos" y la IP de otro estado: el respaldo pasa por el reparto de otros estados', async () => {
+    banderaIp = true;
+    const r = await buscar({ estado: 'todos', region: 'jal' });
+    expect(r.sinResultadosEnTuEstado).toEqual({ estado: 'jalisco', estadoNombre: 'Jalisco' });
+    expect(registro()).toMatchObject({ estado: 'ok', soloOtrosEstados: true, piezaNoEncontrada: true });
   });
 });
