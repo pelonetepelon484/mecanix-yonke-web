@@ -24,7 +24,8 @@ import VentanaAlertas from './VentanaAlertas';
 import ComoFuncionaBuscador from './ComoFuncionaBuscador';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
-import { leerBanderaAlertaUnPaso, leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
+import { leerBanderaAlertaUnPaso, leerBanderaAlertaSiempre, leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
+import { lugarAlertaConResultados, mensajeConAlerta } from '../lib/alertaSiempre';
 import AlertaUnPaso from './AlertaUnPaso';
 import OtrosEstadosResultados from './OtrosEstadosResultados';
 import { leerOtrosEstados, partesCuadroMensaje, cuadroMensajeTieneContenido } from '../lib/otrosEstadosPantalla';
@@ -287,9 +288,12 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   // config/pedidosClientes.alertaUnPaso: sin resultados, la alerta de un paso va PRIMERO (y una
   // discreta debajo de los resultados). Apagada (o sin leer), las alertas quedan como siempre.
   const [alertaUnPaso, setAlertaUnPaso] = useState(false);
+  // config/pedidosClientes.alertaSiempre (encendida salvo false, ver lib/alertaSiempre.js).
+  const [alertaSiempre, setAlertaSiempre] = useState(true);
   useEffect(() => {
     let vigente = true;
     leerBanderaAlertaUnPaso().then((v) => { if (vigente) setAlertaUnPaso(v); });
+    leerBanderaAlertaSiempre().then((v) => { if (vigente) setAlertaSiempre(v); });
     return () => { vigente = false; };
   }, []);
   const [estadoPlanes, setEstadoPlanes] = useState(ESTADO_DEFAULT);
@@ -1743,13 +1747,15 @@ function obtenerEstadoAbierto(horario) {
                 </div>
               )}
 
-              {/* Alerta de un paso como protagonista, ANTES de cualquier otro aviso (con su bandera). */}
-              {alertaUnPaso && mensajeLibre && ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado', 'sin_en_tu_zona'].includes(mensajeLibre.tipo) && (
+              {/* Alerta de un paso como protagonista, ANTES de cualquier otro aviso (con su bandera). Con
+                  alertaSiempre también en número de parte, marca muy general y pieza sin vehículo
+                  (lo que falte, la alerta lo pide). */}
+              {alertaUnPaso && mensajeLibre && mensajeConAlerta(mensajeLibre.tipo, alertaSiempre) && (
                 <AlertaUnPaso
                   key={`${mensajeLibre.texto}-${JSON.stringify(mensajeLibre.busqueda)}`}
                   variante="protagonista"
                   marca={mensajeLibre.busqueda?.marca} modelo={mensajeLibre.busqueda?.modelo}
-                  anio={mensajeLibre.busqueda?.anio} pieza={mensajeLibre.busqueda?.pieza}
+                  anio={mensajeLibre.busqueda?.anio} pieza={mensajeLibre.busqueda?.pieza ?? mensajeLibre.pieza ?? ''}
                   estado={estadoBusqueda} estados={estadosDisponibles}
                 />
               )}
@@ -2076,6 +2082,14 @@ function obtenerEstadoAbierto(horario) {
                     estado={estadoBusqueda} estados={estadosDisponibles}
                   />
                 )}
+                {/* Con resultados y alertaSiempre: la alerta chica ARRIBA de las tarjetas, siempre a la vista. */}
+                {alertaUnPaso && hayResultadosBusqueda && lugarAlertaConResultados(alertaSiempre) === 'arriba' && (
+                  <AlertaUnPaso
+                    key={`${marca}-${modelo}-${ano}-${piezaParaAlerta}`}
+                    variante="compacta" marca={marca} modelo={modelo} anio={ano} pieza={piezaParaAlerta}
+                    estado={estadoBusqueda} estados={estadosDisponibles}
+                  />
+                )}
                 {encabezadoVehiculo && (
                   <p style={{ color: '#1A3C5E', fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>
                     {encabezadoVehiculo}
@@ -2249,8 +2263,8 @@ function obtenerEstadoAbierto(horario) {
                   </>
                 )}
 
-                {/* Con resultados: aviso discreto para crear la alerta de un paso (con su bandera). */}
-                {alertaUnPaso && hayResultadosBusqueda && (
+                {/* Con resultados y alertaSiempre apagada: el botón discreto al final, como antes. */}
+                {alertaUnPaso && hayResultadosBusqueda && lugarAlertaConResultados(alertaSiempre) === 'final' && (
                   <AlertaUnPaso
                     key={`${marca}-${modelo}-${ano}-${piezaParaAlerta}`}
                     variante="discreta" marca={marca} modelo={modelo} anio={ano} pieza={piezaParaAlerta}

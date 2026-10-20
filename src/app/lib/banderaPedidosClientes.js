@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { alertaSiempreActiva } from '../../lib/alertaSiempre';
 
 let config = null;
 
@@ -45,6 +46,14 @@ export function leerBanderaAlertasPortada() {
 // cuando no hay resultados (AlertaUnPaso.js). Mismo documento y misma lectura; exige la primera.
 export function leerBanderaAlertaUnPaso() {
   return leerConfig().then((c) => c.habilitado === true && c.alertaUnPaso === true);
+}
+
+// Sexta bandera (config/pedidosClientes.alertaSiempre): la alerta de un paso también con
+// resultados (chica, arriba) y en número de parte, marca muy general y pieza sin vehículo. AL
+// REVÉS que las demás: encendida por omisión, solo false la apaga (ver lib/alertaSiempre.js). Sin
+// la lectura (o mientras carga) se toma como encendida; igual solo se ve con alertaUnPaso.
+export function leerBanderaAlertaSiempre() {
+  return leerConfig().then((c) => alertaSiempreActiva(c));
 }
 
 export function useBanderaPedidosClientes() {

@@ -6,6 +6,8 @@
 // /api/pedir-pieza): mismos datos, mismas validaciones, mismos límites.
 // - variante="protagonista": bloque grande "No tenemos ese vehículo todavía" (sin resultados).
 // - variante="discreta": "¿No encontraste la pieza exacta? Crea una alerta" (debajo de resultados).
+// - variante="compacta": "¿No era lo que buscabas? Crea una alerta aquí", chica pero a la vista,
+//   ARRIBA de los resultados (config/pedidosClientes.alertaSiempre).
 // Sin la bandera (o sin config/pedidosClientes.habilitado) no muestra NADA.
 import { useEffect, useState } from 'react';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
@@ -17,6 +19,7 @@ import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 export const TITULO_SIN_RESULTADOS = 'No tenemos ese vehículo todavía';
 export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Crea una alerta';
+export const TEXTO_COMPACTO = '¿No era lo que buscabas? Crea una alerta aquí';
 export const textoSinResultados = (estadoNombre) =>
   `Crea una alerta: los yonkes de ${estadoNombre || 'tu estado'} la verán y te responderán con su precio.`;
 export const textoConfirmacion = (estadoNombre) =>
@@ -107,6 +110,13 @@ export default function AlertaUnPaso({
   }
 
   if (!abierto) {
+    if (variante === 'compacta') {
+      return (
+        <button type="button" onClick={() => setAbierto(true)} style={botonCompacto}>
+          🔔 {TEXTO_COMPACTO}
+        </button>
+      );
+    }
     if (variante === 'discreta') {
       return (
         <button type="button" onClick={() => setAbierto(true)} style={botonDiscreto}>
@@ -203,6 +213,7 @@ const cajaConfirmacion = { margin: '14px 0', padding: '16px', borderRadius: '16p
 const resumenStyle = { backgroundColor: '#fff', border: '1px solid #F2C9A0', borderRadius: '10px', padding: '8px 12px', marginBottom: '12px', fontSize: '14px', color: '#1A3C5E', fontWeight: '600' };
 const botonCorregir = { marginTop: '4px', padding: 0, border: 'none', background: 'none', color: '#E8720C', fontSize: '12px', fontWeight: '700', textDecoration: 'underline', cursor: 'pointer' };
 const botonCancelar = { display: 'block', width: '100%', marginTop: '8px', padding: '8px', border: 'none', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' };
+const botonCompacto = { display: 'block', width: '100%', margin: '0 0 14px', padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #E8720C', backgroundColor: '#FFF4E8', color: '#1A3C5E', fontSize: '14px', fontWeight: '700', cursor: 'pointer', textAlign: 'center' };
 const botonDiscreto = { display: 'block', width: '100%', margin: '16px 0', padding: '12px', borderRadius: '12px', border: '1px dashed #C5D8EC', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '14px', fontWeight: '600', cursor: 'pointer' };
 const etiqueta = { display: 'block', fontSize: '12px', color: '#555', margin: '0 0 4px', fontWeight: 'bold' };
 const input = { width: '100%', boxSizing: 'border-box', padding: '11px', fontSize: '15px', borderRadius: '10px', border: '1px solid #CCC', marginBottom: '10px', backgroundColor: '#fff' };
