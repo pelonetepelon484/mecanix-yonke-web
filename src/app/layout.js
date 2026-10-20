@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { SITIO_OFICIAL } from "../lib/sitioOficial";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,14 +22,14 @@ export const metadata = {
 keywords: "yonke Tijuana, refacciones usadas Tijuana, autopartes Tijuana, yonke Mexicali, refacciones usadas México, piezas de carro usadas, yonke virtual, comprar refacciones en línea, motor usado Tijuana, transmisión usada Tijuana, piezas usadas Tijuana, dónde comprar refacciones Tijuana, yonke Ensenada, yonke Tecate, yonke Rosarito, refacciones Nissan Tijuana, refacciones Toyota Tijuana, refacciones Chevrolet Tijuana, refacciones Honda Tijuana, refacciones Ford Tijuana, autopartes baratas Tijuana, deshuese Tijuana, deshuesadero Tijuana, partes de carro Tijuana, yonkes en Tijuana, yonkes en México, deshuesadero México",  authors: [{ name: "Mecanix" }],
   creator: "Mecanix",
   publisher: "Mecanix",
-  metadataBase: new URL("https://mecanixyonkevirtual.com"),
+  metadataBase: new URL(SITIO_OFICIAL),
   alternates: {
-    canonical: "https://mecanixyonkevirtual.com",
+    canonical: SITIO_OFICIAL,
   },
   openGraph: {
     title: "Mecanix Yonke Virtual — Refacciones y autopartes usadas en México",
     description: "Encuentra autopartes y refacciones usadas entre los yonkes y deshuesaderos afiliados en México. Busca por marca, modelo y año.",
-    url: "https://mecanixyonkevirtual.com",
+    url: SITIO_OFICIAL,
     siteName: "Mecanix Yonke Virtual",
     locale: "es_MX",
     type: "website",
@@ -89,7 +90,7 @@ export default function RootLayout({ children }) {
               "@type": "AutoPartsStore",
               "name": "Mecanix Yonke Virtual",
               "description": "Plataforma que conecta compradores de refacciones usadas con yonkes de México",
-              "url": "https://mecanixyonkevirtual.com",
+              "url": "${SITIO_OFICIAL}",
               "areaServed": "México",
               "address": {
                 "@type": "PostalAddress",
@@ -97,7 +98,7 @@ export default function RootLayout({ children }) {
                 "addressCountry": "MX"
               },
               "sameAs": [
-                "https://mecanixyonkevirtual.com"
+                "${SITIO_OFICIAL}"
               ]
             }
           `}
