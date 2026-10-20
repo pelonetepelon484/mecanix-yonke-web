@@ -143,6 +143,16 @@ export const FRASES_PIEZAS_BASE = [
   ['caja de fusibles', 'Caja de fusibles'], ['caja fusibles', 'Caja de fusibles'], ['fusiblera', 'Caja de fusibles'],
   ['fusibleras', 'Caja de fusibles'], ['centro de fusibles', 'Caja de fusibles'], ['portafusibles', 'Caja de fusibles'],
   ['fuse box', 'Caja de fusibles'],
+
+  // "caja" sola es la caja de velocidades (SINONIMOS_PALABRA: caja -> transmision) y así se queda;
+  // estas frases son las excepciones donde "caja" es otra pieza. Búsqueda real del 19 oct 2026:
+  // "Tuvo caja del filtro corolla 2020 1.8" (el tubo de la garganta a la caja del filtro de aire)
+  // se leía como Transmisión. "tuvo" por "tubo" lo corrige el fuzzy de frases.
+  ['tubo de la caja del filtro', 'Manguera de aire'], ['tubo caja del filtro', 'Manguera de aire'],
+  ['tubo de caja del filtro', 'Manguera de aire'], ['tubo del filtro de aire', 'Manguera de aire'],
+  ['manguera de la caja del filtro', 'Manguera de aire'], ['manguera caja del filtro', 'Manguera de aire'],
+  ['caja del filtro de aire', 'Filtro de aire'], ['caja del filtro', 'Filtro de aire'], ['caja de filtro', 'Filtro de aire'],
+  ['caja de velocidades', 'Transmisión'], ['caja de cambios', 'Transmisión'],
   ['bobina', 'Bobinas de encendido'], ['bobinas', 'Bobinas de encendido'], ['bobina de encendido', 'Bobinas de encendido'],
   ['bobinas de encendido', 'Bobinas de encendido'], ['ignition coil', 'Bobinas de encendido'],
   ['ignition coils', 'Bobinas de encendido'], ['coil pack', 'Bobinas de encendido'], ['coil', 'Bobinas de encendido'],
