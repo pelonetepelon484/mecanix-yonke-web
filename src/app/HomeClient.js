@@ -228,6 +228,9 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   const [buscando, setBuscando] = useState(false);
   const [busquedaHecha, setBusquedaHecha] = useState(false);
   const [piezaNoEncontrada, setPiezaNoEncontrada] = useState(false);
+  // Respaldo por vehículo del buscador inteligente sin ninguno con la cilindrada buscada
+  // (avisoCilindradaDistinta del servidor): la cilindrada buscada, o null.
+  const [cilindradaDistinta, setCilindradaDistinta] = useState(null);
   // Rango de años de la búsqueda mostrada (config/buscador): null = el de siempre (±4 y "cualquier
   // año"); un número = rango corto, con la etiqueta "Año cercano" y el título "Años cercanos (±N)".
   // En la búsqueda avanzada viene de page.js (rangoAnios); en la de IA, de la respuesta.
@@ -715,7 +718,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
     if ((tipoBusqueda === 'motor' || tipoBusqueda === 'transmision') && !marca) {
       alert('Llena al menos la marca'); return;
     }
-    setBuscando(true); setBusquedaHecha(true); setPiezaNoEncontrada(false); setTipoResultado('exacto');
+    setBuscando(true); setBusquedaHecha(true); setPiezaNoEncontrada(false); setCilindradaDistinta(null); setTipoResultado('exacto');
     setVehiculosAlerta({ lista: [], pieza: '' });
     setRangoEnUso(rangoAnios);
     setResultadosDeOtroEstado(forzarTodos && estadoBusqueda !== 'todos');
@@ -941,6 +944,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       setTipoResultado(data.tipoResultado);
       setRangoEnUso(data.rangoAnios ?? null);
       setPiezaNoEncontrada(Boolean(data.piezaNoEncontrada));
+      setCilindradaDistinta(data.avisoCilindradaDistinta ? (data.cilindrada ?? '') : null);
       setResultadosMotoresLibre(listas.resultadosMotores || []);
       setResultadosTransmisionesLibre(listas.resultadosTransmisiones || []);
       setResultadosCercanosLibre(listas.resultadosCercanos || []);
@@ -2163,6 +2167,11 @@ function obtenerEstadoAbierto(horario) {
                     <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00' }}>
                       Pero sí hay {[marca, modelo, ano].filter(Boolean).join(' ') || 'el vehículo'} completo para partes en el/los yonke(s) de abajo — muchos yonkeros la sacan al momento aunque no esté en su lista. Llama o escribe por WhatsApp para confirmar si la tienen antes de ir.
                     </p>
+                    {cilindradaDistinta !== null && (
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00', fontWeight: 'bold' }}>
+                        ⚠️ Ninguno registra la cilindrada {cilindradaDistinta}: la de estos vehículos puede ser distinta, confírmala con el yonke.
+                      </p>
+                    )}
                   </div>
                 )}
 

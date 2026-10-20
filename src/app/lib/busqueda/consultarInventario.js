@@ -558,6 +558,23 @@ export async function consultarInventarioVehiculoEnYonkes(yonkesDocs, { marca, m
   return { resultados: cualquierAno, resultadosCercanos: [], tipoResultado: 'cualquierAno' };
 }
 
+// Respaldo por vehículo (config/buscador.respaldoVehiculo, encendido por omisión): cuando la
+// búsqueda con pieza terminó sin NADA (ni piezas, ni vehículos, ni cercanos, ni motores) y hay
+// marca, modelo y año, los vehículos de esa marca/modelo y año EXACTO, con las reglas de siempre
+// (yonkes activos, sin vendidos, filtro de estado). Incluye "motor/transmisión + cilindrada", que
+// no busca vehículos. Con cilindrada: primero los que coinciden (coincidePorCilindrada); si no
+// hay ninguno, los demás con cilindradaDistinta: true (la pantalla avisa que puede ser distinta).
+export async function consultarRespaldoVehiculo({ marca, modelo, anio, cilindrada = null, estado }) {
+  const yonkesSnap = await getDocs(collection(dbServer, 'yonkes'));
+  const { yonkesDocs } = filtrarPorEstado(yonkesSnap.docs, estado);
+  const todos = sinDuplicados(await buscarVehiculos(yonkesDocs, marca, modelo, anio));
+  ordenarPorPlan(todos);
+  if (cilindrada == null) return { resultados: todos, cilindradaDistinta: false };
+  const conCilindrada = aplicarCilindrada(todos, cilindrada);
+  if (conCilindrada.length > 0) return { resultados: conCilindrada, cilindradaDistinta: false };
+  return { resultados: todos, cilindradaDistinta: todos.length > 0 };
+}
+
 // Vehículos completos confirmados en alertas (yonkes/{id}/vehiculosAlerta): solo con el interruptor
 // config/pedidosClientes.inventarioVehiculos (quien llama lo revisa) y con marca, modelo, año y
 // pieza. Nunca tumba la búsqueda: si falla, se comporta como si no hubiera ninguno.
