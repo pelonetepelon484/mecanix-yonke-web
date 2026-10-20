@@ -20,7 +20,7 @@ vi.mock('./lib/SelectorMarcaModelo', () => ({
   ),
 }));
 
-const { default: AlertaUnPaso, TITULO_SIN_RESULTADOS, TEXTO_DISCRETO } = await import('./AlertaUnPaso.js');
+const { default: AlertaUnPaso, TITULO_SIN_RESULTADOS, TEXTO_DISCRETO, TEXTO_COMPACTO } = await import('./AlertaUnPaso.js');
 const { TEXTO_BOTON_ALERTA } = await import('./AvisarYonkes.js');
 
 const ESTADOS = [{ id: 'baja-california', nombre: 'Baja California' }, { id: 'sonora', nombre: 'Sonora' }];
@@ -125,5 +125,24 @@ describe('alerta en un paso', () => {
     fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(JSON.parse(global.fetch.mock.calls[0][1].body).aceptaOtrosEstados).toBe(true);
+  });
+});
+
+describe('alerta compacta (config/pedidosClientes.alertaSiempre)', () => {
+  it('texto pedido y, al tocarla, el mismo formulario de siempre', async () => {
+    render(<AlertaUnPaso variante="compacta" {...completo} />);
+    const boton = await screen.findByRole('button', { name: `🔔 ${TEXTO_COMPACTO}` });
+    expect(TEXTO_COMPACTO).toBe('¿No era lo que buscabas? Crea una alerta aquí');
+    expect(screen.queryByText(TITULO_SIN_RESULTADOS)).not.toBeInTheDocument();
+    expect(screen.queryByText(TEXTO_DISCRETO, { exact: false })).not.toBeInTheDocument();
+    fireEvent.click(boton);
+    expect(screen.getByLabelText('Tu WhatsApp')).toBeInTheDocument();
+  });
+
+  it('sin la bandera alertaUnPaso: no muestra nada', async () => {
+    unPaso = false;
+    const { container } = render(<AlertaUnPaso variante="compacta" {...completo} />);
+    await act(async () => {});
+    expect(container).toBeEmptyDOMElement();
   });
 });
