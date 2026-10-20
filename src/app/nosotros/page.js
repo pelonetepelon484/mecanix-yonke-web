@@ -4,6 +4,8 @@ import path from 'path';
 export const metadata = {
   title: 'Nuestra Historia',
   description: 'Conoce a David, mecánico de Tijuana y fundador de Mecanix Yonke Virtual, y la historia detrás de la plataforma.',
+  // Su propia dirección (si no, hereda la de la portada del layout).
+  alternates: { canonical: '/nosotros' },
 };
 
 // Foto del fundador — David la debe colocar en public/david-fundador.jpg. Mientras ese archivo

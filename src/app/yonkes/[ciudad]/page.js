@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { SITIO_OFICIAL } from '../../../lib/sitioOficial';
 import { CIUDADES_BC } from '../../lib/ciudades';
 import { getYonkesPorCiudad, getCiudadesConYonkesActivos } from '../../lib/yonkesServerData';
 import { formatearHorario, obtenerEstadoAbierto, metodosPagoLabels } from '../../lib/horario';
@@ -124,7 +125,7 @@ export default async function CiudadPage({ params }) {
   if (!ciudadInfo) notFound();
 
   const yonkes = await getYonkesPorCiudad(ciudad);
-  const pageUrl = `https://mecanixyonkevirtual.com/yonkes/${ciudad}`;
+  const pageUrl = `${SITIO_OFICIAL}/yonkes/${ciudad}`;
   const otrasCiudades = CIUDADES_BC.filter((c) => c.key !== ciudad);
 
   return (

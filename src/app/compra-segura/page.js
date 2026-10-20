@@ -1,6 +1,8 @@
 export const metadata = {
   title: 'Compra segura',
   description: 'Mecanix es un buscador gratuito y nunca pide dinero. Consejos para comprar tu autoparte usada de forma segura, sin caer en fraudes.',
+  // Su propia dirección (si no, hereda la de la portada del layout).
+  alternates: { canonical: '/compra-segura' },
 };
 
 export default function CompraSegura() {

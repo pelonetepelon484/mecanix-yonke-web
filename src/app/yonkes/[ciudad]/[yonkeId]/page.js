@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { notFound } from 'next/navigation';
+import { SITIO_OFICIAL } from '../../../../lib/sitioOficial';
 import { CIUDADES_BC } from '../../../lib/ciudades';
 import { getYonkeById } from '../../../lib/yonkesServerData';
 import { obtenerEstadosCombinado } from '../../../lib/busqueda/estadosServer';
@@ -59,7 +60,7 @@ export default async function YonkeDetallePage({ params }) {
   if (!resuelto) notFound();
   const { ciudadInfo, yonke, estadoLabel } = resuelto;
 
-  const pageUrl = `https://mecanixyonkevirtual.com/yonkes/${ciudad}/${yonkeId}`;
+  const pageUrl = `${SITIO_OFICIAL}/yonkes/${ciudad}/${yonkeId}`;
   const estadoAbierto = obtenerEstadoAbierto(yonke.horario);
   const horarioTexto = formatearHorario(yonke.horario);
 

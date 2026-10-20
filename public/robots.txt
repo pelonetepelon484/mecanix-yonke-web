@@ -3,4 +3,4 @@ Allow: /
 Disallow: /panel/
 Disallow: /admin/
 
-Sitemap: https://mecanixyonkevirtual.com/sitemap.xml
+Sitemap: https://www.mecanixyonkevirtual.com/sitemap.xml

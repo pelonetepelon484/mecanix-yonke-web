@@ -7,6 +7,8 @@ export const dynamic = 'force-dynamic';
 export const metadata = {
   title: 'Yonkes Verificados',
   description: 'Yonkes que Mecanix confirmó personalmente que son negocios reales y cumplen lo que ofrecen.',
+  // Su propia dirección (si no, hereda la de la portada del layout).
+  alternates: { canonical: '/verificados' },
 };
 
 const CIUDADES_BC = [

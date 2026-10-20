@@ -1,5 +1,6 @@
 import { CIUDADES_BC } from './lib/ciudades';
 import { getYonkesActivosParaSitemap } from './lib/yonkesServerData';
+import { SITIO_OFICIAL } from '../lib/sitioOficial';
 
 export default async function sitemap() {
   let yonkes = [];
@@ -13,67 +14,67 @@ export default async function sitemap() {
 
   return [
     {
-      url: 'https://mecanixyonkevirtual.com',
+      url: SITIO_OFICIAL,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1,
     },
     {
-      url: 'https://mecanixyonkevirtual.com/yonkes',
+      url: `${SITIO_OFICIAL}/yonkes`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
     },
     ...CIUDADES_BC.map((c) => ({
-      url: `https://mecanixyonkevirtual.com/yonkes/${c.key}`,
+      url: `${SITIO_OFICIAL}/yonkes/${c.key}`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
     })),
     ...yonkes.map((y) => ({
-      url: `https://mecanixyonkevirtual.com/yonkes/${y.ciudad}/${y.id}`,
+      url: `${SITIO_OFICIAL}/yonkes/${y.ciudad}/${y.id}`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.7,
     })),
     {
-      url: 'https://mecanixyonkevirtual.com/panel',
+      url: `${SITIO_OFICIAL}/panel`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
-      url: 'https://mecanixyonkevirtual.com/panel/registro',
+      url: `${SITIO_OFICIAL}/panel/registro`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8,
     },
     {
-      url: 'https://mecanixyonkevirtual.com/calificar',
+      url: `${SITIO_OFICIAL}/calificar`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.6,
     },
     {
-      url: 'https://mecanixyonkevirtual.com/nosotros',
+      url: `${SITIO_OFICIAL}/nosotros`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
-      url: 'https://mecanixyonkevirtual.com/compra-segura',
+      url: `${SITIO_OFICIAL}/compra-segura`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
-      url: 'https://mecanixyonkevirtual.com/privacidad',
+      url: `${SITIO_OFICIAL}/privacidad`,
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.3,
     },
     {
-      url: 'https://mecanixyonkevirtual.com/terminos',
+      url: `${SITIO_OFICIAL}/terminos`,
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.3,
