@@ -103,6 +103,14 @@ describe('cuadro de mensaje del buscador inteligente (franja vacía)', () => {
     expect(cuadroMensajeTieneContenido(partes)).toBe(true);
   });
 
+  it('el servidor ya buscó en otros estados sin encontrar nada (otrosEstadosRevisados): sin botón viejo', () => {
+    // HomeClient pasa conOtrosEstados = llegó la sección O otrosEstadosRevisados.
+    const partes = partesCuadroMensaje({ tipo: 'sin_inventario', alertaUnPaso: false, estadoBusqueda: 'jalisco', conOtrosEstados: true });
+    expect(partes).toEqual({ texto: true, confirmar: false, botonTodos: false });
+    // "No identificamos el modelo" (no_catalogado) nunca se revisa en otros estados: el botón sigue.
+    expect(partesCuadroMensaje({ tipo: 'no_catalogado', alertaUnPaso: false, estadoBusqueda: 'jalisco', conOtrosEstados: false }).botonTodos).toBe(true);
+  });
+
   it('confirmar siempre se muestra', () => {
     for (const alertaUnPaso of [false, true]) {
       expect(cuadroMensajeTieneContenido(partesCuadroMensaje({ tipo: 'confirmar', alertaUnPaso, estadoBusqueda: 'todos', conOtrosEstados: false }))).toBe(true);

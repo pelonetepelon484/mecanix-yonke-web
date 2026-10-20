@@ -1,7 +1,6 @@
 import { collection, getDocs } from 'firebase/firestore';
 import { dbServer } from '../firebase-server';
 import { estadoDeYonke, obtenerEstadosCombinado } from './estadosServer';
-import { puedeVerOtrosEstados } from '../../../lib/pedidosClientes';
 import { esPremiumVigente } from '../../../lib/planes';
 import { otrosEstadosSinResultadosServer } from './configBuscadorServer';
 import {
@@ -10,28 +9,50 @@ import {
 
 // Resultados de OTROS estados cuando no hay nada en el del cliente (config/buscador.
 // otrosEstadosSinResultados, solo true exacto). Solo cuando el cliente eligió un estado: con
-// "Todos los estados" la búsqueda ya cubre todo el país y esto no aplica. Solo yonkes activos,
-// Verificados y con Envíos nacionales (el mismo criterio de las alertas a otros estados) de un
-// estado distinto al del cliente; misma búsqueda y mismo rango de años que el buscador.
-// Límites: 8 yonkes revisados (Premium primero) y 6 resultados; si tarda más de 3 s o falla, se
-// omite (null) sin bloquear la respuesta. Lecturas extra: la lista de yonkes (1 por yonke) más las
-// consultas por año de esos 8 yonkes como máximo. Sin índices ni reglas nuevas (todo es público).
+// "Todos los estados" la búsqueda ya cubre todo el país y esto no aplica. Yonkes activos y
+// Verificados de un estado distinto al del cliente, con o sin Envíos nacionales: los que envían
+// van primero y los que no, al final de su estado (la pantalla les pone "no anuncia envíos").
+// Misma búsqueda y mismo rango de años que el buscador. Se revisan TODOS esos yonkes (antes, 8:
+// dejaba fuera a yonkes con el vehículo, ej. el motor de Yaris de El Patos); lecturas como una
+// búsqueda con "Todos los estados", solo cuando en el estado del cliente no hubo nada.
+// Límites: 12 resultados; si tarda más de 6 s o falla, se omite (null) sin bloquear la
+// respuesta. Sin índices ni reglas nuevas (todo es público).
 
-export const MAX_YONKES_OTROS_ESTADOS = 8;
-export const MAX_RESULTADOS_OTROS_ESTADOS = 6;
-export const TIEMPO_LIMITE_OTROS_ESTADOS_MS = 3000;
+export const MAX_YONKES_OTROS_ESTADOS = Infinity;
+export const MAX_RESULTADOS_OTROS_ESTADOS = 12;
+export const TIEMPO_LIMITE_OTROS_ESTADOS_MS = 6000;
+// Yonkes que se revisan a la vez (de uno en uno tardaba ~10 s con ~30 yonkes). Pocos a la vez a
+// propósito: con cientos de lecturas simultáneas el SDK en el servidor llegó a regresar vacío
+// (ver firebase-server.js).
+export const YONKES_EN_PARALELO = 5;
 
-// Yonkes de otros estados que pueden entrar: activos, Verificados, con Envíos nacionales y de un
-// estado distinto al del cliente (sin estado = Baja California, igual que en todo el sistema).
+// Corre buscar() por grupos de `n` yonkes a la vez y junta las listas en el orden de los yonkes.
+async function buscarPorGrupos(yonkesDocs, consulta, buscar, n = YONKES_EN_PARALELO) {
+  const listas = [];
+  for (let i = 0; i < yonkesDocs.length; i += n) {
+    const grupo = yonkesDocs.slice(i, i + n);
+    listas.push(...await Promise.all(grupo.map((d) => buscar([d], consulta))));
+  }
+  return listas.flat();
+}
+
+// Año de una tarjeta (vehículo o motor) para ordenar: el año buscado primero, luego los cercanos.
+const distanciaAnio = (r, anio) => {
+  const a = Number(r?.vehiculo?.ano ?? r?.motor?.ano);
+  return anio == null || Number.isNaN(a) ? 0 : Math.abs(a - anio);
+};
+
+// Yonkes de otros estados que pueden entrar: activos, Verificados y de un estado distinto al del
+// cliente (sin estado = Baja California, igual que en todo el sistema), con o sin envíos.
 export function yonkesElegiblesOtrosEstados(yonkesDocs, estadoCliente, max = MAX_YONKES_OTROS_ESTADOS) {
   return yonkesDocs
     .filter((d) => {
       const y = d.data();
-      return puedeVerOtrosEstados({ habilitado: true, otrosEstados: true }, y) && estadoDeYonke(y) !== estadoCliente;
+      return y.activo === true && y.verificado === true && estadoDeYonke(y) !== estadoCliente;
     })
-    // Premium vigente primero; entre iguales, el orden de siempre.
-    .map((d, i) => ({ d, i, premium: esPremiumVigente(d.data()) }))
-    .sort((a, b) => Number(b.premium) - Number(a.premium) || a.i - b.i)
+    // Con Envíos nacionales primero, luego Premium vigente; entre iguales, el orden de siempre.
+    .map((d, i) => ({ d, i, envios: d.data().enviosNacionales === true, premium: esPremiumVigente(d.data()) }))
+    .sort((a, b) => Number(b.envios) - Number(a.envios) || Number(b.premium) - Number(a.premium) || a.i - b.i)
     .slice(0, max)
     .map(({ d }) => d);
 }
@@ -43,7 +64,10 @@ const claveResultado = (r) => `${r.yonkeId}_${r.motorId ?? r.vehiculoId}`;
 export function agruparPorEstado(lista, estadoPorYonke, estados, max = MAX_RESULTADOS_OTROS_ESTADOS) {
   const vistos = new Set();
   const unicos = [];
-  for (const r of lista) {
+  // Los que envían primero (orden estable): los que no, solo llenan lo que sobre del tope y quedan
+  // al final de su estado.
+  const ordenada = [...lista].sort((a, b) => Number(b.enviosNacionales === true) - Number(a.enviosNacionales === true));
+  for (const r of ordenada) {
     const clave = claveResultado(r);
     if (vistos.has(clave)) continue;
     vistos.add(clave);
@@ -94,7 +118,8 @@ export async function buscarEnOtrosEstados(consulta, {
   const trabajo = (async () => {
     const elegibles = yonkesElegiblesOtrosEstados(await leerYonkes(), consulta.estadoCliente);
     if (elegibles.length === 0) return { grupos: [], yonkeIds: [], mostrados: 0 };
-    const [lista, estados] = await Promise.all([buscar(elegibles, consulta), leerEstados()]);
+    const [porYonke, estados] = await Promise.all([buscarPorGrupos(elegibles, consulta, buscar), leerEstados()]);
+    const lista = [...porYonke].sort((a, b) => distanciaAnio(a, consulta.anio) - distanciaAnio(b, consulta.anio));
     const estadoPorYonke = new Map(elegibles.map((d) => [d.id, estadoDeYonke(d.data())]));
     return agruparPorEstado(lista, estadoPorYonke, estados);
   })();
@@ -115,18 +140,25 @@ export async function buscarEnOtrosEstados(consulta, {
 
 // Para /api/buscar: null si NO aplica (bandera apagada o "Todos los estados"), y entonces la
 // respuesta y el registro quedan idénticos a los de siempre. Si aplica, siempre devuelve
-// { grupos, yonkeIds, mostrados } (vacío si no hubo nada, si tardó o si falló).
+// { grupos, yonkeIds, mostrados } (vacío si no hubo nada) y, si tardó o falló, omitido: true.
 export async function otrosEstadosSiAplica(estadoFiltro, consulta, deps = {}) {
   if (!estadoFiltro || estadoFiltro === 'todos') return null;
   const activa = await (deps.banderaActiva ?? otrosEstadosSinResultadosServer)();
   if (!activa) return null;
   return (await buscarEnOtrosEstados({ ...consulta, estadoCliente: estadoFiltro }, deps))
-    ?? { grupos: [], yonkeIds: [], mostrados: 0 };
+    ?? { grupos: [], yonkeIds: [], mostrados: 0, omitido: true };
 }
 
-// Lo que se agrega a la respuesta: solo si hay algo que mostrar.
+// Lo que se agrega a la respuesta: resultadosOtrosEstados solo si hay algo que mostrar, y
+// otrosEstadosRevisados cuando la búsqueda en otros estados sí se hizo (aunque no encontrara nada):
+// la pantalla ya no ofrece el botón "Buscar en todos los estados". Si se cortó por tiempo o falló,
+// no se marca y el botón sigue. Sin la bandera, nada (respuesta de siempre).
 export function camposRespuestaOtrosEstados(otros) {
-  return otros && otros.mostrados > 0 ? { resultadosOtrosEstados: otros.grupos } : {};
+  if (!otros) return {};
+  return {
+    ...(otros.omitido ? {} : { otrosEstadosRevisados: true }),
+    ...(otros.mostrados > 0 ? { resultadosOtrosEstados: otros.grupos } : {}),
+  };
 }
 
 // Lo que se agrega a registrarBusqueda: solo si la función aplicó (aunque no hubiera nada).

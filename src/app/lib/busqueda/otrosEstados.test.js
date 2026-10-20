@@ -23,7 +23,7 @@ const yonke = (id, datos) => ({ id, data: () => datos });
 const enAnio = new Date(Date.now() + 30 * 864e5);
 
 describe('qué yonkes entran', () => {
-  it('solo activos, Verificados, con Envíos nacionales y de otro estado; sin estado = Baja California', () => {
+  it('activos, Verificados y de otro estado, con o sin envíos (los que envían primero); sin estado = Baja California', () => {
     const docs = [
       yonke('ok-son', { ...BUENO, estado: 'sonora' }),
       yonke('sin-verificar', { ...BUENO, verificado: false, estado: 'sonora' }),
@@ -32,28 +32,45 @@ describe('qué yonkes entran', () => {
       yonke('mismo-estado', { ...BUENO, estado: 'jalisco' }),
       yonke('sin-estado', { ...BUENO }),
     ];
-    expect(yonkesElegiblesOtrosEstados(docs, 'jalisco').map((d) => d.id)).toEqual(['ok-son', 'sin-estado']);
+    expect(yonkesElegiblesOtrosEstados(docs, 'jalisco').map((d) => d.id)).toEqual(['ok-son', 'sin-estado', 'sin-envios']);
     // Un cliente de Baja California no ve como "otro estado" al yonke sin estado.
-    expect(yonkesElegiblesOtrosEstados(docs, 'baja-california').map((d) => d.id)).toEqual(['ok-son', 'mismo-estado']);
+    expect(yonkesElegiblesOtrosEstados(docs, 'baja-california').map((d) => d.id)).toEqual(['ok-son', 'mismo-estado', 'sin-envios']);
   });
 
-  it('máximo 8, con Premium vigente primero', () => {
-    const docs = Array.from({ length: 10 }, (_, i) => yonke(`y${i}`, { ...BUENO, estado: 'sonora', ...(i === 9 ? { plan: 'premium', premiumHasta: enAnio } : {}) }));
+  it('sin tope de yonkes: con envíos primero, luego Premium vigente', () => {
+    const docs = [
+      ...Array.from({ length: 12 }, (_, i) => yonke(`y${i}`, { ...BUENO, estado: 'sonora', ...(i === 9 ? { plan: 'premium', premiumHasta: enAnio } : {}) })),
+      yonke('patos', { activo: true, verificado: true, estado: 'baja-california' }),
+    ];
     const ids = yonkesElegiblesOtrosEstados(docs, 'jalisco').map((d) => d.id);
-    expect(ids).toHaveLength(8);
+    expect(ids).toHaveLength(13);
     expect(ids[0]).toBe('y9');
+    expect(ids.at(-1)).toBe('patos');
   });
 });
 
 describe('agrupado por estado', () => {
+  it('los que no anuncian envíos van al final y solo llenan lo que sobra del tope', () => {
+    const porYonke = new Map([['A', 'sonora'], ['B', 'sonora'], ['C', 'baja-california']]);
+    const lista = [
+      { yonkeId: 'C', vehiculoId: 'c', enviosNacionales: false },
+      ...Array.from({ length: 6 }, (_, i) => ({ yonkeId: i % 2 ? 'A' : 'B', vehiculoId: `${i}`, enviosNacionales: true })),
+    ];
+    const r = agruparPorEstado(lista, porYonke, ESTADOS, 6);
+    expect(r.mostrados).toBe(6);
+    expect(r.yonkeIds).not.toContain('C');
+    const r2 = agruparPorEstado(lista.slice(0, 3), porYonke, ESTADOS);
+    expect(r2.grupos.map((g) => g.estado)).toEqual(['sonora', 'baja-california']);
+  });
+
   const porYonke = new Map([['A', 'sonora'], ['B', 'baja-california'], ['C', 'sonora']]);
-  it('sin repetidos, máximo 6 y agrupado en el orden en que aparecen', () => {
+  it('sin repetidos, con tope y agrupado en el orden en que aparecen', () => {
     const lista = [
       { yonkeId: 'A', vehiculoId: '1' }, { yonkeId: 'B', vehiculoId: '2' }, { yonkeId: 'A', vehiculoId: '1' },
       { yonkeId: 'C', motorId: 'm1' }, { yonkeId: 'A', vehiculoId: '3' }, { yonkeId: 'B', vehiculoId: '4' },
       { yonkeId: 'C', vehiculoId: '5' }, { yonkeId: 'C', vehiculoId: '6' },
     ];
-    const r = agruparPorEstado(lista, porYonke, ESTADOS);
+    const r = agruparPorEstado(lista, porYonke, ESTADOS, 6);
     expect(r.mostrados).toBe(6);
     expect(r.grupos.map((g) => [g.estado, g.estadoNombre, g.resultados.length])).toEqual([['sonora', 'Sonora', 4], ['baja-california', 'Baja California', 2]]);
     expect(r.yonkeIds).toEqual(['A', 'B', 'C']);
@@ -110,14 +127,24 @@ describe('otrosEstadosSiAplica', () => {
   it('con bandera y estado elegido: resultados; si se pasa del tiempo, vacío (aplicó, sin nada)', async () => {
     expect((await otrosEstadosSiAplica('jalisco', {}, deps)).mostrados).toBe(1);
     const lento = () => new Promise((res) => setTimeout(() => res([]), 200));
-    expect(await otrosEstadosSiAplica('jalisco', {}, { ...deps, buscar: lento, tiempoLimiteMs: 10 })).toEqual({ grupos: [], yonkeIds: [], mostrados: 0 });
+    expect(await otrosEstadosSiAplica('jalisco', {}, { ...deps, buscar: lento, tiempoLimiteMs: 10 })).toEqual({ grupos: [], yonkeIds: [], mostrados: 0, omitido: true });
   });
 
   it('campos de respuesta y de registro', () => {
     expect(camposRespuestaOtrosEstados(null)).toEqual({});
-    expect(camposRespuestaOtrosEstados({ grupos: [], yonkeIds: [], mostrados: 0 })).toEqual({});
-    expect(camposRespuestaOtrosEstados({ grupos: ['g'], yonkeIds: ['A'], mostrados: 1 })).toEqual({ resultadosOtrosEstados: ['g'] });
+    // Se buscó y no hubo nada: solo la marca (la pantalla ya no ofrece el botón viejo).
+    expect(camposRespuestaOtrosEstados({ grupos: [], yonkeIds: [], mostrados: 0 })).toEqual({ otrosEstadosRevisados: true });
+    expect(camposRespuestaOtrosEstados({ grupos: ['g'], yonkeIds: ['A'], mostrados: 1 })).toEqual({ otrosEstadosRevisados: true, resultadosOtrosEstados: ['g'] });
+    // Se cortó por tiempo o falló: sin marca (el botón viejo sigue).
+    expect(camposRespuestaOtrosEstados({ grupos: [], yonkeIds: [], mostrados: 0, omitido: true })).toEqual({});
     expect(camposRegistroOtrosEstados(null)).toEqual({});
     expect(camposRegistroOtrosEstados({ grupos: [], yonkeIds: [], mostrados: 0 })).toEqual({ otrosEstados: { mostrados: 0, yonkeIds: [] } });
+  });
+});
+
+describe('tope de tarjetas', () => {
+  it('12 por omisión', () => {
+    const lista = Array.from({ length: 20 }, (_, i) => ({ yonkeId: 'A', vehiculoId: `${i}`, enviosNacionales: true }));
+    expect(agruparPorEstado(lista, new Map([['A', 'sonora']]), ESTADOS).mostrados).toBe(12);
   });
 });

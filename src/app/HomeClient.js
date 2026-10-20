@@ -993,7 +993,11 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       setResultadosTransmisionesCercanosLibre([]);
       setBusquedaHecha(false);
       setEncabezadoVehiculo(null);
-      setMensajeLibre({ tipo: data.estado, texto: data.mensaje, busqueda: data.busqueda || null, ...(otrosEstados ? { otrosEstados } : {}) });
+      setMensajeLibre({
+        tipo: data.estado, texto: data.mensaje, busqueda: data.busqueda || null,
+        ...(otrosEstados ? { otrosEstados } : {}),
+        ...(data.otrosEstadosRevisados === true ? { otrosEstadosRevisados: true } : {}),
+      });
       registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
     }
   }
@@ -1599,7 +1603,7 @@ function obtenerEstadoAbierto(horario) {
 
   // Partes del cuadro de mensaje del buscador inteligente (ver partesCuadroMensaje).
   const partesCuadro = mensajeLibre
-    ? partesCuadroMensaje({ tipo: mensajeLibre.tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados: Boolean(mensajeLibre.otrosEstados) })
+    ? partesCuadroMensaje({ tipo: mensajeLibre.tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados: Boolean(mensajeLibre.otrosEstados || mensajeLibre.otrosEstadosRevisados) })
     : null;
 
   return (

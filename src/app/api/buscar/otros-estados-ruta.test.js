@@ -49,8 +49,8 @@ vi.mock('../../lib/busqueda/consultarInventario', () => ({
   consultarMotoresTransmisiones: async () => ({ ...vacioMotores, sinYonkesEnEstado: sinYonkes }),
   consultarVehiculosAlerta: async () => [],
   consultarRespaldoVehiculo: (...a) => consultarRespaldoVehiculo(...a),
-  consultarInventarioEnYonkes: async (docs) => ({ resultados: docs.map((d) => ({ yonkeId: d.id, vehiculoId: 'v1' })), resultadosCercanos: [], piezaNoEncontrada: false }),
-  consultarInventarioVehiculoEnYonkes: async (docs) => ({ resultados: docs.map((d) => ({ yonkeId: d.id, vehiculoId: 'v2' })), resultadosCercanos: [] }),
+  consultarInventarioEnYonkes: async (docs) => ({ resultados: docs.map((d) => ({ yonkeId: d.id, vehiculoId: 'v1', enviosNacionales: d.data().enviosNacionales === true })), resultadosCercanos: [], piezaNoEncontrada: false }),
+  consultarInventarioVehiculoEnYonkes: async (docs) => ({ resultados: docs.map((d) => ({ yonkeId: d.id, vehiculoId: 'v2', enviosNacionales: d.data().enviosNacionales === true })), resultadosCercanos: [] }),
   consultarMotoresTransmisionesEnYonkes: async () => vacioMotores,
 }));
 
@@ -99,18 +99,21 @@ describe('bandera encendida', () => {
     expect(getDocs).not.toHaveBeenCalled();
   });
 
-  it('sin_inventario: agrega los resultados de otros estados (solo yonkes que envían) y lo registra aparte', async () => {
+  it('sin_inventario: agrega los resultados de otros estados (los que envían primero) y lo registra aparte', async () => {
     const r = await buscar({ estado: 'jalisco' });
     expect(r.estado).toBe('sin_inventario');
-    expect(r.resultadosOtrosEstados).toEqual([{ estado: 'sonora', estadoNombre: 'Sonora', resultados: [{ yonkeId: 'SON', vehiculoId: 'v1' }] }]);
-    expect(registro()).toMatchObject({ estado: 'sin_inventario', totalResultados: 0, otrosEstados: { mostrados: 1, yonkeIds: ['SON'] } });
+    expect(r.otrosEstadosRevisados).toBe(true);
+    expect(r.resultadosOtrosEstados).toEqual([{ estado: 'sonora', estadoNombre: 'Sonora', resultados: [
+      { yonkeId: 'SON', vehiculoId: 'v1', enviosNacionales: true }, { yonkeId: 'SON-SIN-ENVIOS', vehiculoId: 'v1', enviosNacionales: false },
+    ] }]);
+    expect(registro()).toMatchObject({ estado: 'sin_inventario', totalResultados: 0, otrosEstados: { mostrados: 2, yonkeIds: ['SON', 'SON-SIN-ENVIOS'] } });
     expect(registro().yonkeIds).toBeUndefined(); // la demanda no cambia: sin yonkeIds de resultado
   });
 
   it('sin_inventario sin pieza (solo vehículo) también', async () => {
     const r = await buscar({ estado: 'jalisco', pieza: null });
-    expect(r.resultadosOtrosEstados[0].resultados).toEqual([{ yonkeId: 'SON', vehiculoId: 'v2' }]);
-    expect(registro()).toMatchObject({ estado: 'sin_inventario', otrosEstados: { mostrados: 1 } });
+    expect(r.resultadosOtrosEstados[0].resultados.map((x) => x.yonkeId)).toEqual(['SON', 'SON-SIN-ENVIOS']);
+    expect(registro()).toMatchObject({ estado: 'sin_inventario', otrosEstados: { mostrados: 2 } });
   });
 
   it('sin_yonkes_estado: agrega los resultados y registra como sin_inventario', async () => {
@@ -119,7 +122,7 @@ describe('bandera encendida', () => {
     expect(r.estado).toBe('sin_yonkes_estado');
     expect(r.resultadosOtrosEstados[0].estado).toBe('sonora');
     expect(r.busqueda).toEqual({ marca: 'Honda', modelo: 'Civic', anio: 2016, pieza: 'Alternador' });
-    expect(registro()).toMatchObject({ estado: 'sin_inventario', otrosEstados: { mostrados: 1, yonkeIds: ['SON'] } });
+    expect(registro()).toMatchObject({ estado: 'sin_inventario', otrosEstados: { mostrados: 2, yonkeIds: ['SON', 'SON-SIN-ENVIOS'] } });
   });
 
   it('no_catalogado: no aplica', async () => {
@@ -127,12 +130,15 @@ describe('bandera encendida', () => {
     const r = await buscar({ estado: 'jalisco' });
     expect(r.estado).toBe('no_catalogado');
     expect(r).not.toHaveProperty('resultadosOtrosEstados');
+    expect(r).not.toHaveProperty('otrosEstadosRevisados');
     expect(getDocs).not.toHaveBeenCalled();
   });
 
   it('el cliente de Sonora no ve a los yonkes de su propio estado como "otro estado"', async () => {
     const r = await buscar({ estado: 'sonora' });
     expect(r).not.toHaveProperty('resultadosOtrosEstados');
+    // Sí se buscó (sin encontrar nada): la pantalla ya no ofrece el botón viejo.
+    expect(r.otrosEstadosRevisados).toBe(true);
     expect(registro()).toMatchObject({ otrosEstados: { mostrados: 0, yonkeIds: [] } });
   });
 });
@@ -255,7 +261,7 @@ describe('respaldo por vehículo (config/buscador.respaldoVehiculo)', () => {
     const r = await buscar({ estado: 'jalisco' });
     expect(r.estado).toBe('sin_inventario');
     expect(r.resultadosOtrosEstados[0].estado).toBe('sonora');
-    expect(registro()).toMatchObject({ estado: 'sin_inventario', otrosEstados: { mostrados: 1 } });
+    expect(registro()).toMatchObject({ estado: 'sin_inventario', otrosEstados: { mostrados: 2 } });
   });
 
   it('con "Todos" y la IP de otro estado: el respaldo pasa por el reparto de otros estados', async () => {
