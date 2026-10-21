@@ -12,7 +12,10 @@ vi.mock('../AuthContext', () => ({ useAuth: () => ({ tallerId: 'T1' }) }));
 vi.mock('./cotizaciones/datos', () => ({ leerConfigCotizaciones: vi.fn(async () => ({ terminosVersion: 'v1' })), aceptarVersion: vi.fn() }));
 vi.mock('../solicitudesPiezasDatos', () => ({ leerConfigSolicitudesPiezas: vi.fn(async () => null) }));
 vi.mock('./ordenes/datos', () => ({ leerConfigOrdenes: vi.fn(async () => ({ habilitado: true })) }));
-vi.mock('./historial/datos', () => ({ leerConfigHistorial: vi.fn(async () => configHistorial) }));
+vi.mock('./historial/datos', () => ({
+  leerConfigHistorial: vi.fn(async () => configHistorial),
+  listarPorVencer: vi.fn(async () => []), listarPorBorrarse: vi.fn(async () => []), recordatoriosDe: () => [], telefonoDeOrden: vi.fn(),
+}));
 
 const { default: PanelTaller } = await import('./page.js');
 

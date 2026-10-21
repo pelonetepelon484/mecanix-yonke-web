@@ -6,6 +6,7 @@ import { useHistorial } from '../contexto';
 import { borrarVehiculo, leerVehiculo, telefonoDeOrden } from '../datos';
 import { enlaceWhatsappHistorial, mensajeWhatsappHistorial, nombreVehiculo } from '../../../../../lib/historialTaller';
 import { fechaLarga, kmTexto } from '../formato';
+import Recordatorios from '../Recordatorios';
 
 // Detalle de un vehículo: sus servicios (del más reciente al más antiguo), WhatsApp y borrar.
 // WhatsApp: el teléfono se lee de la orden ultimoFolio EN ESE MOMENTO; si ya no existe, abre sin
@@ -13,7 +14,8 @@ import { fechaLarga, kmTexto } from '../formato';
 export default function DetalleVehiculoPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { tallerId, taller } = useHistorial();
+  const { tallerId, taller, puedeEscribir } = useHistorial();
+  const [recarga, setRecarga] = useState(0);
   const [vehiculo, setVehiculo] = useState(undefined);
   const [aviso, setAviso] = useState('');
   const [abriendo, setAbriendo] = useState(false);
@@ -25,7 +27,7 @@ export default function DetalleVehiculoPage() {
       .then((v) => { if (!cancelado) setVehiculo(v); })
       .catch((err) => { console.error(err); if (!cancelado) { setVehiculo(null); setAviso('No pudimos cargar este vehículo.'); } });
     return () => { cancelado = true; };
-  }, [tallerId, id]);
+  }, [tallerId, id, recarga]);
 
   async function abrirWhatsapp() {
     setAbriendo(true);
@@ -78,6 +80,8 @@ export default function DetalleVehiculoPage() {
         <button type="button" onClick={abrirWhatsapp} disabled={abriendo} style={botonWhatsapp}>
           {abriendo ? 'Abriendo...' : '💬 Escribir por WhatsApp'}
         </button>
+
+        <Recordatorios tallerId={tallerId} vehiculo={vehiculo} puedeEscribir={puedeEscribir} onGuardado={() => setRecarga((n) => n + 1)} />
 
         <h2 style={{ fontSize: '16px', color: '#1A3C5E', margin: '18px 0 8px' }}>Servicios</h2>
         {servicios.map((s) => (
