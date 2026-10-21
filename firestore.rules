@@ -677,7 +677,7 @@ service cloud.firestore {
       }
       function formaH() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['placas', 'marca', 'modelo', 'anio', 'servicios', 'folios', 'ultimoFolio', 'ultimoKm', 'ultimoServicioAt', 'creadoAt', 'actualizadoAt', 'expiraAt'])
+        return d.keys().hasOnly(['placas', 'marca', 'modelo', 'anio', 'servicios', 'folios', 'ultimoFolio', 'ultimoKm', 'ultimoServicioAt', 'creadoAt', 'actualizadoAt', 'expiraAt', 'recordatorios', 'proximoAviso'])
           && d.keys().hasAll(['placas', 'marca', 'modelo', 'anio', 'servicios', 'folios', 'ultimoFolio', 'ultimoServicioAt', 'creadoAt', 'actualizadoAt', 'expiraAt'])
           && d.placas is string && d.placas.matches('^[A-Z0-9-]{1,12}$')
           && d.marca is string && d.marca.size() >= 1 && d.marca.size() <= 60
@@ -720,17 +720,117 @@ service cloud.firestore {
           && servicioNuevoH(o);
       }
 
+      // ----- Recordatorios (etapa 3): recordatorios[] (hasta 10) y proximoAviso -----
+      // Solo se cambian con la ruta C ("solo recordatorios"). Firestore no recorre listas y corta
+      // cada revisión a 1,000 operaciones: la revisión va por posición y SE DETIENE donde termina la
+      // lista. Un recordatorio igual al anterior en la misma posición (o en la siguiente, cuando se
+      // quitó uno) no se vuelve a revisar a fondo; solo los nuevos o cambiados. Medido en el
+      // emulador: 10 caben (12 ya no). Si alguien manipula su app y cambia demasiados a la vez,
+      // Firestore rechaza el guardado (nunca lo deja pasar).
+      function avisoDeH(x) {
+        return x.fecha - duration.value(x.avisarDiasAntes, 'd');
+      }
+      // Campos cerrados (sin datos personales). Lo que no es texto hace fallar matches()/size() y se niega.
+      function recItemOkH(x, folios) {
+        return x.keys().hasOnly(['id', 'tipo', 'fecha', 'avisarDiasAntes', 'folio', 'estado', 'creadoAt'])
+          && x.keys().size() == 7
+          && x.id.matches('^[a-z0-9]{6,12}$')
+          && x.tipo.size() >= 1 && x.tipo.size() <= 60
+          && x.fecha is timestamp
+          && x.avisarDiasAntes is int && x.avisarDiasAntes >= 0 && x.avisarDiasAntes <= 60
+          && x.folio in folios
+          && x.estado in ['pendiente', 'atendido']
+          && x.creadoAt is timestamp;
+      }
+      function recEnH(l, viejo, i, folios) {
+        return (viejo.size() > i && l[i] == viejo[i])
+          || (viejo.size() > i + 1 && l[i] == viejo[i + 1])
+          || recItemOkH(l[i], folios);
+      }
+      function listaRecH(l, viejo, folios) {
+        return (l.size() <= 0 || (recEnH(l, viejo, 0, folios) && 
+          (l.size() <= 1 || (recEnH(l, viejo, 1, folios) && 
+          (l.size() <= 2 || (recEnH(l, viejo, 2, folios) && 
+          (l.size() <= 3 || (recEnH(l, viejo, 3, folios) && 
+          (l.size() <= 4 || (recEnH(l, viejo, 4, folios) && 
+          (l.size() <= 5 || (recEnH(l, viejo, 5, folios) && 
+          (l.size() <= 6 || (recEnH(l, viejo, 6, folios) && 
+          (l.size() <= 7 || (recEnH(l, viejo, 7, folios) && 
+          (l.size() <= 8 || (recEnH(l, viejo, 8, folios) && 
+          (l.size() <= 9 || recEnH(l, viejo, 9, folios))))))))))))))))))));
+      }
+      function sinPendientesH(l) {
+        return (l.size() <= 0 || (l[0].estado != 'pendiente' && 
+          (l.size() <= 1 || (l[1].estado != 'pendiente' && 
+          (l.size() <= 2 || (l[2].estado != 'pendiente' && 
+          (l.size() <= 3 || (l[3].estado != 'pendiente' && 
+          (l.size() <= 4 || (l[4].estado != 'pendiente' && 
+          (l.size() <= 5 || (l[5].estado != 'pendiente' && 
+          (l.size() <= 6 || (l[6].estado != 'pendiente' && 
+          (l.size() <= 7 || (l[7].estado != 'pendiente' && 
+          (l.size() <= 8 || (l[8].estado != 'pendiente' && 
+          (l.size() <= 9 || l[9].estado != 'pendiente')))))))))))))))))));
+      }
+      function cotaH(l, p) {
+        return (l.size() <= 0 || ((l[0].estado != 'pendiente' || p <= avisoDeH(l[0])) && 
+          (l.size() <= 1 || ((l[1].estado != 'pendiente' || p <= avisoDeH(l[1])) && 
+          (l.size() <= 2 || ((l[2].estado != 'pendiente' || p <= avisoDeH(l[2])) && 
+          (l.size() <= 3 || ((l[3].estado != 'pendiente' || p <= avisoDeH(l[3])) && 
+          (l.size() <= 4 || ((l[4].estado != 'pendiente' || p <= avisoDeH(l[4])) && 
+          (l.size() <= 5 || ((l[5].estado != 'pendiente' || p <= avisoDeH(l[5])) && 
+          (l.size() <= 6 || ((l[6].estado != 'pendiente' || p <= avisoDeH(l[6])) && 
+          (l.size() <= 7 || ((l[7].estado != 'pendiente' || p <= avisoDeH(l[7])) && 
+          (l.size() <= 8 || ((l[8].estado != 'pendiente' || p <= avisoDeH(l[8])) && 
+          (l.size() <= 9 || l[9].estado != 'pendiente' || p <= avisoDeH(l[9]))))))))))))))))))));
+      }
+      function algunoIgualH(l, p) {
+        return (l.size() > 0 && ((l[0].estado == 'pendiente' && avisoDeH(l[0]) == p) || 
+          (l.size() > 1 && ((l[1].estado == 'pendiente' && avisoDeH(l[1]) == p) || 
+          (l.size() > 2 && ((l[2].estado == 'pendiente' && avisoDeH(l[2]) == p) || 
+          (l.size() > 3 && ((l[3].estado == 'pendiente' && avisoDeH(l[3]) == p) || 
+          (l.size() > 4 && ((l[4].estado == 'pendiente' && avisoDeH(l[4]) == p) || 
+          (l.size() > 5 && ((l[5].estado == 'pendiente' && avisoDeH(l[5]) == p) || 
+          (l.size() > 6 && ((l[6].estado == 'pendiente' && avisoDeH(l[6]) == p) || 
+          (l.size() > 7 && ((l[7].estado == 'pendiente' && avisoDeH(l[7]) == p) || 
+          (l.size() > 8 && ((l[8].estado == 'pendiente' && avisoDeH(l[8]) == p) || 
+          (l.size() > 9 && l[9].estado == 'pendiente' && avisoDeH(l[9]) == p)))))))))))))))))));
+      }
+      // proximoAviso = el menor (fecha - avisarDiasAntes) de los pendientes; null si no hay.
+      function proximoOkH(l, p) {
+        return p == null ? sinPendientesH(l) : (p is timestamp && cotaH(l, p) && algunoIgualH(l, p));
+      }
+      // Ruta C: la lista nueva (hasta 10) bien formada y proximoAviso consistente con ella.
+      function recordatoriosOkH() {
+        let d = request.resource.data;
+        let l = d.recordatorios;
+        return l is list && l.size() <= 10
+          && listaRecH(l, resource.data.get('recordatorios', []), resource.data.folios)
+          && proximoOkH(l, d.get('proximoAviso', null));
+      }
+
       allow read: if esAdmin() || esDuenoH();
 
       allow create: if puedeEscribirH()
                     && formaH()
                     && request.resource.data.servicios.size() == 1
                     && request.resource.data.creadoAt == request.time
+                    // Nace sin recordatorios (se agregan después con la ruta C)
+                    && request.resource.data.get('recordatorios', []).size() == 0
+                    && request.resource.data.get('proximoAviso', null) == null
                     && ordenCoincideH();
 
-      // Agregar un servicio: el vehículo no cambia, la orden no estaba ya en el historial, y los
-      // servicios y folios anteriores quedan idénticos (solo se agrega uno al final).
-      allow update: if puedeEscribirH()
+      // Dos tipos de cambio (mismos permisos: dueño activo, términos vigentes, bandera y Premium):
+      // C) SOLO recordatorios (agregar, adelantar, días de aviso, atendido, quitar): no cambia nada
+      //    más, ni servicios, folios, placas, vehículo ni la fecha de borrado (expiraAt).
+      // B) Agregar un servicio (no toca recordatorios ni proximoAviso): el vehículo no cambia, la
+      //    orden no estaba ya en el historial y los servicios y folios anteriores quedan idénticos
+      //    (solo se agrega uno al final). Solo aquí se mueve expiraAt (+548 días).
+      allow update: if (puedeEscribirH()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['recordatorios', 'proximoAviso', 'actualizadoAt'])
+                    && request.resource.data.actualizadoAt == request.time
+                    && recordatoriosOkH())
+                    || (puedeEscribirH()
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['recordatorios', 'proximoAviso'])
                     && formaH()
                     && request.resource.data.creadoAt == resource.data.creadoAt
                     && request.resource.data.placas == resource.data.placas
@@ -741,7 +841,7 @@ service cloud.firestore {
                     && request.resource.data.servicios.size() == resource.data.servicios.size() + 1
                     && request.resource.data.servicios[0:resource.data.servicios.size()] == resource.data.servicios
                     && request.resource.data.folios[0:resource.data.folios.size()] == resource.data.folios
-                    && ordenCoincideH();
+                    && ordenCoincideH());
 
       allow delete: if esAdmin() || esDuenoH();
     }

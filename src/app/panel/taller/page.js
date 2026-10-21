@@ -11,6 +11,7 @@ import { leerConfigCotizaciones } from './cotizaciones/datos';
 import { leerConfigSolicitudesPiezas } from '../solicitudesPiezasDatos';
 import { leerConfigOrdenes } from './ordenes/datos';
 import { leerConfigHistorial } from './historial/datos';
+import ServiciosPorVencer from './ServiciosPorVencer';
 import AvisoVersion from './AvisoVersion';
 import { OpcionInstalarApp } from '../AvisoInstalarApp';
 
@@ -105,6 +106,7 @@ export default function PanelTaller() {
                 Pedir una pieza
               </button>
             )}
+            {historialHabilitado && <ServiciosPorVencer tallerId={tallerId} nombreTaller={nombre} />}
           </>
         )}
         {/* Instalar la app (PWA): siempre disponible aquí, aunque se haya cerrado el aviso (igual que en Negocio) */}

@@ -6,11 +6,12 @@
 // búsqueda por placas (==), por folio (array-contains) y la lista por actualizadoAt usan los
 // índices automáticos de un campo.
 import {
-  Timestamp, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, where,
+  Timestamp, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, updateDoc, where,
 } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import {
-  MAX_SERVICIOS_HISTORIAL, MENSAJES_HISTORIAL, expiraHistorial, mismoVehiculo, nombreVehiculo, normalizarPlacas, servicioDesdeOrden,
+  DIAS_AVISO_BORRADO, MAX_SERVICIOS_HISTORIAL, MENSAJES_HISTORIAL, MENSAJES_RECORDATORIO, calcularProximoAviso, cambiarRecordatorio,
+  expiraHistorial, mismoVehiculo, nombreVehiculo, normalizarPlacas, pasosParaAgregar, quitarRecordatorio, servicioDesdeOrden,
 } from '../../../../lib/historialTaller';
 
 export const TAMANO_PAGINA_HISTORIAL = 20;
@@ -105,6 +106,9 @@ export async function agregarOrdenAlHistorial({ tallerId, folio, placasEscritas 
       ...(masReciente ? km : (Number.isInteger(v.ultimoKm) ? { ultimoKm: v.ultimoKm } : {})),
       ultimoServicioAt: masReciente ? orden.fechaEntrega : v.ultimoServicioAt,
       creadoAt: v.creadoAt, ...comunes,
+      // Agregar un servicio NO toca los recordatorios: se conservan tal cual (las reglas lo exigen).
+      ...(v.recordatorios !== undefined ? { recordatorios: v.recordatorios } : {}),
+      ...(v.proximoAviso !== undefined ? { proximoAviso: v.proximoAviso } : {}),
     });
     return v.id;
   } catch (err) {
@@ -112,4 +116,62 @@ export async function agregarOrdenAlHistorial({ tallerId, folio, placasEscritas 
     console.error('[historial] No se pudo guardar', err);
     throw new Error(MENSAJES_HISTORIAL.guardarFallo);
   }
+}
+
+// ---------- Recordatorios (etapa 3) ----------
+// Solo cambian recordatorios, proximoAviso y actualizadoAt (ruta C de las reglas): nunca servicios,
+// folios, placas ni la fecha de borrado (expiraAt). Fechas: Timestamp en Firestore, ms en lib.
+const ms = (v) => (v?.toMillis ? v.toMillis() : (v instanceof Date ? v.getTime() : Number(v)));
+
+export function recordatoriosDe(vehiculo) {
+  return (vehiculo?.recordatorios || []).map((r) => ({ ...r, fecha: ms(r.fecha), creadoAt: ms(r.creadoAt) }));
+}
+
+function aFirestore(lista) {
+  return lista.map((r) => ({ ...r, fecha: Timestamp.fromMillis(r.fecha), creadoAt: Timestamp.fromMillis(r.creadoAt) }));
+}
+
+async function guardarLista(tallerId, vehiculoId, lista) {
+  const proximo = calcularProximoAviso(lista);
+  await updateDoc(vehiculoRef(tallerId, vehiculoId), {
+    recordatorios: aFirestore(lista),
+    proximoAviso: proximo === null ? null : Timestamp.fromMillis(proximo),
+    actualizadoAt: serverTimestamp(),
+  });
+  return lista;
+}
+
+// Agrega recordatorios (servicios periódicos) a un vehículo, uno por uno y en pasos chicos (ver
+// pasosParaAgregar). Lee el vehículo FRESCO. Devuelve la lista final.
+export async function agregarRecordatorios(tallerId, vehiculoId, nuevos, { fechaEntrega, folio }) {
+  const v = await leerVehiculo(tallerId, vehiculoId);
+  if (!v) throw new Error(MENSAJES_RECORDATORIO.guardarFallo);
+  let lista = recordatoriosDe(v);
+  for (const nuevo of nuevos) {
+    for (const paso of pasosParaAgregar(lista, nuevo, { fechaEntrega: ms(fechaEntrega), folio, ahora: Date.now() })) {
+      lista = await guardarLista(tallerId, vehiculoId, paso);
+    }
+  }
+  return lista;
+}
+
+export function cambiarRecordatorioDelVehiculo(tallerId, vehiculo, id, cambios) {
+  return guardarLista(tallerId, vehiculo.id, cambiarRecordatorio(recordatoriosDe(vehiculo), id, cambios));
+}
+
+export function quitarRecordatorioDelVehiculo(tallerId, vehiculo, id) {
+  return guardarLista(tallerId, vehiculo.id, quitarRecordatorio(recordatoriosDe(vehiculo), id));
+}
+
+// "Servicios por vencer": proximoAviso <= ahora. "Se borrarán pronto": expiraAt <= ahora + 30 días.
+// Índices automáticos de un campo (sin índices compuestos).
+export async function listarPorVencer(tallerId, ahora = new Date()) {
+  const snap = await getDocs(query(historialRef(tallerId), where('proximoAviso', '<=', Timestamp.fromDate(ahora)), orderBy('proximoAviso'), limit(TAMANO_PAGINA_HISTORIAL)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function listarPorBorrarse(tallerId, ahora = new Date()) {
+  const limite = new Date(ahora.getTime() + DIAS_AVISO_BORRADO * 86400000);
+  const snap = await getDocs(query(historialRef(tallerId), where('expiraAt', '<=', Timestamp.fromDate(limite)), orderBy('expiraAt'), limit(TAMANO_PAGINA_HISTORIAL)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
