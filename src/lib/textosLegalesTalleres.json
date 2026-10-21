@@ -310,71 +310,136 @@
     }
   ],
   "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir el Historial de Servicios y Recordatorios del plan Premium. El historial se llena solo con tus órdenes entregadas y guarda los datos del vehículo (placas, marca, modelo, año, kilometraje, trabajos y piezas) y tus recordatorios; no guarda nombres, teléfonos ni precios, y Mecanix nunca contacta a tus clientes. Puedes borrar un vehículo cuando quieras, y los vehículos sin un servicio nuevo en 18 meses se eliminan solos, con aviso en tu panel 30 días antes. Tú eres responsable de no escribir nombres, teléfonos, correos ni otros datos personales de tus clientes en las descripciones. También actualizamos el aviso de privacidad de la orden que entregas a tu cliente. Para seguir creando o editando cotizaciones y órdenes, lee y escribe «ACEPTO». Mientras no lo hagas, solo podrás visualizar, reimprimir y descargar tus documentos anteriores.",
-  "avisoOrden": {
-    "version": "aviso-orden-2",
-    "aviso": [
-      {
-        "tipo": "parrafo",
-        "texto": "Aviso de privacidad de la orden de servicio"
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio [folio]."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Datos y finalidad. Podemos recabar su nombre y teléfono; los datos de su vehículo (marca, modelo, año, placas y kilometraje); la falla que reporta; el estado del vehículo al recibirlo; las pertenencias que se anoten; los trabajos, piezas y costos; y la fecha de entrega y la garantía. Los usamos para identificarlo y contactarlo, documentar el estado del vehículo, elaborar y dar seguimiento a la orden, realizar los diagnósticos y reparaciones que usted autorice, informarle de costos, avances y entrega, documentar trabajos, pagos, garantías y reclamaciones, y cumplir obligaciones legales o ejercer y defender derechos derivados del servicio. No usaremos sus datos con fines publicitarios."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Plazo. Sus datos se eliminan de la plataforma 10 días después de terminar la garantía del servicio, o 90 días después de la última modificación de la orden si el vehículo no se ha entregado, y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. La eliminación de la plataforma no implica la destrucción de los documentos que [nombre del taller] deba conservar en sus propios archivos por obligación legal."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Asimismo, le informamos que los datos de su vehículo (placas, marca, modelo, año, el registro técnico de los servicios realizados y el kilometraje) se incorporarán a nuestro Historial Digital de Servicios para dar seguimiento a la garantía, mantener un expediente de mantenimiento preventivo y recordarnos sus próximos servicios recomendados. Sus datos de contacto no se incorporan al Historial Digital; se conservan únicamente en su orden de servicio por el plazo señalado en este aviso. Usted puede solicitar al taller, en cualquier momento, que elimine su vehículo del Historial Digital."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Aceptación. Al firmar la constancia de recepción, usted declara haber recibido este aviso. Esa firma no implica renuncia a derechos del consumidor, ni autoriza trabajos adicionales ni el uso de sus datos con fines promocionales."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Versión del aviso: aviso-orden-2"
-      }
-    ],
-    "constancia": [
-      {
-        "tipo": "parrafo",
-        "texto": "Constancia de recepción del vehículo"
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Orden de servicio [folio]. Fecha de recepción: [fecha de recepción]."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Declaro que entregué a [nombre del taller] el vehículo identificado en esta orden de servicio, en el estado físico y con las pertenencias que se anotaron al recibirlo, y que recibí el aviso de privacidad de la orden de servicio."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Esta firma acredita la recepción del vehículo, la entrega del aviso de privacidad y los hechos que se anotaron expresamente en la orden. No implica renuncia a derechos del consumidor ni autorización de trabajos adicionales distintos de los acordados."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Nombre y firma del representante del taller: ______________________________"
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
-      }
-    ]
-  }
+  "avisosOrden": [
+    {
+      "version": "aviso-orden-1",
+      "aviso": [
+        {
+          "tipo": "parrafo",
+          "texto": "Aviso de privacidad de la orden de servicio"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio [folio]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Datos y finalidad. Podemos recabar su nombre y teléfono; los datos de su vehículo (marca, modelo, año, placas y kilometraje); la falla que reporta; el estado del vehículo al recibirlo; las pertenencias que se anoten; los trabajos, piezas y costos; y la fecha de entrega y la garantía. Los usamos para identificarlo y contactarlo, documentar el estado del vehículo, elaborar y dar seguimiento a la orden, realizar los diagnósticos y reparaciones que usted autorice, informarle de costos, avances y entrega, documentar trabajos, pagos, garantías y reclamaciones, y cumplir obligaciones legales o ejercer y defender derechos derivados del servicio. No usaremos sus datos con fines publicitarios."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Plazo. Sus datos se eliminan de la plataforma 10 días después de terminar la garantía del servicio, o 90 días después de la última modificación de la orden si el vehículo no se ha entregado, y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. La eliminación de la plataforma no implica la destrucción de los documentos que [nombre del taller] deba conservar en sus propios archivos por obligación legal."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Aceptación. Al firmar la constancia de recepción, usted declara haber recibido este aviso. Esa firma no implica renuncia a derechos del consumidor, ni autoriza trabajos adicionales ni el uso de sus datos con fines promocionales."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Versión del aviso: aviso-orden-1"
+        }
+      ],
+      "constancia": [
+        {
+          "tipo": "parrafo",
+          "texto": "Constancia de recepción del vehículo"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Orden de servicio [folio]. Fecha de recepción: [fecha de recepción]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Declaro que entregué a [nombre del taller] el vehículo identificado en esta orden de servicio, en el estado físico y con las pertenencias que se anotaron al recibirlo, y que recibí el aviso de privacidad de la orden de servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Esta firma acredita la recepción del vehículo, la entrega del aviso de privacidad y los hechos que se anotaron expresamente en la orden. No implica renuncia a derechos del consumidor ni autorización de trabajos adicionales distintos de los acordados."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del representante del taller: ______________________________"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
+        }
+      ]
+    },
+    {
+      "version": "aviso-orden-2",
+      "aviso": [
+        {
+          "tipo": "parrafo",
+          "texto": "Aviso de privacidad de la orden de servicio"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio [folio]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Datos y finalidad. Podemos recabar su nombre y teléfono; los datos de su vehículo (marca, modelo, año, placas y kilometraje); la falla que reporta; el estado del vehículo al recibirlo; las pertenencias que se anoten; los trabajos, piezas y costos; y la fecha de entrega y la garantía. Los usamos para identificarlo y contactarlo, documentar el estado del vehículo, elaborar y dar seguimiento a la orden, realizar los diagnósticos y reparaciones que usted autorice, informarle de costos, avances y entrega, documentar trabajos, pagos, garantías y reclamaciones, y cumplir obligaciones legales o ejercer y defender derechos derivados del servicio. No usaremos sus datos con fines publicitarios."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Plazo. Sus datos se eliminan de la plataforma 10 días después de terminar la garantía del servicio, o 90 días después de la última modificación de la orden si el vehículo no se ha entregado, y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. La eliminación de la plataforma no implica la destrucción de los documentos que [nombre del taller] deba conservar en sus propios archivos por obligación legal."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Asimismo, le informamos que los datos de su vehículo (placas, marca, modelo, año, el registro técnico de los servicios realizados y el kilometraje) se incorporarán a nuestro Historial Digital de Servicios para dar seguimiento a la garantía, mantener un expediente de mantenimiento preventivo y recordarnos sus próximos servicios recomendados. Sus datos de contacto no se incorporan al Historial Digital; se conservan únicamente en su orden de servicio por el plazo señalado en este aviso. Usted puede solicitar al taller, en cualquier momento, que elimine su vehículo del Historial Digital."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Aceptación. Al firmar la constancia de recepción, usted declara haber recibido este aviso. Esa firma no implica renuncia a derechos del consumidor, ni autoriza trabajos adicionales ni el uso de sus datos con fines promocionales."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Versión del aviso: aviso-orden-2"
+        }
+      ],
+      "constancia": [
+        {
+          "tipo": "parrafo",
+          "texto": "Constancia de recepción del vehículo"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Orden de servicio [folio]. Fecha de recepción: [fecha de recepción]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Declaro que entregué a [nombre del taller] el vehículo identificado en esta orden de servicio, en el estado físico y con las pertenencias que se anotaron al recibirlo, y que recibí el aviso de privacidad de la orden de servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Esta firma acredita la recepción del vehículo, la entrega del aviso de privacidad y los hechos que se anotaron expresamente en la orden. No implica renuncia a derechos del consumidor ni autorización de trabajos adicionales distintos de los acordados."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del representante del taller: ______________________________"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
+        }
+      ]
+    }
+  ]
 }

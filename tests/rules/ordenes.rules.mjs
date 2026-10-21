@@ -577,3 +577,68 @@ describe('candado Premium de órdenes (config/ordenes.requierePremium)', () => {
     await assertSucceeds(deleteDoc(oref('t1', O)));
   });
 });
+
+describe('aviso por versión: una orden conserva el permiso de datos con la versión con que se creó', () => {
+  const V1 = 'O251015-AVI1';   // creada con aviso-orden-1, con datos del cliente
+  const V0 = 'O251015-AVI0';   // creada con aviso-orden-0 (sin aviso): nunca datos
+  const V2 = 'O251015-AVI2';   // creada con aviso-orden-2
+  const conDatos = { cliente: { nombre: 'Juan', telefono: '6641112233' } };
+  const placas = (v) => ({ ...v, placas: 'ABC123' });
+  // Cuerpo para EDITAR una orden sembrada de versión `version` (sin entregar).
+  const editar = (version, extra = {}) => orden({ creadoAt: CREADO, avisoVersion: version, ...extra });
+  async function sembrarVersiones(avisoOrdenVersion = 'aviso-orden-2', extraConfig = {}) {
+    await sembrar({ configOrdenes: { habilitado: true, datosClienteHabilitados: true, avisoOrdenVersion, ...extraConfig } });
+    await env.withSecurityRulesDisabled(async (c) => {
+      const db = c.firestore();
+      const base = (version, extra = {}) => ({ ...orden({ avisoVersion: version, ...extra }), creadoAt: CREADO, actualizadoAt: CREADO, expiraAt: enDias(78) });
+      await setDoc(doc(db, 'talleres', 'T1', 'ordenes', V1), base('aviso-orden-1', { ...conDatos, vehiculo: placas(orden().vehiculo) }));
+      await setDoc(doc(db, 'talleres', 'T1', 'ordenes', V0), base('aviso-orden-0'));
+      await setDoc(doc(db, 'talleres', 'T1', 'ordenes', V2), base('aviso-orden-2', conDatos));
+    });
+  }
+
+  it('consola en aviso-orden-2: la orden aviso-orden-1 con datos se sigue editando', async () => {
+    await sembrarVersiones();
+    await assertSucceeds(setDoc(oref('t1', V1), editar('aviso-orden-1', { ...conDatos, vehiculo: placas(orden().vehiculo), fallaReportada: 'Otra falla', expiraAt: enDias(88) })));
+  });
+  it('consola en aviso-orden-2: la orden aviso-orden-1 con datos se marca como entregada', async () => {
+    await sembrarVersiones();
+    await assertSucceeds(setDoc(oref('t1', V1), editar('aviso-orden-1', {
+      ...conDatos, vehiculo: placas(orden().vehiculo), estado: 'entregado', garantiaDias: 30, fechaEntrega: serverTimestamp(), expiraAt: enDias(38),
+    })));
+  });
+  it('consola en aviso-orden-2: quitar datos y borrar la orden aviso-orden-1, aun sin Premium con el candado encendido', async () => {
+    await sembrarVersiones('aviso-orden-2', { requierePremium: true });
+    await assertSucceeds(updateDoc(oref('t1', V1), { cliente: {}, 'vehiculo.placas': deleteField(), actualizadoAt: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(oref('t1', V1)));
+  });
+  it('una orden NUEVA con la versión vieja se rechaza (con o sin datos); con la vigente y datos, sí', async () => {
+    await sembrarVersiones();
+    await assertFails(setDoc(oref('t1', ON), orden({ avisoVersion: 'aviso-orden-1', ...conDatos })));
+    await assertFails(setDoc(oref('t1', ON), orden({ avisoVersion: 'aviso-orden-1' })));
+    await assertSucceeds(setDoc(oref('t1', ON), orden({ avisoVersion: 'aviso-orden-2', ...conDatos })));
+  });
+  it('no se puede cambiar la versión del aviso de una orden existente (ni subirla ni bajarla)', async () => {
+    await sembrarVersiones();
+    await assertFails(setDoc(oref('t1', V1), editar('aviso-orden-2', { ...conDatos, expiraAt: enDias(88) })));
+    await assertFails(setDoc(oref('t1', V0), editar('aviso-orden-2', { ...conDatos, expiraAt: enDias(88) })));
+    await assertFails(setDoc(oref('t1', V0), editar('aviso-orden-1', { ...conDatos, expiraAt: enDias(88) })));
+    await assertFails(setDoc(oref('t1', V2), editar('aviso-orden-1', { ...conDatos, expiraAt: enDias(88) })));
+  });
+  it('una orden sin aviso (aviso-orden-0) nunca recibe datos del cliente, aunque conserve su versión', async () => {
+    await sembrarVersiones();
+    await assertFails(setDoc(oref('t1', V0), editar('aviso-orden-0', { ...conDatos, expiraAt: enDias(88) })));
+    await assertSucceeds(setDoc(oref('t1', V0), editar('aviso-orden-0', { fallaReportada: 'Sin datos', expiraAt: enDias(88) })));
+  });
+  it('con la bandera de datos apagada, la orden aviso-orden-1 con datos ya no se edita (como hoy)', async () => {
+    await sembrarVersiones('aviso-orden-2');
+    await conConfig({ datosClienteHabilitados: false });
+    await assertFails(setDoc(oref('t1', V1), editar('aviso-orden-1', { ...conDatos, expiraAt: enDias(88) })));
+  });
+  it('consola TODAVÍA en aviso-orden-1 (hoy): todo igual que antes', async () => {
+    await sembrarVersiones('aviso-orden-1');
+    await assertSucceeds(setDoc(oref('t1', V1), editar('aviso-orden-1', { ...conDatos, vehiculo: placas(orden().vehiculo), expiraAt: enDias(88) })));
+    await assertSucceeds(setDoc(oref('t1', ON), orden({ avisoVersion: 'aviso-orden-1', ...conDatos })));
+    await assertFails(setDoc(oref('t1', 'O251016-NUE2'), orden({ avisoVersion: 'aviso-orden-2', ...conDatos })));
+  });
+});

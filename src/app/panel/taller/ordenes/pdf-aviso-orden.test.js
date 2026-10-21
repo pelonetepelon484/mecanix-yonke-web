@@ -32,7 +32,7 @@ vi.mock('../../../../lib/avisoOrden', async (original) => {
   };
 });
 
-const { descargarPdfOrden, MENSAJE_SIN_AVISO } = await import('./pdf.js');
+const { descargarPdfOrden, bytesPdfOrden, MENSAJE_SIN_AVISO } = await import('./pdf.js');
 const taller = { nombre: 'Taller Peña', ciudad: 'Tijuana', whatsapp: '6641234567' };
 const base = {
   folio: 'O261011-7KQ4', estado: 'recibido', creadoAt: new Date(2026, 9, 11), expiraAt: new Date(2027, 0, 7),
@@ -81,3 +81,37 @@ describe('hojas de aviso y constancia en el PDF de la orden (etapa 4)', () => {
     expect(registro.hojas).toBe(1);
   });
 });
+
+describe('aviso por versión: cada orden con el texto que se le entregó al cliente', () => {
+  const HISTORIAL = 'Asimismo, le informamos que los datos de su vehículo';
+  const conHistorial = (h) => h.some((t) => t.startsWith(HISTORIAL));
+  it('orden VIEJA (aviso-orden-1) con datos del cliente: imprime SU aviso y su constancia (sin el párrafo del historial)', async () => {
+    modo = 'real';
+    await descargarPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-1', cliente: { nombre: 'Juan Pérez' } }, taller });
+    expect(registro.hojas).toBe(3);
+    expect(deHoja(2)[0]).toBe('Versión del aviso: aviso-orden-1');
+    expect(deHoja(2)).toContain('Aviso de privacidad de la orden de servicio');
+    expect(conHistorial(deHoja(2))).toBe(false);
+    expect(deHoja(3)).toContain('Constancia de recepción del vehículo');
+  });
+  it('orden NUEVA (aviso-orden-2): imprime el aviso nuevo con el párrafo del historial', async () => {
+    modo = 'real';
+    await descargarPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-2', cliente: { nombre: 'Juan Pérez' } }, taller });
+    expect(deHoja(2)[0]).toBe('Versión del aviso: aviso-orden-2');
+    expect(conHistorial(deHoja(2))).toBe(true);
+  });
+  it('"Descargar mis documentos" (.zip) usa también la versión de cada orden', async () => {
+    modo = 'real';
+    await bytesPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-1', cliente: { nombre: 'Juan' } }, taller });
+    expect(registro.hojas).toBe(3);
+    expect(deHoja(2)[0]).toBe('Versión del aviso: aviso-orden-1');
+    registro.textos = []; registro.hojas = 0;
+    await bytesPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-2', cliente: { nombre: 'Juan' } }, taller });
+    expect(conHistorial(deHoja(2))).toBe(true);
+  });
+  it('nunca imprime un aviso que no corresponde: versión sin aviso y con datos, no genera el PDF', async () => {
+    modo = 'real';
+    await expect(descargarPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-0', cliente: { nombre: 'Juan' } }, taller })).rejects.toThrow(MENSAJE_SIN_AVISO);
+  });
+});
+

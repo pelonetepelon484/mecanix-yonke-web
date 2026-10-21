@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import textos from './textosLegalesTalleres.json';
-import { EN_BLANCO, MARCADOR_PENDIENTE, VERSION_AVISO_ORDEN, armarAvisoOrden, avisoOrdenListo, datosClienteDisponibles } from './avisoOrden';
+import { EN_BLANCO, MARCADOR_PENDIENTE, VERSION_AVISO_ORDEN, VERSIONES_AVISO_ORDEN, armarAvisoOrden, avisoOrdenListo, datosClienteDisponibles } from './avisoOrden';
 
 // Un aviso "final" de prueba (NO es texto legal: solo para probar el armado).
 const listo = {
@@ -11,37 +11,61 @@ const listo = {
 const config = { datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-1' };
 
 describe('aviso de privacidad de órdenes (falla cerrada)', () => {
-  it('el archivo ya trae el texto final aviso-orden-2 (sin el marcador "[TEXTO LEGAL PENDIENTE]")', () => {
+  type Hoja = { version: string; aviso: { texto: string }[]; constancia: { texto: string }[] };
+  const avisos = (textos as unknown as { avisosOrden: Hoja[] }).avisosOrden;
+  const HISTORIAL = 'Asimismo, le informamos que los datos de su vehículo (placas, marca, modelo, año, el registro técnico de los servicios realizados y el kilometraje) se incorporarán a nuestro Historial Digital de Servicios para dar seguimiento a la garantía, mantener un expediente de mantenimiento preventivo y recordarnos sus próximos servicios recomendados. Sus datos de contacto no se incorporan al Historial Digital; se conservan únicamente en su orden de servicio por el plazo señalado en este aviso. Usted puede solicitar al taller, en cualquier momento, que elimine su vehículo del Historial Digital.';
+
+  it('el archivo trae las DOS versiones (aviso-orden-1 y aviso-orden-2), sin el marcador "[TEXTO LEGAL PENDIENTE]"', () => {
     expect(MARCADOR_PENDIENTE).toBe('[TEXTO LEGAL PENDIENTE]');
+    expect(avisos.map((a) => a.version)).toEqual(['aviso-orden-1', 'aviso-orden-2']);
+    expect(VERSIONES_AVISO_ORDEN).toEqual(['aviso-orden-1', 'aviso-orden-2']);
     expect(VERSION_AVISO_ORDEN).toBe('aviso-orden-2');
-    expect(JSON.stringify((textos as { avisoOrden: unknown }).avisoOrden)).not.toContain(MARCADOR_PENDIENTE);
+    expect(JSON.stringify(avisos)).not.toContain(MARCADOR_PENDIENTE);
     expect(avisoOrdenListo()).toBe(true);
+    expect(avisoOrdenListo('aviso-orden-1')).toBe(true);
     expect(avisoOrdenListo('aviso-orden-2')).toBe(true);
-    // La versión anterior ya no es la del archivo: no se imprime un aviso que no corresponde.
-    expect(avisoOrdenListo('aviso-orden-1')).toBe(false);
     expect(avisoOrdenListo('aviso-orden-0')).toBe(false);
+    expect(avisoOrdenListo('aviso-orden-9')).toBe(false);
   });
-  it('texto final: títulos, primer y último párrafo de cada hoja', () => {
-    const { aviso, constancia } = (textos as { avisoOrden: { aviso: { texto: string }[]; constancia: { texto: string }[] } }).avisoOrden;
-    expect(aviso).toHaveLength(9);
-    expect(aviso[0].texto).toBe('Aviso de privacidad de la orden de servicio');
-    expect(aviso[1].texto.startsWith('Responsable. [Nombre del taller], con domicilio en [ciudad]')).toBe(true);
-    expect(aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-2');
-    // Párrafo del Historial Digital (texto exacto), justo después de "Plazo".
-    expect(aviso[4].texto.startsWith('Plazo.')).toBe(true);
-    expect(aviso[5].texto).toBe('Asimismo, le informamos que los datos de su vehículo (placas, marca, modelo, año, el registro técnico de los servicios realizados y el kilometraje) se incorporarán a nuestro Historial Digital de Servicios para dar seguimiento a la garantía, mantener un expediente de mantenimiento preventivo y recordarnos sus próximos servicios recomendados. Sus datos de contacto no se incorporan al Historial Digital; se conservan únicamente en su orden de servicio por el plazo señalado en este aviso. Usted puede solicitar al taller, en cualquier momento, que elimine su vehículo del Historial Digital.');
-    expect(constancia).toHaveLength(6);
-    expect(constancia[0].texto).toBe('Constancia de recepción del vehículo');
-    expect(constancia[1].texto).toBe('Orden de servicio [folio]. Fecha de recepción: [fecha de recepción].');
-    expect(constancia.at(-1)?.texto).toBe('Nombre y firma del cliente: ______________________________ Fecha: ______________');
+  it('aviso-orden-1: su texto original (8 párrafos, sin el párrafo del Historial Digital)', () => {
+    const v1 = avisos[0];
+    expect(v1.aviso).toHaveLength(8);
+    expect(v1.aviso[0].texto).toBe('Aviso de privacidad de la orden de servicio');
+    expect(v1.aviso[4].texto.startsWith('Plazo.')).toBe(true);
+    expect(v1.aviso[5].texto.startsWith('Sus derechos.')).toBe(true);
+    expect(v1.aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-1');
+    expect(v1.aviso.map((p) => p.texto)).not.toContain(HISTORIAL);
+    expect(v1.constancia).toHaveLength(6);
   });
-  it('los datos del cliente siguen apagados mientras config/ordenes no los encienda (interruptor de la consola)', () => {
+  it('aviso-orden-2: igual a aviso-orden-1 más el párrafo exacto del Historial Digital después de "Plazo", y su versión al pie', () => {
+    const [v1, v2] = avisos;
+    expect(v2.aviso).toHaveLength(9);
+    expect(v2.aviso[5].texto).toBe(HISTORIAL);
+    expect([...v2.aviso.slice(0, 5), ...v2.aviso.slice(6, 8)]).toEqual(v1.aviso.slice(0, 7));
+    expect(v2.aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-2');
+    expect(v2.constancia).toEqual(v1.constancia);
+  });
+  it('datos del cliente: orden nueva con la versión de la consola; orden existente con la SUYA', () => {
     expect(datosClienteDisponibles(null)).toBe(false);
     expect(datosClienteDisponibles({ datosClienteHabilitados: false, avisoOrdenVersion: 'aviso-orden-2' })).toBe(false);
     expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-0' })).toBe(false);
+    // Orden nueva: consola en aviso-orden-1 (hoy) o en aviso-orden-2.
+    expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-1' })).toBe(true);
     expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-2' })).toBe(true);
-    // Con la consola todavía en aviso-orden-1 (texto nuevo publicado antes de cambiarla): apagados.
-    expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-1' })).toBe(false);
+    // Orden existente aviso-orden-1 con la consola ya en aviso-orden-2: conserva sus datos.
+    expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-2' }, 'aviso-orden-1')).toBe(true);
+    // Orden sin aviso (aviso-orden-0): nunca.
+    expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-2' }, 'aviso-orden-0')).toBe(false);
+  });
+  it('el PDF arma cada orden con el texto de SU versión; una versión que no existe, nada', () => {
+    const t = { nombre: 'Taller Peña', ciudad: 'Tijuana', whatsapp: '6641234567' };
+    const o = { folio: 'O261011-7KQ4', creadoAt: new Date(2026, 9, 11) };
+    expect(armarAvisoOrden(t, o, 'aviso-orden-1')?.aviso.parrafos).not.toContain(HISTORIAL);
+    expect(armarAvisoOrden(t, o, 'aviso-orden-1')?.version).toBe('aviso-orden-1');
+    expect(armarAvisoOrden(t, o, 'aviso-orden-2')?.aviso.parrafos).toContain(HISTORIAL);
+    expect(armarAvisoOrden(t, o, 'aviso-orden-2')?.version).toBe('aviso-orden-2');
+    expect(armarAvisoOrden(t, o, 'aviso-orden-0')).toBeNull();
+    expect(armarAvisoOrden(t, o, 'aviso-orden-9')).toBeNull();
   });
   it('armado con el texto real: llena los datos, no deja marcadores y no repite la versión (va al pie)', () => {
     const r = armarAvisoOrden({ nombre: 'Taller Peña', ciudad: 'Tijuana', whatsapp: '6641234567' }, { folio: 'O261011-7KQ4', creadoAt: new Date(2026, 9, 11) }, 'aviso-orden-2');
