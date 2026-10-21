@@ -83,7 +83,7 @@ describe('hojas de aviso y constancia en el PDF de la orden (etapa 4)', () => {
 });
 
 describe('aviso por versión: cada orden con el texto que se le entregó al cliente', () => {
-  const HISTORIAL = 'Asimismo, le informamos que los datos de su vehículo';
+  const HISTORIAL = 'Historial Digital de Servicios y recordatorios de mantenimiento.';
   const conHistorial = (h) => h.some((t) => t.startsWith(HISTORIAL));
   it('orden VIEJA (aviso-orden-1) con datos del cliente: imprime SU aviso y su constancia (sin el párrafo del historial)', async () => {
     modo = 'real';

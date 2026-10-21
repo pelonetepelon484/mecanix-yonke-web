@@ -309,7 +309,7 @@
       ]
     }
   ],
-  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir el Historial de Servicios y Recordatorios del plan Premium. El historial se llena solo con tus órdenes entregadas y guarda los datos del vehículo (placas, marca, modelo, año, kilometraje, trabajos y piezas) y tus recordatorios; no guarda nombres, teléfonos ni precios, y Mecanix nunca contacta a tus clientes. Puedes borrar un vehículo cuando quieras, y los vehículos sin un servicio nuevo en 18 meses se eliminan solos, con aviso en tu panel 30 días antes. Tú eres responsable de no escribir nombres, teléfonos, correos ni otros datos personales de tus clientes en las descripciones. También actualizamos el aviso de privacidad de la orden que entregas a tu cliente. Para seguir creando o editando cotizaciones y órdenes, lee y escribe «ACEPTO». Mientras no lo hagas, solo podrás visualizar, reimprimir y descargar tus documentos anteriores.",
+  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir el Historial de Servicios y Recordatorios del plan Premium. El historial se llena solo con las órdenes entregadas que tú incorporas y guarda los datos del vehículo (placas, marca, modelo, año, kilometraje, trabajos y piezas) y tus recordatorios; no guarda nombres, teléfonos ni precios, y Mecanix nunca contacta a tus clientes. Puedes borrar un vehículo cuando quieras y descargar una copia de tu historial con “Descargar mi historial”, aunque tu plan Premium haya vencido. El historial de un vehículo se elimina automáticamente cuando pasan más de 18 meses sin que incorpores una nueva orden entregada; entregar una orden sin incorporarla, o cambiar datos, notas o recordatorios, no reinicia ese plazo, y recibirás un aviso en tu panel al menos 30 días antes. Tú eres responsable de no escribir nombres, teléfonos, correos ni otros datos personales de tus clientes en las descripciones. También actualizamos el aviso de privacidad de la orden que entregas a tu cliente: ahora le informa que podrás contactarle por WhatsApp sobre sus servicios, garantías y próximos mantenimientos, y el plazo de conservación del historial de su vehículo. Para seguir creando o editando cotizaciones y órdenes, lee y escribe «ACEPTO». Mientras no lo hagas, solo podrás visualizar, reimprimir y descargar tus documentos anteriores.",
   "avisosOrden": [
     {
       "version": "aviso-orden-1",
@@ -399,7 +399,27 @@
         },
         {
           "tipo": "parrafo",
-          "texto": "Asimismo, le informamos que los datos de su vehículo (placas, marca, modelo, año, el registro técnico de los servicios realizados y el kilometraje) se incorporarán a nuestro Historial Digital de Servicios para dar seguimiento a la garantía, mantener un expediente de mantenimiento preventivo y recordarnos sus próximos servicios recomendados. Sus datos de contacto no se incorporan al Historial Digital; se conservan únicamente en su orden de servicio por el plazo señalado en este aviso. Usted puede solicitar al taller, en cualquier momento, que elimine su vehículo del Historial Digital."
+          "texto": "Historial Digital de Servicios y recordatorios de mantenimiento. Para conservar un registro de los trabajos realizados en su vehículo, dar seguimiento a las garantías relacionadas con dichos trabajos y facilitar la planificación de futuros mantenimientos, el Taller podrá incorporar al Historial Digital de Servicios los datos del vehículo, incluidas las placas, marca, modelo, año, kilometraje y los registros técnicos de los servicios realizados."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "El historial permite consultar los servicios anteriores y configurar recordatorios internos para próximos mantenimientos recomendados. Además, el Taller podrá utilizar el número telefónico que usted proporcionó en su orden de servicio para contactarle por WhatsApp en relación con los servicios realizados, el seguimiento de garantías o los próximos mantenimientos recomendados. El envío de estos mensajes depende de la decisión del Taller y se inicia mediante la función de WhatsApp disponible en la Plataforma; Mecanix no envía estos mensajes directamente por medio de los recordatorios internos."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Los datos de contacto, como su nombre, número telefónico y correo electrónico, no se incorporan al Historial Digital por esta función. Se conservan en la orden de servicio conforme al plazo indicado en este aviso y se utilizan para las finalidades que correspondan."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "El historial de su vehículo se eliminará automáticamente cuando transcurran más de 18 meses sin que el Taller incorpore a dicho historial una nueva orden de servicio registrada como entregada. La entrega de una orden que no se incorpore al historial no reinicia este plazo. El Taller recibirá un aviso en su panel con al menos 30 días de anticipación a la eliminación."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Este plazo corresponde al Historial Digital y no modifica por sí mismo el plazo de conservación de la orden de servicio original. Las copias de respaldo podrán permanecer temporalmente conforme al ciclo de eliminación de Mecanix, sujetas a las medidas de seguridad y restricciones de uso correspondientes."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Si desea solicitar la eliminación del historial de su vehículo o dejar de recibir recordatorios por WhatsApp, puede dirigirse directamente al Taller mediante los canales de contacto que este tenga habilitados. Las solicitudes se atenderán conforme a la legislación aplicable y a las obligaciones de conservación que, en su caso, correspondan."
         },
         {
           "tipo": "parrafo",

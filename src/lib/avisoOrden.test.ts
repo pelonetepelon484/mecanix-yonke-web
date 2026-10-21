@@ -13,7 +13,7 @@ const config = { datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-
 describe('aviso de privacidad de órdenes (falla cerrada)', () => {
   type Hoja = { version: string; aviso: { texto: string }[]; constancia: { texto: string }[] };
   const avisos = (textos as unknown as { avisosOrden: Hoja[] }).avisosOrden;
-  const HISTORIAL = 'Asimismo, le informamos que los datos de su vehículo (placas, marca, modelo, año, el registro técnico de los servicios realizados y el kilometraje) se incorporarán a nuestro Historial Digital de Servicios para dar seguimiento a la garantía, mantener un expediente de mantenimiento preventivo y recordarnos sus próximos servicios recomendados. Sus datos de contacto no se incorporan al Historial Digital; se conservan únicamente en su orden de servicio por el plazo señalado en este aviso. Usted puede solicitar al taller, en cualquier momento, que elimine su vehículo del Historial Digital.';
+  const HISTORIAL = 'Historial Digital de Servicios y recordatorios de mantenimiento. Para conservar un registro de los trabajos realizados en su vehículo, dar seguimiento a las garantías relacionadas con dichos trabajos y facilitar la planificación de futuros mantenimientos, el Taller podrá incorporar al Historial Digital de Servicios los datos del vehículo, incluidas las placas, marca, modelo, año, kilometraje y los registros técnicos de los servicios realizados.';
 
   it('el archivo trae las DOS versiones (aviso-orden-1 y aviso-orden-2), sin el marcador "[TEXTO LEGAL PENDIENTE]"', () => {
     expect(MARCADOR_PENDIENTE).toBe('[TEXTO LEGAL PENDIENTE]');
@@ -37,11 +37,17 @@ describe('aviso de privacidad de órdenes (falla cerrada)', () => {
     expect(v1.aviso.map((p) => p.texto)).not.toContain(HISTORIAL);
     expect(v1.constancia).toHaveLength(6);
   });
-  it('aviso-orden-2: igual a aviso-orden-1 más el párrafo exacto del Historial Digital después de "Plazo", y su versión al pie', () => {
+  it('aviso-orden-2: igual a aviso-orden-1 más el bloque del Historial Digital (6 párrafos, texto del abogado) después de "Plazo", y su versión al pie', () => {
     const [v1, v2] = avisos;
-    expect(v2.aviso).toHaveLength(9);
+    expect(v2.aviso).toHaveLength(14);
     expect(v2.aviso[5].texto).toBe(HISTORIAL);
-    expect([...v2.aviso.slice(0, 5), ...v2.aviso.slice(6, 8)]).toEqual(v1.aviso.slice(0, 7));
+    const bloque = v2.aviso.slice(5, 11).map((p) => p.texto).join('\n');
+    expect(bloque).toContain('el Taller podrá utilizar el número telefónico que usted proporcionó en su orden de servicio para contactarle por WhatsApp');
+    expect(bloque).toContain('Mecanix no envía estos mensajes directamente por medio de los recordatorios internos.');
+    expect(bloque).toContain('cuando transcurran más de 18 meses sin que el Taller incorpore a dicho historial una nueva orden de servicio registrada como entregada');
+    expect(bloque).toContain('no modifica por sí mismo el plazo de conservación de la orden de servicio original');
+    expect(v2.aviso[10].texto.startsWith('Si desea solicitar la eliminación del historial de su vehículo o dejar de recibir recordatorios por WhatsApp')).toBe(true);
+    expect([...v2.aviso.slice(0, 5), ...v2.aviso.slice(11, 13)]).toEqual(v1.aviso.slice(0, 7));
     expect(v2.aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-2');
     expect(v2.constancia).toEqual(v1.constancia);
   });
