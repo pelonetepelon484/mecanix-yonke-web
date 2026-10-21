@@ -105,7 +105,8 @@ describe('textos legales de talleres (texto final aprobado por el abogado el 11 
     expect(p).toContain('el Taller determina las finalidades del tratamiento y actúa como responsable, mientras que Mecanix actúa como encargado');
     expect(p).toContain('Los recordatorios están dirigidos al Taller y no implican que Mecanix contacte directamente a sus clientes.');
     expect(p).toContain('cuando transcurran más de 18 meses sin que el Taller incorpore al Historial Digital una nueva orden de servicio registrada como entregada para el vehículo, el historial se eliminará automáticamente.');
-    expect(p).toContain('así como la modificación de notas, datos o recordatorios, no reiniciará el plazo.');
+    expect(p).toContain('El plazo se calculará a partir de la fecha en que el Taller incorpore al historial la última orden de servicio entregada. La entrega de una orden que no se incorpore al historial, así como la modificación de notas, datos o recordatorios, no reiniciará el plazo.');
+    expect(p).not.toContain('que el Taller haya incorporado al historial');
     expect(p).toContain('podrá descargar una copia de su historial mediante la función «Descargar mi historial»');
     expect(p).toContain('Mecanix colaborará con el Taller cuando sea necesario localizar, corregir, exportar o eliminar registros dentro de la Plataforma.');
   });

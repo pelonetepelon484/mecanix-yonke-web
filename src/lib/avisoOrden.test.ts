@@ -46,6 +46,9 @@ describe('aviso de privacidad de órdenes (falla cerrada)', () => {
     expect(bloque).toContain('Mecanix no envía estos mensajes directamente por medio de los recordatorios internos.');
     expect(bloque).toContain('cuando transcurran más de 18 meses sin que el Taller incorpore a dicho historial una nueva orden de servicio registrada como entregada');
     expect(bloque).toContain('no modifica por sí mismo el plazo de conservación de la orden de servicio original');
+    // La orden solo pide nombre y teléfono: el aviso no menciona correo.
+    expect(bloque).toContain('Los datos de contacto, como su nombre y número telefónico, no se incorporan al Historial Digital por esta función.');
+    expect([...v2.aviso, ...v2.constancia].map((p) => p.texto).join('\n')).not.toMatch(/correo/i);
     expect(v2.aviso[10].texto.startsWith('Si desea solicitar la eliminación del historial de su vehículo o dejar de recibir recordatorios por WhatsApp')).toBe(true);
     expect([...v2.aviso.slice(0, 5), ...v2.aviso.slice(11, 13)]).toEqual(v1.aviso.slice(0, 7));
     expect(v2.aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-2');

@@ -318,7 +318,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "El plazo se calculará a partir de la última orden de servicio entregada que el Taller haya incorporado al historial. La entrega de una orden que no se incorpore al historial, así como la modificación de notas, datos o recordatorios, no reiniciará el plazo."
+      "texto": "El plazo se calculará a partir de la fecha en que el Taller incorpore al historial la última orden de servicio entregada. La entrega de una orden que no se incorpore al historial, así como la modificación de notas, datos o recordatorios, no reiniciará el plazo."
     },
     {
       "tipo": "parrafo",
@@ -519,7 +519,7 @@
         },
         {
           "tipo": "parrafo",
-          "texto": "Los datos de contacto, como su nombre, número telefónico y correo electrónico, no se incorporan al Historial Digital por esta función. Se conservan en la orden de servicio conforme al plazo indicado en este aviso y se utilizan para las finalidades que correspondan."
+          "texto": "Los datos de contacto, como su nombre y número telefónico, no se incorporan al Historial Digital por esta función. Se conservan en la orden de servicio conforme al plazo indicado en este aviso y se utilizan para las finalidades que correspondan."
         },
         {
           "tipo": "parrafo",
