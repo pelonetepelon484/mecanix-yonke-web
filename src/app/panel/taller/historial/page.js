@@ -6,6 +6,7 @@ import { useHistorial } from './contexto';
 import { listarVehiculos } from './datos';
 import { nombreVehiculo } from '../../../../lib/historialTaller';
 import { fechaLarga, kmTexto } from './formato';
+import DescargarHistorial from './DescargarHistorial';
 
 // Lista de vehículos del historial: de 20 en 20 (los actualizados más recientemente primero), con
 // placas, vehículo, último servicio, último kilometraje y "Se borrará el…".
@@ -49,6 +50,7 @@ export default function HistorialPage() {
         <p style={{ fontSize: '13px', color: '#555', margin: '0 0 14px' }}>
           Se llena desde tus órdenes entregadas con &quot;Agregar al historial&quot;. Cada vehículo se borra solo 18 meses después de su último cambio.
         </p>
+        <DescargarHistorial tallerId={tallerId} />
         {error && <p role="alert" style={{ color: '#B3261E' }}>{error}</p>}
         {!error && items === null && <p style={{ color: '#555' }}>Cargando...</p>}
         {items && items.length === 0 && <p style={{ color: '#555' }}>Todavía no tienes vehículos en tu historial.</p>}

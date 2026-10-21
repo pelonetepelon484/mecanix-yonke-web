@@ -1,6 +1,8 @@
 // Aviso de privacidad y constancia de recepción de las ÓRDENES de servicio (etapa 4).
-// El texto vive en textosLegalesTalleres.json -> avisoOrden { version, aviso[], constancia[] } y lo
-// redacta el abogado. Mientras algún párrafo diga "[TEXTO LEGAL PENDIENTE]" (o falte), todo FALLA
+// El texto vive en textosLegalesTalleres.json -> avisosOrden: [{ version, aviso[], constancia[] }, ...]
+// (una entrada por versión, igual que avisosTaller en las cotizaciones) y lo redacta el abogado.
+// Cada orden usa SIEMPRE el texto de la versión con la que se creó (la que se le entregó al
+// cliente); la última de la lista es la más reciente. Mientras algún párrafo diga "[TEXTO LEGAL PENDIENTE]" (o falte), todo FALLA
 // CERRADO: el formulario no muestra nombre, teléfono ni placas, "Convertir en orden" no copia datos
 // del cliente y el PDF no imprime la hoja de aviso (y no se genera si la orden trae datos del cliente).
 //
@@ -16,31 +18,41 @@ export const EN_BLANCO = '______________________';
 
 type Parrafo = { tipo?: string; texto?: string };
 type AvisoOrden = { version?: string; aviso?: Parrafo[]; constancia?: Parrafo[] };
-const AVISO = (textos as unknown as { avisoOrden?: AvisoOrden }).avisoOrden ?? {};
+const AVISOS: AvisoOrden[] = (textos as unknown as { avisosOrden?: AvisoOrden[] }).avisosOrden ?? [];
 
-export const VERSION_AVISO_ORDEN: string = AVISO.version ?? '';
+// La versión más reciente del archivo.
+export const VERSION_AVISO_ORDEN: string = AVISOS.at(-1)?.version ?? '';
+export const VERSIONES_AVISO_ORDEN: string[] = AVISOS.map((a) => a.version ?? '');
+
+// El texto de esa versión ({} si no existe); sin versión, el más reciente.
+export function avisoOrdenDeVersion(version?: unknown): AvisoOrden {
+  if (version === undefined) return AVISOS.at(-1) ?? {};
+  return AVISOS.find((a) => a.version === version) ?? {};
+}
 
 const listaLista = (l: unknown): l is Parrafo[] => Array.isArray(l) && l.length > 0
   && l.every((p) => typeof p?.texto === 'string' && p.texto.trim() !== '' && !p.texto.includes(MARCADOR_PENDIENTE));
 
 // ¿Ya está el texto final del abogado? Si se pasa una versión (la de config/ordenes o la de la
-// orden), además debe ser EXACTAMENTE la del texto del archivo.
-export function avisoOrdenListo(version?: unknown, aviso: AvisoOrden = AVISO): boolean {
+// orden), debe existir en el archivo y ser EXACTAMENTE la de ese texto.
+export function avisoOrdenListo(version?: unknown, aviso: AvisoOrden = avisoOrdenDeVersion(version)): boolean {
   if (!aviso.version || !listaLista(aviso.aviso) || !listaLista(aviso.constancia)) return false;
   return version === undefined || version === aviso.version;
 }
 
-// Los datos del cliente se pueden capturar en una orden solo con: la bandera encendida, el texto
-// final listo, la versión de config igual a la del texto, y la orden con esa misma versión
-// (las órdenes viejas, p. ej. aviso-orden-0, nunca; las reglas de Firestore exigen lo mismo).
+// Datos del cliente (nombre, teléfono y placas), solo con la bandera encendida y:
+// - orden NUEVA (sin versión): el texto de la versión de config/ordenes listo en el archivo;
+// - orden que ya existe: el texto de SU versión listo en el archivo (una orden creada con
+//   aviso-orden-1 lo conserva aunque config ya diga aviso-orden-2). Las órdenes sin aviso (p. ej.
+//   aviso-orden-0) nunca. Las reglas de Firestore exigen lo mismo.
 export function datosClienteDisponibles(
   config: { datosClienteHabilitados?: unknown; avisoOrdenVersion?: unknown } | null | undefined,
   versionOrden?: unknown,
-  aviso: AvisoOrden = AVISO,
+  aviso?: AvisoOrden,
 ): boolean {
   if (config?.datosClienteHabilitados !== true) return false;
-  if (!avisoOrdenListo(config.avisoOrdenVersion, aviso)) return false;
-  return versionOrden === undefined || versionOrden === config.avisoOrdenVersion;
+  if (versionOrden === undefined) return avisoOrdenListo(config.avisoOrdenVersion, aviso ?? avisoOrdenDeVersion(config.avisoOrdenVersion));
+  return avisoOrdenListo(versionOrden, aviso ?? avisoOrdenDeVersion(versionOrden));
 }
 
 function formatearWhatsapp(w: unknown): string {
@@ -58,9 +70,10 @@ const aFecha = (v: unknown): Date | null => {
   return null;
 };
 
-// Arma las dos hojas con los datos del taller y de la orden. null si el texto no está listo o si
-// la versión pedida no es la del texto (nunca se imprime un aviso que no corresponde).
-export function armarAvisoOrden(taller: Taller, orden: Orden, version?: unknown, aviso: AvisoOrden = AVISO) {
+// Arma las dos hojas con los datos del taller y de la orden, con el texto de la versión de la
+// orden. null si esa versión no está en el archivo o no está lista (nunca se imprime un aviso que
+// no corresponde).
+export function armarAvisoOrden(taller: Taller, orden: Orden, version?: unknown, aviso: AvisoOrden = avisoOrdenDeVersion(version)) {
   if (!avisoOrdenListo(version, aviso)) return null;
   const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
   const nombre = texto(taller?.nombre) || EN_BLANCO;

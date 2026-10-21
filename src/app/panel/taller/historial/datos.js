@@ -175,3 +175,30 @@ export async function listarPorBorrarse(tallerId, ahora = new Date()) {
   const snap = await getDocs(query(historialRef(tallerId), where('expiraAt', '<=', Timestamp.fromDate(limite)), orderBy('expiraAt'), limit(TAMANO_PAGINA_HISTORIAL)));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
+
+// ---------- "Descargar mi historial" ----------
+// Todos los vehículos del taller (1 lectura por vehículo). Usa la misma lectura de siempre (dueño o
+// admin): funciona aunque el Premium haya vencido o falte aceptar los términos.
+export async function listarTodosLosVehiculos(tallerId) {
+  const snap = await getDocs(historialRef(tallerId));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// Fecha guardada (Timestamp, Date o ms) a milisegundos, o null.
+export const msOVacio = (v) => {
+  const n = v?.toMillis ? v.toMillis() : (v instanceof Date ? v.getTime() : (typeof v === 'number' ? v : NaN));
+  return Number.isFinite(n) ? n : null;
+};
+
+// Descarga el texto como archivo .csv en el dispositivo (sin subir nada). En iPhone se abre o se
+// guarda desde la vista de Safari.
+export function guardarCsv(texto, nombre) {
+  const url = URL.createObjectURL(new Blob([texto], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}

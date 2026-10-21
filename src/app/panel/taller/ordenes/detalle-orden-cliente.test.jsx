@@ -10,8 +10,8 @@ vi.mock('../../../lib/SelectorMarcaModelo', () => ({ default: () => null }));
 vi.mock('./contexto', () => ({ useOrdenes: () => contexto }));
 vi.mock('./datos', () => ({ leerOrden: vi.fn(async () => orden), guardarOrden: vi.fn(), borrarOrden: vi.fn(), quitarDatosClienteOrden: vi.fn() }));
 vi.mock('./pdf', () => ({ descargarPdfOrden: vi.fn() }));
-// Simula el texto final listo: solo la versión vigente (aviso-orden-1) admite datos del cliente.
-vi.mock('../../../../lib/avisoOrden', () => ({ datosClienteDisponibles: (config, version) => config?.datosClienteHabilitados === true && (version === undefined || version === config.avisoOrdenVersion) }));
+// Usa el aviso real (textosLegalesTalleres.json -> avisosOrden: aviso-orden-1 y aviso-orden-2):
+// cada orden admite datos del cliente con SU versión; las órdenes sin aviso (aviso-orden-0), nunca.
 
 const { default: DetalleOrden } = await import('./[id]/page.js');
 const base = {
@@ -29,6 +29,13 @@ describe('detalle de la orden: datos del cliente según la versión del aviso', 
     contexto = { tallerId: 'T1', taller: { activo: true }, puedeEditar: true, puedeBorrar: true, configOrdenes };
     render(<DetalleOrden />);
     expect(await screen.findByLabelText('Nombre')).toBeInTheDocument();
+    expect(screen.getByLabelText('Placas (opcional)')).toBeInTheDocument();
+  });
+  it('orden aviso-orden-1 con la consola ya en aviso-orden-2: conserva nombre, teléfono y placas', async () => {
+    orden = { ...base, avisoVersion: 'aviso-orden-1', cliente: { nombre: 'Juan' } };
+    contexto = { tallerId: 'T1', taller: { activo: true }, puedeEditar: true, puedeBorrar: true, configOrdenes: { ...configOrdenes, avisoOrdenVersion: 'aviso-orden-2' } };
+    render(<DetalleOrden />);
+    expect(await screen.findByLabelText('Nombre')).toHaveValue('Juan');
     expect(screen.getByLabelText('Placas (opcional)')).toBeInTheDocument();
   });
   it('orden VIEJA (aviso-orden-0): no muestra campos del cliente', async () => {

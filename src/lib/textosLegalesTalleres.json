@@ -1,6 +1,6 @@
 {
-  "version": "talleres-2026-10-3",
-  "fecha": "12 de octubre de 2026",
+  "version": "talleres-2026-10-4",
+  "fecha": "21 de octubre de 2026",
   "urls": {
     "terminosTalleres": "https://mecanixyonkevirtual.com/terminos#talleres",
     "privacidadTalleres": "https://mecanixyonkevirtual.com/privacidad#talleres"
@@ -125,6 +125,102 @@
     {
       "tipo": "parrafo",
       "texto": "La Plataforma ofrece un plan Básico, sin costo, y un plan Premium, de pago, con un precio de $398.00 MXN al mes más IVA. Las cotizaciones y la solicitud de piezas a yonkes están incluidas en el plan Básico. Las órdenes de servicio y las demás funciones de la Plataforma, incluidas las que se incorporen en el futuro, forman parte del plan Premium. Mientras Mecanix no comience a cobrarlas, las órdenes de servicio están disponibles sin costo para los Talleres registrados. Mecanix avisará al Taller con al menos 30 días naturales de anticipación antes de empezar a cobrar una función que hoy es gratuita, y no hará ningún cobro sin la aceptación expresa del Taller. Si el Taller no contrata el plan Premium, podrá seguir consultando, descargando y eliminando las órdenes ya creadas."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.12 Módulo de Historial de Servicios y Recordatorios (Plan Premium)"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Descripción y funcionamiento. El Módulo de Historial de Servicios y Recordatorios forma parte del plan Premium y permite al Taller consultar los servicios realizados a cada vehículo, dar seguimiento a las garantías relacionadas con dichos servicios y configurar recordatorios internos para futuros mantenimientos."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El historial se genera a partir de las órdenes de servicio que el Taller registra como entregadas en la Plataforma. Por cada vehículo, se podrán registrar las placas, marca, modelo, año, kilometraje, fecha de entrega y descripción técnica de los trabajos realizados y de las piezas utilizadas. También se podrán configurar recordatorios internos que indiquen el tipo de servicio, la fecha prevista, la anticipación del aviso y su estado."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Información que se incorpora al historial. El Historial Digital está diseñado para conservar información técnica del vehículo y de los servicios realizados. No está destinado a almacenar nombres, números telefónicos, correos electrónicos ni otros datos de contacto del Cliente final, ni los precios de los servicios."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller se obliga a no incluir datos personales de sus clientes en las descripciones técnicas, notas o demás campos destinados al historial."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Función de WhatsApp. El botón de WhatsApp permite al Taller iniciar una comunicación con su cliente utilizando el número de teléfono registrado en la orden de servicio correspondiente. Esta función utiliza la información disponible en esa orden y no significa que Mecanix envíe mensajes por cuenta propia. Los recordatorios del módulo son avisos internos dirigidos al Taller."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El uso de WhatsApp queda sujeto al funcionamiento y a las condiciones del proveedor de ese servicio."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Eliminación manual del historial. El Taller podrá eliminar un vehículo y los registros asociados a su historial y recordatorios en cualquier momento, incluso si su plan Premium ha vencido o está pendiente la aceptación de una nueva versión de estos Términos."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La eliminación del historial no implica necesariamente la eliminación de la orden de servicio original, que se conservará conforme a las condiciones aplicables a dicha orden y a las obligaciones legales que correspondan."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Eliminación automática por inactividad. Cuando un vehículo permanezca más de 18 meses sin que el Taller incorpore a su Historial Digital una nueva orden de servicio registrada como entregada, el historial de ese vehículo se eliminará automáticamente de la Plataforma. El Taller recibirá un aviso en su panel con al menos 30 días de anticipación."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Para el cálculo de este plazo, se tomará como referencia la fecha en que el Taller incorpore al historial una nueva orden de servicio registrada como entregada. La entrega de una orden que no se incorpore al historial no reiniciará el plazo. Tampoco lo harán las modificaciones de datos, notas o recordatorios que no impliquen la incorporación de una nueva orden de servicio entregada."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La eliminación de los registros de los sistemas activos se realizará conforme a los procedimientos técnicos de Mecanix. Las copias de respaldo se depurarán de acuerdo con el ciclo de eliminación establecido por Mecanix y permanecerán sujetas a las medidas de seguridad y restricciones de uso correspondientes mientras existan. Su conservación temporal no deberá utilizarse para mantener disponible de forma ordinaria un historial eliminado."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Exportación y terminación del plan Premium. Exportación del historial. El Taller podrá descargar una copia de su Historial Digital mediante la función «Descargar mi historial» disponible en la Plataforma. Esta función estará disponible aunque el plan Premium haya vencido, siempre que los registros continúen almacenados en la Plataforma y el Taller tenga acceso autorizado a su cuenta."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La exportación incluirá los datos del historial disponibles para el Taller en el momento de la descarga y se ofrecerá en los formatos habilitados por Mecanix. La descarga no restablece ni amplía el plazo de conservación del historial y no permite recuperar registros que hayan sido eliminados conforme a estas condiciones."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La terminación del plan Premium no elimina por sí misma el derecho del Taller a solicitar la eliminación de un vehículo ni modifica las obligaciones legales de conservación que correspondan a cada parte."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Uso y responsabilidad sobre la información. El Taller conserva el control operativo de los registros técnicos que incorpora al historial y es responsable de que su captura y uso sean lícitos y adecuados para las finalidades informadas a sus clientes."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Mecanix proporciona la herramienta tecnológica y trata la información conforme a las funciones que le corresponden y a las instrucciones aplicables del Taller, sin perjuicio de las obligaciones que legalmente le correspondan por sus propias actividades de tratamiento."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.13 Responsabilidad sobre el contenido y la información registrada"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller es responsable de la información que captura en la Plataforma, incluidas las descripciones de los trabajos realizados, las notas técnicas y las piezas utilizadas."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Para proteger la privacidad de sus clientes, el Taller se obliga a no registrar nombres, números telefónicos, correos electrónicos ni otros datos personales en los campos destinados al Historial Digital de Servicios."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La Plataforma podrá mostrar advertencias para ayudar a evitar la captura de información personal en esos campos. Estas advertencias son una medida de apoyo y no sustituyen la obligación del Taller de revisar la información que registra."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Si Mecanix detecta registros que incumplan estas condiciones, podrá restringir su acceso o eliminarlos, según corresponda y conforme a sus procedimientos aplicables."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller será responsable de la licitud, exactitud y pertinencia de la información que introduce y de atender las solicitudes de sus clientes respecto de los datos que administra. Mecanix será responsable de cumplir las obligaciones que le correspondan por la operación de la Plataforma, la seguridad de la información y los tratamientos que realice, de acuerdo con su función en cada caso."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Ninguna disposición de esta cláusula exime a alguna de las partes de las obligaciones que le correspondan conforme a la legislación aplicable en materia de protección de datos personales."
     }
   ],
   "privacidad": [
@@ -187,6 +283,58 @@
     {
       "tipo": "parrafo",
       "texto": "Antes de que una cotización u orden se elimine, el Taller puede descargarla en PDF, o descargar todos sus documentos activos en un solo archivo. Mecanix no conserva los documentos después de su eliminación; el Taller es responsable de conservar su propio expediente."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "2.8 Tratamiento de datos por cuenta de los Talleres (Historial de vehículos)"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Cuando un Taller utiliza el módulo Historial de vehículos, puede registrar información relacionada con los vehículos que atiende, como placas, marca, modelo, año, kilometraje y datos técnicos de los servicios realizados."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Aunque esta información se refiere principalmente al vehículo, en determinadas circunstancias puede permitir identificar a una persona, directa o indirectamente. Por ello, cuando tenga el carácter de dato personal, será tratada conforme a la legislación aplicable en materia de protección de datos personales."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Respecto de la información que Mecanix trata por cuenta del Taller para proporcionar las funciones del historial, el Taller determina las finalidades del tratamiento y actúa como responsable, mientras que Mecanix actúa como encargado, sujeto a las instrucciones aplicables y a las obligaciones que legalmente le correspondan."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Historial Digital permite consultar los servicios anteriores, conservar registros técnicos, dar seguimiento a las garantías relacionadas con los trabajos realizados y configurar recordatorios internos de mantenimiento. Los recordatorios están dirigidos al Taller y no implican que Mecanix contacte directamente a sus clientes."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El historial no está destinado a almacenar nombres, números telefónicos, correos electrónicos ni otros datos de contacto del Cliente final, ni los precios de los servicios. Los datos de contacto que se utilicen para gestionar una orden permanecen en la orden de servicio y se tratan conforme al aviso de privacidad aplicable a dicha orden."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller puede eliminar el historial de un vehículo desde las funcionalidades disponibles en la Plataforma, incluso si su plan Premium ha vencido."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Asimismo, cuando transcurran más de 18 meses sin que el Taller incorpore al Historial Digital una nueva orden de servicio registrada como entregada para el vehículo, el historial se eliminará automáticamente. El Taller recibirá un aviso en su panel con al menos 30 días de anticipación."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El plazo se calculará a partir de la fecha en que el Taller incorpore al historial la última orden de servicio entregada. La entrega de una orden que no se incorpore al historial, así como la modificación de notas, datos o recordatorios, no reiniciará el plazo."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Los registros de los sistemas activos se eliminarán conforme a los procedimientos técnicos de Mecanix. Las copias de respaldo se depurarán de acuerdo con el ciclo de eliminación establecido por Mecanix y permanecerán protegidas mientras existan. La eliminación del historial no implica necesariamente la eliminación de la orden de servicio original ni de los registros que deban conservarse conforme a las obligaciones legales aplicables."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Cuando un Taller deje de contar con el plan Premium, podrá descargar una copia de su historial mediante la función «Descargar mi historial» disponible en la Plataforma, que sigue disponible aunque el plan haya vencido, conforme a las condiciones operativas que se informen para ese proceso."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller será responsable de atender las solicitudes de sus clientes relacionadas con la información que administra. Mecanix colaborará con el Taller cuando sea necesario localizar, corregir, exportar o eliminar registros dentro de la Plataforma."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Cuando Mecanix trate datos personales para finalidades propias y no únicamente por cuenta del Taller, asumirá las obligaciones que le correspondan respecto de ese tratamiento y proporcionará la información exigible conforme a la legislación aplicable."
     }
   ],
   "avisosTaller": [
@@ -273,68 +421,157 @@
       ]
     }
   ],
-  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir las órdenes de servicio. Las órdenes se eliminan 90 días después de su última modificación, o 10 días después de terminar la garantía que registres al entregar el vehículo. Las cotizaciones se eliminan a los 90 días de su creación; si tu cliente aprueba una, se convierte en orden y la cotización se elimina, y debes eliminar de inmediato las que no apruebe. Antes de que se eliminen puedes descargar tus documentos; tú eres responsable de conservar, en formato físico, lo que la ley te exija. Al recibir un vehículo debes entregar a tu cliente el aviso de privacidad y la constancia de recepción. También corregimos la descripción de las solicitudes de piezas: los yonkes responden con su precio y tú decides con cuál compras. Las cotizaciones y las solicitudes de piezas están incluidas sin costo en el plan Básico; las órdenes de servicio y las demás funciones, incluidas las futuras, forman parte del plan Premium ($398 al mes más IVA), y las órdenes seguirán sin costo hasta que te avisemos con al menos 30 días de anticipación. Para seguir creando o editando cotizaciones y órdenes, lee y escribe «ACEPTO». Mientras no lo hagas, solo podrás visualizar, reimprimir y descargar tus documentos anteriores.",
-  "avisoOrden": {
-    "version": "aviso-orden-1",
-    "aviso": [
-      {
-        "tipo": "parrafo",
-        "texto": "Aviso de privacidad de la orden de servicio"
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio [folio]."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Datos y finalidad. Podemos recabar su nombre y teléfono; los datos de su vehículo (marca, modelo, año, placas y kilometraje); la falla que reporta; el estado del vehículo al recibirlo; las pertenencias que se anoten; los trabajos, piezas y costos; y la fecha de entrega y la garantía. Los usamos para identificarlo y contactarlo, documentar el estado del vehículo, elaborar y dar seguimiento a la orden, realizar los diagnósticos y reparaciones que usted autorice, informarle de costos, avances y entrega, documentar trabajos, pagos, garantías y reclamaciones, y cumplir obligaciones legales o ejercer y defender derechos derivados del servicio. No usaremos sus datos con fines publicitarios."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Plazo. Sus datos se eliminan de la plataforma 10 días después de terminar la garantía del servicio, o 90 días después de la última modificación de la orden si el vehículo no se ha entregado, y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. La eliminación de la plataforma no implica la destrucción de los documentos que [nombre del taller] deba conservar en sus propios archivos por obligación legal."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Aceptación. Al firmar la constancia de recepción, usted declara haber recibido este aviso. Esa firma no implica renuncia a derechos del consumidor, ni autoriza trabajos adicionales ni el uso de sus datos con fines promocionales."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Versión del aviso: aviso-orden-1"
-      }
-    ],
-    "constancia": [
-      {
-        "tipo": "parrafo",
-        "texto": "Constancia de recepción del vehículo"
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Orden de servicio [folio]. Fecha de recepción: [fecha de recepción]."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Declaro que entregué a [nombre del taller] el vehículo identificado en esta orden de servicio, en el estado físico y con las pertenencias que se anotaron al recibirlo, y que recibí el aviso de privacidad de la orden de servicio."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Esta firma acredita la recepción del vehículo, la entrega del aviso de privacidad y los hechos que se anotaron expresamente en la orden. No implica renuncia a derechos del consumidor ni autorización de trabajos adicionales distintos de los acordados."
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Nombre y firma del representante del taller: ______________________________"
-      },
-      {
-        "tipo": "parrafo",
-        "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
-      }
-    ]
-  }
+  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir el Historial de Servicios y Recordatorios del plan Premium. El historial se llena solo con las órdenes entregadas que tú incorporas y guarda los datos del vehículo (placas, marca, modelo, año, kilometraje, trabajos y piezas) y tus recordatorios; no guarda nombres, teléfonos ni precios, y Mecanix nunca contacta a tus clientes. Puedes borrar un vehículo cuando quieras y descargar una copia de tu historial con “Descargar mi historial”, aunque tu plan Premium haya vencido. El historial de un vehículo se elimina automáticamente cuando pasan más de 18 meses sin que incorpores una nueva orden entregada; entregar una orden sin incorporarla, o cambiar datos, notas o recordatorios, no reinicia ese plazo, y recibirás un aviso en tu panel al menos 30 días antes. Tú eres responsable de no escribir nombres, teléfonos, correos ni otros datos personales de tus clientes en las descripciones. También actualizamos el aviso de privacidad de la orden que entregas a tu cliente: ahora le informa que podrás contactarle por WhatsApp sobre sus servicios, garantías y próximos mantenimientos, y el plazo de conservación del historial de su vehículo. Para seguir creando o editando cotizaciones y órdenes, lee y escribe «ACEPTO». Mientras no lo hagas, solo podrás visualizar, reimprimir y descargar tus documentos anteriores.",
+  "avisosOrden": [
+    {
+      "version": "aviso-orden-1",
+      "aviso": [
+        {
+          "tipo": "parrafo",
+          "texto": "Aviso de privacidad de la orden de servicio"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio [folio]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Datos y finalidad. Podemos recabar su nombre y teléfono; los datos de su vehículo (marca, modelo, año, placas y kilometraje); la falla que reporta; el estado del vehículo al recibirlo; las pertenencias que se anoten; los trabajos, piezas y costos; y la fecha de entrega y la garantía. Los usamos para identificarlo y contactarlo, documentar el estado del vehículo, elaborar y dar seguimiento a la orden, realizar los diagnósticos y reparaciones que usted autorice, informarle de costos, avances y entrega, documentar trabajos, pagos, garantías y reclamaciones, y cumplir obligaciones legales o ejercer y defender derechos derivados del servicio. No usaremos sus datos con fines publicitarios."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Plazo. Sus datos se eliminan de la plataforma 10 días después de terminar la garantía del servicio, o 90 días después de la última modificación de la orden si el vehículo no se ha entregado, y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. La eliminación de la plataforma no implica la destrucción de los documentos que [nombre del taller] deba conservar en sus propios archivos por obligación legal."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Aceptación. Al firmar la constancia de recepción, usted declara haber recibido este aviso. Esa firma no implica renuncia a derechos del consumidor, ni autoriza trabajos adicionales ni el uso de sus datos con fines promocionales."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Versión del aviso: aviso-orden-1"
+        }
+      ],
+      "constancia": [
+        {
+          "tipo": "parrafo",
+          "texto": "Constancia de recepción del vehículo"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Orden de servicio [folio]. Fecha de recepción: [fecha de recepción]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Declaro que entregué a [nombre del taller] el vehículo identificado en esta orden de servicio, en el estado físico y con las pertenencias que se anotaron al recibirlo, y que recibí el aviso de privacidad de la orden de servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Esta firma acredita la recepción del vehículo, la entrega del aviso de privacidad y los hechos que se anotaron expresamente en la orden. No implica renuncia a derechos del consumidor ni autorización de trabajos adicionales distintos de los acordados."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del representante del taller: ______________________________"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
+        }
+      ]
+    },
+    {
+      "version": "aviso-orden-2",
+      "aviso": [
+        {
+          "tipo": "parrafo",
+          "texto": "Aviso de privacidad de la orden de servicio"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio [folio]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Datos y finalidad. Podemos recabar su nombre y teléfono; los datos de su vehículo (marca, modelo, año, placas y kilometraje); la falla que reporta; el estado del vehículo al recibirlo; las pertenencias que se anoten; los trabajos, piezas y costos; y la fecha de entrega y la garantía. Los usamos para identificarlo y contactarlo, documentar el estado del vehículo, elaborar y dar seguimiento a la orden, realizar los diagnósticos y reparaciones que usted autorice, informarle de costos, avances y entrega, documentar trabajos, pagos, garantías y reclamaciones, y cumplir obligaciones legales o ejercer y defender derechos derivados del servicio. No usaremos sus datos con fines publicitarios."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Plazo. Sus datos se eliminan de la plataforma 10 días después de terminar la garantía del servicio, o 90 días después de la última modificación de la orden si el vehículo no se ha entregado, y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. La eliminación de la plataforma no implica la destrucción de los documentos que [nombre del taller] deba conservar en sus propios archivos por obligación legal."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Historial Digital de Servicios y recordatorios de mantenimiento. Para conservar un registro de los trabajos realizados en su vehículo, dar seguimiento a las garantías relacionadas con dichos trabajos y facilitar la planificación de futuros mantenimientos, el Taller podrá incorporar al Historial Digital de Servicios los datos del vehículo, incluidas las placas, marca, modelo, año, kilometraje y los registros técnicos de los servicios realizados."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "El historial permite consultar los servicios anteriores y configurar recordatorios internos para próximos mantenimientos recomendados. Además, el Taller podrá utilizar el número telefónico que usted proporcionó en su orden de servicio para contactarle por WhatsApp en relación con los servicios realizados, el seguimiento de garantías o los próximos mantenimientos recomendados. El envío de estos mensajes depende de la decisión del Taller y se inicia mediante la función de WhatsApp disponible en la Plataforma; Mecanix no envía estos mensajes directamente por medio de los recordatorios internos."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Los datos de contacto, como su nombre y número telefónico, no se incorporan al Historial Digital por esta función. Se conservan en la orden de servicio conforme al plazo indicado en este aviso y se utilizan para las finalidades que correspondan."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "El historial de su vehículo se eliminará automáticamente cuando transcurran más de 18 meses sin que el Taller incorpore a dicho historial una nueva orden de servicio registrada como entregada. La entrega de una orden que no se incorpore al historial no reinicia este plazo. El Taller recibirá un aviso en su panel con al menos 30 días de anticipación a la eliminación."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Este plazo corresponde al Historial Digital y no modifica por sí mismo el plazo de conservación de la orden de servicio original. Las copias de respaldo podrán permanecer temporalmente conforme al ciclo de eliminación de Mecanix, sujetas a las medidas de seguridad y restricciones de uso correspondientes."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Si desea solicitar la eliminación del historial de su vehículo o dejar de recibir recordatorios por WhatsApp, puede dirigirse directamente al Taller mediante los canales de contacto que este tenga habilitados. Las solicitudes se atenderán conforme a la legislación aplicable y a las obligaciones de conservación que, en su caso, correspondan."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Aceptación. Al firmar la constancia de recepción, usted declara haber recibido este aviso. Esa firma no implica renuncia a derechos del consumidor, ni autoriza trabajos adicionales ni el uso de sus datos con fines promocionales."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Versión del aviso: aviso-orden-2"
+        }
+      ],
+      "constancia": [
+        {
+          "tipo": "parrafo",
+          "texto": "Constancia de recepción del vehículo"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Orden de servicio [folio]. Fecha de recepción: [fecha de recepción]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Declaro que entregué a [nombre del taller] el vehículo identificado en esta orden de servicio, en el estado físico y con las pertenencias que se anotaron al recibirlo, y que recibí el aviso de privacidad de la orden de servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Esta firma acredita la recepción del vehículo, la entrega del aviso de privacidad y los hechos que se anotaron expresamente en la orden. No implica renuncia a derechos del consumidor ni autorización de trabajos adicionales distintos de los acordados."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del representante del taller: ______________________________"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
+        }
+      ]
+    }
+  ]
 }

@@ -514,12 +514,27 @@ service cloud.firestore {
           || premiumVigente(get(/databases/$(database)/documents/talleres/$(tallerId)).data);
       }
       // Datos del cliente solo si la bandera está encendida Y la orden tiene la versión de aviso
-      // vigente (config/ordenes.avisoOrdenVersion). Las órdenes viejas (p. ej. aviso-orden-0, sin
-      // aviso entregado) nunca pueden llevar nombre, teléfono ni placas. Si no, cliente vacío y sin placas.
+      // vigente (config/ordenes.avisoOrdenVersion) o, si ya existía, una versión anterior con aviso
+      // (avisosOrdenAnteriores). Las órdenes sin aviso entregado (p. ej. aviso-orden-0) nunca pueden
+      // llevar nombre, teléfono ni placas. Si no, cliente vacío y sin placas.
+      // Versiones ANTERIORES del aviso de la orden que sí tenían aviso entregado al cliente (su texto
+      // sigue en textosLegalesTalleres.json -> avisosOrden). Una orden que ya existe con una de estas
+      // versiones CONSERVA el permiso de datos del cliente aunque config/ordenes.avisoOrdenVersion ya
+      // sea otra (se puede seguir editando y entregando). aviso-orden-0 (sin aviso) nunca está aquí.
+      // Al publicar una versión nueva, agregar aquí la que deja de ser vigente.
+      function avisosOrdenAnteriores() {
+        return ['aviso-orden-1'];
+      }
       function datosClienteOk() {
         let c = get(/databases/$(database)/documents/config/ordenes).data;
         let d = request.resource.data;
-        return (c.datosClienteHabilitados == true && d.avisoVersion == c.avisoOrdenVersion)
+        return (c.datosClienteHabilitados == true
+                && (d.avisoVersion == c.avisoOrdenVersion
+                    // Solo al EDITAR una orden existente que ya traía esa misma versión (crear siempre
+                    // exige la versión vigente, y editar no deja cambiar avisoVersion).
+                    || (request.method == 'update'
+                        && d.avisoVersion == resource.data.avisoVersion
+                        && d.avisoVersion in avisosOrdenAnteriores())))
           || (d.cliente == {} && !('placas' in d.vehiculo));
       }
       function textoOk(v, max) {

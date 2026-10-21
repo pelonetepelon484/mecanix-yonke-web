@@ -21,7 +21,7 @@ export default function Terminos() {
           Términos y Condiciones de Uso
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 12 de octubre de 2026
+          Última actualización: 21 de octubre de 2026
         </p>
 
         <Seccion titulo="1. Aceptación de los términos">

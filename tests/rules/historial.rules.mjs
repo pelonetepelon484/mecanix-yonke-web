@@ -243,6 +243,12 @@ describe('leer y borrar', () => {
     await assertFails(getDoc(href('t2')));
     await assertFails(getDoc(href(null)));
   });
+  it('"Descargar mi historial": el dueño lee TODO su historial sin Premium, con términos viejos o desactivado (otro taller no)', async () => {
+    await sembrar({ conVehiculo: true });
+    await conTaller({ aceptacionVersion: 'v0', plan: 'freemium', premiumHasta: null, activo: false });
+    await assertSucceeds(getDocs(collection(como('t1'), 'talleres', 'T1', 'historial')));
+    await assertFails(getDocs(collection(como('t2'), 'talleres', 'T1', 'historial')));
+  });
   it('el dueño borra SIEMPRE: con términos viejos, sin Premium o desactivado', async () => {
     await sembrar({ conVehiculo: true });
     await conTaller({ aceptacionVersion: 'v0', plan: 'freemium', premiumHasta: null, activo: false });
