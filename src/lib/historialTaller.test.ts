@@ -63,7 +63,7 @@ describe('mismo vehículo, borrado y WhatsApp', () => {
 
 import {
   MAX_RECORDATORIOS, calcularProximoAviso, cambiarRecordatorio, mensajeWhatsappRecordatorio, pasosParaAgregar,
-  pendientesPorAvisar, sumarMeses, type Recordatorio,
+  pendientesPorAvisar, sumarMeses, ultimoServicio, type Recordatorio,
 } from './historialTaller';
 
 const DIA = 86400000;
@@ -125,5 +125,20 @@ describe('recordatorios: agregar en pasos chicos (límite de las reglas)', () =>
     expect(m).toContain('Cambio de aceite');
     expect(m).toContain('5 mil km');
     expect(m).toContain('Taller Pérez');
+  });
+});
+
+describe('agregar recordatorio a un vehículo existente', () => {
+  const ctx = { fechaEntrega: BASE, folio: 'O2', ahora: BASE, id: () => 'nuevo123' };
+  it('con fecha elegida a mano (sin meses)', () => {
+    const fecha = BASE + 40 * DIA;
+    const [lista] = pasosParaAgregar([], { tipo: 'Clima', fecha }, ctx);
+    expect(lista[0].fecha).toBe(fecha);
+    expect(() => pasosParaAgregar([], { tipo: 'Clima', fecha: Number.NaN }, ctx)).toThrow('Elige la fecha');
+  });
+  it('el último servicio es el de fecha más reciente (no el último de la lista)', () => {
+    const s = [{ folio: 'A', fecha: 300 }, { folio: 'B', fecha: 900 }, { folio: 'C', fecha: 500 }];
+    expect(ultimoServicio(s, Number)?.folio).toBe('B');
+    expect(ultimoServicio([], Number)).toBeNull();
   });
 });

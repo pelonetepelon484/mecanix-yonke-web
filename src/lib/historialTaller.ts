@@ -129,6 +129,7 @@ export const SERVICIOS_PERIODICOS = [
 
 export const MENSAJES_RECORDATORIO = {
   tipo: `Escribe el servicio del recordatorio (máximo ${MAX_TIPO_RECORDATORIO} letras).`,
+  fecha: 'Elige la fecha del recordatorio.',
   meses: `El intervalo debe ser de 1 a ${MAX_MESES_RECORDATORIO} meses.`,
   dias: `Los días de aviso deben ser de 0 a ${MAX_AVISAR_DIAS_ANTES}.`,
   lleno: `Este vehículo ya tiene ${MAX_RECORDATORIOS} recordatorios. Borra algunos atendidos.`,
@@ -172,16 +173,19 @@ export const diasValidos = (d: unknown) => Number.isInteger(d) && (d as number) 
 const mismoTipo = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 // Pasos (listas sucesivas, un guardado cada una) para agregar UN recordatorio nuevo (fecha =
-// entrega + meses), sin pasar el límite de las reglas:
+// entrega + meses, o la fecha elegida a mano si viene `fecha` en ms), sin pasar el límite de las reglas:
 // 1) si ya hay 10, quitar el atendido más viejo (si no hay atendidos, error "lleno");
 // 2) el pendiente del mismo tipo queda 'atendido' y se agrega el nuevo al final.
 export function pasosParaAgregar(
   existentes: Recordatorio[],
-  nuevo: { tipo: string; meses: number },
+  nuevo: { tipo: string; meses?: number; fecha?: number },
   { fechaEntrega, folio, ahora, id = idRecordatorio }: { fechaEntrega: number; folio: string; ahora: number; id?: () => string },
 ): Recordatorio[][] {
   if (!tipoValido(nuevo.tipo)) throw new Error(MENSAJES_RECORDATORIO.tipo);
-  if (!mesesValidos(nuevo.meses)) throw new Error(MENSAJES_RECORDATORIO.meses);
+  const manual = nuevo.fecha !== undefined;
+  if (manual && !Number.isFinite(nuevo.fecha)) throw new Error(MENSAJES_RECORDATORIO.fecha);
+  if (!manual && !mesesValidos(nuevo.meses)) throw new Error(MENSAJES_RECORDATORIO.meses);
+  const fechaNueva = manual ? (nuevo.fecha as number) : sumarMeses(fechaEntrega, nuevo.meses as number);
   const pasos: Recordatorio[][] = [];
   let lista = existentes.map((r) => ({ ...r }));
   if (lista.length >= MAX_RECORDATORIOS) {
@@ -192,7 +196,7 @@ export function pasosParaAgregar(
   }
   lista = lista.map((r) => (r.estado === 'pendiente' && mismoTipo(r.tipo, nuevo.tipo) ? { ...r, estado: 'atendido' as const } : r));
   lista.push({
-    id: id(), tipo: nuevo.tipo.trim(), fecha: sumarMeses(fechaEntrega, nuevo.meses), avisarDiasAntes: AVISAR_DIAS_ANTES_POR_OMISION,
+    id: id(), tipo: nuevo.tipo.trim(), fecha: fechaNueva, avisarDiasAntes: AVISAR_DIAS_ANTES_POR_OMISION,
     folio, estado: 'pendiente', creadoAt: ahora,
   });
   pasos.push(lista);
@@ -217,4 +221,13 @@ export function mensajeWhatsappRecordatorio(
   const servicio = tipos.join(', ') || 'un servicio';
   const v = nombreVehiculo(vehiculo);
   return `Hola, le escribimos de ${nombreTaller || 'su taller'}. Le recordamos que su vehículo con placas ${vehiculo.placas ?? ''}${v ? ` (${v})` : ''} tiene pendiente: ${servicio}${fechaTexto ? `, para el ${fechaTexto}` : ''}. Por favor esté atento al kilometraje y avísenos al llegar o acercarse a los 5 mil km.`;
+}
+
+// Para "Agregar recordatorio" en un vehículo ya existente: el servicio más reciente (por fecha de
+// entrega). Su folio es el del recordatorio (las reglas exigen un folio del vehículo) y su fecha
+// es la base de "+ meses". null si el vehículo no tiene servicios.
+export function ultimoServicio<T extends { folio: string; fecha: unknown }>(servicios: T[] | undefined, aMs: (v: unknown) => number): T | null {
+  const lista = servicios || [];
+  if (!lista.length) return null;
+  return lista.reduce((a, b) => (aMs(b.fecha) > aMs(a.fecha) ? b : a));
 }
