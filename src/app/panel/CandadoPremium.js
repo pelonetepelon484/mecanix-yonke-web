@@ -1,6 +1,7 @@
 'use client';
 
 import { PRECIO_PREMIUM_TEXTO, TITULO_FUNCION_PREMIUM, URL_QUIERO_PREMIUM } from '../../lib/planes';
+// url (opcional): el enlace de WhatsApp; los talleres usan URL_QUIERO_PREMIUM_TALLER. Sin él, el de yonkes.
 
 // Candado de las funciones Premium cuando config/planes.limitesActivos está encendido y el yonke
 // no tiene Premium vigente. Solo se muestra en ese caso: con el interruptor apagado, cada pantalla
@@ -13,10 +14,10 @@ function registrarEvento(nombre, params = {}) {
 }
 
 // Botón "Quiero Premium" con el precio (abre WhatsApp, mismo enlace de siempre).
-export function BotonQuieroPremium({ ubicacion, compacto = false }) {
+export function BotonQuieroPremium({ ubicacion, compacto = false, url = URL_QUIERO_PREMIUM }) {
   return (
     <a
-      href={URL_QUIERO_PREMIUM}
+      href={url}
       target="_blank"
       rel="noopener noreferrer"
       style={compacto ? botonCompactoStyle : botonStyle}
@@ -41,13 +42,13 @@ export default function CandadoPremium({ descripcion, ubicacion }) {
 }
 
 // Versión corta dentro de una sección (Mi negocio, Mis ventas).
-export function AvisoPremium({ descripcion, ubicacion }) {
+export function AvisoPremium({ descripcion, ubicacion, url }) {
   return (
     <div role="note" style={avisoStyle}>
       <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', fontWeight: '600' }}>
         🔒 {TITULO_FUNCION_PREMIUM}{descripcion ? `. ${descripcion}` : ''}
       </p>
-      <BotonQuieroPremium ubicacion={ubicacion} compacto />
+      <BotonQuieroPremium ubicacion={ubicacion} compacto url={url} />
     </div>
   );
 }

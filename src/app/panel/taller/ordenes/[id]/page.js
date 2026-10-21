@@ -13,7 +13,7 @@ import { datosClienteDisponibles } from '../../../../../lib/avisoOrden';
 export default function DetalleOrden() {
   const router = useRouter();
   const { id: folio } = useParams();
-  const { tallerId, taller, puedeEditar, versionVigente, configOrdenes } = useOrdenes();
+  const { tallerId, taller, puedeEditar, puedeBorrar, versionVigente, configOrdenes } = useOrdenes();
   const [orden, setOrden] = useState(null);
   const [noExiste, setNoExiste] = useState(false);
   const [version, setVersion] = useState(0);
@@ -93,8 +93,9 @@ export default function DetalleOrden() {
           inicial={orden}
           tallerActivo={taller?.activo === true}
           soloLectura={soloLectura}
-          // Eliminar y quitar datos: taller activo Y términos vigentes (las reglas exigen lo mismo).
-          puedeEliminar={puedeEditar}
+          // Eliminar y quitar datos: taller activo Y términos vigentes (las reglas exigen lo mismo; no
+          // piden Premium).
+          puedeEliminar={puedeBorrar}
           // Datos del cliente solo en órdenes con la versión de aviso vigente (las viejas, nunca).
           datosCliente={datosClienteDisponibles(configOrdenes, orden.avisoVersion)}
           onEliminar={async () => {
@@ -113,7 +114,7 @@ export default function DetalleOrden() {
             setAviso('Cambios guardados.');
             setVersion((v) => v + 1);
           }}
-          onQuitarDatos={!puedeEditar ? undefined : async () => {
+          onQuitarDatos={!puedeBorrar ? undefined : async () => {
             if (!window.confirm('¿Quitar el nombre, el teléfono y las placas de esta orden? Esto no se puede deshacer.')) return;
             try {
               await quitarDatosClienteOrden(tallerId, folio);

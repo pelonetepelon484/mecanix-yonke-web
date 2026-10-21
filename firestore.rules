@@ -265,8 +265,10 @@ service cloud.firestore {
     // Un taller nace SIN aceptar (aceptacionVersion vacía). Su primera aceptación se registra
     // justo después, en un lote con su entrada del historial.
     match /talleres/{tallerId} {
+      // plan / premiumHasta: Premium del taller (mismo esquema que los yonkes, ver premiumVigente).
+      // Solo el ADMIN los escribe: el dueño no los manda al crear ni los cambia al editar.
       function tallerValido() {
-        return request.resource.data.keys().hasOnly(['nombre', 'whatsapp', 'ciudad', 'logoUrl', 'ownerUid', 'activo', 'creadoAt', 'aceptacionVersion', 'avisoPrivacidad'])
+        return request.resource.data.keys().hasOnly(['nombre', 'whatsapp', 'ciudad', 'logoUrl', 'ownerUid', 'activo', 'creadoAt', 'aceptacionVersion', 'avisoPrivacidad', 'plan', 'premiumHasta'])
           && request.resource.data.nombre is string
           && request.resource.data.nombre.size() >= 2 && request.resource.data.nombre.size() <= 100
           && request.resource.data.whatsapp is string
@@ -292,6 +294,9 @@ service cloud.firestore {
                     && request.resource.data.aceptacionVersion == ''
                     && request.resource.data.avisoPrivacidad.versionPlantilla == get(/databases/$(database)/documents/config/cotizaciones).data.avisoTallerVersion
                     && request.resource.data.avisoPrivacidad.fecha == request.time
+                    // Un taller nuevo nace sin plan (= Básico).
+                    && !('plan' in request.resource.data)
+                    && !('premiumHasta' in request.resource.data)
                     && tallerValido();
       allow update: if esAdmin()
                     || (request.auth != null
@@ -301,6 +306,9 @@ service cloud.firestore {
                         && request.resource.data.creadoAt == resource.data.creadoAt
                         // El dueño NO puede cambiar su aviso de privacidad
                         && request.resource.data.avisoPrivacidad == resource.data.avisoPrivacidad
+                        // Ni su plan (solo el admin)
+                        && request.resource.data.get('plan', null) == resource.data.get('plan', null)
+                        && request.resource.data.get('premiumHasta', null) == resource.data.get('premiumHasta', null)
                         && tallerValido()
                         && (
                           // Sin cambio de versión aceptada
@@ -498,6 +506,13 @@ service cloud.firestore {
       function ordenesHabilitadas() {
         return get(/databases/$(database)/documents/config/ordenes).data.habilitado == true;
       }
+      // Candado Premium: solo con config/ordenes.requierePremium == true se exige Premium vigente
+      // para CREAR y EDITAR. Sin el campo (o con otro valor), como siempre. Ver, quitar datos del
+      // cliente y borrar NO lo piden. Mismos documentos que ya se leen (sin lecturas extra).
+      function premiumOrdenesOk() {
+        return get(/databases/$(database)/documents/config/ordenes).data.get('requierePremium', false) != true
+          || premiumVigente(get(/databases/$(database)/documents/talleres/$(tallerId)).data);
+      }
       // Datos del cliente solo si la bandera está encendida Y la orden tiene la versión de aviso
       // vigente (config/ordenes.avisoOrdenVersion). Las órdenes viejas (p. ej. aviso-orden-0, sin
       // aviso entregado) nunca pueden llevar nombre, teléfono ni placas. Si no, cliente vacío y sin placas.
@@ -586,6 +601,7 @@ service cloud.firestore {
       allow create: if tallerActivoDeDueno()
                     && versionVigente()
                     && ordenesHabilitadas()
+                    && premiumOrdenesOk()
                     && ordenId.matches('^O[0-9]{6}-[A-Z0-9]{4}$')
                     && ordenValida()
                     && request.resource.data.creadoAt == request.time
@@ -607,10 +623,12 @@ service cloud.firestore {
                          && request.resource.data.vehiculo.anio == resource.data.vehiculo.anio
                          && request.resource.data.vehiculo.get('kilometraje', null) == resource.data.vehiculo.get('kilometraje', null)
                          && request.resource.data.actualizadoAt == request.time)
-                        // B) EDICIÓN NORMAL: taller activo, versión vigente, función encendida, orden no vencida
+                        // B) EDICIÓN NORMAL: taller activo, versión vigente, función encendida, orden no
+                        //    vencida y, si config/ordenes.requierePremium, Premium vigente
                         || (tallerActivoDeDueno()
                             && versionVigente()
                             && ordenesHabilitadas()
+                            && premiumOrdenesOk()
                             && ordenValida()
                             && resource.data.expiraAt > request.time
                             && request.resource.data.creadoAt == resource.data.creadoAt

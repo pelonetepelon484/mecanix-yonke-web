@@ -97,6 +97,14 @@ export function esPremiumVigente(yonke, ahora = new Date()) {
   return fecha !== null && fecha.getTime() > ahora.getTime();
 }
 
+// Órdenes de servicio del taller (config/ordenes.requierePremium, solo true exacto): con la bandera,
+// CREAR y EDITAR exigen Premium vigente del taller (mismos campos plan/premiumHasta que los
+// yonkes). Ver, descargar, quitar datos del cliente y borrar no lo exigen. Sin la bandera, como hoy.
+export const ordenesRequierenPremium = (configOrdenes) => configOrdenes?.requierePremium === true;
+export function premiumOrdenesOk(configOrdenes, taller, ahora = new Date()) {
+  return !ordenesRequierenPremium(configOrdenes) || esPremiumVigente(taller, ahora);
+}
+
 // Para el admin: 'premium-vigente' | 'premium-vencido' | 'basico'.
 export function estadoPlan(yonke, ahora = new Date()) {
   if (yonke?.plan !== 'premium') return 'basico';
