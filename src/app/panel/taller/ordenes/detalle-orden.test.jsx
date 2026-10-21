@@ -6,7 +6,7 @@ import '@testing-library/jest-dom/vitest';
 const expira = new Date(Date.now() + 40 * 86400000);
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }), useParams: () => ({ id: 'O251011-7KQ4' }) }));
 vi.mock('../../../lib/SelectorMarcaModelo', () => ({ default: () => null }));
-vi.mock('./contexto', () => ({ useOrdenes: () => ({ tallerId: 'T1', taller: { activo: true }, puedeEditar: true }) }));
+vi.mock('./contexto', () => ({ useOrdenes: () => ({ tallerId: 'T1', taller: { activo: true }, puedeEditar: true, puedeBorrar: true }) }));
 vi.mock('./datos', () => ({
   leerOrden: vi.fn(async () => ({
     folio: 'O251011-7KQ4', estado: 'recibido', cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 },

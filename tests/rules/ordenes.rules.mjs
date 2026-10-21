@@ -533,3 +533,47 @@ describe('etapa 4: datos del cliente en órdenes', () => {
   });
 });
 
+
+describe('candado Premium de órdenes (config/ordenes.requierePremium)', () => {
+  async function conPlan(campos) {
+    await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), 'talleres', 'T1'), campos); });
+  }
+  const sinEntregar = () => edicion({ fallaReportada: 'Ruido distinto', expiraAt: enDias(88) });
+
+  it('sin el campo (como hoy): un taller Básico crea y edita', async () => {
+    await sembrar();
+    await assertSucceeds(setDoc(oref('t1', ON), orden()));
+    await assertSucceeds(setDoc(oref('t1', O), sinEntregar()));
+  });
+  it('con requierePremium false: igual que hoy', async () => {
+    await sembrar();
+    await conConfig({ requierePremium: false });
+    await assertSucceeds(setDoc(oref('t1', ON), orden()));
+  });
+  it('encendido y Básico: NO crea ni edita; SÍ ve, quita datos del cliente y borra', async () => {
+    await sembrar({ configOrdenes: { habilitado: true, datosClienteHabilitados: true, avisoOrdenVersion: AVISO, requierePremium: true } });
+    await sembrarDatoCliente();
+    await assertFails(setDoc(oref('t1', ON), orden()));
+    await assertFails(setDoc(oref('t1', O), sinEntregar()));
+    await assertSucceeds(getDoc(oref('t1', O)));
+    await assertSucceeds(updateDoc(oref('t1', O), { cliente: {}, 'vehiculo.placas': deleteField(), actualizadoAt: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(oref('t1', O)));
+  });
+  it('encendido y Premium vigente (con fecha futura o sin fecha): crea y edita', async () => {
+    await sembrar();
+    await conConfig({ requierePremium: true });
+    await conPlan({ plan: 'premium', premiumHasta: enDias(30) });
+    await assertSucceeds(setDoc(oref('t1', ON), orden()));
+    await assertSucceeds(setDoc(oref('t1', O), sinEntregar()));
+    await conPlan({ plan: 'premium', premiumHasta: deleteField() });
+    await assertSucceeds(setDoc(oref('t1', O), sinEntregar()));
+  });
+  it('encendido y Premium vencido: NO crea ni edita, pero SÍ borra', async () => {
+    await sembrar();
+    await conConfig({ requierePremium: true });
+    await conPlan({ plan: 'premium', premiumHasta: enDias(-1) });
+    await assertFails(setDoc(oref('t1', ON), orden()));
+    await assertFails(setDoc(oref('t1', O), sinEntregar()));
+    await assertSucceeds(deleteDoc(oref('t1', O)));
+  });
+});

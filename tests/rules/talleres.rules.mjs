@@ -208,3 +208,40 @@ describe('sin config/cotizaciones: no se puede registrar taller ni aceptar térm
     await assertFails(setDoc(aref('t1', 'T1', 'v3'), { version: 'v3', fecha: serverTimestamp() }));
   });
 });
+
+describe('plan Premium del taller (solo el admin lo escribe)', () => {
+  it('un taller nuevo no puede nacer con plan ni con fecha de Premium', async () => {
+    await sembrar();
+    await env.withSecurityRulesDisabled(async (c) => { await deleteDoc(doc(c.firestore(), 'usuarios', 't9')); });
+    await assertFails(setDoc(tref('t9', 'T9'), tallerNuevo('t9', { plan: 'premium' })));
+    await assertFails(setDoc(tref('t9', 'T9'), tallerNuevo('t9', { premiumHasta: new Date(Date.now() + 86400000) })));
+    await assertSucceeds(setDoc(tref('t9', 'T9'), tallerNuevo('t9')));
+  });
+  it('el dueño no puede darse Premium, ni cambiar ni quitar su fecha', async () => {
+    await sembrar();
+    await assertFails(updateDoc(tref('t1', 'T1'), { plan: 'premium' }));
+    await assertFails(updateDoc(tref('t1', 'T1'), { premiumHasta: new Date(Date.now() + 86400000) }));
+    await env.withSecurityRulesDisabled(async (c) => {
+      await updateDoc(doc(c.firestore(), 'talleres', 'T1'), { plan: 'premium', premiumHasta: new Date(Date.now() + 86400000) });
+    });
+    await assertFails(updateDoc(tref('t1', 'T1'), { plan: 'freemium' }));
+    await assertFails(updateDoc(tref('t1', 'T1'), { premiumHasta: new Date(Date.now() + 999 * 86400000) }));
+  });
+  it('con Premium puesto, el dueño sigue pudiendo cambiar su nombre y aceptar términos (el plan se conserva)', async () => {
+    await sembrar();
+    await env.withSecurityRulesDisabled(async (c) => {
+      await updateDoc(doc(c.firestore(), 'talleres', 'T1'), { plan: 'premium', premiumHasta: new Date(Date.now() + 86400000) });
+      await updateDoc(doc(c.firestore(), 'config', 'cotizaciones'), { terminosVersion: 'v2' });
+    });
+    await assertSucceeds(updateDoc(tref('t1', 'T1'), { nombre: 'Taller renombrado' }));
+    await assertSucceeds(aceptar('t1', 'T1', 'v2'));
+    let plan;
+    await env.withSecurityRulesDisabled(async (c) => { plan = (await getDoc(doc(c.firestore(), 'talleres', 'T1'))).data().plan; });
+    if (plan !== 'premium') throw new Error('el plan se perdió');
+  });
+  it('el admin asigna y quita Premium', async () => {
+    await sembrar();
+    await assertSucceeds(updateDoc(tref('adm', 'T1'), { plan: 'premium', premiumHasta: new Date(Date.now() + 30 * 86400000) }));
+    await assertSucceeds(updateDoc(tref('adm', 'T1'), { plan: 'freemium' }));
+  });
+});

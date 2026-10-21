@@ -6,6 +6,8 @@ import { useAuth } from '../../AuthContext';
 import { talleresHabilitados } from '../../../../lib/talleresHabilitados';
 import { leerConfigCotizaciones, leerTaller } from '../cotizaciones/datos';
 import { leerConfigOrdenes } from './datos';
+import { premiumOrdenesOk, URL_QUIERO_PREMIUM_TALLER } from '../../../../lib/planes';
+import { AvisoPremium } from '../../CandadoPremium';
 import { OrdenesContext } from './contexto';
 import AvisoVersion from '../AvisoVersion';
 
@@ -48,12 +50,17 @@ export default function OrdenesLayout({ children }) {
 
   const { taller, config, configOrdenes } = estado;
   const versionVigente = Boolean(config && taller && taller.aceptacionVersion === config.terminosVersion);
-  const puedeEditar = versionVigente && taller?.activo === true;
+  const puedeBorrar = versionVigente && taller?.activo === true;
+  // Candado Premium (config/ordenes.requierePremium): sin él, premiumOk siempre es true y
+  // puedeEditar queda exactamente como antes.
+  const premiumOk = premiumOrdenesOk(configOrdenes, taller);
+  const puedeEditar = puedeBorrar && premiumOk;
   const valor = {
     tallerId,
     taller,
     versionVigente,
     puedeEditar,
+    puedeBorrar,
     avisoVersion: configOrdenes?.avisoOrdenVersion ?? '',
     // Para decidir, orden por orden, si se pueden capturar datos del cliente (datosClienteDisponibles).
     configOrdenes,
@@ -76,6 +83,12 @@ export default function OrdenesLayout({ children }) {
         )}
         {config && versionVigente && taller && taller.activo !== true && (
           <p role="alert" style={{ color: '#8A2A1A', fontSize: '14px' }}>Tu taller está desactivado: solo puedes ver tus órdenes.</p>
+        )}
+        {puedeBorrar && !premiumOk && (
+          <AvisoPremium
+            descripcion="Crear y editar órdenes de servicio es del plan Premium. Puedes ver, descargar y borrar tus órdenes."
+            ubicacion="ordenes_taller" url={URL_QUIERO_PREMIUM_TALLER}
+          />
         )}
       </div>
       {children}

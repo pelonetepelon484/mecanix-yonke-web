@@ -479,6 +479,16 @@ export default function AdminPage() {
             📊 Uso de talleres
           </button>
           <button
+            onClick={() => router.push('/admin/talleres')}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            🔧 Talleres (plan Premium)
+          </button>
+          <button
             onClick={() => router.push('/admin/estados')}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: 'none',

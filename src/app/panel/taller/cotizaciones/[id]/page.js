@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import CotizacionForm from '../CotizacionForm';
 import { useCotizaciones } from '../contexto';
+import { premiumOrdenesOk } from '../../../../../lib/planes';
 import { borrarCotizacionCompleta, cambiarArchivada, duplicarCotizacion, guardarCotizacion, leerCotizacion, quitarDatosCliente } from '../datos';
 import { MENSAJES_AVISO_COTIZACION, descargarPdfCotizacion } from '../pdf';
 import { leerConfigSolicitudesPiezas } from '../../../solicitudesPiezasDatos';
@@ -107,7 +108,8 @@ export default function EditarCotizacion() {
 
   const fechaEliminacion = cot.expiraAt?.toDate ? cot.expiraAt.toDate() : null;
   const soloLectura = !puedeEditar || vencida;
-  const puedeConvertir = configOrdenes?.habilitado === true && puedeEditar && !vencida;
+  // Convertir crea una orden: con config/ordenes.requierePremium también pide Premium vigente.
+  const puedeConvertir = configOrdenes?.habilitado === true && puedeEditar && !vencida && premiumOrdenesOk(configOrdenes, taller);
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '16px' }}>
