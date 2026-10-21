@@ -132,27 +132,95 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "Descripción. El Módulo de Historial de Servicios y Recordatorios forma parte del plan Premium. El historial se nutre exclusivamente de las órdenes de servicio que el Taller registra como entregadas. Por cada vehículo se registran: placas, marca, modelo, año, fecha de entrega, kilometraje, descripción técnica de los trabajos realizados y de las piezas, así como los recordatorios internos que el Taller configure (tipo de servicio, fecha, anticipación del aviso y estado)."
+      "texto": "Descripción y funcionamiento. El Módulo de Historial de Servicios y Recordatorios forma parte del plan Premium y permite al Taller consultar los servicios realizados a cada vehículo, dar seguimiento a las garantías relacionadas con dichos servicios y configurar recordatorios internos para futuros mantenimientos."
     },
     {
       "tipo": "parrafo",
-      "texto": "Datos que no se almacenan. Mecanix no almacena en el historial nombres, números telefónicos ni otros datos de contacto del Cliente final, ni precios. El botón de WhatsApp toma el teléfono registrado en la orden de servicio únicamente mientras esa orden exista en la Plataforma. Mecanix jamás contacta al Cliente final del Taller: los recordatorios son avisos internos para el Taller."
+      "texto": "El historial se genera a partir de las órdenes de servicio que el Taller registra como entregadas en la Plataforma. Por cada vehículo, se podrán registrar las placas, marca, modelo, año, kilometraje, fecha de entrega y descripción técnica de los trabajos realizados y de las piezas utilizadas. También se podrán configurar recordatorios internos que indiquen el tipo de servicio, la fecha prevista, la anticipación del aviso y su estado."
     },
     {
       "tipo": "parrafo",
-      "texto": "Borrado manual y depuración automática. El Taller puede eliminar un vehículo completo, con su historial y sus recordatorios, en cualquier momento, aun cuando su plan Premium haya vencido o tenga pendiente aceptar una nueva versión de estos Términos. Los vehículos que no reciban un nuevo servicio por más de 18 meses se eliminan de forma automática e irreversible; la Plataforma muestra un aviso en el panel del Taller 30 días antes de su eliminación."
+      "texto": "Información que se incorpora al historial. El Historial Digital está diseñado para conservar información técnica del vehículo y de los servicios realizados. No está destinado a almacenar nombres, números telefónicos, correos electrónicos ni otros datos de contacto del Cliente final, ni los precios de los servicios."
     },
     {
       "tipo": "parrafo",
-      "texto": "Titularidad. Los datos del historial son propiedad operativa del Taller. Mecanix actúa únicamente como proveedor tecnológico de la herramienta."
+      "texto": "El Taller se obliga a no incluir datos personales de sus clientes en las descripciones técnicas, notas o demás campos destinados al historial."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Función de WhatsApp. El botón de WhatsApp permite al Taller iniciar una comunicación con su cliente utilizando el número de teléfono registrado en la orden de servicio correspondiente. Esta función utiliza la información disponible en esa orden y no significa que Mecanix envíe mensajes por cuenta propia. Los recordatorios del módulo son avisos internos dirigidos al Taller."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El uso de WhatsApp queda sujeto al funcionamiento y a las condiciones del proveedor de ese servicio."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Eliminación manual del historial. El Taller podrá eliminar un vehículo y los registros asociados a su historial y recordatorios en cualquier momento, incluso si su plan Premium ha vencido o está pendiente la aceptación de una nueva versión de estos Términos."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La eliminación del historial no implica necesariamente la eliminación de la orden de servicio original, que se conservará conforme a las condiciones aplicables a dicha orden y a las obligaciones legales que correspondan."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Eliminación automática por inactividad. Cuando un vehículo permanezca más de 18 meses sin que el Taller incorpore a su Historial Digital una nueva orden de servicio registrada como entregada, el historial de ese vehículo se eliminará automáticamente de la Plataforma. El Taller recibirá un aviso en su panel con al menos 30 días de anticipación."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Para el cálculo de este plazo, se tomará como referencia la fecha en que el Taller incorpore al historial una nueva orden de servicio registrada como entregada. La entrega de una orden que no se incorpore al historial no reiniciará el plazo. Tampoco lo harán las modificaciones de datos, notas o recordatorios que no impliquen la incorporación de una nueva orden de servicio entregada."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La eliminación de los registros de los sistemas activos se realizará conforme a los procedimientos técnicos de Mecanix. Las copias de respaldo se depurarán de acuerdo con el ciclo de eliminación establecido por Mecanix y permanecerán sujetas a las medidas de seguridad y restricciones de uso correspondientes mientras existan. Su conservación temporal no deberá utilizarse para mantener disponible de forma ordinaria un historial eliminado."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Exportación y terminación del plan Premium. Exportación del historial. El Taller podrá descargar una copia de su Historial Digital mediante la función «Descargar mi historial» disponible en la Plataforma. Esta función estará disponible aunque el plan Premium haya vencido, siempre que los registros continúen almacenados en la Plataforma y el Taller tenga acceso autorizado a su cuenta."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La exportación incluirá los datos del historial disponibles para el Taller en el momento de la descarga y se ofrecerá en los formatos habilitados por Mecanix. La descarga no restablece ni amplía el plazo de conservación del historial y no permite recuperar registros que hayan sido eliminados conforme a estas condiciones."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La terminación del plan Premium no elimina por sí misma el derecho del Taller a solicitar la eliminación de un vehículo ni modifica las obligaciones legales de conservación que correspondan a cada parte."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Uso y responsabilidad sobre la información. El Taller conserva el control operativo de los registros técnicos que incorpora al historial y es responsable de que su captura y uso sean lícitos y adecuados para las finalidades informadas a sus clientes."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Mecanix proporciona la herramienta tecnológica y trata la información conforme a las funciones que le corresponden y a las instrucciones aplicables del Taller, sin perjuicio de las obligaciones que legalmente le correspondan por sus propias actividades de tratamiento."
     },
     {
       "tipo": "subtitulo",
-      "texto": "1.13 Responsabilidad del contenido y captura de información"
+      "texto": "1.13 Responsabilidad sobre el contenido y la información registrada"
     },
     {
       "tipo": "parrafo",
-      "texto": "El Taller es el único responsable del contenido que capture en la Plataforma, incluidas la descripción de los trabajos, las notas y las piezas. El Taller se obliga a no escribir en esos campos nombres, teléfonos, correos electrónicos ni otros datos personales de sus Clientes. La advertencia que la Plataforma muestra en pantalla es solo una medida de auxilio y no exime al Taller de esta obligación. Mecanix podrá eliminar los registros que contravengan lo dispuesto en esta cláusula."
+      "texto": "El Taller es responsable de la información que captura en la Plataforma, incluidas las descripciones de los trabajos realizados, las notas técnicas y las piezas utilizadas."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Para proteger la privacidad de sus clientes, el Taller se obliga a no registrar nombres, números telefónicos, correos electrónicos ni otros datos personales en los campos destinados al Historial Digital de Servicios."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La Plataforma podrá mostrar advertencias para ayudar a evitar la captura de información personal en esos campos. Estas advertencias son una medida de apoyo y no sustituyen la obligación del Taller de revisar la información que registra."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Si Mecanix detecta registros que incumplan estas condiciones, podrá restringir su acceso o eliminarlos, según corresponda y conforme a sus procedimientos aplicables."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller será responsable de la licitud, exactitud y pertinencia de la información que introduce y de atender las solicitudes de sus clientes respecto de los datos que administra. Mecanix será responsable de cumplir las obligaciones que le correspondan por la operación de la Plataforma, la seguridad de la información y los tratamientos que realice, de acuerdo con su función en cada caso."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Ninguna disposición de esta cláusula exime a alguna de las partes de las obligaciones que le correspondan conforme a la legislación aplicable en materia de protección de datos personales."
     }
   ],
   "privacidad": [
@@ -218,11 +286,55 @@
     },
     {
       "tipo": "subtitulo",
-      "texto": "2.8 Tratamiento de datos por cuenta de talleres (módulo Historial de vehículos)"
+      "texto": "2.8 Tratamiento de datos por cuenta de los Talleres (Historial de vehículos)"
     },
     {
       "tipo": "parrafo",
-      "texto": "Respecto de la información vehicular que los Talleres cargan en el módulo Historial de vehículos (placas, marca, modelo, año y registros técnicos de los servicios), Mecanix actúa como encargado, por cuenta del Taller, que es el responsable. Las placas, junto con la marca, el modelo y el año, pueden constituir datos personales de forma indirecta. Mecanix trata esta información únicamente para proveer el historial y las alertas internas del Taller; no recopila datos de contacto del Cliente final dentro del historial, no contacta a los Clientes de los Talleres y elimina automáticamente los registros tras 18 meses de inactividad."
+      "texto": "Cuando un Taller utiliza el módulo Historial de vehículos, puede registrar información relacionada con los vehículos que atiende, como placas, marca, modelo, año, kilometraje y datos técnicos de los servicios realizados."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Aunque esta información se refiere principalmente al vehículo, en determinadas circunstancias puede permitir identificar a una persona, directa o indirectamente. Por ello, cuando tenga el carácter de dato personal, será tratada conforme a la legislación aplicable en materia de protección de datos personales."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Respecto de la información que Mecanix trata por cuenta del Taller para proporcionar las funciones del historial, el Taller determina las finalidades del tratamiento y actúa como responsable, mientras que Mecanix actúa como encargado, sujeto a las instrucciones aplicables y a las obligaciones que legalmente le correspondan."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Historial Digital permite consultar los servicios anteriores, conservar registros técnicos, dar seguimiento a las garantías relacionadas con los trabajos realizados y configurar recordatorios internos de mantenimiento. Los recordatorios están dirigidos al Taller y no implican que Mecanix contacte directamente a sus clientes."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El historial no está destinado a almacenar nombres, números telefónicos, correos electrónicos ni otros datos de contacto del Cliente final, ni los precios de los servicios. Los datos de contacto que se utilicen para gestionar una orden permanecen en la orden de servicio y se tratan conforme al aviso de privacidad aplicable a dicha orden."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller puede eliminar el historial de un vehículo desde las funcionalidades disponibles en la Plataforma, incluso si su plan Premium ha vencido."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Asimismo, cuando transcurran más de 18 meses sin que el Taller incorpore al Historial Digital una nueva orden de servicio registrada como entregada para el vehículo, el historial se eliminará automáticamente. El Taller recibirá un aviso en su panel con al menos 30 días de anticipación."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El plazo se calculará a partir de la última orden de servicio entregada que el Taller haya incorporado al historial. La entrega de una orden que no se incorpore al historial, así como la modificación de notas, datos o recordatorios, no reiniciará el plazo."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Los registros de los sistemas activos se eliminarán conforme a los procedimientos técnicos de Mecanix. Las copias de respaldo se depurarán de acuerdo con el ciclo de eliminación establecido por Mecanix y permanecerán protegidas mientras existan. La eliminación del historial no implica necesariamente la eliminación de la orden de servicio original ni de los registros que deban conservarse conforme a las obligaciones legales aplicables."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Cuando un Taller deje de contar con el plan Premium, podrá descargar una copia de su historial mediante la función «Descargar mi historial» disponible en la Plataforma, que sigue disponible aunque el plan haya vencido, conforme a las condiciones operativas que se informen para ese proceso."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El Taller será responsable de atender las solicitudes de sus clientes relacionadas con la información que administra. Mecanix colaborará con el Taller cuando sea necesario localizar, corregir, exportar o eliminar registros dentro de la Plataforma."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Cuando Mecanix trate datos personales para finalidades propias y no únicamente por cuenta del Taller, asumirá las obligaciones que le correspondan respecto de ese tratamiento y proporcionará la información exigible conforme a la legislación aplicable."
     }
   ],
   "avisosTaller": [
