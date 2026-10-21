@@ -21,11 +21,11 @@ let modo = 'pendiente';
 vi.mock('../../../../lib/avisoOrden', async (original) => {
   const real = await original();
   const listo = {
-    version: 'aviso-orden-1',
+    version: 'aviso-orden-2',
     aviso: [{ texto: 'Aviso de prueba' }, { texto: 'Responsable: [Nombre del taller] en [ciudad], [WhatsApp del taller].' }],
     constancia: [{ texto: 'Constancia de prueba' }, { texto: 'Recibí la unidad de la orden [folio].' }, { texto: 'Nombre y firma del cliente: ____' }],
   };
-  const pendiente = { version: 'aviso-orden-1', aviso: [{ texto: '[TEXTO LEGAL PENDIENTE]' }], constancia: [{ texto: '[TEXTO LEGAL PENDIENTE]' }] };
+  const pendiente = { version: 'aviso-orden-2', aviso: [{ texto: '[TEXTO LEGAL PENDIENTE]' }], constancia: [{ texto: '[TEXTO LEGAL PENDIENTE]' }] };
   return {
     ...real,
     armarAvisoOrden: (t, o, v) => (modo === 'real' ? real.armarAvisoOrden(t, o, v) : real.armarAvisoOrden(t, o, v, modo === 'listo' ? listo : pendiente)),
@@ -36,7 +36,7 @@ const { descargarPdfOrden, MENSAJE_SIN_AVISO } = await import('./pdf.js');
 const taller = { nombre: 'Taller Peña', ciudad: 'Tijuana', whatsapp: '6641234567' };
 const base = {
   folio: 'O261011-7KQ4', estado: 'recibido', creadoAt: new Date(2026, 9, 11), expiraAt: new Date(2027, 0, 7),
-  vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, trabajos: [], piezas: [], avisoVersion: 'aviso-orden-1',
+  vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, trabajos: [], piezas: [], avisoVersion: 'aviso-orden-2',
 };
 const deHoja = (h) => registro.textos.filter((t) => t.pagina === h).map((t) => t.texto);
 
@@ -47,7 +47,7 @@ describe('hojas de aviso y constancia en el PDF de la orden (etapa 4)', () => {
     modo = 'real';
     await descargarPdfOrden({ orden: { ...base, cliente: { nombre: 'Juan Pérez' } }, taller });
     expect(registro.hojas).toBe(3);
-    expect(deHoja(2)[0]).toBe('Versión del aviso: aviso-orden-1');
+    expect(deHoja(2)[0]).toBe('Versión del aviso: aviso-orden-2');
     expect(deHoja(2)).toContain('Aviso de privacidad de la orden de servicio');
     expect(deHoja(2).filter((t) => t.startsWith('Versión del aviso')).length).toBe(1);
     expect(deHoja(2)).toContain('Responsable. Taller Peña, con domicilio en Tijuana y contacto en 664 123 4567, es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio O261011-7KQ4.');
@@ -70,8 +70,8 @@ describe('hojas de aviso y constancia en el PDF de la orden (etapa 4)', () => {
     await descargarPdfOrden({ orden: { ...base, cliente: { nombre: 'Juan Pérez', telefono: '664 111 2233' }, vehiculo: { ...base.vehiculo, placas: 'ABC123' } }, taller });
     expect(registro.hojas).toBe(3);
     expect(deHoja(1)).toEqual(expect.arrayContaining(['Cliente:', 'Juan Pérez', 'Teléfono:', '664 111 2233', 'Placas:', 'ABC123']));
-    expect(deHoja(2)).toEqual(expect.arrayContaining(['Aviso de prueba', 'Responsable: Taller Peña en Tijuana, 664 123 4567.', 'Versión del aviso: aviso-orden-1']));
-    expect(deHoja(3)).toEqual(expect.arrayContaining(['Constancia de prueba', 'Recibí la unidad de la orden O261011-7KQ4.', 'Nombre y firma del cliente: ____', 'Versión del aviso: aviso-orden-1']));
+    expect(deHoja(2)).toEqual(expect.arrayContaining(['Aviso de prueba', 'Responsable: Taller Peña en Tijuana, 664 123 4567.', 'Versión del aviso: aviso-orden-2']));
+    expect(deHoja(3)).toEqual(expect.arrayContaining(['Constancia de prueba', 'Recibí la unidad de la orden O261011-7KQ4.', 'Nombre y firma del cliente: ____', 'Versión del aviso: aviso-orden-2']));
     // El pie de borrado va en las hojas de la orden, no en las legales.
     expect(deHoja(2).some((t) => t.startsWith('Esta orden se eliminará'))).toBe(false);
   });

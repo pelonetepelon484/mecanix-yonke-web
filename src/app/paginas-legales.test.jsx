@@ -102,10 +102,10 @@ describe('textos legales de "Avisar a los yonkes"', () => {
     }
   });
   it('fecha de última actualización y VERSION_LEGAL de hoy', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-12');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 12 de octubre de 2026');
+    expect(VERSION_LEGAL).toBe('2026-10-21');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 21 de octubre de 2026');
     cleanup();
-    expect(textoDe(Terminos)).toContain('Última actualización: 12 de octubre de 2026');
+    expect(textoDe(Terminos)).toContain('Última actualización: 21 de octubre de 2026');
   });
 });
 
@@ -133,7 +133,7 @@ describe('alertas a yonkes de otros estados (aprobado el 10 de octubre de 2026)'
   });
   it('la sección 13 de talleres trae su título y versión vigentes', () => {
     expect(textoDe(Privacidad)).toContain('13. Talleres, cotizaciones y órdenes de servicio');
-    expect(textoDe(Privacidad)).toContain('Versión: talleres-2026-10-3 · 12 de octubre de 2026');
+    expect(textoDe(Privacidad)).toContain('Versión: talleres-2026-10-4 · 21 de octubre de 2026');
   });
 });
 
@@ -200,7 +200,7 @@ describe('avisos en el dispositivo', () => {
     expect(texto.indexOf(TERMINOS)).toBeLessThan(texto.indexOf('Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026'));
   });
   it('sin cambiar la versión ni la fecha', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-12');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 12 de octubre de 2026');
+    expect(VERSION_LEGAL).toBe('2026-10-21');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 21 de octubre de 2026');
   });
 });

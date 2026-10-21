@@ -11,20 +11,25 @@ const listo = {
 const config = { datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-1' };
 
 describe('aviso de privacidad de órdenes (falla cerrada)', () => {
-  it('el archivo ya trae el texto final aviso-orden-1 (sin el marcador "[TEXTO LEGAL PENDIENTE]")', () => {
+  it('el archivo ya trae el texto final aviso-orden-2 (sin el marcador "[TEXTO LEGAL PENDIENTE]")', () => {
     expect(MARCADOR_PENDIENTE).toBe('[TEXTO LEGAL PENDIENTE]');
-    expect(VERSION_AVISO_ORDEN).toBe('aviso-orden-1');
+    expect(VERSION_AVISO_ORDEN).toBe('aviso-orden-2');
     expect(JSON.stringify((textos as { avisoOrden: unknown }).avisoOrden)).not.toContain(MARCADOR_PENDIENTE);
     expect(avisoOrdenListo()).toBe(true);
-    expect(avisoOrdenListo('aviso-orden-1')).toBe(true);
+    expect(avisoOrdenListo('aviso-orden-2')).toBe(true);
+    // La versión anterior ya no es la del archivo: no se imprime un aviso que no corresponde.
+    expect(avisoOrdenListo('aviso-orden-1')).toBe(false);
     expect(avisoOrdenListo('aviso-orden-0')).toBe(false);
   });
   it('texto final: títulos, primer y último párrafo de cada hoja', () => {
     const { aviso, constancia } = (textos as { avisoOrden: { aviso: { texto: string }[]; constancia: { texto: string }[] } }).avisoOrden;
-    expect(aviso).toHaveLength(8);
+    expect(aviso).toHaveLength(9);
     expect(aviso[0].texto).toBe('Aviso de privacidad de la orden de servicio');
     expect(aviso[1].texto.startsWith('Responsable. [Nombre del taller], con domicilio en [ciudad]')).toBe(true);
-    expect(aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-1');
+    expect(aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-2');
+    // Párrafo del Historial Digital (texto exacto), justo después de "Plazo".
+    expect(aviso[4].texto.startsWith('Plazo.')).toBe(true);
+    expect(aviso[5].texto).toBe('Asimismo, le informamos que los datos de su vehículo (placas, marca, modelo, año, el registro técnico de los servicios realizados y el kilometraje) se incorporarán a nuestro Historial Digital de Servicios para dar seguimiento a la garantía, mantener un expediente de mantenimiento preventivo y recordarnos sus próximos servicios recomendados. Sus datos de contacto no se incorporan al Historial Digital; se conservan únicamente en su orden de servicio por el plazo señalado en este aviso. Usted puede solicitar al taller, en cualquier momento, que elimine su vehículo del Historial Digital.');
     expect(constancia).toHaveLength(6);
     expect(constancia[0].texto).toBe('Constancia de recepción del vehículo');
     expect(constancia[1].texto).toBe('Orden de servicio [folio]. Fecha de recepción: [fecha de recepción].');
@@ -32,12 +37,14 @@ describe('aviso de privacidad de órdenes (falla cerrada)', () => {
   });
   it('los datos del cliente siguen apagados mientras config/ordenes no los encienda (interruptor de la consola)', () => {
     expect(datosClienteDisponibles(null)).toBe(false);
-    expect(datosClienteDisponibles({ datosClienteHabilitados: false, avisoOrdenVersion: 'aviso-orden-1' })).toBe(false);
+    expect(datosClienteDisponibles({ datosClienteHabilitados: false, avisoOrdenVersion: 'aviso-orden-2' })).toBe(false);
     expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-0' })).toBe(false);
-    expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-1' })).toBe(true);
+    expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-2' })).toBe(true);
+    // Con la consola todavía en aviso-orden-1 (texto nuevo publicado antes de cambiarla): apagados.
+    expect(datosClienteDisponibles({ datosClienteHabilitados: true, avisoOrdenVersion: 'aviso-orden-1' })).toBe(false);
   });
   it('armado con el texto real: llena los datos, no deja marcadores y no repite la versión (va al pie)', () => {
-    const r = armarAvisoOrden({ nombre: 'Taller Peña', ciudad: 'Tijuana', whatsapp: '6641234567' }, { folio: 'O261011-7KQ4', creadoAt: new Date(2026, 9, 11) }, 'aviso-orden-1');
+    const r = armarAvisoOrden({ nombre: 'Taller Peña', ciudad: 'Tijuana', whatsapp: '6641234567' }, { folio: 'O261011-7KQ4', creadoAt: new Date(2026, 9, 11) }, 'aviso-orden-2');
     expect(r?.aviso.titulo).toBe('Aviso de privacidad de la orden de servicio');
     expect(r?.aviso.parrafos[0]).toBe('Responsable. Taller Peña, con domicilio en Tijuana y contacto en 664 123 4567, es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio O261011-7KQ4.');
     expect(r?.aviso.parrafos.some((p) => p.startsWith('Versión del aviso'))).toBe(false);
