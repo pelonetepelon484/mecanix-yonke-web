@@ -642,6 +642,110 @@ service cloud.firestore {
                     || (tallerActivoDeDueno() && versionVigente());
     }
 
+    // ---------- Historial de servicios del taller (etapa 2) ----------
+    // Un documento por vehículo con sus servicios dentro (máximo 60). Se alimenta SOLO de órdenes
+    // ENTREGADAS: cada guardado agrega el servicio de la orden ultimoFolio, que debe existir, estar
+    // entregada y ser del mismo vehículo (marca y modelo sin importar mayúsculas, año y placas).
+    // NUNCA nombre ni teléfono del cliente (campos permitidos cerrados). Placas obligatorias.
+    // Escribir: dueño con taller activo, términos vigentes, config/historialTaller.habilitado ==
+    // true (sin el documento, get() falla y se niega: falla cerrada) y Premium vigente.
+    // Borrar: el dueño SIEMPRE (aunque tenga términos viejos o Premium vencido) o el admin.
+    // Borrado automático: expiraAt = ahora + 548 días (±5 min) en cada guardado (política TTL).
+    // Como en órdenes, no se revisa renglón por renglón (límite de 1,000 revisiones): solo el
+    // servicio nuevo, y los anteriores no pueden cambiar.
+    match /talleres/{tallerId}/historial/{vehiculoId} {
+      function tallerH() {
+        return get(/databases/$(database)/documents/talleres/$(tallerId)).data;
+      }
+      function esDuenoH() {
+        return request.auth != null && tallerH().ownerUid == request.auth.uid;
+      }
+      function puedeEscribirH() {
+        let t = tallerH();
+        return request.auth != null
+          && t.ownerUid == request.auth.uid
+          && t.activo == true
+          && t.aceptacionVersion == get(/databases/$(database)/documents/config/cotizaciones).data.terminosVersion
+          && get(/databases/$(database)/documents/config/historialTaller).data.get('habilitado', false) == true
+          && premiumVigente(t);
+      }
+      function rutaOrdenH() {
+        return /databases/$(database)/documents/talleres/$(tallerId)/ordenes/$(request.resource.data.ultimoFolio);
+      }
+      function cercaH(t, objetivo) {
+        return t >= objetivo - duration.value(5, 'm') && t <= objetivo + duration.value(5, 'm');
+      }
+      function formaH() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['placas', 'marca', 'modelo', 'anio', 'servicios', 'folios', 'ultimoFolio', 'ultimoKm', 'ultimoServicioAt', 'creadoAt', 'actualizadoAt', 'expiraAt'])
+          && d.keys().hasAll(['placas', 'marca', 'modelo', 'anio', 'servicios', 'folios', 'ultimoFolio', 'ultimoServicioAt', 'creadoAt', 'actualizadoAt', 'expiraAt'])
+          && d.placas is string && d.placas.matches('^[A-Z0-9-]{1,12}$')
+          && d.marca is string && d.marca.size() >= 1 && d.marca.size() <= 60
+          && d.modelo is string && d.modelo.size() >= 1 && d.modelo.size() <= 60
+          && d.anio is int && d.anio >= 1950 && d.anio <= 2100
+          && d.servicios is list && d.servicios.size() >= 1 && d.servicios.size() <= 60
+          && d.folios is list && d.folios.size() == d.servicios.size()
+          && d.ultimoFolio is string && d.ultimoFolio.matches('^O[0-9]{6}-[A-Z0-9]{4}$')
+          && d.folios[d.folios.size() - 1] == d.ultimoFolio
+          && (!('ultimoKm' in d) || (d.ultimoKm is int && d.ultimoKm >= 0 && d.ultimoKm <= 2000000))
+          && d.ultimoServicioAt is timestamp
+          && d.actualizadoAt == request.time
+          && cercaH(d.expiraAt, request.time + duration.value(548, 'd'));
+      }
+      // El servicio nuevo (el último de la lista) sale de la orden ultimoFolio: mismo folio, misma
+      // fecha de entrega, mismo kilometraje; descripción y piezas con tope.
+      function servicioNuevoH(o) {
+        let d = request.resource.data;
+        let s = d.servicios[d.servicios.size() - 1];
+        return s is map
+          && s.keys().hasOnly(['folio', 'fecha', 'kilometraje', 'descripcion', 'piezas'])
+          && s.keys().hasAll(['folio', 'fecha', 'descripcion', 'piezas'])
+          && s.folio == d.ultimoFolio
+          && s.fecha == o.fechaEntrega
+          && s.get('kilometraje', null) == o.vehiculo.get('kilometraje', null)
+          && s.descripcion is string && s.descripcion.size() <= 1000
+          && s.piezas is list && s.piezas.size() <= 20;
+      }
+      // La orden existe, está entregada y es del mismo vehículo (placas: si la orden las tiene,
+      // las mismas; si no, las escribió el taller al agregar).
+      function ordenCoincideH() {
+        let d = request.resource.data;
+        let o = get(rutaOrdenH()).data;
+        return exists(rutaOrdenH())
+          && o.estado == 'entregado'
+          && o.vehiculo.marca.lower() == d.marca.lower()
+          && o.vehiculo.modelo.lower() == d.modelo.lower()
+          && o.vehiculo.anio == d.anio
+          && (!('placas' in o.vehiculo) || o.vehiculo.placas.upper().replace(' ', '') == d.placas)
+          && servicioNuevoH(o);
+      }
+
+      allow read: if esAdmin() || esDuenoH();
+
+      allow create: if puedeEscribirH()
+                    && formaH()
+                    && request.resource.data.servicios.size() == 1
+                    && request.resource.data.creadoAt == request.time
+                    && ordenCoincideH();
+
+      // Agregar un servicio: el vehículo no cambia, la orden no estaba ya en el historial, y los
+      // servicios y folios anteriores quedan idénticos (solo se agrega uno al final).
+      allow update: if puedeEscribirH()
+                    && formaH()
+                    && request.resource.data.creadoAt == resource.data.creadoAt
+                    && request.resource.data.placas == resource.data.placas
+                    && request.resource.data.marca == resource.data.marca
+                    && request.resource.data.modelo == resource.data.modelo
+                    && request.resource.data.anio == resource.data.anio
+                    && !(request.resource.data.ultimoFolio in resource.data.folios)
+                    && request.resource.data.servicios.size() == resource.data.servicios.size() + 1
+                    && request.resource.data.servicios[0:resource.data.servicios.size()] == resource.data.servicios
+                    && request.resource.data.folios[0:resource.data.folios.size()] == resource.data.folios
+                    && ordenCoincideH();
+
+      allow delete: if esAdmin() || esDuenoH();
+    }
+
     // ---------- Pedido de piezas de talleres a yonkes ----------
     // El taller publica una solicitud (vehículo + pieza, SIN datos del cliente final); Mecanix
     // decide a qué yonkes avisar por estado (fuera de las reglas); cada yonke responde una sola

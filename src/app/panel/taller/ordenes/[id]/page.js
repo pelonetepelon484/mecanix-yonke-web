@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import OrdenForm from '../OrdenForm';
 import { useOrdenes } from '../contexto';
+import AgregarAlHistorial from '../AgregarAlHistorial';
 import { borrarOrden, guardarOrden, leerOrden, quitarDatosClienteOrden } from '../datos';
 import { AVISO_COPIA } from '../../../../../lib/ordenes';
 import { MENSAJES_COTIZACION } from '../../../../../lib/cotizaciones';
@@ -87,6 +88,9 @@ export default function DetalleOrden() {
           </button>
           <p style={{ fontSize: '13px', color: '#555', margin: '6px 0 0' }}>El PDF usa lo último que guardaste.</p>
         </div>
+
+        {/* Historial de servicios (config/historialTaller): solo órdenes entregadas, con Premium. */}
+        <AgregarAlHistorial tallerId={tallerId} taller={taller} folio={folio} orden={orden} puedeEditar={puedeEditar} />
 
         <OrdenForm
           key={version}
