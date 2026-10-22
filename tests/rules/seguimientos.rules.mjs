@@ -280,6 +280,17 @@ describe('activar el enlace', () => {
     b.set(sref(db, TOKEN_N), seg({ folio: OV, estado: 'recibido', nota: '', expiraAt: enDias(88) }));
     await assertFails(b.commit());
   });
+  it('orden con aviso-orden-1: tampoco (el enlace solo se crea en órdenes aviso-orden-3)', async () => {
+    await sembrar();
+    await env.withSecurityRulesDisabled(async (c) => {
+      await setDoc(oref(c.firestore(), 'O261020-VIE0'), { ...orden({ ...conCliente, avisoVersion: 'aviso-orden-1' }), creadoAt: CREADO, actualizadoAt: CREADO, expiraAt: enDias(78) });
+    });
+    const db = como('t1');
+    const b = writeBatch(db);
+    b.set(oref(db, 'O261020-VIE0'), orden({ ...conCliente, creadoAt: CREADO, avisoVersion: 'aviso-orden-1', seguimientoToken: TOKEN_N }));
+    b.set(sref(db, TOKEN_N), seg({ folio: 'O261020-VIE0', estado: 'recibido', nota: '', expiraAt: enDias(88) }));
+    await assertFails(b.commit());
+  });
   it('otro taller no puede activar el enlace de una orden ajena', async () => {
     await sembrar();
     await assertFails(activarO('t2'));

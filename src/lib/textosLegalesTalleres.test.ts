@@ -3,17 +3,18 @@ import textos from './textosLegalesTalleres.json';
 
 describe('textos legales de talleres (texto final aprobado por el abogado el 11 de octubre de 2026)', () => {
   it('versión y fecha visibles', () => {
-    expect(textos.version).toBe('talleres-2026-10-4');
-    expect(textos.fecha).toBe('21 de octubre de 2026');
+    expect(textos.version).toBe('talleres-2026-10-5');
+    expect(textos.fecha).toBe('22 de octubre de 2026');
   });
-  it('términos: 13 subtítulos (1.1 a 1.13) y 41 párrafos', () => {
+  it('términos: 14 subtítulos (1.1 a 1.14) y 58 párrafos', () => {
     const subtitulos = textos.terminos.filter((i) => i.tipo === 'subtitulo');
-    expect(subtitulos.map((s) => s.texto.split(' ')[0])).toEqual(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9', '1.10', '1.11', '1.12', '1.13']);
-    expect(subtitulos.at(-4)?.texto).toBe('1.10 Documentos y expediente propio del Taller');
-    expect(subtitulos.at(-3)?.texto).toBe('1.11 Planes y funciones de pago');
-    expect(subtitulos.at(-2)?.texto).toBe('1.12 Módulo de Historial de Servicios y Recordatorios (Plan Premium)');
-    expect(subtitulos.at(-1)?.texto).toBe('1.13 Responsabilidad sobre el contenido y la información registrada');
-    expect(textos.terminos.filter((i) => i.tipo === 'parrafo')).toHaveLength(41);
+    expect(subtitulos.map((s) => s.texto.split(' ')[0])).toEqual(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9', '1.10', '1.11', '1.12', '1.13', '1.14']);
+    expect(subtitulos.at(-5)?.texto).toBe('1.10 Documentos y expediente propio del Taller');
+    expect(subtitulos.at(-4)?.texto).toBe('1.11 Planes y funciones de pago');
+    expect(subtitulos.at(-3)?.texto).toBe('1.12 Módulo de Historial de Servicios y Recordatorios (Plan Premium)');
+    expect(subtitulos.at(-2)?.texto).toBe('1.13 Responsabilidad sobre el contenido y la información registrada');
+    expect(subtitulos.at(-1)?.texto).toBe('1.14 Enlaces de seguimiento de órdenes de servicio');
+    expect(textos.terminos.filter((i) => i.tipo === 'parrafo')).toHaveLength(58);
   });
   it('1.4 vigente (quitar datos y eliminar con la versión aceptada), 1.6 con ACEPTO y 1.8.2 con los topes de los planes', () => {
     const t = textos.terminos.map((i) => i.texto).join('\n');
@@ -36,9 +37,9 @@ describe('textos legales de talleres (texto final aprobado por el abogado el 11 
     expect(t).toContain('Los yonkes que tienen la pieza responden en la Plataforma con su precio.');
     expect(t).not.toContain('El primer yonke que confirme');
   });
-  it('privacidad: 28 elementos (encabezado de responsable, 2.1 a 2.8)', () => {
-    expect(textos.privacidad).toHaveLength(28);
-    expect(textos.privacidad.filter((i) => i.tipo === 'subtitulo').map((s) => s.texto.split(' ')[0])).toEqual(['2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '2.7', '2.8']);
+  it('privacidad: 30 elementos (encabezado de responsable, 2.1 a 2.9)', () => {
+    expect(textos.privacidad).toHaveLength(30);
+    expect(textos.privacidad.filter((i) => i.tipo === 'subtitulo').map((s) => s.texto.split(' ')[0])).toEqual(['2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '2.7', '2.8', '2.9']);
     expect(textos.privacidad[0].texto.startsWith('Responsable de los datos de la cuenta del Taller')).toBe(true);
   });
   it('2.6: comparte con yonkes los datos de la solicitud, nunca los del Cliente del Taller', () => {
@@ -68,7 +69,13 @@ describe('textos legales de talleres (texto final aprobado por el abogado el 11 
     expect(v2.plantilla[8].texto).toBe('Versión del aviso: aviso-taller-2');
   });
   it('aviso de cambios: el texto aprobado, sin comillas «» alrededor (solo las de «ACEPTO»)', () => {
-    expect(textos.resumenCambios.startsWith('Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir el Historial de Servicios y Recordatorios del plan Premium.')).toBe(true);
+    expect(textos.resumenCambios.startsWith('Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir el Historial de Servicios y Recordatorios del plan Premium y el enlace de seguimiento de órdenes.')).toBe(true);
+    expect(textos.resumenCambios).toContain('El enlace de seguimiento es un enlace privado e informativo');
+    expect(textos.resumenCambios).toContain('no muestra nombres, teléfonos, precios ni otros datos personales');
+    expect(textos.resumenCambios).toContain('a más tardar 30 días naturales después de la primera vez que registras la orden como entregada, o antes si la orden se elimina');
+    expect(textos.resumenCambios).toContain('Puedes desactivarlo cuando quieras, y tu cliente puede pedirte que lo desactives.');
+    expect(textos.resumenCambios).toContain('de que tu nota no incluya nombres, teléfonos, datos financieros ni información confidencial');
+    expect(textos.resumenCambios).toContain('lee y escribe «ACEPTO»');
     expect(textos.resumenCambios.endsWith('solo podrás visualizar, reimprimir y descargar tus documentos anteriores.')).toBe(true);
     expect(textos.resumenCambios.replace('«ACEPTO»', '')).not.toMatch(/[«»]/);
   });
@@ -109,5 +116,26 @@ describe('textos legales de talleres (texto final aprobado por el abogado el 11 
     expect(p).not.toContain('que el Taller haya incorporado al historial');
     expect(p).toContain('podrá descargar una copia de su historial mediante la función «Descargar mi historial»');
     expect(p).toContain('Mecanix colaborará con el Taller cuando sea necesario localizar, corregir, exportar o eliminar registros dentro de la Plataforma.');
+  });
+  it('1.14 enlaces de seguimiento (texto del abogado, 8 apartados) y 2.9 en privacidad', () => {
+    const t = textos.terminos;
+    const i = t.findIndex((x) => x.texto === '1.14 Enlaces de seguimiento de órdenes de servicio');
+    const parrafos = t.slice(i + 1).map((x) => x.texto);
+    expect(parrafos).toHaveLength(17);
+    expect(t.slice(i + 1).every((x) => x.tipo === 'parrafo')).toBe(true);
+    const apartados = parrafos.filter((p) => /^[1-8]\. ¿/.test(p)).map((p) => p.split('?')[0] + '?');
+    expect(apartados).toEqual([
+      '1. ¿Para qué sirve esta función?', '2. ¿Qué información puede ver el cliente?', '3. ¿Qué responsabilidad tiene el taller?',
+      '4. ¿Quién puede abrir el enlace?', '5. ¿Cuándo deja de funcionar el enlace?', '6. ¿Qué responsabilidad tiene Mecanix?',
+      '7. ¿Qué pasa si el enlace se usa indebidamente?', '8. ¿Qué pasa con la orden cuando vence el enlace?',
+    ]);
+    const todo = parrafos.join('\n');
+    expect(todo).toContain('1. ¿Para qué sirve esta función? Mecanix permite que los talleres compartan un enlace de seguimiento');
+    expect(todo).toContain('No se mostrarán nombres de clientes, teléfonos personales, precios, importes ni otros datos personales o información adicional de la orden.');
+    expect(todo).toContain('Los cambios posteriores en la orden, en su estado o en su fecha de entrega no extienden ese plazo.');
+    expect(todo).toContain('Mecanix podrá desactivarlo para proteger a las personas involucradas.');
+    expect(parrafos.at(-1)).toBe('La orden y sus datos se conservarán de acuerdo con las políticas de privacidad y los plazos de conservación que correspondan.');
+    expect(textos.privacidad.at(-2)?.texto).toBe('2.9 Enlaces de seguimiento de órdenes de servicio');
+    expect(textos.privacidad.at(-1)?.texto).toBe('El enlace de seguimiento de órdenes de servicio tiene una finalidad meramente informativa: permite al cliente consultar el avance de su servicio. Muestra únicamente el nombre del taller, la marca, el modelo y el año del vehículo, el estado del servicio, una nota breve del taller y la fecha de la última actualización, y no incluye nombres de clientes, teléfonos personales ni precios.');
   });
 });

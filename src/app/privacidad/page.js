@@ -21,7 +21,7 @@ export default function Privacidad() {
           Aviso de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 21 de octubre de 2026
+          Última actualización: 22 de octubre de 2026
         </p>
 
         <Seccion titulo="1. Responsable del tratamiento de tus datos">

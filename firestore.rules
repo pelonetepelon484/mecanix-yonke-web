@@ -536,7 +536,7 @@ service cloud.firestore {
       // sea otra (se puede seguir editando y entregando). aviso-orden-0 (sin aviso) nunca está aquí.
       // Al publicar una versión nueva, agregar aquí la que deja de ser vigente.
       function avisosOrdenAnteriores() {
-        return ['aviso-orden-1'];
+        return ['aviso-orden-1', 'aviso-orden-2'];
       }
       function datosClienteOk() {
         let c = get(/databases/$(database)/documents/config/ordenes).data;
