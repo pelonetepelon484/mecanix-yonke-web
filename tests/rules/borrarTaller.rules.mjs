@@ -56,6 +56,18 @@ async function sembrar() {
     await setDoc(doc(db, 'talleres', 'T1', 'historial', 'v1'), vehiculo('O251011-AAAA'));
     await setDoc(doc(db, 'talleres', 'T1', 'historial', 'v2'), vehiculo('O251011-BBBB'));
     await setDoc(doc(db, 'talleres', 'T2', 'historial', 'v3'), vehiculo('O251011-ZZZZ'));
+    // Solicitudes de piezas: dos de T1 y una de T2, cada una con privado/contacto y dos respuestas
+    for (const [id, t] of [['S1', 'T1'], ['S2', 'T1'], ['S3', 'T2']]) {
+      const exp = new Date(Date.now() + 5 * 86400000);
+      await setDoc(doc(db, 'solicitudesPiezas', id), {
+        tallerId: t, tallerNombre: 'Taller', vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2001 }, pieza: 'Alternador', nota: '',
+        estado: 'baja-california', estadoSolicitud: 'abierta', yonkeElegido: null, creadoAt: new Date(), expiraAt: exp,
+      });
+      await setDoc(doc(db, 'solicitudesPiezas', id, 'privado', 'contacto'), { tallerWhatsapp: '6641234567', expiraAt: exp });
+      for (const y of ['Y1', 'Y2']) {
+        await setDoc(doc(db, 'solicitudesPiezas', id, 'respuestas', y), { precio: 1500, creadoAt: new Date(), expiraAt: exp });
+      }
+    }
     // Otro taller que NO se debe tocar
     await setDoc(doc(db, 'talleres', 'T2'), { nombre: 'Otro', whatsapp: '6649999999', ciudad: 'Ensenada', logoUrl: '', ownerUid: 't2', activo: true, creadoAt: new Date(), aceptacionVersion: 'v1', avisoPrivacidad: { modo: 'generado', versionPlantilla: 'aviso-1', fecha: new Date() } });
     await setDoc(doc(db, 'talleres', 'T2', 'aceptaciones', 'v1'), { version: 'v1', fecha: new Date() });
@@ -74,7 +86,16 @@ async function conteos(uid, tallerId) {
   const usuario = await getDoc(doc(db, 'usuarios', tallerId.toLowerCase()));
   const segs = await getDocs(query(collection(db, 'seguimientos'), where('tallerId', '==', tallerId)));
   const hist = await getDocs(collection(db, 'talleres', tallerId, 'historial'));
-  return { cotizaciones: cots.size, renglones, seguimientos: segs.size, ordenes: ords.size, historial: hist.size, aceptaciones: acs.size, taller: taller.exists(), usuario: usuario.exists() };
+  const sols = await getDocs(query(collection(db, 'solicitudesPiezas'), where('tallerId', '==', tallerId)));
+  return { cotizaciones: cots.size, renglones, seguimientos: segs.size, ordenes: ords.size, historial: hist.size, solicitudes: sols.size, aceptaciones: acs.size, taller: taller.exists(), usuario: usuario.exists() };
+}
+
+// Documentos que quedan en las subcolecciones de una solicitud (aunque la solicitud ya no exista).
+async function subdocsDeSolicitud(uid, id) {
+  const db = env.authenticatedContext(uid).firestore();
+  const privado = await getDocs(collection(db, 'solicitudesPiezas', id, 'privado'));
+  const respuestas = await getDocs(collection(db, 'solicitudesPiezas', id, 'respuestas'));
+  return privado.size + respuestas.size;
 }
 
 before(async () => {
@@ -83,7 +104,7 @@ before(async () => {
 after(async () => { await env.cleanup(); });
 
 describe('admin borra un taller completo', () => {
-  it('borra renglones, cotizaciones, enlaces, órdenes, historial de vehículos, aceptaciones, taller y usuario; no toca otro taller', async () => {
+  it('borra renglones, cotizaciones, enlaces, órdenes, historial de vehículos, solicitudes de piezas (con privado y respuestas), aceptaciones, taller y usuario; no toca otro taller', async () => {
     await sembrar();
     const db = env.authenticatedContext('adm').firestore();
     const resumen = await borrarTallerCompleto({ db, fns }, 'T1');
@@ -92,16 +113,21 @@ describe('admin borra un taller completo', () => {
     assert.equal(resumen.seguimientos, 2);
     assert.equal(resumen.ordenes, 3);
     assert.equal(resumen.historial, 2);
+    assert.equal(resumen.solicitudesPiezas, 2);
     assert.equal(resumen.aceptaciones, 1);
     assert.equal(resumen.taller, true);
     assert.equal(resumen.usuarios, 1);
     const despues = await conteos('adm', 'T1');
-    assert.deepEqual(despues, { cotizaciones: 0, renglones: 0, seguimientos: 0, ordenes: 0, historial: 0, aceptaciones: 0, taller: false, usuario: false });
+    assert.deepEqual(despues, { cotizaciones: 0, renglones: 0, seguimientos: 0, ordenes: 0, historial: 0, solicitudes: 0, aceptaciones: 0, taller: false, usuario: false });
+    assert.equal(await subdocsDeSolicitud('adm', 'S1'), 0);
+    assert.equal(await subdocsDeSolicitud('adm', 'S2'), 0);
     const otro = await conteos('adm', 'T2');
     assert.equal(otro.taller, true);
     assert.equal(otro.aceptaciones, 1);
     assert.equal(otro.seguimientos, 1);
     assert.equal(otro.historial, 1);
+    assert.equal(otro.solicitudes, 1);
+    assert.equal(await subdocsDeSolicitud('adm', 'S3'), 3);
   });
 
   it('es idempotente: volver a correrla sobre un taller ya borrado no falla', async () => {
@@ -111,6 +137,8 @@ describe('admin borra un taller completo', () => {
     const segunda = await borrarTallerCompleto({ db, fns }, 'T1');
     assert.equal(segunda.cotizaciones, 0);
     assert.equal(segunda.historial, 0);
+    assert.equal(segunda.solicitudesPiezas, 0);
+    assert.equal(await subdocsDeSolicitud('adm', 'S3'), 3);
     assert.equal(segunda.taller, true);
   });
 
