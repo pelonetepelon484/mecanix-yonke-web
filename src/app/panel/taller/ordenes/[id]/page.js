@@ -9,7 +9,9 @@ import { borrarOrden, guardarOrden, leerOrden, quitarDatosClienteOrden } from '.
 import { AVISO_COPIA } from '../../../../../lib/ordenes';
 import { MENSAJES_COTIZACION } from '../../../../../lib/cotizaciones';
 import { descargarPdfOrden } from '../pdf';
-import { datosClienteDisponibles } from '../../../../../lib/avisoOrden';
+import { datosClienteDisponibles, ordenConSeguimiento } from '../../../../../lib/avisoOrden';
+import { AVISO_ENTREGA_SEGUIMIENTO } from '../../../../../lib/seguimiento';
+import SeguimientoOrden from '../SeguimientoOrden';
 
 export default function DetalleOrden() {
   const router = useRouter();
@@ -92,6 +94,13 @@ export default function DetalleOrden() {
         {/* Historial de servicios (config/historialTaller): solo órdenes entregadas, con Premium. */}
         <AgregarAlHistorial tallerId={tallerId} taller={taller} folio={folio} orden={orden} puedeEditar={puedeEditar} />
 
+        {/* Seguimiento en línea (config/ordenes.seguimientoHabilitado): solo órdenes con aviso que lo incluye. */}
+        <SeguimientoOrden
+          key={`seg-${version}`}
+          tallerId={tallerId} taller={taller} folio={folio} orden={orden} configOrdenes={configOrdenes}
+          puedeEditar={puedeEditar} vencida={vencida} onCambio={() => setVersion((v) => v + 1)}
+        />
+
         <OrdenForm
           key={version}
           inicial={orden}
@@ -102,10 +111,13 @@ export default function DetalleOrden() {
           puedeEliminar={puedeBorrar}
           // Datos del cliente solo en órdenes con la versión de aviso vigente (las viejas, nunca).
           datosCliente={datosClienteDisponibles(configOrdenes, orden.avisoVersion)}
+          // Al marcar Entregado por primera vez, el aviso de los 30 días del enlace de seguimiento.
+          avisoEntrega={configOrdenes?.seguimientoHabilitado === true && ordenConSeguimiento(orden.avisoVersion) && !orden.primeraEntregaAt
+            ? AVISO_ENTREGA_SEGUIMIENTO : null}
           onEliminar={async () => {
             if (!window.confirm('¿Eliminar esta orden? Esto no se puede deshacer.')) return;
             try {
-              await borrarOrden(tallerId, folio);
+              await borrarOrden(tallerId, folio, orden);
               router.push('/panel/taller/ordenes');
             } catch (err) {
               console.error(err);
@@ -114,7 +126,7 @@ export default function DetalleOrden() {
           }}
           onCancelar={() => router.push('/panel/taller/ordenes')}
           onGuardar={async (datos) => {
-            await guardarOrden({ tallerId, folio, datos, original: orden });
+            await guardarOrden({ tallerId, folio, datos, original: orden, taller });
             setAviso('Cambios guardados.');
             setVersion((v) => v + 1);
           }}

@@ -14,6 +14,7 @@ import {
 // (datosClienteDisponibles: bandera encendida, aviso de órdenes listo y versión vigente en la orden).
 // Nunca VIN ni fotos.
 // soloLectura: el taller tiene la versión vieja, está desactivado o la orden venció.
+// avisoEntrega: texto que se muestra al marcar "Entregado" (p. ej. el del enlace de seguimiento).
 // Todo lo que viene de Firestore se lee como texto plano (leerItems/textoPlano) y React lo muestra
 // como texto: nunca se interpreta como HTML.
 
@@ -135,7 +136,7 @@ function ListaItems({ titulo, nombreSingular, lista, max, datos, onCambiar, onQu
 }
 
 export default function OrdenForm({
-  inicial = null, tallerActivo = true, soloLectura = false, puedeEliminar = false, datosCliente = false,
+  inicial = null, tallerActivo = true, soloLectura = false, puedeEliminar = false, datosCliente = false, avisoEntrega = null,
   onGuardar, onQuitarDatos, onEliminar, onCancelar,
 }) {
   const [f, setF] = useState(() => desdeInicial(inicial));
@@ -250,6 +251,9 @@ export default function OrdenForm({
                 value={f.garantiaDias} onChange={set('garantiaDias')} style={{ ...inputBase, borderColor: garantiaFalta ? '#B3261E' : '#CCC' }}
               />
               {garantiaFalta && <p role="alert" style={{ fontSize: '13px', color: '#B3261E', margin: '0 0 10px' }}>{MENSAJES_ORDEN.garantia}</p>}
+              {avisoEntrega && !soloLectura && (
+                <p data-testid="aviso-entrega" style={{ fontSize: '14px', color: '#8A2A1A', backgroundColor: '#FFF6E8', borderRadius: '10px', padding: '10px', margin: '0 0 10px' }}>{avisoEntrega}</p>
+              )}
             </>
           )}
           {!soloLectura && borradoPrevisto && (

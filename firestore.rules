@@ -480,6 +480,19 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Seguimiento público de órdenes: funciones compartidas ----------
+    // Versiones del aviso de la orden que SÍ informan al cliente del enlace de seguimiento. Solo las
+    // órdenes creadas con una de estas versiones pueden tener enlace (y llevan primeraEntregaAt).
+    // Debe coincidir con las versiones marcadas "seguimiento": true en textosLegalesTalleres.json
+    // (lo revisa una prueba). Al publicar una versión nueva del aviso, agregarla aquí.
+    function avisosConSeguimiento() {
+      return ['aviso-orden-3'];
+    }
+    // seguimientos/{huella}: huella = SHA-256 (hex, minúsculas) del token que vive en la orden.
+    function refSeguimiento(token) {
+      return /databases/$(database)/documents/seguimientos/$(hashing.sha256(token).toHexString().lower());
+    }
+
     // ---------- Órdenes de servicio del taller (etapa 1) ----------
     // talleres/{tallerId}/ordenes/{folio}: trabajos y piezas DENTRO de la orden (máximo 20 de cada uno).
     // Bandera: config/ordenes { habilitado, datosClienteHabilitados, avisoOrdenVersion }. Sin ese
@@ -554,7 +567,7 @@ service cloud.firestore {
       }
       function ordenValida() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['tallerId', 'estado', 'cliente', 'vehiculo', 'fallaReportada', 'observaciones', 'estadoRecepcion', 'pertenencias', 'trabajos', 'piezas', 'totalCentavos', 'creadoAt', 'actualizadoAt', 'expiraAt', 'avisoVersion', 'garantiaDias', 'fechaEntrega'])
+        return d.keys().hasOnly(['tallerId', 'estado', 'cliente', 'vehiculo', 'fallaReportada', 'observaciones', 'estadoRecepcion', 'pertenencias', 'trabajos', 'piezas', 'totalCentavos', 'creadoAt', 'actualizadoAt', 'expiraAt', 'avisoVersion', 'garantiaDias', 'fechaEntrega', 'seguimientoToken', 'notaSeguimiento', 'primeraEntregaAt'])
           && d.keys().hasAll(['tallerId', 'estado', 'cliente', 'vehiculo', 'fallaReportada', 'observaciones', 'estadoRecepcion', 'pertenencias', 'trabajos', 'piezas', 'totalCentavos', 'creadoAt', 'actualizadoAt', 'expiraAt', 'avisoVersion'])
           && d.tallerId == tallerId
           && d.estado in ['recibido', 'diagnostico', 'esperandoPiezas', 'reparacion', 'listo', 'entregado']
@@ -611,6 +624,53 @@ service cloud.firestore {
                         : cerca(d.expiraAt, r.fechaEntrega + duration.value(d.garantiaDias + 8, 'd')))));
       }
 
+      // Seguimiento público (campos de la orden):
+      //  - seguimientoToken y notaSeguimiento: solo en órdenes con aviso en avisosConSeguimiento(), y
+      //    nunca al crear (el enlace se activa después, desde el detalle).
+      //  - primeraEntregaAt (solo esas órdenes): la hora del servidor la PRIMERA vez que la orden pasa
+      //    a Entregado; después nunca cambia, aunque la orden regrese a otro estado. De ahí cuentan los
+      //    30 días del enlace (ver seguimientos).
+      // Sincronía con seguimientos/{huella}, sin repetir aquí la revisión pesada (la hacen las reglas
+      // de seguimientos contra esta orden con getAfter):
+      //  - mismo token: si el enlace EXISTE después del guardado, se reescribió en el mismo lote
+      //    (actualizadoAt == hora del servidor). Si el taller lo desactivó, la orden se guarda libre.
+      //  - token nuevo (activar / reactivar): el enlace nuevo existe después del lote (sus reglas de
+      //    crear exigen bandera, Premium, términos y aviso) y el anterior ya no existe.
+      //  - quitar el token: solo si su enlace ya no existe.
+      function conSeguimiento(version) {
+        return version in avisosConSeguimiento();
+      }
+      function notaSeguimientoOk(d) {
+        return !('notaSeguimiento' in d) || (d.notaSeguimiento is string && d.notaSeguimiento.size() <= 200);
+      }
+      function primeraEntregaAlCrear() {
+        let d = request.resource.data;
+        return conSeguimiento(d.avisoVersion) && d.estado == 'entregado'
+          ? d.get('primeraEntregaAt', null) == request.time
+          : !('primeraEntregaAt' in d);
+      }
+      function seguimientoAlEditar() {
+        let d = request.resource.data;
+        let r = resource.data;
+        let antes = r.get('seguimientoToken', null);
+        let despues = d.get('seguimientoToken', null);
+        return (conSeguimiento(r.avisoVersion)
+                || (!('seguimientoToken' in d) && !('notaSeguimiento' in d) && !('primeraEntregaAt' in d)))
+          && notaSeguimientoOk(d)
+          && ('primeraEntregaAt' in r
+                ? d.get('primeraEntregaAt', null) == r.primeraEntregaAt
+                : (conSeguimiento(r.avisoVersion) && d.estado == 'entregado'
+                    ? d.get('primeraEntregaAt', null) == request.time
+                    : !('primeraEntregaAt' in d)))
+          && (antes == despues
+                ? (despues == null
+                    || !existsAfter(refSeguimiento(despues))
+                    || getAfter(refSeguimiento(despues)).data.actualizadoAt == request.time)
+                : ((antes == null || !existsAfter(refSeguimiento(antes)))
+                    && (despues == null
+                        || (despues is string && despues.matches('^[A-Za-z0-9_-]{43}$') && existsAfter(refSeguimiento(despues))))));
+      }
+
       allow read: if esAdmin() || esDuenoDelTaller();
 
       allow create: if tallerActivoDeDueno()
@@ -622,7 +682,10 @@ service cloud.firestore {
                     && request.resource.data.creadoAt == request.time
                     && request.resource.data.actualizadoAt == request.time
                     && expiraAlCrear()
-                    && request.resource.data.avisoVersion == get(/databases/$(database)/documents/config/ordenes).data.avisoOrdenVersion;
+                    && request.resource.data.avisoVersion == get(/databases/$(database)/documents/config/ordenes).data.avisoOrdenVersion
+                    && !('seguimientoToken' in request.resource.data)
+                    && !('notaSeguimiento' in request.resource.data)
+                    && primeraEntregaAlCrear();
 
       allow update: if (
                         // A) "Quitar datos del cliente": dueño ACTIVO y con términos VIGENTES. SOLO vaciar
@@ -649,12 +712,85 @@ service cloud.firestore {
                             && request.resource.data.creadoAt == resource.data.creadoAt
                             && request.resource.data.avisoVersion == resource.data.avisoVersion
                             && request.resource.data.actualizadoAt == request.time
-                            && expiraAlEditar())
+                            && expiraAlEditar()
+                            && seguimientoAlEditar())
                       );
 
-      // Borrar: admin, o el dueño con taller activo y términos vigentes.
+      // Borrar: admin, o el dueño con taller activo y términos vigentes. Si la orden tiene enlace de
+      // seguimiento, el dueño lo borra en el mismo lote (no quedan enlaces huérfanos).
       allow delete: if esAdmin()
-                    || (tallerActivoDeDueno() && versionVigente());
+                    || (tallerActivoDeDueno() && versionVigente()
+                        && (!('seguimientoToken' in resource.data)
+                            || !existsAfter(refSeguimiento(resource.data.seguimientoToken))));
+    }
+
+    // ---------- Seguimiento público de órdenes (etapa 1) ----------
+    // seguimientos/{huella}: SOLO los datos que ve el cliente en /seguimiento/{token}. El token vive
+    // en la orden (que solo lee el dueño); aquí solo su huella SHA-256 como ID. La página pública lo
+    // lee en el servidor con el usuario de servicio (solo get, nunca list) y NUNCA lee órdenes ni
+    // talleres. Sin placas, sin datos del cliente, sin precios.
+    // Todo lo que se escribe debe coincidir con la orden DESPUÉS del lote (getAfter) y con el taller.
+    // Vence (expiraAt, política TTL) a más tardar cuando vence la orden y a más tardar 30 días
+    // después de la primera entrega (primeraEntregaAt de la orden).
+    //  - Crear (activar): dueño, taller activo, términos vigentes, config/ordenes.seguimientoHabilitado,
+    //    Premium vigente SIEMPRE y aviso de la orden en avisosConSeguimiento().
+    //  - Actualizar (mantener al día): solo el dueño y que coincida; NO pide Premium, bandera ni
+    //    términos (la orden ya los pide para guardarse).
+    //  - Borrar (desactivar): el dueño siempre (sin Premium, términos ni taller activo) o el admin.
+    match /seguimientos/{huella} {
+      function tallerDelSeguimiento(id) {
+        return get(/databases/$(database)/documents/talleres/$(id)).data;
+      }
+      function esDuenoDelSeguimiento(id) {
+        return request.auth != null && tallerDelSeguimiento(id).ownerUid == request.auth.uid;
+      }
+      function ordenDelSeguimiento(d) {
+        return getAfter(/databases/$(database)/documents/talleres/$(d.tallerId)/ordenes/$(d.folio)).data;
+      }
+      function seguimientoValido() {
+        let d = request.resource.data;
+        let o = ordenDelSeguimiento(d);
+        let t = tallerDelSeguimiento(d.tallerId);
+        return d.keys().hasOnly(['tallerId', 'folio', 'tallerNombre', 'tallerWhatsapp', 'marca', 'modelo', 'anio', 'estado', 'nota', 'actualizadoAt', 'expiraAt'])
+          && d.keys().hasAll(['tallerId', 'folio', 'tallerNombre', 'tallerWhatsapp', 'marca', 'modelo', 'anio', 'estado', 'nota', 'actualizadoAt', 'expiraAt'])
+          && request.auth != null
+          && t.ownerUid == request.auth.uid
+          && o.tallerId == d.tallerId
+          && huella == hashing.sha256(o.seguimientoToken).toHexString().lower()
+          && d.tallerNombre == t.nombre
+          && d.tallerWhatsapp == t.whatsapp
+          && d.marca == o.vehiculo.marca
+          && d.modelo == o.vehiculo.modelo
+          && d.anio == o.vehiculo.anio
+          && d.estado == o.estado
+          && d.nota == o.get('notaSeguimiento', '')
+          && d.actualizadoAt == request.time
+          && d.expiraAt is timestamp
+          && d.expiraAt <= o.expiraAt
+          && (!('primeraEntregaAt' in o) || d.expiraAt <= o.primeraEntregaAt + duration.value(30, 'd'));
+      }
+
+      // Si el documento NO existe (enlace desactivado o vencido), cualquier usuario con sesión puede
+      // saberlo: sin el token no se conoce la huella, así que no revela nada. Así el dueño revisa si
+      // su enlace sigue activo y "desactivar" funciona aunque ya no exista.
+      allow get: if esServicio() || esAdmin()
+                 || (request.auth != null && (resource == null || esDuenoDelSeguimiento(resource.data.tallerId)));
+      allow list: if esAdmin();
+
+      allow create: if seguimientoValido()
+                    && tallerDelSeguimiento(request.resource.data.tallerId).activo == true
+                    && tallerDelSeguimiento(request.resource.data.tallerId).aceptacionVersion
+                         == get(/databases/$(database)/documents/config/cotizaciones).data.terminosVersion
+                    && get(/databases/$(database)/documents/config/ordenes).data.get('seguimientoHabilitado', false) == true
+                    && premiumVigente(tallerDelSeguimiento(request.resource.data.tallerId))
+                    && ordenDelSeguimiento(request.resource.data).avisoVersion in avisosConSeguimiento();
+
+      allow update: if seguimientoValido()
+                    && request.resource.data.tallerId == resource.data.tallerId
+                    && request.resource.data.folio == resource.data.folio;
+
+      allow delete: if esAdmin()
+                    || (request.auth != null && (resource == null || esDuenoDelSeguimiento(resource.data.tallerId)));
     }
 
     // ---------- Historial de servicios del taller (etapa 2) ----------
