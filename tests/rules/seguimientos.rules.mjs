@@ -191,8 +191,11 @@ describe('límite de 1,000 revisiones: caso máximo (20 trabajos + 20 piezas, co
 function activarO(uid, { orden: o = {}, seguimiento: s = {}, token = TOKEN_N } = {}) {
   const db = como(uid);
   const b = writeBatch(db);
-  b.set(oref(db, O), edicionO({ seguimientoToken: token, ...o }));
-  b.set(sref(db, token), seg({ folio: O, estado: 'recibido', nota: '', expiraAt: enDias(88), ...s }));
+  // La MISMA fecha para la orden y su enlace: si se calculara dos veces, el enlace podría vencer
+  // 1 ms después que la orden y las reglas (con razón) lo rechazarían.
+  const expiraAt = enDias(88);
+  b.set(oref(db, O), edicionO({ seguimientoToken: token, expiraAt, ...o }));
+  b.set(sref(db, token), seg({ folio: O, estado: 'recibido', nota: '', expiraAt, ...s }));
   return b.commit();
 }
 

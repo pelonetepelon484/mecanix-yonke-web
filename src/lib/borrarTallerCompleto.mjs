@@ -1,6 +1,6 @@
 // Borrado completo de un taller, solo para admin, SIN pantalla (por ahora).
-// Orden: renglones -> cotizaciones -> enlaces de seguimiento -> órdenes de servicio -> historial de aceptaciones -> taller ->
-// usuario de rol taller.
+// Orden: renglones -> cotizaciones -> enlaces de seguimiento -> órdenes de servicio -> historial de vehículos ->
+// historial de aceptaciones -> taller -> usuario de rol taller.
 // La cuenta de Firebase Auth NO se borra aquí: se borra a mano en la consola.
 // Las dependencias de Firebase se pasan desde fuera (fns) para poder probarlo en el emulador.
 // Es idempotente: si falla a la mitad, volver a correrla termina lo que falta.
@@ -11,7 +11,7 @@ export async function borrarTallerCompleto({ db, fns }, tallerId) {
   const { collection, getDocs, writeBatch, query, where } = fns;
   if (!tallerId || typeof tallerId !== 'string') throw new Error('Falta el ID del taller.');
 
-  const resumen = { cotizaciones: 0, renglones: 0, seguimientos: 0, ordenes: 0, aceptaciones: 0, usuarios: 0, taller: false };
+  const resumen = { cotizaciones: 0, renglones: 0, seguimientos: 0, ordenes: 0, historial: 0, aceptaciones: 0, usuarios: 0, taller: false };
 
   // 1) Renglones y 2) cotización, de una en una (cada lote tiene como máximo 21 operaciones)
   const cotizaciones = await getDocs(collection(db, 'talleres', tallerId, 'cotizaciones'));
@@ -33,6 +33,12 @@ export async function borrarTallerCompleto({ db, fns }, tallerId) {
   // 2b) Órdenes de servicio (sin subcolecciones: trabajos y piezas van dentro de cada orden), en lotes
   const ordenes = await getDocs(collection(db, 'talleres', tallerId, 'ordenes'));
   resumen.ordenes = await borrarRefs(db, writeBatch, ordenes.docs.map((d) => d.ref));
+
+  // 2c) Historial de vehículos (talleres/{id}/historial/{vehiculoId}): un documento por vehículo con
+  //     sus servicios y recordatorios DENTRO (sin subcolecciones), en lotes. Antes que el taller, para
+  //     que no quede ningún vehículo huérfano.
+  const historial = await getDocs(collection(db, 'talleres', tallerId, 'historial'));
+  resumen.historial = await borrarRefs(db, writeBatch, historial.docs.map((d) => d.ref));
 
   // 3) Historial de aceptaciones (en lotes)
   const aceptaciones = await getDocs(collection(db, 'talleres', tallerId, 'aceptaciones'));
