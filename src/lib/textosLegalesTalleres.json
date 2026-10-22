@@ -1,6 +1,6 @@
 {
-  "version": "talleres-2026-10-4",
-  "fecha": "21 de octubre de 2026",
+  "version": "talleres-2026-10-5",
+  "fecha": "22 de octubre de 2026",
   "urls": {
     "terminosTalleres": "https://mecanixyonkevirtual.com/terminos#talleres",
     "privacidadTalleres": "https://mecanixyonkevirtual.com/privacidad#talleres"
@@ -221,6 +221,78 @@
     {
       "tipo": "parrafo",
       "texto": "Ninguna disposición de esta cláusula exime a alguna de las partes de las obligaciones que le correspondan conforme a la legislación aplicable en materia de protección de datos personales."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "1.14 Enlaces de seguimiento de órdenes de servicio"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "1. ¿Para qué sirve esta función? Mecanix permite que los talleres compartan un enlace de seguimiento para que sus clientes puedan consultar el estado de su vehículo sin crear una cuenta."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "2. ¿Qué información puede ver el cliente? El enlace mostrará únicamente el nombre del taller, la marca, el modelo y el año del vehículo, el estado del servicio, una nota breve del taller y la fecha de la última actualización. También incluirá un botón para contactar al taller por WhatsApp."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "No se mostrarán nombres de clientes, teléfonos personales, precios, importes ni otros datos personales o información adicional de la orden."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "3. ¿Qué responsabilidad tiene el taller? El taller debe mantener actualizado el estado del servicio y asegurarse de que las notas no incluyan nombres de clientes, teléfonos, datos financieros ni información confidencial."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La información publicada debe estar relacionada con el avance del servicio y no debe incluir datos que no sean necesarios para el seguimiento."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "4. ¿Quién puede abrir el enlace? El cliente no necesita registrarse ni iniciar sesión. Cualquier persona que tenga el enlace podrá consultar la información que aparece en él."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Por eso, el taller debe explicar al cliente cómo funciona el seguimiento y recomendarle que no comparta el enlace públicamente."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El cliente puede solicitar al taller, en cualquier momento, que desactive o elimine el enlace de seguimiento de su vehículo, y el taller atenderá su solicitud conforme a la legislación aplicable."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "5. ¿Cuándo deja de funcionar el enlace? El enlace vencerá automáticamente a más tardar 30 días naturales después de la primera vez que el taller registre la orden como entregada."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "Mientras la orden no se registre como entregada, el enlace permanecerá disponible mientras la orden exista en el sistema."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El plazo de 30 días naturales se cuenta desde la primera vez que el taller registra la orden como entregada. Los cambios posteriores en la orden, en su estado o en su fecha de entrega no extienden ese plazo."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El taller puede desactivar el enlace antes si lo considera necesario. Si la orden se elimina del sistema, su enlace de seguimiento también se eliminará y dejará de estar disponible."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "6. ¿Qué responsabilidad tiene Mecanix? Mecanix proporciona la herramienta para consultar el seguimiento, pero no realiza las reparaciones ni controla directamente el trabajo del taller."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El taller es responsable de la información que registra y de mantenerla actualizada. Esto no elimina las responsabilidades que legalmente correspondan a Mecanix por sus propios servicios."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "7. ¿Qué pasa si el enlace se usa indebidamente? Si un enlace muestra información que no debería publicarse, se utiliza de forma indebida o representa un riesgo para la privacidad o seguridad de alguien, Mecanix podrá desactivarlo para proteger a las personas involucradas."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "8. ¿Qué pasa con la orden cuando vence el enlace? Cuando el enlace venza o se desactive, dejará de estar disponible para consulta pública. Esto no significa que la orden se elimine del sistema del taller."
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "La orden y sus datos se conservarán de acuerdo con las políticas de privacidad y los plazos de conservación que correspondan."
     }
   ],
   "privacidad": [
@@ -335,6 +407,14 @@
     {
       "tipo": "parrafo",
       "texto": "Cuando Mecanix trate datos personales para finalidades propias y no únicamente por cuenta del Taller, asumirá las obligaciones que le correspondan respecto de ese tratamiento y proporcionará la información exigible conforme a la legislación aplicable."
+    },
+    {
+      "tipo": "subtitulo",
+      "texto": "2.9 Enlaces de seguimiento de órdenes de servicio"
+    },
+    {
+      "tipo": "parrafo",
+      "texto": "El enlace de seguimiento de órdenes de servicio tiene una finalidad meramente informativa: permite al cliente consultar el avance de su servicio. Muestra únicamente el nombre del taller, la marca, el modelo y el año del vehículo, el estado del servicio, una nota breve del taller y la fecha de la última actualización, y no incluye nombres de clientes, teléfonos personales ni precios."
     }
   ],
   "avisosTaller": [
@@ -421,7 +501,7 @@
       ]
     }
   ],
-  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir el Historial de Servicios y Recordatorios del plan Premium. El historial se llena solo con las órdenes entregadas que tú incorporas y guarda los datos del vehículo (placas, marca, modelo, año, kilometraje, trabajos y piezas) y tus recordatorios; no guarda nombres, teléfonos ni precios, y Mecanix nunca contacta a tus clientes. Puedes borrar un vehículo cuando quieras y descargar una copia de tu historial con “Descargar mi historial”, aunque tu plan Premium haya vencido. El historial de un vehículo se elimina automáticamente cuando pasan más de 18 meses sin que incorpores una nueva orden entregada; entregar una orden sin incorporarla, o cambiar datos, notas o recordatorios, no reinicia ese plazo, y recibirás un aviso en tu panel al menos 30 días antes. Tú eres responsable de no escribir nombres, teléfonos, correos ni otros datos personales de tus clientes en las descripciones. También actualizamos el aviso de privacidad de la orden que entregas a tu cliente: ahora le informa que podrás contactarle por WhatsApp sobre sus servicios, garantías y próximos mantenimientos, y el plazo de conservación del historial de su vehículo. Para seguir creando o editando cotizaciones y órdenes, lee y escribe «ACEPTO». Mientras no lo hagas, solo podrás visualizar, reimprimir y descargar tus documentos anteriores.",
+  "resumenCambios": "Actualizamos los Términos y Condiciones y el Aviso de Privacidad para incluir el Historial de Servicios y Recordatorios del plan Premium y el enlace de seguimiento de órdenes. El historial se llena solo con las órdenes entregadas que tú incorporas y guarda los datos del vehículo (placas, marca, modelo, año, kilometraje, trabajos y piezas) y tus recordatorios; no guarda nombres, teléfonos ni precios, y Mecanix nunca contacta a tus clientes. Puedes borrar un vehículo cuando quieras y descargar una copia de tu historial con “Descargar mi historial”, aunque tu plan Premium haya vencido. El historial de un vehículo se elimina automáticamente cuando pasan más de 18 meses sin que incorpores una nueva orden entregada; entregar una orden sin incorporarla, o cambiar datos, notas o recordatorios, no reinicia ese plazo, y recibirás un aviso en tu panel al menos 30 días antes. Tú eres responsable de no escribir nombres, teléfonos, correos ni otros datos personales de tus clientes en las descripciones. El enlace de seguimiento es un enlace privado e informativo que puedes compartir con tu cliente para que vea el avance de su vehículo sin crear una cuenta. Muestra solo el nombre de tu taller, la marca, el modelo y el año del vehículo, el estado del servicio, una nota breve tuya y la fecha de la última actualización; no muestra nombres, teléfonos, precios ni otros datos personales. Cualquier persona que tenga el enlace puede abrirlo. Deja de funcionar a más tardar 30 días naturales después de la primera vez que registras la orden como entregada, o antes si la orden se elimina. Puedes desactivarlo cuando quieras, y tu cliente puede pedirte que lo desactives. Tú eres responsable de mantener el estado al día y de que tu nota no incluya nombres, teléfonos, datos financieros ni información confidencial. También actualizamos el aviso de privacidad de la orden que entregas a tu cliente: ahora le informa que podrás contactarle por WhatsApp sobre sus servicios, garantías y próximos mantenimientos, el plazo de conservación del historial de su vehículo y cómo funciona el enlace de seguimiento. Para seguir creando o editando cotizaciones y órdenes, lee y escribe «ACEPTO». Mientras no lo hagas, solo podrás visualizar, reimprimir y descargar tus documentos anteriores.",
   "avisosOrden": [
     {
       "version": "aviso-orden-1",
@@ -572,6 +652,126 @@
           "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
         }
       ]
+    },
+    {
+      "version": "aviso-orden-3",
+      "aviso": [
+        {
+          "tipo": "parrafo",
+          "texto": "Aviso de privacidad de la orden de servicio"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Responsable. [Nombre del taller], con domicilio en [ciudad] y contacto en [WhatsApp del taller], es el responsable de los datos personales que usted proporciona para recibir su vehículo y para elaborar y dar seguimiento a la orden de servicio [folio]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Proveedor del servicio de almacenamiento. Mecanix Yonke Virtual almacena sus datos por petición de [nombre del taller], como proveedor del servicio de almacenamiento. No usa sus datos para fines propios ni los comparte con terceros, salvo los proveedores de infraestructura tecnológica necesarios para prestar el servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Datos y finalidad. Podemos recabar su nombre y teléfono; los datos de su vehículo (marca, modelo, año, placas y kilometraje); la falla que reporta; el estado del vehículo al recibirlo; las pertenencias que se anoten; los trabajos, piezas y costos; y la fecha de entrega y la garantía. Los usamos para identificarlo y contactarlo, documentar el estado del vehículo, elaborar y dar seguimiento a la orden, realizar los diagnósticos y reparaciones que usted autorice, informarle de costos, avances y entrega, documentar trabajos, pagos, garantías y reclamaciones, y cumplir obligaciones legales o ejercer y defender derechos derivados del servicio. No usaremos sus datos con fines publicitarios."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Plazo. Sus datos se eliminan de la plataforma 10 días después de terminar la garantía del servicio, o 90 días después de la última modificación de la orden si el vehículo no se ha entregado, y pueden permanecer en copias de seguridad por un periodo adicional de hasta seis meses. La eliminación de la plataforma no implica la destrucción de los documentos que [nombre del taller] deba conservar en sus propios archivos por obligación legal."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Historial Digital de Servicios y recordatorios de mantenimiento. Para conservar un registro de los trabajos realizados en su vehículo, dar seguimiento a las garantías relacionadas con dichos trabajos y facilitar la planificación de futuros mantenimientos, el Taller podrá incorporar al Historial Digital de Servicios los datos del vehículo, incluidas las placas, marca, modelo, año, kilometraje y los registros técnicos de los servicios realizados."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "El historial permite consultar los servicios anteriores y configurar recordatorios internos para próximos mantenimientos recomendados. Además, el Taller podrá utilizar el número telefónico que usted proporcionó en su orden de servicio para contactarle por WhatsApp en relación con los servicios realizados, el seguimiento de garantías o los próximos mantenimientos recomendados. El envío de estos mensajes depende de la decisión del Taller y se inicia mediante la función de WhatsApp disponible en la Plataforma; Mecanix no envía estos mensajes directamente por medio de los recordatorios internos."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Los datos de contacto, como su nombre y número telefónico, no se incorporan al Historial Digital por esta función. Se conservan en la orden de servicio conforme al plazo indicado en este aviso y se utilizan para las finalidades que correspondan."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "El historial de su vehículo se eliminará automáticamente cuando transcurran más de 18 meses sin que el Taller incorpore a dicho historial una nueva orden de servicio registrada como entregada. La entrega de una orden que no se incorpore al historial no reinicia este plazo. El Taller recibirá un aviso en su panel con al menos 30 días de anticipación a la eliminación."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Este plazo corresponde al Historial Digital y no modifica por sí mismo el plazo de conservación de la orden de servicio original. Las copias de respaldo podrán permanecer temporalmente conforme al ciclo de eliminación de Mecanix, sujetas a las medidas de seguridad y restricciones de uso correspondientes."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Si desea solicitar la eliminación del historial de su vehículo o dejar de recibir recordatorios por WhatsApp, puede dirigirse directamente al Taller mediante los canales de contacto que este tenga habilitados. Las solicitudes se atenderán conforme a la legislación aplicable y a las obligaciones de conservación que, en su caso, correspondan."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Seguimiento de tu vehículo. Con Mecanix puedes consultar cómo va tu vehículo mediante un enlace privado, sin necesidad de crear una cuenta."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Al abrir el enlace podrás ver el nombre del taller, la marca, el modelo y el año de tu vehículo, el estado del servicio, una nota breve del taller y la fecha de la última actualización. También tendrás un botón para contactar al taller por WhatsApp."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Para proteger tu privacidad, no se mostrarán tu nombre, teléfono, precios ni otros datos personales."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Importante: cualquier persona que tenga el enlace podrá consultar la información que aparece en él. Te recomendamos compartirlo únicamente con personas de confianza."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "El enlace dejará de funcionar a más tardar 30 días naturales después de que el taller registre por primera vez tu vehículo como entregado. Mientras la orden no se registre como entregada, el enlace permanecerá disponible mientras la orden exista en el sistema."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Si la orden se elimina, el enlace también dejará de estar disponible."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Usted puede solicitar al taller, en cualquier momento, que desactive o elimine el enlace de seguimiento de su vehículo, y el taller atenderá su solicitud conforme a la legislación aplicable."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Mecanix te facilita esta herramienta para mantenerte al tanto. El taller es responsable de actualizar la información y de no incluir datos personales ni información confidencial en sus notas."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Sus derechos. Puede solicitar el acceso, la rectificación, la cancelación de sus datos o oponerse a su uso, acudiendo a [nombre del taller] en [medio de contacto del taller]. El taller atenderá su solicitud con apoyo de Mecanix."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Aceptación. Al firmar la constancia de recepción, usted declara haber recibido este aviso. Esa firma no implica renuncia a derechos del consumidor, ni autoriza trabajos adicionales ni el uso de sus datos con fines promocionales."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Versión del aviso: aviso-orden-3"
+        }
+      ],
+      "constancia": [
+        {
+          "tipo": "parrafo",
+          "texto": "Constancia de recepción del vehículo"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Orden de servicio [folio]. Fecha de recepción: [fecha de recepción]."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Declaro que entregué a [nombre del taller] el vehículo identificado en esta orden de servicio, en el estado físico y con las pertenencias que se anotaron al recibirlo, y que recibí el aviso de privacidad de la orden de servicio."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Esta firma acredita la recepción del vehículo, la entrega del aviso de privacidad y los hechos que se anotaron expresamente en la orden. No implica renuncia a derechos del consumidor ni autorización de trabajos adicionales distintos de los acordados."
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del representante del taller: ______________________________"
+        },
+        {
+          "tipo": "parrafo",
+          "texto": "Nombre y firma del cliente: ______________________________ Fecha: ______________"
+        }
+      ],
+      "seguimiento": true
     }
   ]
 }

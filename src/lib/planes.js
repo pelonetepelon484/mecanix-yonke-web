@@ -56,6 +56,8 @@ export const FUNCIONES_TALLER_PREMIUM = [
   'Todo lo del Plan Básico',
   'Órdenes de servicio con PDF',
   'Descarga de todos tus documentos',
+  'Historial de servicios y recordatorios de mantenimiento',
+  'Enlace de seguimiento de órdenes para tu cliente',
   'Las demás funciones que se incorporen',
 ];
 

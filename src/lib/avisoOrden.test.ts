@@ -15,11 +15,12 @@ describe('aviso de privacidad de órdenes (falla cerrada)', () => {
   const avisos = (textos as unknown as { avisosOrden: Hoja[] }).avisosOrden;
   const HISTORIAL = 'Historial Digital de Servicios y recordatorios de mantenimiento. Para conservar un registro de los trabajos realizados en su vehículo, dar seguimiento a las garantías relacionadas con dichos trabajos y facilitar la planificación de futuros mantenimientos, el Taller podrá incorporar al Historial Digital de Servicios los datos del vehículo, incluidas las placas, marca, modelo, año, kilometraje y los registros técnicos de los servicios realizados.';
 
-  it('el archivo trae las DOS versiones (aviso-orden-1 y aviso-orden-2), sin el marcador "[TEXTO LEGAL PENDIENTE]"', () => {
+  it('el archivo trae las TRES versiones (aviso-orden-1, -2 y -3), sin el marcador "[TEXTO LEGAL PENDIENTE]"', () => {
     expect(MARCADOR_PENDIENTE).toBe('[TEXTO LEGAL PENDIENTE]');
-    expect(avisos.map((a) => a.version)).toEqual(['aviso-orden-1', 'aviso-orden-2']);
-    expect(VERSIONES_AVISO_ORDEN).toEqual(['aviso-orden-1', 'aviso-orden-2']);
-    expect(VERSION_AVISO_ORDEN).toBe('aviso-orden-2');
+    expect(avisos.map((a) => a.version)).toEqual(['aviso-orden-1', 'aviso-orden-2', 'aviso-orden-3']);
+    expect(VERSIONES_AVISO_ORDEN).toEqual(['aviso-orden-1', 'aviso-orden-2', 'aviso-orden-3']);
+    expect(VERSION_AVISO_ORDEN).toBe('aviso-orden-3');
+    expect(avisoOrdenListo('aviso-orden-3')).toBe(true);
     expect(JSON.stringify(avisos)).not.toContain(MARCADOR_PENDIENTE);
     expect(avisoOrdenListo()).toBe(true);
     expect(avisoOrdenListo('aviso-orden-1')).toBe(true);
@@ -53,6 +54,25 @@ describe('aviso de privacidad de órdenes (falla cerrada)', () => {
     expect([...v2.aviso.slice(0, 5), ...v2.aviso.slice(11, 13)]).toEqual(v1.aviso.slice(0, 7));
     expect(v2.aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-2');
     expect(v2.constancia).toEqual(v1.constancia);
+  });
+  it('aviso-orden-3: igual a aviso-orden-2 más el bloque del seguimiento (8 párrafos, texto del abogado) después del Historial Digital; marcada con seguimiento', () => {
+    const [, v2, v3] = avisos as (Hoja & { seguimiento?: boolean })[];
+    expect(v3.seguimiento).toBe(true);
+    expect(v2.seguimiento).toBeUndefined();
+    expect(v3.aviso).toHaveLength(22);
+    // Igual a aviso-orden-2 hasta el final del bloque del Historial Digital, y después sus dos párrafos finales.
+    expect(v3.aviso.slice(0, 11)).toEqual(v2.aviso.slice(0, 11));
+    expect(v3.aviso.slice(19, 21)).toEqual(v2.aviso.slice(11, 13));
+    const bloque = v3.aviso.slice(11, 19).map((p) => p.texto);
+    expect(bloque[0]).toBe('Seguimiento de tu vehículo. Con Mecanix puedes consultar cómo va tu vehículo mediante un enlace privado, sin necesidad de crear una cuenta.');
+    expect(bloque).toContain('Para proteger tu privacidad, no se mostrarán tu nombre, teléfono, precios ni otros datos personales.');
+    expect(bloque).toContain('Importante: cualquier persona que tenga el enlace podrá consultar la información que aparece en él. Te recomendamos compartirlo únicamente con personas de confianza.');
+    expect(bloque).toContain('Si la orden se elimina, el enlace también dejará de estar disponible.');
+    expect(bloque.join('\n')).toContain('a más tardar 30 días naturales después de que el taller registre por primera vez tu vehículo como entregado');
+    expect(bloque.at(-1)).toBe('Mecanix te facilita esta herramienta para mantenerte al tanto. El taller es responsable de actualizar la información y de no incluir datos personales ni información confidencial en sus notas.');
+    expect(v3.aviso.at(-1)?.texto).toBe('Versión del aviso: aviso-orden-3');
+    expect(v3.constancia).toEqual(v2.constancia);
+    expect([...v3.aviso, ...v3.constancia].map((p) => p.texto).join('\n')).not.toMatch(/correo/i);
   });
   it('datos del cliente: orden nueva con la versión de la consola; orden existente con la SUYA', () => {
     expect(datosClienteDisponibles(null)).toBe(false);

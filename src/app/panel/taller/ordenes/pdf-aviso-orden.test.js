@@ -109,6 +109,25 @@ describe('aviso por versión: cada orden con el texto que se le entregó al clie
     await bytesPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-2', cliente: { nombre: 'Juan' } }, taller });
     expect(conHistorial(deHoja(2))).toBe(true);
   });
+  it('aviso-orden-2 (ya creadas) sigue SIN el bloque del seguimiento; aviso-orden-3 lo trae, en PDF y en el .zip', async () => {
+    const SEGUIMIENTO = 'Seguimiento de tu vehículo.';
+    const conSeguimiento = (h) => h.some((t) => t.startsWith(SEGUIMIENTO));
+    modo = 'real';
+    await descargarPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-2', cliente: { nombre: 'Juan' } }, taller });
+    expect(deHoja(2)[0]).toBe('Versión del aviso: aviso-orden-2');
+    expect(conHistorial(deHoja(2))).toBe(true);
+    expect(conSeguimiento(deHoja(2))).toBe(false);
+    registro.textos = []; registro.hojas = 0;
+    await descargarPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-3', cliente: { nombre: 'Juan' } }, taller });
+    expect(registro.hojas).toBe(3);
+    expect(deHoja(2)[0]).toBe('Versión del aviso: aviso-orden-3');
+    expect(conHistorial(deHoja(2))).toBe(true);
+    expect(conSeguimiento(deHoja(2))).toBe(true);
+    expect(deHoja(3)).toContain('Constancia de recepción del vehículo');
+    registro.textos = []; registro.hojas = 0;
+    await bytesPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-3', cliente: { nombre: 'Juan' } }, taller });
+    expect(conSeguimiento(deHoja(2))).toBe(true);
+  });
   it('nunca imprime un aviso que no corresponde: versión sin aviso y con datos, no genera el PDF', async () => {
     modo = 'real';
     await expect(descargarPdfOrden({ orden: { ...base, avisoVersion: 'aviso-orden-0', cliente: { nombre: 'Juan' } }, taller })).rejects.toThrow(MENSAJE_SIN_AVISO);
