@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import OrdenForm from '../OrdenForm';
 import { useOrdenes } from '../contexto';
 import { guardarOrden } from '../datos';
-import { datosClienteDisponibles } from '../../../../../lib/avisoOrden';
+import { datosClienteDisponibles, ordenConSeguimiento } from '../../../../../lib/avisoOrden';
+import { AVISO_ENTREGA_SEGUIMIENTO } from '../../../../../lib/seguimiento';
 
 export default function NuevaOrden() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function NuevaOrden() {
         <OrdenForm
           tallerActivo={taller?.activo === true}
           datosCliente={datosClienteDisponibles(configOrdenes)}
+          avisoEntrega={configOrdenes?.seguimientoHabilitado === true && ordenConSeguimiento(avisoVersion) ? AVISO_ENTREGA_SEGUIMIENTO : null}
           onCancelar={() => router.push('/panel/taller/ordenes')}
           onGuardar={async (datos) => {
             const folio = await guardarOrden({ tallerId, datos, avisoVersion });

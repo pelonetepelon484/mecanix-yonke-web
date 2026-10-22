@@ -7,6 +7,10 @@
 import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { MENSAJES_CONVERSION, generarFolioOrden, ordenDesdeCotizacion, planBorrado, totalOrdenCentavos, validarConversion } from '../../../../lib/ordenes';
+import { ordenConSeguimiento } from '../../../../lib/avisoOrden';
+import {
+  MENSAJES_SEGUIMIENTO, documentoSeguimiento, generarTokenSeguimiento, huellaSeguimiento, validarNotaSeguimiento, venceSeguimiento,
+} from '../../../../lib/seguimiento';
 import { leerCotizacion } from '../cotizaciones/datos';
 
 export const TAMANO_PAGINA = 20;
@@ -75,15 +79,105 @@ function cuerpoOrden({ tallerId, datos, original, avisoVersion }) {
     cuerpo.garantiaDias = datos.garantiaDias;
     cuerpo.fechaEntrega = plan.fechaEntrega === 'servidor' ? serverTimestamp() : plan.fechaEntrega;
   }
+  // Seguimiento público (solo órdenes con un aviso que lo incluye; las reglas exigen lo mismo):
+  // primeraEntregaAt se pone UNA vez (hora del servidor) al entregar por primera vez y se conserva
+  // siempre; el token y la nota se conservan en cada guardado (la nota solo cambia si llega en datos).
+  if (ordenConSeguimiento(cuerpo.avisoVersion)) {
+    if (original?.primeraEntregaAt) cuerpo.primeraEntregaAt = original.primeraEntregaAt;
+    else if (datos.estado === 'entregado') cuerpo.primeraEntregaAt = serverTimestamp();
+    if (original?.seguimientoToken) cuerpo.seguimientoToken = original.seguimientoToken;
+    const nota = datos.notaSeguimiento !== undefined ? datos.notaSeguimiento : original?.notaSeguimiento;
+    if (original && typeof nota === 'string' && nota !== '') cuerpo.notaSeguimiento = nota;
+  }
   return cuerpo;
+}
+
+// ---------- Seguimiento público (seguimientos/{huella}) ----------
+
+const refSeguimiento = async (token) => doc(db, 'seguimientos', await huellaSeguimiento(token));
+
+// Documento del enlace que acompaña a este guardado de la orden (sin datos del cliente ni placas).
+function cuerpoSeguimiento({ tallerId, folio, cuerpo, original, taller }) {
+  const primera = cuerpo.primeraEntregaAt === undefined ? null : (original?.primeraEntregaAt ? cuerpo.primeraEntregaAt : 'ahora');
+  const expiraAt = venceSeguimiento(cuerpo.expiraAt, primera);
+  return { ...documentoSeguimiento({ tallerId, folio, orden: cuerpo, taller, expiraAt }), actualizadoAt: serverTimestamp() };
+}
+
+// ¿El enlace de este token sigue activo? (el dueño puede leerlo; si no existe, responde que no).
+export async function leerSeguimiento(token) {
+  if (!token) return null;
+  const snap = await getDoc(await refSeguimiento(token));
+  return snap.exists() ? snap.data() : null;
+}
+
+// Escribe la orden. Si tiene enlace ACTIVO, lo reescribe en el mismo lote (las reglas lo exigen);
+// si el taller lo desactivó, la orden se guarda sola.
+async function escribirOrden({ tallerId, folio, cuerpo, original, taller }) {
+  const token = cuerpo.seguimientoToken;
+  const ref = token ? await refSeguimiento(token) : null;
+  if (!ref || !(await getDoc(ref)).exists()) {
+    await setDoc(ordenRef(tallerId, folio), cuerpo);
+    return;
+  }
+  const lote = writeBatch(db);
+  lote.set(ordenRef(tallerId, folio), cuerpo);
+  lote.set(ref, cuerpoSeguimiento({ tallerId, folio, cuerpo, original, taller }));
+  await lote.commit();
+}
+
+// "Activar seguimiento" (también reactivar): token NUEVO; si había uno, su enlace se borra en el
+// mismo lote. Lee la orden FRESCA. Las reglas exigen Premium vigente, bandera, términos y aviso.
+// Devuelve el token. Lanza un Error con mensaje en español.
+export async function activarSeguimiento({ tallerId, folio, taller }) {
+  const original = await leerOrden(tallerId, folio);
+  if (!original) throw new Error(MENSAJES_SEGUIMIENTO.fallo);
+  if (!ordenConSeguimiento(original.avisoVersion)) throw new Error(MENSAJES_SEGUIMIENTO.anteriorAlAviso);
+  const cuerpo = cuerpoOrden({ tallerId, datos: original, original, avisoVersion: original.avisoVersion });
+  const token = generarTokenSeguimiento();
+  cuerpo.seguimientoToken = token;
+  const seg = cuerpoSeguimiento({ tallerId, folio, cuerpo, original, taller });
+  if (!seg.expiraAt || seg.expiraAt.getTime() <= Date.now()) throw new Error(MENSAJES_SEGUIMIENTO.vencido);
+  const lote = writeBatch(db);
+  lote.set(ordenRef(tallerId, folio), cuerpo);
+  if (original.seguimientoToken) lote.delete(await refSeguimiento(original.seguimientoToken));
+  lote.set(await refSeguimiento(token), seg);
+  try {
+    await lote.commit();
+  } catch (err) {
+    console.error('[seguimiento] No se pudo activar', err);
+    throw new Error(MENSAJES_SEGUIMIENTO.fallo);
+  }
+  return token;
+}
+
+// Nota pública del enlace (0-200, sin teléfonos ni «@»). Se guarda en la orden y en su enlace.
+export async function guardarNotaSeguimiento({ tallerId, folio, nota, taller }) {
+  const problema = validarNotaSeguimiento(nota);
+  if (problema) throw new Error(problema);
+  const original = await leerOrden(tallerId, folio);
+  if (!original) throw new Error(MENSAJES_SEGUIMIENTO.fallo);
+  const cuerpo = cuerpoOrden({ tallerId, datos: { ...original, notaSeguimiento: nota.trim() }, original, avisoVersion: original.avisoVersion });
+  try {
+    await escribirOrden({ tallerId, folio, cuerpo, original, taller });
+  } catch (err) {
+    console.error('[seguimiento] No se pudo guardar la nota', err);
+    throw new Error(MENSAJES_SEGUIMIENTO.fallo);
+  }
+}
+
+// "Desactivar enlace": borra SOLO el enlace (no escribe la orden). Funciona sin Premium, con
+// términos viejos y con el taller desactivado.
+export async function desactivarSeguimiento(token) {
+  await deleteDoc(await refSeguimiento(token));
 }
 
 // Alta (folio null): folio nuevo "O..."; si choca, prueba otro (hasta 3 veces). Un folio que ya
 // existe lo rechazan las reglas (sería editar sin la orden anterior), por eso se reintenta.
 // Edición (folio dado): conserva creadoAt y avisoVersion; la fecha de borrado la decide planBorrado.
-export async function guardarOrden({ tallerId, folio = null, datos, original = null, avisoVersion = '' }) {
+// taller: para copiar nombre y WhatsApp al enlace de seguimiento si la orden tiene uno activo.
+export async function guardarOrden({ tallerId, folio = null, datos, original = null, avisoVersion = '', taller = null }) {
   if (folio) {
-    await setDoc(ordenRef(tallerId, folio), cuerpoOrden({ tallerId, datos, original, avisoVersion }));
+    await escribirOrden({ tallerId, folio, cuerpo: cuerpoOrden({ tallerId, datos, original, avisoVersion }), original, taller });
     return folio;
   }
   let ultimoError = null;
@@ -105,9 +199,14 @@ export function quitarDatosClienteOrden(tallerId, folio) {
   return updateDoc(ordenRef(tallerId, folio), { cliente: {}, 'vehiculo.placas': deleteField(), actualizadoAt: serverTimestamp() });
 }
 
-// Borrar: el dueño (taller activo y términos vigentes) o el admin, según las reglas.
-export function borrarOrden(tallerId, folio) {
-  return deleteDoc(ordenRef(tallerId, folio));
+// Borrar: el dueño (taller activo y términos vigentes) o el admin, según las reglas. Si la orden
+// tiene enlace de seguimiento, se borra en el mismo lote (las reglas lo exigen).
+export async function borrarOrden(tallerId, folio, orden = null) {
+  if (!orden?.seguimientoToken) return deleteDoc(ordenRef(tallerId, folio));
+  const lote = writeBatch(db);
+  lote.delete(ordenRef(tallerId, folio));
+  lote.delete(await refSeguimiento(orden.seguimientoToken));
+  return lote.commit();
 }
 
 // Etapa 2: "Convertir en orden". Lee la cotización FRESCA y, en UN solo guardado (todo o nada),

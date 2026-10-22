@@ -17,12 +17,21 @@ export const MARCADOR_PENDIENTE = '[TEXTO LEGAL PENDIENTE]';
 export const EN_BLANCO = '______________________';
 
 type Parrafo = { tipo?: string; texto?: string };
-type AvisoOrden = { version?: string; aviso?: Parrafo[]; constancia?: Parrafo[] };
+type AvisoOrden = { version?: string; aviso?: Parrafo[]; constancia?: Parrafo[]; seguimiento?: boolean };
 const AVISOS: AvisoOrden[] = (textos as unknown as { avisosOrden?: AvisoOrden[] }).avisosOrden ?? [];
 
 // La versión más reciente del archivo.
 export const VERSION_AVISO_ORDEN: string = AVISOS.at(-1)?.version ?? '';
 export const VERSIONES_AVISO_ORDEN: string[] = AVISOS.map((a) => a.version ?? '');
+
+// Versiones del aviso que informan al cliente del enlace de seguimiento ("seguimiento": true en el
+// JSON). Solo las órdenes creadas con una de ellas pueden tener enlace. Debe coincidir con
+// avisosConSeguimiento() de firestore.rules (lo revisa una prueba).
+export const VERSIONES_CON_SEGUIMIENTO: string[] = AVISOS.filter((a) => a.seguimiento === true).map((a) => a.version ?? '');
+
+export function ordenConSeguimiento(version: unknown, versiones: string[] = VERSIONES_CON_SEGUIMIENTO): boolean {
+  return typeof version === 'string' && versiones.includes(version);
+}
 
 // El texto de esa versión ({} si no existe); sin versión, el más reciente.
 export function avisoOrdenDeVersion(version?: unknown): AvisoOrden {
