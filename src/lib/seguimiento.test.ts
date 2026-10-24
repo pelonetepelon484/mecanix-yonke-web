@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   ADVERTENCIA_ENLACE_SEGUIMIENTO, ADVERTENCIA_NOTA_SEGUIMIENTO, AVISO_ENTREGA_SEGUIMIENTO, MENSAJES_SEGUIMIENTO, URL_BASE_SEGUIMIENTO,
-  documentoSeguimiento, enlaceCompartirSeguimiento, enlaceSeguimiento, enlaceWhatsappAlTaller, esTokenSeguimiento,
+  NOTA_SEGUIMIENTO_PDF, TITULO_SEGUIMIENTO_PDF, documentoSeguimiento, enlaceCompartirSeguimiento, ligaSeguimientoParaPdf, enlaceSeguimiento, enlaceWhatsappAlTaller, esTokenSeguimiento,
   generarTokenSeguimiento, huellaSeguimiento, seguimientoPublico, tokenDeEnlace, validarNotaSeguimiento, venceSeguimiento,
 } from './seguimiento';
 
@@ -119,5 +119,38 @@ describe('WhatsApp', () => {
   it('al taller (página pública): con su WhatsApp; inválido -> null', () => {
     expect(enlaceWhatsappAlTaller({ tallerWhatsapp: '6641234567', marca: 'Nissan', modelo: 'Sentra', anio: 2001 })).toBe(`https://wa.me/526641234567?text=${encodeURIComponent('Hola, pregunto por mi Nissan Sentra 2001.')}`);
     expect(enlaceWhatsappAlTaller({ tallerWhatsapp: '12', marca: '', modelo: '', anio: null })).toBeNull();
+  });
+});
+
+describe('PDF de la orden: ¿se imprime la liga y el QR?', () => {
+  const token = 'Q'.repeat(40) + 'abc';
+  const orden = { seguimientoToken: token };
+  const banderas = { seguimientoEnPdf: true, seguimientoHabilitado: true };
+  const activo = { datos: { expiraAt: ts(new Date(AHORA.getTime() + DIA)) } };
+  it('con las dos banderas, token y enlace activo: la liga de www', () => {
+    expect(ligaSeguimientoParaPdf(banderas, orden, activo, AHORA)).toBe(`https://www.mecanixyonkevirtual.com/seguimiento/${token}`);
+  });
+  it('sin cualquiera de las dos banderas (o sin el campo): no', () => {
+    for (const c of [{ seguimientoHabilitado: true }, { seguimientoEnPdf: true }, { ...banderas, seguimientoEnPdf: 'true' }, null, undefined]) {
+      expect(ligaSeguimientoParaPdf(c, orden, activo, AHORA)).toBeNull();
+    }
+  });
+  it('orden sin token, enlace desactivado (no existe), vencido, sin leer o con lectura fallida: no', () => {
+    expect(ligaSeguimientoParaPdf(banderas, {}, activo, AHORA)).toBeNull();
+    expect(ligaSeguimientoParaPdf(banderas, orden, { datos: null }, AHORA)).toBeNull();
+    expect(ligaSeguimientoParaPdf(banderas, orden, { datos: { expiraAt: ts(AHORA) } }, AHORA)).toBeNull();
+    expect(ligaSeguimientoParaPdf(banderas, orden, undefined, AHORA)).toBeNull();
+    expect(ligaSeguimientoParaPdf(banderas, orden, { error: true }, AHORA)).toBeNull();
+    expect(ligaSeguimientoParaPdf(banderas, orden, { error: true, datos: activo.datos }, AHORA)).toBeNull();
+  });
+  it('textos del bloque (sin fecha de vencimiento)', () => {
+    expect(TITULO_SEGUIMIENTO_PDF).toBe('Sigue tu orden en línea');
+    expect(NOTA_SEGUIMIENTO_PDF).toBe('Escanea el código o abre la liga. Deja de abrir a más tardar 30 días después de la entrega.');
+  });
+});
+
+describe('página pública: enlace que no existe o venció', () => {
+  it('el texto nuevo', () => {
+    expect(MENSAJES_SEGUIMIENTO.noEncontrado).toBe('Este enlace ya no está disponible: venció, el taller lo desactivó o la orden ya no existe. Para saber de tu vehículo, comunícate con tu taller.');
   });
 });

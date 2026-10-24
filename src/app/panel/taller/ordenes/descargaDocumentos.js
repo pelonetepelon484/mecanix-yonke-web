@@ -9,8 +9,15 @@
 // - Cotización cuya versión de aviso no está en el archivo: con datos del cliente se deja FUERA
 //   del .zip (su PDF no se genera); sin datos del cliente entra sin la hoja del aviso. En los dos
 //   casos se avisa cuáles fueron (omitidas / sinAviso).
+// - Seguimiento (bloque con la liga y el QR en el PDF de la orden): si llega fuentes.leerEnlace, antes
+//   de armar los PDF se leen los enlaces SOLO de las órdenes con un aviso que incluye el seguimiento
+//   y con token, de 10 en 10 en paralelo, respetando cancelar. Una lectura que falla queda como
+//   { error: true } y esa orden sale sin el bloque.
 // Las dependencias llegan en `fuentes` para poder probarlo sin Firestore ni jsPDF.
 import { zipSync } from 'fflate';
+import { ordenConSeguimiento } from '../../../../lib/avisoOrden';
+
+export const ENLACES_EN_PARALELO = 10;
 
 export const TOPE_DOCUMENTOS = 200;
 export const MENSAJES_DESCARGA = {
@@ -50,10 +57,27 @@ async function juntar(listar, opciones, acumulados, cancelado) {
   }
 }
 
+// Estado del enlace de cada orden que lo necesita: folio -> { datos } | { error: true }.
+async function leerEnlaces(fuentes, ordenes, cancelado) {
+  const enlaces = new Map();
+  if (!fuentes.leerEnlace) return enlaces;
+  const conEnlace = ordenes.filter((o) => o.seguimientoToken && ordenConSeguimiento(o.avisoVersion));
+  for (let i = 0; i < conEnlace.length; i += ENLACES_EN_PARALELO) {
+    if (cancelado()) throw new DescargaCancelada();
+    const tanda = conEnlace.slice(i, i + ENLACES_EN_PARALELO);
+    const leidos = await Promise.all(tanda.map((o) => Promise.resolve()
+      .then(() => fuentes.leerEnlace(o))
+      .then((datos) => ({ datos }), () => ({ error: true }))));
+    tanda.forEach((o, j) => enlaces.set(o.folio, leidos[j]));
+  }
+  return enlaces;
+}
+
 // Devuelve { bytes, nombre, total, omitidas, sinAviso } (folios de cotizaciones). Lanza
 // DescargaCancelada, DescargaExcedeTope u otro error.
 // fuentes: { listarOrdenes(opciones), listarCotizaciones(opciones), leerRenglones(folio),
-//            pdfOrden(orden), pdfCotizacion(cotizacion), tieneAviso?(cotizacion), pausa?() }
+//            pdfOrden(orden, estadoEnlace), pdfCotizacion(cotizacion), tieneAviso?(cotizacion),
+//            leerEnlace?(orden) -> datos del enlace o null, pausa?() }
 // pdfCotizacion lanza un error con name 'CotizacionSinAviso' para dejarla fuera.
 export async function prepararDocumentos({ fuentes, onProgreso = () => {}, cancelado = () => false }) {
   const pausa = fuentes.pausa ?? pausaPorDefecto;
@@ -61,6 +85,7 @@ export async function prepararDocumentos({ fuentes, onProgreso = () => {}, cance
   const ordenes = [];
   await juntar(fuentes.listarOrdenes, { estado: 'todos' }, ordenes, cancelado);
   documentos.push(...ordenes.map((o) => ({ tipo: 'orden', datos: o })));
+  const enlaces = await leerEnlaces(fuentes, ordenes, cancelado);
   for (const archivada of [false, true]) {
     const cotizaciones = [];
     await juntar(fuentes.listarCotizaciones, { archivada }, cotizaciones, cancelado);
@@ -78,7 +103,7 @@ export async function prepararDocumentos({ fuentes, onProgreso = () => {}, cance
     const { tipo, datos } = documentos[i];
     let bytes;
     if (tipo === 'orden') {
-      bytes = await fuentes.pdfOrden(datos);
+      bytes = await fuentes.pdfOrden(datos, enlaces.get(datos.folio));
     } else {
       const renglones = await fuentes.leerRenglones(datos.folio);
       try {

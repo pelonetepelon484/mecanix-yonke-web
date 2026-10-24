@@ -10,7 +10,7 @@ import { AVISO_COPIA } from '../../../../../lib/ordenes';
 import { MENSAJES_COTIZACION } from '../../../../../lib/cotizaciones';
 import { descargarPdfOrden } from '../pdf';
 import { datosClienteDisponibles, ordenConSeguimiento } from '../../../../../lib/avisoOrden';
-import { AVISO_ENTREGA_SEGUIMIENTO } from '../../../../../lib/seguimiento';
+import { AVISO_ENTREGA_SEGUIMIENTO, ligaSeguimientoParaPdf } from '../../../../../lib/seguimiento';
 import SeguimientoOrden from '../SeguimientoOrden';
 
 export default function DetalleOrden() {
@@ -23,6 +23,9 @@ export default function DetalleOrden() {
   const [aviso, setAviso] = useState('');
   const [vencida, setVencida] = useState(false);
   const [generandoPdf, setGenerandoPdf] = useState(false);
+  // Lo que leyó el bloque de seguimiento del enlace ({ datos } o { error: true }); el PDF lo usa
+  // para decidir si imprime la liga y el QR (sin otra lectura).
+  const [estadoEnlace, setEstadoEnlace] = useState(undefined);
 
   useEffect(() => {
     let cancelado = false;
@@ -44,7 +47,7 @@ export default function DetalleOrden() {
   async function descargarPdf() {
     setGenerandoPdf(true);
     try {
-      await descargarPdfOrden({ orden, taller });
+      await descargarPdfOrden({ orden, taller, ligaSeguimiento: ligaSeguimientoParaPdf(configOrdenes, orden, estadoEnlace) });
     } catch (err) {
       console.error(err);
       setAviso('No pudimos generar el PDF. Intenta de nuevo.');
@@ -99,6 +102,7 @@ export default function DetalleOrden() {
           key={`seg-${version}`}
           tallerId={tallerId} taller={taller} folio={folio} orden={orden} configOrdenes={configOrdenes}
           puedeEditar={puedeEditar} vencida={vencida} onCambio={() => setVersion((v) => v + 1)}
+          onEstadoEnlace={setEstadoEnlace}
         />
 
         <OrdenForm
