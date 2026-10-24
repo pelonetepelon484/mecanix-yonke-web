@@ -14,15 +14,21 @@ service firebase.storage {
         && datosUsuario().rol == 'yonke'
         && datosUsuario().yonkeId == yonkeId;
     }
+    // Logo de un yonke: logos/{yonkeId}.png es el ÚNICO nombre que usa la app (subirLogoYonke.js).
+    function esDuenoDelLogo(fileName) {
+      return request.auth != null
+        && datosUsuario().rol == 'yonke'
+        && fileName == datosUsuario().yonkeId + '.png';
+    }
 
+    // Admin: cualquier logo. Yonke: solo el suyo. 700 KB: un PNG de 400 × 400 (lo que sube la app)
+    // no pasa de ~626 KB, así que el tope nunca bloquea un logo real. Solo imágenes.
     match /logos/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null &&
-        (
-          firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin'
-          ||
-          firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol == 'yonke'
-        );
+      allow create, update: if (esAdmin() || esDuenoDelLogo(fileName))
+        && request.resource.size <= 700 * 1024
+        && request.resource.contentType.matches('image/(png|webp|jpeg)');
+      allow delete: if esAdmin() || esDuenoDelLogo(fileName);
     }
 
     match /branding/{yonkeId}/promos/{archivo} {
