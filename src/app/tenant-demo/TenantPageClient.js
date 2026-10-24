@@ -15,6 +15,7 @@ import AvisoPrivacidadReserva from '../lib/AvisoPrivacidadReserva';
 import FotoTarjeta from '../lib/FotoTarjeta';
 import VisorFotosVehiculo from '../lib/VisorFotosVehiculo';
 import VisorFotos from '../lib/VisorFotos';
+import CreditoMecanix from './CreditoMecanix';
 import { fotosDeItem } from '../../lib/fotosPieza';
 
 const CIUDADES_BC = [
@@ -34,21 +35,6 @@ function normalizar(texto) {
   return (texto ?? '').toString().toLowerCase().normalize('NFD').replace(DIACRITICOS_COMBINABLES, '');
 }
 
-// Luminancia percibida simplificada (no necesita precisión WCAG, solo decidir si el crédito de
-// Mecanix en el footer debe usar el logo blanco o el azul normal) -- branding.colorFondo lo
-// personaliza cada yonke, así que un fondo oscuro es un caso real, no hipotético.
-function esColorOscuro(hex) {
-  if (!hex || typeof hex !== 'string') return false;
-  let h = hex.replace('#', '');
-  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
-  if (h.length !== 6) return false;
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  if ([r, g, b].some(Number.isNaN)) return false;
-  const luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminancia < 0.5;
-}
 
 function obtenerEstadoAbierto(horario) {
   if (!horario) return null;
@@ -671,21 +657,8 @@ export default function TenantPageClient({ negocio, branding, inventario }) {
           )}
           {/* Crédito discreto de Mecanix -- nunca debe competir visualmente con el contenido del
               yonke ni con "Políticas y garantía" de arriba, por eso va aparte, chico y gris. Logo
-              blanco si el fondo del yonke es oscuro (colorFondo personalizable por el yonke); si
-              no, el logo de Mecanix con engrane (logo-mecanix-solo, sin textos). */}
-          <a
-            href="https://mecanixyonkevirtual.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={creditoMecanixStyle}
-          >
-            Con tecnología
-            <img
-              src={esColorOscuro(branding.colorFondo) ? '/logo-mecanix-blanco.webp' : '/logo-mecanix-solo.webp'}
-              alt="Mecanix"
-              style={{ height: '17px', width: 'auto', verticalAlign: 'middle' }}
-            />
-          </a>
+              nuevo con engrane; con fondo oscuro, dentro de una pastilla blanca (CreditoMecanix). */}
+          <CreditoMecanix colorFondo={branding.colorFondo} />
         </footer>
       </div>
 
@@ -807,10 +780,6 @@ const piezaRowStyle = (destacada) => ({
 });
 const footerStyle = { textAlign: 'center', marginTop: '28px', paddingTop: '18px', borderTop: '1px solid #E5E8EC' };
 const footerEnlaceStyle = (color) => ({ color, fontSize: '13px', fontWeight: '700', textDecoration: 'none' });
-const creditoMecanixStyle = {
-  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-  color: '#999', fontSize: '12px', textDecoration: 'none', marginTop: '10px',
-};
 const whatsappVehiculoBtnStyle = {
   display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '10px',
   padding: '10px 14px', borderRadius: '10px', backgroundColor: '#25D366', color: '#fff',
