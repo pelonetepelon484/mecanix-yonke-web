@@ -54,23 +54,27 @@ export async function descargarLogoComoDataUri(url) {
   }
 }
 
-// Logos de Mecanix (public/) y tipografía Inter (src/assets/fuentes/), incluidos en la función por
-// next.config.mjs. Se leen una vez por instancia del servidor.
+// Logos NUEVOS de Mecanix (public/: logo-mecanix-solo para el crédito "Con tecnología" y
+// logo-mecanix-red-yonkes para la imagen genérica) y tipografía Inter (src/assets/fuentes/),
+// incluidos en la función por next.config.mjs. Se leen una vez por instancia del servidor.
+// raiz: otra carpeta (solo pruebas), sin guardar en la caché.
+function cargarRecursos(raiz) {
+  const logo = async (archivo) => `data:image/png;base64,${(await readFile(path.join(raiz, 'public', archivo))).toString('base64')}`;
+  const fuente = (archivo) => readFile(path.join(raiz, 'src', 'assets', 'fuentes', archivo));
+  return Promise.all([logo('logo-mecanix-solo.png'), logo('logo-mecanix-red-yonkes.png'), fuente('inter-regular.ttf'), fuente('inter-semibold.ttf')])
+    .then(([solo, nuevo, regular, seminegrita]) => ({
+      solo, nuevo,
+      fuentes: [
+        { name: 'Inter', data: regular, weight: 400, style: 'normal' },
+        { name: 'Inter', data: seminegrita, weight: 600, style: 'normal' },
+      ],
+    }));
+}
 let recursos = null;
-export async function leerRecursosImagen() {
+export async function leerRecursosImagen(raiz) {
+  if (raiz) return cargarRecursos(raiz);
   if (!recursos) {
-    const raiz = process.cwd();
-    const logo = async (archivo) => `data:image/png;base64,${(await readFile(path.join(raiz, 'public', archivo))).toString('base64')}`;
-    const fuente = (archivo) => readFile(path.join(raiz, 'src', 'assets', 'fuentes', archivo));
-    recursos = Promise.all([logo('logo-mecanix-solo.png'), logo('logo-mecanix-blanco.png'), fuente('inter-regular.ttf'), fuente('inter-semibold.ttf')])
-      .then(([solo, blanco, regular, seminegrita]) => ({
-        solo, blanco,
-        fuentes: [
-          { name: 'Inter', data: regular, weight: 400, style: 'normal' },
-          { name: 'Inter', data: seminegrita, weight: 600, style: 'normal' },
-        ],
-      }))
-      .catch((error) => { recursos = null; throw error; });
+    recursos = cargarRecursos(process.cwd()).catch((error) => { recursos = null; throw error; });
   }
   return recursos;
 }

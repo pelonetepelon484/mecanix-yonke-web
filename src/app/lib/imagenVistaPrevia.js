@@ -56,14 +56,25 @@ export function imagenDeYonke({ nombre, lugar, colorPrimario, logo }, recursos) 
   );
 }
 
-// Imagen genérica de Mecanix (subdominio inválido, apagado, inexistente o que ya no califica).
-// recursos: { blanco, fuentes }
+// Imagen genérica de Mecanix (subdominio inválido, apagado, inexistente o que ya no califica), con
+// el estilo de la de la portada (imagenPortada.js): fondo claro, logo nuevo grande, la frase y una
+// franja azul con la dirección del sitio. recursos: { nuevo, fuentes }
+export const FRASE_GENERICA = 'Refacciones y autopartes usadas en México';
+const AZUL = '#1A3C5E';
+// logo-mecanix-red-yonkes mide 900 × 318: a 780 de ancho conserva su proporción.
+const NUEVO_ANCHO = 780;
+const NUEVO_ALTO = Math.round((NUEVO_ANCHO * 318) / 900);
 export function imagenGenerica(recursos) {
   return new ImageResponse(
     (
-      <div style={{ width: ANCHO, height: ALTO, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A3C5E', fontFamily: FAMILIA }}>
-        <img src={recursos.blanco} width={720} height={200} style={{ objectFit: 'contain' }} alt="" />
-        <span style={{ marginTop: 36, fontSize: 38, color: '#FFFFFF' }}>Refacciones y autopartes usadas en México</span>
+      <div style={{ width: ANCHO, height: ALTO, display: 'flex', flexDirection: 'column', backgroundColor: '#F4F5F5', fontFamily: FAMILIA }}>
+        <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <img src={recursos.nuevo} width={NUEVO_ANCHO} height={NUEVO_ALTO} style={{ objectFit: 'contain' }} alt="" />
+          <span style={{ marginTop: 30, fontSize: 40, fontWeight: 600, color: AZUL }}>{FRASE_GENERICA}</span>
+        </div>
+        <div style={{ height: 96, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: AZUL }}>
+          <span style={{ fontSize: 36, color: '#FFFFFF' }}>www.mecanixyonkevirtual.com</span>
+        </div>
       </div>
     ),
     opciones(recursos),
