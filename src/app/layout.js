@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { IMAGEN_PORTADA } from "../lib/imagenPortada";
 import { SITIO_OFICIAL } from "../lib/sitioOficial";
 
 const geistSans = Geist({
@@ -33,20 +34,14 @@ keywords: "yonke Tijuana, refacciones usadas Tijuana, autopartes Tijuana, yonke 
     siteName: "Mecanix Yonke Virtual",
     locale: "es_MX",
     type: "website",
-    images: [
-      {
-        url: "/mecanix-logo.webp",
-        width: 800,
-        height: 600,
-        alt: "Mecanix Yonke Virtual",
-      },
-    ],
+    // Logo nuevo, 1200 × 630 (src/app/og/mecanix-portada.png/route.js).
+    images: [IMAGEN_PORTADA],
   },
   twitter: {
     card: "summary_large_image",
     title: "Mecanix Yonke Virtual — Refacciones y autopartes usadas en México",
     description: "Encuentra autopartes y refacciones usadas entre los yonkes afiliados en México.",
-    images: ["/mecanix-logo.webp"],
+    images: [IMAGEN_PORTADA],
   },
   robots: {
     index: true,

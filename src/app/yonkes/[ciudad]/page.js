@@ -5,6 +5,7 @@ import { getYonkesPorCiudad, getCiudadesConYonkesActivos } from '../../lib/yonke
 import { formatearHorario, obtenerEstadoAbierto, metodosPagoLabels } from '../../lib/horario';
 import { toSafeJsonLdString } from '../../lib/jsonLd';
 import { buildYonkeJsonLd } from '../../lib/yonkeJsonLd';
+import { IMAGEN_PORTADA } from '../../../lib/imagenPortada';
 import YonkeActividadBadge from '../../lib/YonkeActividadBadge';
 
 export async function generateStaticParams() {
@@ -39,9 +40,9 @@ export async function generateMetadata({ params }) {
       siteName: 'Mecanix Yonke Virtual',
       locale: 'es_MX',
       type: 'website',
-      images: [{ url: '/mecanix-logo.webp', width: 800, height: 600, alt: title }],
+      images: [{ ...IMAGEN_PORTADA, alt: title }],
     },
-    twitter: { card: 'summary_large_image', title, description, images: ['/mecanix-logo.webp'] },
+    twitter: { card: 'summary_large_image', title, description, images: [IMAGEN_PORTADA] },
   };
 }
 

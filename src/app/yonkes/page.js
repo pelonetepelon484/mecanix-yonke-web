@@ -1,5 +1,6 @@
 import { CIUDADES_BC } from '../lib/ciudades';
 import { getConteoYonkesPorCiudad } from '../lib/yonkesServerData';
+import { IMAGEN_PORTADA } from '../../lib/imagenPortada';
 
 export const revalidate = 3600;
 
@@ -14,12 +15,12 @@ export const metadata = {
     siteName: 'Mecanix Yonke Virtual',
     locale: 'es_MX',
     type: 'website',
-    images: [{ url: '/mecanix-logo.webp', width: 800, height: 600, alt: 'Yonkes registrados en Baja California' }],
+    images: [{ ...IMAGEN_PORTADA, alt: 'Yonkes registrados en Baja California' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Yonkes registrados en Baja California | Mecanix Yonke Virtual',
-    images: ['/mecanix-logo.webp'],
+    images: [IMAGEN_PORTADA],
   },
 };
 
