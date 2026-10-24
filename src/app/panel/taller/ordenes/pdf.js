@@ -8,10 +8,15 @@
 // Todo el texto es texto plano: lo que venga de Firestore se lee con textoPlano/leerItems
 // (tolerando renglones mal formados) y pasa por textoPdf (lo que la fuente no soporta -> "?").
 // Al pie de CADA hoja: "Esta orden se eliminará de Mecanix el [fecha]. Conserva este documento."
+// Seguimiento (config/ordenes.seguimientoEnPdf): al final de la hoja de la orden, el bloque "Sigue tu
+// orden en línea" con la liga y su QR, SOLO si llega `seguimiento` (la liga ya decidida con
+// ligaSeguimientoParaPdf: banderas, token y enlace activo). Nunca en las hojas del aviso ni la
+// constancia, y sin fecha de vencimiento.
 import { IVA_PORCENTAJE, aCentavos, formatearPesos, ivaCentavos, subtotalCentavos, totalConIvaCentavos } from '../../../../lib/cotizaciones';
 import { MAX_ESTADO_RECEPCION, MAX_FALLA, MAX_OBSERVACIONES, MAX_PERTENENCIAS, NOMBRE_ESTADO_ORDEN, leerItems, textoPlano } from '../../../../lib/ordenes';
 import { protegerTextos } from '../../../../lib/pdfTexto';
 import { armarAvisoOrden } from '../../../../lib/avisoOrden';
+import { NOTA_SEGUIMIENTO_PDF, TITULO_SEGUIMIENTO_PDF } from '../../../../lib/seguimiento';
 import { ANCHO, AZUL, DERECHA, GRIS, LIMITE_Y, MARGEN, estilo, fechaLarga, formatearWhatsapp } from '../cotizaciones/pdf';
 
 const aFecha = (v) => (v?.toDate ? v.toDate() : v instanceof Date ? v : null);
@@ -54,7 +59,49 @@ export function lineasOrden(orden) {
   return lineas;
 }
 
-function dibujarOrden(doc, orden, taller) {
+// QR de 30 mm de lado más el margen blanco (MARGEN_QR cuadritos por lado); el texto a la derecha.
+const LADO_QR = 30;
+
+// Bloque "Sigue tu orden en línea" desde y; devuelve la y de abajo. seguimiento: { liga, matriz, margen }.
+function dibujarSeguimiento(doc, y, { liga, matriz, margen, tramos }) {
+  const modulo = LADO_QR / matriz.tamano;
+  const blanco = margen * modulo;
+  const ladoTotal = LADO_QR + 2 * blanco;
+  const alto = ladoTotal + 4;
+  doc.setDrawColor(...AZUL);
+  doc.rect(MARGEN, y, ANCHO, alto);
+  // QR: fondo blanco (margen obligatorio) y un rectángulo negro por tramo de cuadritos oscuros.
+  const x0 = MARGEN + 2;
+  const y0 = y + 2;
+  doc.setFillColor(255, 255, 255);
+  doc.rect(x0, y0, ladoTotal, ladoTotal, 'F');
+  doc.setFillColor(0, 0, 0);
+  for (const t of tramos) {
+    doc.rect(x0 + blanco + t.columna * modulo, y0 + blanco + t.fila * modulo, t.largo * modulo, modulo, 'F');
+  }
+  // Texto a la derecha del código.
+  const xt = x0 + ladoTotal + 6;
+  const anchoTexto = DERECHA - 4 - xt;
+  let yt = y + 10;
+  estilo(doc, { tamano: 12, negrita: true, color: AZUL });
+  doc.text(TITULO_SEGUIMIENTO_PDF, xt, yt);
+  yt += 7;
+  estilo(doc, { tamano: 8 });
+  for (const linea of doc.splitTextToSize(liga, anchoTexto)) {
+    doc.text(linea, xt, yt);
+    yt += 4;
+  }
+  yt += 3;
+  estilo(doc, { tamano: 9, color: GRIS });
+  for (const linea of doc.splitTextToSize(NOTA_SEGUIMIENTO_PDF, anchoTexto)) {
+    doc.text(linea, xt, yt);
+    yt += 4.5;
+  }
+  return y + alto;
+}
+export const altoBloqueSeguimiento = (matriz, margen) => LADO_QR + 2 * margen * (LADO_QR / matriz.tamano) + 4;
+
+function dibujarOrden(doc, orden, taller, seguimiento = null) {
   const creado = aFecha(orden.creadoAt) ?? new Date();
   let y = 0;
   const nuevaHoja = () => {
@@ -175,6 +222,12 @@ function dibujarOrden(doc, orden, taller) {
 
   bloqueTexto('Observaciones del vehículo', textoPlano(orden.observaciones, MAX_OBSERVACIONES));
 
+  // Seguimiento en línea: al final de la hoja de la orden; si no cabe, en una hoja nueva.
+  if (seguimiento) {
+    asegurar(altoBloqueSeguimiento(seguimiento.matriz, seguimiento.margen) + 2);
+    y = dibujarSeguimiento(doc, y, seguimiento) + 4;
+  }
+
   // Pie en TODAS las hojas.
   const pie = textoPie(orden);
   const hojas = doc.getNumberOfPages();
@@ -215,13 +268,20 @@ function dibujarHojaLegal(doc, { titulo, parrafos }, version, { espacioFirma = f
   });
 }
 
-async function crearDocOrden({ orden, taller }) {
+// ligaSeguimiento: la liga ya decidida (ligaSeguimientoParaPdf) o null. El QR se carga solo si hace falta.
+async function crearDocOrden({ orden, taller, ligaSeguimiento = null }) {
   // Aviso y constancia SOLO con el texto final y la misma versión que se guardó en la orden.
   const legal = armarAvisoOrden(taller, orden, orden?.avisoVersion);
   if (!legal && tieneDatosCliente(orden)) throw new Error(MENSAJE_SIN_AVISO);
   const { jsPDF } = await import('jspdf');
   const doc = protegerTextos(new jsPDF());
-  dibujarOrden(doc, orden, taller);
+  let seguimiento = null;
+  if (ligaSeguimiento) {
+    const { MARGEN_QR, matrizQr, tramosQr } = await import('../../../../lib/qrSeguimiento');
+    const matriz = matrizQr(ligaSeguimiento);
+    seguimiento = { liga: ligaSeguimiento, matriz, margen: MARGEN_QR, tramos: tramosQr(matriz) };
+  }
+  dibujarOrden(doc, orden, taller, seguimiento);
   if (legal) {
     dibujarHojaLegal(doc, legal.aviso, legal.version);
     dibujarHojaLegal(doc, legal.constancia, legal.version, { espacioFirma: true });
@@ -232,13 +292,13 @@ async function crearDocOrden({ orden, taller }) {
 export const nombrePdfOrden = (folio) => `orden-${String(folio ?? '').replace(/[^A-Za-z0-9-]/g, '') || 'sin-folio'}.pdf`;
 
 // Genera el PDF y lo descarga en el dispositivo. orden: tal como la devuelve leerOrden (con folio).
-export async function descargarPdfOrden({ orden, taller }) {
-  const doc = await crearDocOrden({ orden, taller });
+export async function descargarPdfOrden({ orden, taller, ligaSeguimiento = null }) {
+  const doc = await crearDocOrden({ orden, taller, ligaSeguimiento });
   doc.save(nombrePdfOrden(orden.folio));
 }
 
 // Mismo PDF, como bytes (para meterlo al .zip de "Descargar mis documentos").
-export async function bytesPdfOrden({ orden, taller }) {
-  const doc = await crearDocOrden({ orden, taller });
+export async function bytesPdfOrden({ orden, taller, ligaSeguimiento = null }) {
+  const doc = await crearDocOrden({ orden, taller, ligaSeguimiento });
   return new Uint8Array(doc.output('arraybuffer'));
 }

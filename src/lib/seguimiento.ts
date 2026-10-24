@@ -34,7 +34,7 @@ export const MENSAJES_SEGUIMIENTO = {
   fallo: 'No pudimos guardar el enlace de seguimiento. Revisa tu conexión e intenta de nuevo.',
   desactivarFallo: 'No pudimos desactivar el enlace. Revisa tu conexión e intenta de nuevo.',
   // Página pública
-  noEncontrado: 'Este enlace de seguimiento no existe o ya venció. Pregunta a tu taller.',
+  noEncontrado: 'Este enlace ya no está disponible: venció, el taller lo desactivó o la orden ya no existe. Para saber de tu vehículo, comunícate con tu taller.',
   noDisponible: 'El seguimiento en línea no está disponible por ahora. Intenta más tarde.',
   limiteConsultas: 'Estás consultando muy seguido. Espera un minuto y vuelve a intentar.',
 } as const;
@@ -171,6 +171,32 @@ export function seguimientoPublico(d: unknown, ahora: Date = new Date()): Seguim
     nota: texto(s.nota, MAX_NOTA_SEGUIMIENTO),
     actualizadoAt: act === null ? null : new Date(act).toISOString(),
   };
+}
+
+// ---------- PDF de la orden (bloque "Sigue tu orden en línea") ----------
+
+export const TITULO_SEGUIMIENTO_PDF = 'Sigue tu orden en línea';
+export const NOTA_SEGUIMIENTO_PDF = 'Escanea el código o abre la liga. Deja de abrir a más tardar 30 días después de la entrega.';
+
+// Estado del enlace como lo leyó la app: { datos } (datos null = no existe) o { error: true }.
+export type EstadoEnlace = { datos?: unknown; error?: boolean } | null | undefined;
+
+// La liga para imprimir en el PDF, o null si NO se imprime. Solo con las dos banderas
+// (config/ordenes.seguimientoEnPdf y seguimientoHabilitado), la orden con token y el enlace leído
+// sin error, existente y sin vencer. Ante cualquier duda, no se imprime.
+export function ligaSeguimientoParaPdf(
+  config: { seguimientoEnPdf?: unknown; seguimientoHabilitado?: unknown } | null | undefined,
+  orden: { seguimientoToken?: unknown } | null | undefined,
+  enlace: EstadoEnlace,
+  ahora: Date = new Date(),
+): string | null {
+  if (config?.seguimientoEnPdf !== true || config?.seguimientoHabilitado !== true) return null;
+  const token = orden?.seguimientoToken;
+  if (!esTokenSeguimiento(token)) return null;
+  if (!enlace || enlace.error === true || !enlace.datos || typeof enlace.datos !== 'object') return null;
+  const vence = aMs((enlace.datos as { expiraAt?: unknown }).expiraAt);
+  if (vence === null || vence <= ahora.getTime()) return null;
+  return enlaceSeguimiento(token);
 }
 
 // ---------- WhatsApp ----------

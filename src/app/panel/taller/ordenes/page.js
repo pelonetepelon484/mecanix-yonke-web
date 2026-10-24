@@ -20,7 +20,7 @@ function fecha(ts) {
 // "Más antiguas primero" sube las que llevan más tiempo sin tocarse, que son las que se borran antes.
 export default function ListaOrdenes() {
   const router = useRouter();
-  const { tallerId, taller, puedeEditar } = useOrdenes();
+  const { tallerId, taller, puedeEditar, configOrdenes } = useOrdenes();
   const [filtro, setFiltro] = useState('todos');
   const [direccion, setDireccion] = useState('desc');
   // Momento de la última carga: contra él se calculan los días que faltan (no se usa la hora en cada render).
@@ -100,7 +100,7 @@ export default function ListaOrdenes() {
           <p style={{ fontSize: '14px', color: '#8A2A1A', margin: '0 0 14px' }}>Solo lectura: no puedes crear ni editar órdenes ahora.</p>
         )}
 
-        <DescargarDocumentos tallerId={tallerId} taller={taller} />
+        <DescargarDocumentos tallerId={tallerId} taller={taller} configOrdenes={configOrdenes ?? null} />
 
         {avisoGeneral && (
           <p role="alert" style={{ fontSize: '14px', color: '#8A2A1A', backgroundColor: '#FFF6E8', border: '1px solid #E8720C', borderRadius: '12px', padding: '12px', margin: '0 0 14px' }}>

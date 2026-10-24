@@ -24,7 +24,9 @@ const nota = { fontSize: '13px', color: '#555', margin: '6px 0 0', lineHeight: 1
 const aFecha = (v) => (v?.toDate ? v.toDate() : v instanceof Date ? v : null);
 const formatoFecha = (f) => f.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
 
-export default function SeguimientoOrden({ tallerId, taller, folio, orden, configOrdenes, puedeEditar, vencida, onCambio }) {
+// onEstadoEnlace({ datos } | { error: true }): lo que se leyó del enlace, para que el PDF de la orden
+// sepa si imprimir la liga sin volver a leerlo.
+export default function SeguimientoOrden({ tallerId, taller, folio, orden, configOrdenes, puedeEditar, vencida, onCambio, onEstadoEnlace }) {
   const habilitada = configOrdenes?.seguimientoHabilitado === true;
   const token = orden?.seguimientoToken || null;
   const [seguimiento, setSeguimiento] = useState(undefined); // undefined = cargando
@@ -37,10 +39,15 @@ export default function SeguimientoOrden({ tallerId, taller, folio, orden, confi
   useEffect(() => {
     let cancelado = false;
     Promise.resolve(token ? leerSeguimiento(token) : null)
-      .catch((err) => { console.error(err); return null; })
-      .then((s) => { if (!cancelado) { setAhora(Date.now()); setSeguimiento(s); } });
+      .then((s) => ({ datos: s }), (err) => { console.error(err); return { datos: null, error: true }; })
+      .then((r) => {
+        if (cancelado) return;
+        setAhora(Date.now());
+        setSeguimiento(r.datos);
+        onEstadoEnlace?.(r);
+      });
     return () => { cancelado = true; };
-  }, [token]);
+  }, [token, onEstadoEnlace]);
 
   // Bandera apagada y sin enlace: no aparece nada (como antes).
   if (!habilitada && !token) return null;
@@ -81,6 +88,7 @@ export default function SeguimientoOrden({ tallerId, taller, folio, orden, confi
     try {
       await desactivarSeguimiento(token);
       setSeguimiento(null);
+      onEstadoEnlace?.({ datos: null });
       setAviso('Enlace desactivado.');
     } catch (err) {
       console.error(err);

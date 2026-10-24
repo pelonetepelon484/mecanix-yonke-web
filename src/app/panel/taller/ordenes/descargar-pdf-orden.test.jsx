@@ -23,6 +23,6 @@ describe('"Descargar PDF" en el detalle de la orden', () => {
   it('descarga el PDF de lo guardado, con los datos del taller', async () => {
     render(<DetalleOrden />);
     fireEvent.click(await screen.findByRole('button', { name: 'Descargar PDF' }));
-    await waitFor(() => expect(descargarPdfOrden).toHaveBeenCalledWith({ orden: ordenGuardada, taller: { nombre: 'Taller', activo: true } }));
+    await waitFor(() => expect(descargarPdfOrden).toHaveBeenCalledWith({ orden: ordenGuardada, taller: { nombre: 'Taller', activo: true }, ligaSeguimiento: null }));
   });
 });

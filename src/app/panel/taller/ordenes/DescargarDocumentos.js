@@ -3,7 +3,8 @@
 // Botón "Descargar mis documentos" (en la lista de órdenes y en la de cotizaciones). Ver
 // descargaDocumentos.js: tandas, tope de 200, progreso y cancelar; todo en el navegador.
 import { useRef, useState } from 'react';
-import { listarOrdenes } from './datos';
+import { leerConfigOrdenes, leerSeguimiento, listarOrdenes } from './datos';
+import { ligaSeguimientoParaPdf } from '../../../../lib/seguimiento';
 import { listarCotizaciones, leerRenglones } from '../cotizaciones/datos';
 import { bytesPdfOrden } from './pdf';
 import { bytesPdfCotizacion, plantillaAvisoTaller } from '../cotizaciones/pdf';
@@ -11,18 +12,24 @@ import { DescargaCancelada, DescargaExcedeTope, MENSAJES_DESCARGA, guardarZip, p
 
 const boton = { width: '100%', minHeight: '52px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' };
 
-export default function DescargarDocumentos({ tallerId, taller, fuentes: fuentesPrueba = null }) {
+// configOrdenes: la de la lista de órdenes (contexto); si no llega (lista de cotizaciones), se lee
+// una vez al descargar. Con las banderas del seguimiento en el PDF, las órdenes con enlace activo
+// llevan su liga y su QR.
+export default function DescargarDocumentos({ tallerId, taller, configOrdenes = undefined, fuentes: fuentesPrueba = null }) {
   const [estado, setEstado] = useState({ fase: 'listo', hechos: 0, total: 0, mensaje: '' });
   const cancelar = useRef(false);
 
   async function descargar() {
     cancelar.current = false;
     setEstado({ fase: 'preparando', hechos: 0, total: 0, mensaje: '' });
+    const config = fuentesPrueba ? null : (configOrdenes !== undefined ? configOrdenes : await leerConfigOrdenes().catch(() => null));
+    const conSeguimiento = config?.seguimientoEnPdf === true && config?.seguimientoHabilitado === true;
     const fuentes = fuentesPrueba ?? {
       listarOrdenes: (o) => listarOrdenes(tallerId, o),
       listarCotizaciones: (o) => listarCotizaciones(tallerId, o),
       leerRenglones: (folio) => leerRenglones(tallerId, folio),
-      pdfOrden: (orden) => bytesPdfOrden({ orden, taller }),
+      ...(conSeguimiento ? { leerEnlace: (orden) => leerSeguimiento(orden.seguimientoToken) } : {}),
+      pdfOrden: (orden, enlace) => bytesPdfOrden({ orden, taller, ligaSeguimiento: ligaSeguimientoParaPdf(config, orden, enlace) }),
       pdfCotizacion: (cotizacion) => bytesPdfCotizacion({ cotizacion, taller }),
       tieneAviso: (cotizacion) => plantillaAvisoTaller(cotizacion.avisoVersion) !== null,
     };
