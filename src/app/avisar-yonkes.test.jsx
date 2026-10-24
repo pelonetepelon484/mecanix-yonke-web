@@ -113,6 +113,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
       fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+      expect(screen.queryByText(/aceptas que la información que capturaste/)).not.toBeInTheDocument();
       expect(Object.keys(await enviar())).not.toContain('aceptaOtrosEstados');
       expect(getDoc).toHaveBeenCalledTimes(1); // las dos banderas salen de la misma lectura
     });
@@ -125,6 +126,12 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       expect(await screen.findByRole('checkbox', CASILLA)).toBeChecked();
       const enlaces = screen.getAllByRole('link', { name: 'Aviso de privacidad' }).map((l) => l.getAttribute('href'));
       expect(enlaces).toContain('https://mecanixyonkevirtual.com/privacidad#pedidos-clientes');
+      // Consentimiento: visible debajo de la casilla y antes del botón de enviar.
+      const consentimiento = screen.getByText('Al enviar tu alerta con esta casilla marcada, aceptas que la información que capturaste (vehículo, pieza y estado) se muestre a yonkes de otros estados que hacen envíos. No se comparte tu nombre ni tu WhatsApp.');
+      const casilla = screen.getByRole('checkbox', CASILLA);
+      const boton = screen.getByRole('button', { name: '🚨 Enviar alerta' });
+      expect(casilla.compareDocumentPosition(consentimiento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(consentimiento.compareDocumentPosition(boton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect((await enviar()).aceptaOtrosEstados).toBe(true);
       expect(await screen.findByText(`${LISTO} ${OTROS}`)).toBeInTheDocument();
     });

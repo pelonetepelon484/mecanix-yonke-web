@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DIAS_VIGENCIA_PEDIDO, MAX_PEDIDOS_POR_WHATSAPP_DIA, MENSAJES_PEDIDO, calcularExpiraAtPedido, enlaceGuardarPorWhatsapp, enlaceMiPedido, esCodigo, esIdPedido, estaVencido,
-  CASILLA_OTROS_ESTADOS_INICIAL, CONSEJOS_ENVIO, TEXTO_CASILLA_OTROS_ESTADOS, avisoEnvioOtroEstado, avisoRespuestaOtroEstado, estadoVisible, mensajeAvisoAdmin, puedeVerOtrosEstados, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
+  CASILLA_OTROS_ESTADOS_INICIAL, CONSEJOS_ENVIO, TEXTO_CASILLA_OTROS_ESTADOS, TEXTO_CONSENTIMIENTO_OTROS_ESTADOS, avisoEnvioOtroEstado, avisoRespuestaOtroEstado, estadoVisible, mensajeAvisoAdmin, puedeVerOtrosEstados, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
   validarPedidoCliente,
 } from './pedidosClientes';
 import { MENSAJES_SOLICITUD } from './solicitudesPiezas';
@@ -154,6 +154,14 @@ describe('alertas de otros estados', () => {
     expect(avisoRespuestaOtroEstado('Sonora', false)).toBe('Este yonke es de Sonora, distinto al de tu pedido, pero respondió tu solicitud. Es posible que pueda hacer el envío hasta tu estado; confírmalo directamente con él antes de pagar.');
     // Los consejos de envío no repiten "antes de pagar" ni "cómo se hará el pago".
     expect(CONSEJOS_ENVIO).not.toMatch(/antes de pagar|cómo se hará el pago/);
+  });
+  it('consentimiento junto al botón: el texto aprobado y nombra exactamente lo que guarda la alerta', () => {
+    expect(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS).toBe('Al enviar tu alerta con esta casilla marcada, aceptas que la información que capturaste (vehículo, pieza y estado) se muestre a yonkes de otros estados que hacen envíos. No se comparte tu nombre ni tu WhatsApp.');
+  });
+  it('lo que ve un yonke (de su estado o de otro) de una alerta: vehículo, pieza, estado y fecha; nunca un comentario ni el contacto', () => {
+    const p = pedidoPublico('X', { vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2005 }, pieza: 'Alternador', estado: 'sonora', creadoAt: new Date('2026-10-23T12:00:00Z'), nota: 'hola', clienteWhatsapp: '6641234567' } as never);
+    expect(Object.keys(p).sort()).toEqual(['creadoAt', 'estado', 'id', 'pieza', 'vehiculo']);
+    expect(Object.keys(p.vehiculo).sort()).toEqual(['anio', 'marca', 'modelo']);
   });
   it('casilla de otros estados: nace marcada y con su texto', () => {
     expect(CASILLA_OTROS_ESTADOS_INICIAL).toBe(true);

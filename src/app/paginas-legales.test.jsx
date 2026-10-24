@@ -39,7 +39,8 @@ function lineasPublicables(lineas) {
 // El inciso (a) cita la primera frase del texto de la casilla del formulario (TEXTO_CASILLA_OTROS_ESTADOS).
 const CASILLA = 'Mostrar mi alerta a yonkes de otros estados que hacen envíos';
 const PRIVACIDAD_CASILLA_MARCADA = 'La casilla para mostrar tu alerta a yonkes de otros estados aparece marcada por defecto. Si no deseas que tu alerta se muestre a yonkes fuera de tu estado, debes desmarcarla antes de enviarla.';
-const TERMINOS_CASILLA_MARCADA = 'Esa casilla aparece marcada por defecto: si el cliente no desea que su alerta se muestre a yonkes fuera de su estado, debe desmarcarla antes de enviarla.';
+const TERMINOS_CASILLA_MARCADA = 'Esa casilla aparece marcada por defecto: si el cliente no desea que su alerta se muestre a yonkes fuera de su estado, debe desmarcarla antes de enviarla. Al enviar su alerta con la casilla marcada, el cliente consiente que el vehículo, la pieza y el estado que proporcionó se muestren a yonkes de otros estados que hacen envíos.';
+const PRIVACIDAD_CONSENTIMIENTO = 'Si envías tu alerta con la casilla marcada, estás consintiendo que el vehículo, la pieza y el estado que proporcionaste se muestren a yonkes de otros estados que hacen envíos. Si no lo deseas, desmarca la casilla antes de enviar tu alerta.';
 const TERMINOS_OTROS_ESTADOS = 'Mecanix permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas. Si el cliente activa la casilla correspondiente, acepta que su alerta de pedido también pueda mostrarse a los yonkes Verificados que tengan activada la opción de Envíos nacionales, en los demás estados, identificados con su insignia.';
 const CAMBIOS_2026_10_10 = {
   'Mecanix únicamente permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas.': TERMINOS_OTROS_ESTADOS,
@@ -106,10 +107,10 @@ describe('textos legales de "Avisar a los yonkes"', () => {
     }
   });
   it('fecha de última actualización y VERSION_LEGAL de hoy', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-22');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 22 de octubre de 2026');
+    expect(VERSION_LEGAL).toBe('2026-10-23');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 23 de octubre de 2026');
     cleanup();
-    expect(textoDe(Terminos)).toContain('Última actualización: 22 de octubre de 2026');
+    expect(textoDe(Terminos)).toContain('Última actualización: 23 de octubre de 2026');
   });
 });
 
@@ -128,6 +129,8 @@ describe('alertas a yonkes de otros estados (aprobado el 10 de octubre de 2026)'
     const texto = textoDe(Privacidad);
     expect(texto.indexOf(PRIVACIDAD_CASILLA_MARCADA)).toBe(texto.indexOf(PRIVACIDAD_A) + PRIVACIDAD_A.length);
     expect(texto.indexOf(PRIVACIDAD_CASILLA_MARCADA)).toBeLessThan(texto.indexOf('(b) Mostrarte, en tu enlace privado'));
+    // Y enseguida, el consentimiento.
+    expect(texto.indexOf(PRIVACIDAD_CONSENTIMIENTO)).toBe(texto.indexOf(PRIVACIDAD_CASILLA_MARCADA) + PRIVACIDAD_CASILLA_MARCADA.length);
   });
   it('Términos, sección 8: la casilla marcada por defecto, junto a la línea de otros estados', () => {
     const texto = textoDe(Terminos);
@@ -216,7 +219,7 @@ describe('avisos en el dispositivo', () => {
     expect(texto.indexOf(TERMINOS)).toBeLessThan(texto.indexOf('Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026'));
   });
   it('sin cambiar la versión ni la fecha', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-22');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 22 de octubre de 2026');
+    expect(VERSION_LEGAL).toBe('2026-10-23');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 23 de octubre de 2026');
   });
 });

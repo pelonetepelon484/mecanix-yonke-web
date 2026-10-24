@@ -21,7 +21,7 @@ vi.mock('./lib/SelectorMarcaModelo', () => ({
 }));
 
 const { default: AlertaUnPaso, TITULO_SIN_RESULTADOS, TEXTO_DISCRETO, TEXTO_COMPACTO } = await import('./AlertaUnPaso.js');
-const { TEXTO_BOTON_ALERTA, TEXTO_CASILLA_OTROS_ESTADOS } = await import('./AvisarYonkes.js');
+const { TEXTO_BOTON_ALERTA, TEXTO_CASILLA_OTROS_ESTADOS, TEXTO_CONSENTIMIENTO_OTROS_ESTADOS } = await import('./AvisarYonkes.js');
 
 const ESTADOS = [{ id: 'baja-california', nombre: 'Baja California' }, { id: 'sonora', nombre: 'Sonora' }];
 const ENLACE = 'https://mecanixyonkevirtual.com/mi-pedido/Pedido00000000000001?c=abc';
@@ -121,6 +121,10 @@ describe('alerta en un paso', () => {
     render(<AlertaUnPaso {...completo} />);
     fireEvent.click(await screen.findByRole('button', { name: TEXTO_BOTON_ALERTA }));
     expect(await screen.findByLabelText(TEXTO_CASILLA_OTROS_ESTADOS)).toBeChecked();
+    // Consentimiento: visible debajo de la casilla y antes del botón de enviar.
+    const consentimiento = screen.getByText(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS);
+    expect(screen.getByLabelText(TEXTO_CASILLA_OTROS_ESTADOS).compareDocumentPosition(consentimiento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(consentimiento.compareDocumentPosition(screen.getByRole('button', { name: '🚨 Enviar alerta' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
     fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
