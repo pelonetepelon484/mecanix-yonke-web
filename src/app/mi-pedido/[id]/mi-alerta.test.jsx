@@ -10,6 +10,7 @@ vi.mock('next/navigation', () => ({
 
 const { default: MiPedidoCliente, TEXTO_AVISO_PAGO } = await import('./MiPedidoCliente.js');
 const { metadata } = await import('./page.js');
+const { CONSEJOS_ENVIO } = await import('../../../lib/pedidosClientes');
 
 afterEach(() => { cleanup(); });
 
@@ -65,7 +66,7 @@ describe('página del cliente con las respuestas de los yonkes', () => {
     expect(metadata.title).toBe('Mi alerta de búsqueda | Mecanix Yonke Virtual');
   });
 
-  it('cada respuesta dice el estado del yonke; las de otro estado llevan "📦 Envío" y el aviso de envío', async () => {
+  it('cada respuesta dice el estado del yonke; las de otro estado llevan el aviso (con o sin Envíos nacionales)', async () => {
     const base = { tieneLaPieza: true, precio: 1500, nota: '', whatsapp: '3331111111', verificado: true };
     global.fetch = vi.fn(async () => ({
       status: 200, ok: true,
@@ -74,25 +75,36 @@ describe('página del cliente con las respuestas de los yonkes', () => {
         pedido: { pieza: 'Alternador', vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2005 }, estado: 'baja-california', estadoNombre: 'Baja California', estadoPedido: 'abierta', vencido: false, vence: '2026-10-14T20:00:00Z' },
         respuestas: [
           { ...base, yonkeNombre: 'Yonke Tijuana', estadoYonke: 'baja-california', estadoYonkeNombre: 'Baja California', otroEstado: false },
-          { ...base, yonkeNombre: 'Yonke Guadalajara', estadoYonke: 'jalisco', estadoYonkeNombre: 'Jalisco', otroEstado: true },
-          { ...base, tieneLaPieza: false, precio: null, yonkeNombre: 'Yonke Hermosillo', estadoYonke: 'sonora', estadoYonkeNombre: 'Sonora', otroEstado: true },
+          { ...base, yonkeNombre: 'Yonke Guadalajara', estadoYonke: 'jalisco', estadoYonkeNombre: 'Jalisco', otroEstado: true, enviosNacionales: true },
+          { ...base, tieneLaPieza: false, precio: null, yonkeNombre: 'Yonke Hermosillo', estadoYonke: 'sonora', estadoYonkeNombre: 'Sonora', otroEstado: true, enviosNacionales: true },
+          { ...base, yonkeNombre: 'Yonke Monterrey', estadoYonke: 'nuevo-leon', estadoYonkeNombre: 'Nuevo León', otroEstado: true, enviosNacionales: false },
         ],
       }),
     }));
     render(<MiPedidoCliente />);
     const tarjeta = async (nombre) => (await screen.findByText(nombre)).closest('div').parentElement;
+    // Mismo estado: como hoy, solo su estado, sin insignia ni aviso.
     const local = await tarjeta('Yonke Tijuana');
     expect(local).toHaveTextContent('📍 Baja California');
     expect(local).not.toHaveTextContent('📦');
+    expect(local).not.toHaveTextContent('distinto al de tu pedido');
 
+    // Otro estado CON Envíos nacionales: insignia y el aviso que lo afirma.
     const lejos = await tarjeta('Yonke Guadalajara');
     expect(lejos).toHaveTextContent('📍 Jalisco');
-    expect(lejos).toHaveTextContent('📦 Envío');
-    expect(lejos).toHaveTextContent('📦 Te la enviaría un yonke de Jalisco. Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Confirma por WhatsApp cómo se hará el pago. Mecanix no vende ni cobra.');
+    expect(lejos).toHaveTextContent('📦 Envíos nacionales');
+    expect(lejos).toHaveTextContent('Este yonke es de Jalisco, distinto al de tu pedido, pero respondió tu solicitud. Este yonke hace envíos nacionales hasta tu estado; confírmalo directamente con él antes de pagar.');
+    expect(lejos).toHaveTextContent(CONSEJOS_ENVIO);
+    expect(lejos).not.toHaveTextContent('Te la enviaría');
+
+    // Otro estado SIN la insignia: sin "📦 Envíos nacionales" y el aviso dice que es posible.
+    const sinInsignia = await tarjeta('Yonke Monterrey');
+    expect(sinInsignia).not.toHaveTextContent('Envíos nacionales');
+    expect(sinInsignia).toHaveTextContent('Este yonke es de Nuevo León, distinto al de tu pedido, pero respondió tu solicitud. Es posible que pueda hacer el envío hasta tu estado; confírmalo directamente con él antes de pagar.');
 
     // Si no la tiene, no hay nada que enviar: sin el aviso.
     const sinPieza = await tarjeta('Yonke Hermosillo');
-    expect(sinPieza).toHaveTextContent('📦 Envío');
-    expect(sinPieza).not.toHaveTextContent('Te la enviaría');
+    expect(sinPieza).toHaveTextContent('📦 Envíos nacionales');
+    expect(sinPieza).not.toHaveTextContent('distinto al de tu pedido');
   });
 });

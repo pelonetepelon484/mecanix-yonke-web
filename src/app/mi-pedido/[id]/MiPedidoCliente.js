@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { DURACION_RECARGA_MS, INTERVALO_RECARGA_MS, MENSAJES_PEDIDO, avisoEnvioOtroEstado } from '../../../lib/pedidosClientes';
+import { CONSEJOS_ENVIO, DURACION_RECARGA_MS, INTERVALO_RECARGA_MS, MENSAJES_PEDIDO, avisoRespuestaOtroEstado } from '../../../lib/pedidosClientes';
 
 export const TEXTO_AVISO_PAGO = '🛡️ Antes de pagar, confirma la pieza directamente con el yonke. Con yonkes sin verificar, evita pagos por adelantado. Mecanix no participa en la venta ni en el pago.';
 
@@ -122,8 +122,9 @@ export default function MiPedidoCliente() {
             {r.estadoYonkeNombre && (
               <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#555' }}>
                 📍 {r.estadoYonkeNombre}
-                {r.otroEstado && (
-                  <span style={{ marginLeft: '6px', display: 'inline-block', backgroundColor: '#E3F2FD', color: '#1565C0', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>📦 Envío</span>
+                {/* La insignia solo si el yonke de verdad tiene Envíos nacionales (no contradice el aviso). */}
+                {r.otroEstado && r.enviosNacionales && (
+                  <span style={{ marginLeft: '6px', display: 'inline-block', backgroundColor: '#E3F2FD', color: '#1565C0', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>📦 Envíos nacionales</span>
                 )}
               </p>
             )}
@@ -131,10 +132,12 @@ export default function MiPedidoCliente() {
             {r.tieneLaPieza && r.whatsapp && (
               <a href={enlaceWhatsappYonke(r, pedido)} target="_blank" rel="noopener noreferrer" style={botonWhatsapp}>💬 Escribirle por WhatsApp</a>
             )}
+            {/* Yonke de otro estado que tiene la pieza: de dónde es, si hace envíos y que lo confirme. */}
             {r.otroEstado && r.tieneLaPieza && (
-              <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#1565C0', backgroundColor: '#F1F7FD', borderRadius: '8px', padding: '8px', lineHeight: '1.5' }}>
-                {avisoEnvioOtroEstado(r.estadoYonkeNombre)}
-              </p>
+              <div data-testid="aviso-otro-estado" style={{ margin: '8px 0 0', fontSize: '12px', color: '#1565C0', backgroundColor: '#F1F7FD', borderRadius: '8px', padding: '8px', lineHeight: '1.5' }}>
+                <p style={{ margin: 0 }}>{avisoRespuestaOtroEstado(r.estadoYonkeNombre, r.enviosNacionales === true)}</p>
+                <p style={{ margin: '4px 0 0' }}>{CONSEJOS_ENVIO}</p>
+              </div>
             )}
           </div>
         ))}

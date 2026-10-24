@@ -91,7 +91,9 @@ type RespuestaDoc = { yonkeId: string; yonkeNombre: string; tieneLaPieza: boolea
 
 // Respuesta tal como la ve el cliente. "verificado" y el estado del yonke se toman del yonke en
 // vivo (verificado lo pone el admin). estadoYonke: id del estado (mismo esquema que pedido.estado).
-export function respuestaParaCliente(r: RespuestaDoc, yonke: { verificado?: unknown; estado?: unknown } | null | undefined) {
+// Del yonke solo salen datos que ya son públicos en su ficha y en el buscador: Verificado, su estado
+// (yonkes/{id}.estado, el de la insignia 📍) y la insignia de Envíos nacionales.
+export function respuestaParaCliente(r: RespuestaDoc, yonke: { verificado?: unknown; estado?: unknown; enviosNacionales?: unknown } | null | undefined) {
   return {
     yonkeNombre: r.yonkeNombre,
     tieneLaPieza: r.tieneLaPieza === true,
@@ -100,6 +102,7 @@ export function respuestaParaCliente(r: RespuestaDoc, yonke: { verificado?: unkn
     whatsapp: typeof r.whatsapp === 'string' ? r.whatsapp : '',
     verificado: yonke?.verificado === true,
     estadoYonke: typeof yonke?.estado === 'string' ? yonke.estado : '',
+    enviosNacionales: yonke?.enviosNacionales === true,
     creadoAt: aFecha(r.creadoAt)?.toISOString() ?? null,
   };
 }
@@ -119,6 +122,25 @@ export function puedeVerOtrosEstados(
 export function avisoEnvioOtroEstado(estadoNombre: string): string {
   return `📦 Te la enviaría un yonke de ${estadoNombre}. Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Confirma por WhatsApp cómo se hará el pago. Mecanix no vende ni cobra.`;
 }
+
+// Casilla "otros estados" del formulario de la alerta (AvisarYonkes / AlertaUnPaso): nace MARCADA.
+// El Aviso de Privacidad (sección 14, inciso a) cita su primera frase. Textos aprobados por el abogado.
+export const TEXTO_CASILLA_OTROS_ESTADOS = 'Mostrar mi alerta a yonkes de otros estados que hacen envíos. Esta casilla viene marcada; si solo quieres yonkes de tu estado, desmárcala. No se comparte tu nombre ni tu WhatsApp.';
+export const CASILLA_OTROS_ESTADOS_INICIAL = true;
+// Consentimiento, visible debajo de la casilla y junto al botón de enviar. Lo que nombra es lo que
+// el cliente captura y ve el yonke: vehículo, pieza y estado (la alerta no tiene comentario libre).
+export const TEXTO_CONSENTIMIENTO_OTROS_ESTADOS = 'Al enviar tu alerta con esta casilla marcada, aceptas que la información que capturaste (vehículo, pieza y estado) se muestre a yonkes de otros estados que hacen envíos. No se comparte tu nombre ni tu WhatsApp.';
+
+// Aviso junto a la respuesta de un yonke de un estado distinto al del pedido (pantalla /mi-pedido).
+// Con la insignia de Envíos nacionales lo afirma; sin ella, solo dice que es posible. Aprobado por el abogado.
+export function avisoRespuestaOtroEstado(estadoNombre: string, enviosNacionales: boolean): string {
+  const envio = enviosNacionales ? 'Este yonke hace envíos nacionales' : 'Es posible que pueda hacer el envío';
+  return `Este yonke es de ${estadoNombre}, distinto al de tu pedido, pero respondió tu solicitud. ${envio} hasta tu estado; confírmalo directamente con él antes de pagar.`;
+}
+// Consejos para comprar a distancia (debajo del aviso anterior). Sin repetir "antes de pagar": se
+// quitaron "Te la enviaría un yonke de…" y "Confirma por WhatsApp cómo se hará el pago" (aprobado
+// por el abogado, igual que la insignia "📦 Envíos nacionales").
+export const CONSEJOS_ENVIO = '📦 Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Mecanix no vende ni cobra.';
 
 // Primero los que la tienen (más barato primero), luego los que no.
 export function ordenarRespuestas<T extends { tieneLaPieza: boolean; precio: number | null }>(lista: T[]): T[] {
