@@ -74,7 +74,8 @@ branding: {
 }
 ```
 Todos los campos de `branding` son opcionales — si falta alguno, cae al valor
-default de Mecanix (`#1A3C5E`, `#E8720C`, `#F0F2F5`, `/mecanix-logo.webp`).
+default de Mecanix (`#1A3C5E`, `#E8720C`, `#F0F2F5`). Sin `logoUrl` no se usa el logo de Mecanix:
+la página muestra el nombre del yonke como texto.
 
 ## Verificación
 1. Con el yonke piloto ya con `subdominio`+`branding` en Firestore:

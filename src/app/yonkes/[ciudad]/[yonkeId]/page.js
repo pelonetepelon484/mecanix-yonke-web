@@ -8,6 +8,7 @@ import { formatearHorario, obtenerEstadoAbierto, metodosPagoLabels } from '../..
 import { toSafeJsonLdString } from '../../../lib/jsonLd';
 import { buildYonkeJsonLd } from '../../../lib/yonkeJsonLd';
 import YonkeActividadBadge from '../../../lib/YonkeActividadBadge';
+import { IMAGEN_PORTADA } from '../../../../lib/imagenPortada';
 
 export const revalidate = 3600;
 
@@ -35,6 +36,9 @@ export async function generateMetadata({ params }) {
   const title = `${titleBase} | Mecanix Yonke Virtual`;
   const description = `${yonke.nombre} es un yonke afiliado en ${ciudadInfo.label}, ${estadoLabel}. Consulta dirección, teléfono, horario y contacta directo por WhatsApp para tu refacción usada.`;
   const url = `/yonkes/${ciudad}/${yonkeId}`;
+  // Vista previa: el logo del yonke tal como lo subió (sin medidas inventadas: cada logo mide
+  // distinto); si no tiene, la imagen de la portada con el logo nuevo de Mecanix (1200 × 630).
+  const imagen = yonke.logoUrl ? { url: yonke.logoUrl, alt: yonke.nombre } : { ...IMAGEN_PORTADA, alt: yonke.nombre };
 
   return {
     title: titleBase,
@@ -45,11 +49,11 @@ export async function generateMetadata({ params }) {
       siteName: 'Mecanix Yonke Virtual',
       locale: 'es_MX',
       type: 'website',
-      images: [{ url: yonke.logoUrl || '/mecanix-logo.webp', width: 800, height: 600, alt: yonke.nombre }],
+      images: [imagen],
     },
     twitter: {
       card: 'summary_large_image', title, description,
-      images: [yonke.logoUrl || '/mecanix-logo.webp'],
+      images: [imagen],
     },
   };
 }
