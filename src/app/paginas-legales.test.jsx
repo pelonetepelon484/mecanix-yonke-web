@@ -5,6 +5,7 @@ import { describe, expect, it, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import Privacidad from './privacidad/page.js';
 import Terminos from './terminos/page.js';
+import { TEXTO_CASILLA_OTROS_ESTADOS } from '../lib/pedidosClientes';
 import { VERSION_LEGAL } from '../lib/versionesLegales';
 
 // Texto de "Avisar a los yonkes" aprobado por el abogado tal cual (legal-pedido-clientes-para-abogado.md):
@@ -35,7 +36,10 @@ function lineasPublicables(lineas) {
 
 // Alertas a yonkes de otros estados (aprobado por el abogado el 10 de octubre de 2026): la línea
 // de los Términos que decía que el cliente avisa "únicamente" a los yonkes de su estado.
-const CASILLA = 'Acepto que yonkes de otros estados que hagan envíos respondan mi alerta';
+// El inciso (a) cita la primera frase del texto de la casilla del formulario (TEXTO_CASILLA_OTROS_ESTADOS).
+const CASILLA = 'Mostrar mi alerta a yonkes de otros estados que hacen envíos';
+const PRIVACIDAD_CASILLA_MARCADA = 'La casilla para mostrar tu alerta a yonkes de otros estados aparece marcada por defecto. Si no deseas que tu alerta se muestre a yonkes fuera de tu estado, debes desmarcarla antes de enviarla.';
+const TERMINOS_CASILLA_MARCADA = 'Esa casilla aparece marcada por defecto: si el cliente no desea que su alerta se muestre a yonkes fuera de su estado, debe desmarcarla antes de enviarla.';
 const TERMINOS_OTROS_ESTADOS = 'Mecanix permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas. Si el cliente activa la casilla correspondiente, acepta que su alerta de pedido también pueda mostrarse a los yonkes Verificados que tengan activada la opción de Envíos nacionales, en los demás estados, identificados con su insignia.';
 const CAMBIOS_2026_10_10 = {
   'Mecanix únicamente permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas.': TERMINOS_OTROS_ESTADOS,
@@ -116,6 +120,18 @@ describe('alertas a yonkes de otros estados (aprobado el 10 de octubre de 2026)'
     const a = texto.indexOf(PRIVACIDAD_A);
     expect(a).toBeGreaterThan(texto.indexOf('Para qué los usamos.'));
     expect(a).toBeLessThan(texto.indexOf('(b) Mostrarte, en tu enlace privado'));
+  });
+  it('la cita del inciso (a) es la primera frase del texto real de la casilla', () => {
+    expect(TEXTO_CASILLA_OTROS_ESTADOS.startsWith(`${CASILLA}. `)).toBe(true);
+  });
+  it('Privacidad, sección 14: la casilla marcada por defecto, justo después del inciso (a)', () => {
+    const texto = textoDe(Privacidad);
+    expect(texto.indexOf(PRIVACIDAD_CASILLA_MARCADA)).toBe(texto.indexOf(PRIVACIDAD_A) + PRIVACIDAD_A.length);
+    expect(texto.indexOf(PRIVACIDAD_CASILLA_MARCADA)).toBeLessThan(texto.indexOf('(b) Mostrarte, en tu enlace privado'));
+  });
+  it('Términos, sección 8: la casilla marcada por defecto, junto a la línea de otros estados', () => {
+    const texto = textoDe(Terminos);
+    expect(texto).toContain(`${TERMINOS_OTROS_ESTADOS} ${TERMINOS_CASILLA_MARCADA}`);
   });
   it('Privacidad, sección 14: la frase B va justo después del renglón de "Yonkes"', () => {
     const texto = textoDe(Privacidad);

@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
 import { cargarEstados } from './lib/estados';
 import { leerBanderaAlertaUnPaso, leerBanderaOtrosEstados } from './lib/banderaPedidosClientes';
-import { TEXTO_BOTON_ALERTA, enviarAlertaCliente } from './AvisarYonkes';
+import { CASILLA_OTROS_ESTADOS_INICIAL, CasillaOtrosEstados, TEXTO_BOTON_ALERTA, enviarAlertaCliente } from './AvisarYonkes';
 import { enlaceGuardarPorWhatsapp } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
@@ -50,7 +50,7 @@ export default function AlertaUnPaso({
   const [pieza, setPieza] = useState(piezaInicial);
   const [estado, setEstado] = useState(estadoConocido);
   const [whatsapp, setWhatsapp] = useState('');
-  const [aceptaOtrosEstados, setAceptaOtrosEstados] = useState(false);
+  const [aceptaOtrosEstados, setAceptaOtrosEstados] = useState(CASILLA_OTROS_ESTADOS_INICIAL);
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enlace, setEnlace] = useState('');
@@ -175,12 +175,7 @@ export default function AlertaUnPaso({
       )}
       <label style={etiqueta} htmlFor="alerta-whatsapp">Tu WhatsApp</label>
       <input id="alerta-whatsapp" type="tel" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="10 dígitos" autoComplete="tel" style={input} />
-      {otrosEstadosActivo && (
-        <label htmlFor="alerta-otros-estados" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.4', cursor: 'pointer' }}>
-          <input id="alerta-otros-estados" type="checkbox" checked={aceptaOtrosEstados} onChange={(e) => setAceptaOtrosEstados(e.target.checked)} style={{ marginTop: '2px', width: '18px', height: '18px', flexShrink: 0 }} />
-          Acepto que yonkes de otros estados que hagan envíos respondan mi alerta
-        </label>
-      )}
+      {otrosEstadosActivo && <CasillaOtrosEstados id="alerta-otros-estados" marcada={aceptaOtrosEstados} onCambiar={setAceptaOtrosEstados} />}
       <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#555', lineHeight: '1.5' }}>
         Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes.{' '}
         <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>Aviso de privacidad</a>

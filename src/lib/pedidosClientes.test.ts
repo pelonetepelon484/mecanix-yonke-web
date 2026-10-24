@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DIAS_VIGENCIA_PEDIDO, MAX_PEDIDOS_POR_WHATSAPP_DIA, MENSAJES_PEDIDO, calcularExpiraAtPedido, enlaceGuardarPorWhatsapp, enlaceMiPedido, esCodigo, esIdPedido, estaVencido,
-  avisoEnvioOtroEstado, estadoVisible, mensajeAvisoAdmin, puedeVerOtrosEstados, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
+  CASILLA_OTROS_ESTADOS_INICIAL, CONSEJOS_ENVIO, TEXTO_CASILLA_OTROS_ESTADOS, avisoEnvioOtroEstado, avisoRespuestaOtroEstado, estadoVisible, mensajeAvisoAdmin, puedeVerOtrosEstados, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
   validarPedidoCliente,
 } from './pedidosClientes';
 import { MENSAJES_SOLICITUD } from './solicitudesPiezas';
@@ -148,6 +148,23 @@ describe('alertas de otros estados', () => {
   });
   it('texto del aviso de envío', () => {
     expect(avisoEnvioOtroEstado('Jalisco')).toBe('📦 Te la enviaría un yonke de Jalisco. Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Confirma por WhatsApp cómo se hará el pago. Mecanix no vende ni cobra.');
+  });
+  it('aviso de respuesta de otro estado: con Envíos nacionales lo afirma; sin la insignia, "es posible"', () => {
+    expect(avisoRespuestaOtroEstado('Jalisco', true)).toBe('Este yonke es de Jalisco, distinto al de tu pedido, pero respondió tu solicitud. Este yonke hace envíos nacionales hasta tu estado; confírmalo directamente con él antes de pagar.');
+    expect(avisoRespuestaOtroEstado('Sonora', false)).toBe('Este yonke es de Sonora, distinto al de tu pedido, pero respondió tu solicitud. Es posible que pueda hacer el envío hasta tu estado; confírmalo directamente con él antes de pagar.');
+    // Los consejos de envío no repiten "antes de pagar" ni "cómo se hará el pago".
+    expect(CONSEJOS_ENVIO).not.toMatch(/antes de pagar|cómo se hará el pago/);
+  });
+  it('casilla de otros estados: nace marcada y con su texto', () => {
+    expect(CASILLA_OTROS_ESTADOS_INICIAL).toBe(true);
+    expect(TEXTO_CASILLA_OTROS_ESTADOS).toBe('Mostrar mi alerta a yonkes de otros estados que hacen envíos. Esta casilla viene marcada; si solo quieres yonkes de tu estado, desmárcala. No se comparte tu nombre ni tu WhatsApp.');
+  });
+  it('respuestaParaCliente: del yonke solo Verificado, estado y Envíos nacionales (nada más del yonke)', () => {
+    const r = respuestaParaCliente({ yonkeNombre: 'Y', tieneLaPieza: true, precio: 100, nota: '', whatsapp: '6641234567' } as never,
+      { verificado: true, estado: 'jalisco', enviosNacionales: true, telefono: '000', direccion: 'Calle', email: 'a@b' } as never);
+    expect(r).toMatchObject({ verificado: true, estadoYonke: 'jalisco', enviosNacionales: true });
+    expect(JSON.stringify(r)).not.toMatch(/Calle|a@b|"000"/);
+    expect(respuestaParaCliente({ tieneLaPieza: false } as never, null).enviosNacionales).toBe(false);
   });
 });
 

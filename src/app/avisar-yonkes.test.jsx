@@ -95,7 +95,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
   });
 
   describe('casilla de otros estados', () => {
-    const CASILLA = { name: 'Acepto que yonkes de otros estados que hagan envíos respondan mi alerta' };
+    const CASILLA = { name: 'Mostrar mi alerta a yonkes de otros estados que hacen envíos. Esta casilla viene marcada; si solo quieres yonkes de tu estado, desmárcala. No se comparte tu nombre ni tu WhatsApp.' };
     const LISTO = '✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de Baja California la ven en su panel.';
     const OTROS = 'También la pueden ver yonkes Verificados de otros estados con Envíos nacionales.';
     const enviar = async () => {
@@ -116,28 +116,42 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       expect(Object.keys(await enviar())).not.toContain('aceptaOtrosEstados');
       expect(getDoc).toHaveBeenCalledTimes(1); // las dos banderas salen de la misma lectura
     });
-    it('con la segunda bandera: aparece SIN marcar y manda false', async () => {
+    it('con la segunda bandera: aparece MARCADA, con enlace al aviso de privacidad, y manda true', async () => {
       config = { habilitado: true, otrosEstados: true };
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
       fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
-      expect(await screen.findByRole('checkbox', CASILLA)).not.toBeChecked();
-      expect((await enviar()).aceptaOtrosEstados).toBe(false);
-      // Sin marcar: la confirmación de siempre, sin mencionar otros estados.
-      expect(await screen.findByText(LISTO)).toBeInTheDocument();
-      expect(screen.queryByText(/otros estados con Envíos nacionales/)).not.toBeInTheDocument();
+      expect(await screen.findByRole('checkbox', CASILLA)).toBeChecked();
+      const enlaces = screen.getAllByRole('link', { name: 'Aviso de privacidad' }).map((l) => l.getAttribute('href'));
+      expect(enlaces).toContain('https://mecanixyonkevirtual.com/privacidad#pedidos-clientes');
+      expect((await enviar()).aceptaOtrosEstados).toBe(true);
+      expect(await screen.findByText(`${LISTO} ${OTROS}`)).toBeInTheDocument();
     });
-    it('marcada: manda true', async () => {
+    it('desmarcada por el cliente: manda false y la confirmación es la de siempre (igual que hoy)', async () => {
       config = { habilitado: true, otrosEstados: true };
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
       fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
       fireEvent.click(await screen.findByRole('checkbox', CASILLA));
-      expect((await enviar()).aceptaOtrosEstados).toBe(true);
-      // La confirmación agrega a los yonkes de otros estados.
-      expect(await screen.findByText(`${LISTO} ${OTROS}`)).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', CASILLA)).not.toBeChecked();
+      expect((await enviar()).aceptaOtrosEstados).toBe(false);
+      // Sin marcar: la confirmación de siempre, sin mencionar otros estados.
+      expect(await screen.findByText(LISTO)).toBeInTheDocument();
+      expect(screen.queryByText(/otros estados con Envíos nacionales/)).not.toBeInTheDocument();
+    });
+    it('si el cliente ya la desmarcó, cerrar y volver a abrir NO la vuelve a marcar', async () => {
+      config = { habilitado: true, otrosEstados: true };
+      global.fetch = exito();
+      const AvisarYonkes = await cargar();
+      render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('checkbox', CASILLA));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      expect(await screen.findByRole('checkbox', CASILLA)).not.toBeChecked();
+      expect((await enviar()).aceptaOtrosEstados).toBe(false);
     });
   });
 });

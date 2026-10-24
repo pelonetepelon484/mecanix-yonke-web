@@ -21,7 +21,7 @@ vi.mock('./lib/SelectorMarcaModelo', () => ({
 }));
 
 const { default: AlertaUnPaso, TITULO_SIN_RESULTADOS, TEXTO_DISCRETO, TEXTO_COMPACTO } = await import('./AlertaUnPaso.js');
-const { TEXTO_BOTON_ALERTA } = await import('./AvisarYonkes.js');
+const { TEXTO_BOTON_ALERTA, TEXTO_CASILLA_OTROS_ESTADOS } = await import('./AvisarYonkes.js');
 
 const ESTADOS = [{ id: 'baja-california', nombre: 'Baja California' }, { id: 'sonora', nombre: 'Sonora' }];
 const ENLACE = 'https://mecanixyonkevirtual.com/mi-pedido/Pedido00000000000001?c=abc';
@@ -115,16 +115,27 @@ describe('alerta en un paso', () => {
     expect(screen.queryByText(TITULO_SIN_RESULTADOS)).not.toBeInTheDocument();
   });
 
-  it('con la casilla de otros estados encendida, se puede marcar y va en la alerta', async () => {
+  it('con la casilla de otros estados encendida: nace MARCADA y va en la alerta', async () => {
     otros = true;
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, enlace: ENLACE }) }));
     render(<AlertaUnPaso {...completo} />);
     fireEvent.click(await screen.findByRole('button', { name: TEXTO_BOTON_ALERTA }));
-    fireEvent.click(await screen.findByLabelText('Acepto que yonkes de otros estados que hagan envíos respondan mi alerta'));
+    expect(await screen.findByLabelText(TEXTO_CASILLA_OTROS_ESTADOS)).toBeChecked();
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
     fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(JSON.parse(global.fetch.mock.calls[0][1].body).aceptaOtrosEstados).toBe(true);
+  });
+  it('si el cliente la desmarca, la alerta va solo a su estado (aceptaOtrosEstados false, como hoy)', async () => {
+    otros = true;
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, enlace: ENLACE }) }));
+    render(<AlertaUnPaso {...completo} />);
+    fireEvent.click(await screen.findByRole('button', { name: TEXTO_BOTON_ALERTA }));
+    fireEvent.click(await screen.findByLabelText(TEXTO_CASILLA_OTROS_ESTADOS));
+    fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
+    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body).aceptaOtrosEstados).toBe(false);
   });
 });
 

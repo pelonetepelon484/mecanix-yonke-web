@@ -9,7 +9,9 @@ import { useEffect, useState } from 'react';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
 import { ESTADO_DEFAULT, cargarEstados } from './lib/estados';
 import { leerBanderaOtrosEstados, leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
-import { MENSAJES_PEDIDO, enlaceGuardarPorWhatsapp, validarPedidoCliente } from '../lib/pedidosClientes';
+import {
+  CASILLA_OTROS_ESTADOS_INICIAL, MENSAJES_PEDIDO, TEXTO_CASILLA_OTROS_ESTADOS, enlaceGuardarPorWhatsapp, validarPedidoCliente,
+} from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 // Mismo botón en los dos lugares donde se ofrece (sin resultados y sin el año exacto).
@@ -18,6 +20,24 @@ export const TEXTO_BOTON_ALERTA = '🚨 Activar alerta de búsqueda 🚨';
 // Envío compartido por este formulario y el de un paso (AlertaUnPaso.js): valida con
 // validarPedidoCliente y crea la alerta en /api/pedir-pieza. Devuelve { ok: true, enlace } o
 // { ok: false, mensaje, disponible } (disponible === false: la función está apagada).
+// Casilla "otros estados" (solo con config/pedidosClientes.otrosEstados encendida). Nace MARCADA: el
+// cliente la desmarca si solo quiere yonkes de su estado. El estado vive en el formulario: si el
+// cliente ya la cambió, nada la vuelve a marcar (ni al cargar la bandera). Texto provisional.
+export { TEXTO_CASILLA_OTROS_ESTADOS, CASILLA_OTROS_ESTADOS_INICIAL };
+
+export function CasillaOtrosEstados({ id, marcada, onCambiar }) {
+  return (
+    <div style={{ margin: '0 0 10px' }}>
+      <label htmlFor={id} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.4', cursor: 'pointer' }}>
+        <input id={id} type="checkbox" checked={marcada} onChange={(e) => onCambiar(e.target.checked)} style={{ marginTop: '2px', width: '18px', height: '18px', flexShrink: 0 }} />
+        <span>{TEXTO_CASILLA_OTROS_ESTADOS}</span>
+      </label>
+      {/* El enlace va FUERA de la etiqueta: tocarlo no cambia la casilla. */}
+      <a href={`${URL_PRIVACIDAD}#pedidos-clientes`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', margin: '4px 0 0 26px', fontSize: '12px', color: '#1A3C5E' }}>Aviso de privacidad</a>
+    </div>
+  );
+}
+
 export async function enviarAlertaCliente(datos, idsEstados, { otrosEstadosActivo = false, aceptaOtrosEstados = false } = {}) {
   const problema = validarPedidoCliente(datos, idsEstados);
   if (problema) return { ok: false, mensaje: problema };
@@ -54,7 +74,7 @@ export default function AvisarYonkes({
   const [whatsapp, setWhatsapp] = useState('');
   // Casilla de otros estados: solo existe con config/pedidosClientes.otrosEstados encendida.
   const [otrosEstadosActivo, setOtrosEstadosActivo] = useState(false);
-  const [aceptaOtrosEstados, setAceptaOtrosEstados] = useState(false);
+  const [aceptaOtrosEstados, setAceptaOtrosEstados] = useState(CASILLA_OTROS_ESTADOS_INICIAL);
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enlace, setEnlace] = useState('');
@@ -146,12 +166,7 @@ export default function AvisarYonkes({
       </select>
       <label style={etiqueta} htmlFor="avisar-whatsapp">Tu WhatsApp</label>
       <input id="avisar-whatsapp" type="tel" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="10 dígitos" autoComplete="tel" style={input} />
-      {otrosEstadosActivo && (
-        <label htmlFor="avisar-otros-estados" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.4', cursor: 'pointer' }}>
-          <input id="avisar-otros-estados" type="checkbox" checked={aceptaOtrosEstados} onChange={(e) => setAceptaOtrosEstados(e.target.checked)} style={{ marginTop: '2px', width: '18px', height: '18px', flexShrink: 0 }} />
-          Acepto que yonkes de otros estados que hagan envíos respondan mi alerta
-        </label>
-      )}
+      {otrosEstadosActivo && <CasillaOtrosEstados id="avisar-otros-estados" marcada={aceptaOtrosEstados} onCambiar={setAceptaOtrosEstados} />}
       <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#555', lineHeight: '1.5' }}>
         Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes.{' '}
         <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>Aviso de privacidad</a>
