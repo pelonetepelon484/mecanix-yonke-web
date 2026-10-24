@@ -9,7 +9,7 @@ vi.mock('next/font/google', () => ({ Geist: () => ({ variable: 'g' }), Geist_Mon
 vi.mock('next/script', () => ({ default: () => null }));
 vi.mock('../lib/yonkesServerData', () => ({ getConteoYonkesPorCiudad: vi.fn(), getYonkesPorCiudad: vi.fn(), getCiudadesConYonkesActivos: vi.fn(async () => []) }));
 
-const { imagenPortada, leerRecursosPortada } = await import('./imagenPortada');
+const { FRASE_PORTADA, imagenPortada, leerRecursosPortada, lineasFrase } = await import('./imagenPortada');
 const ruta = await import('../og/mecanix-portada.png/route.js');
 const { IMAGEN_PORTADA } = await import('../../lib/imagenPortada');
 
@@ -29,6 +29,14 @@ describe('imagen de vista previa de la portada (logo nuevo, 1200 × 630)', () =>
     expect([png.ancho, png.alto]).toEqual([1200, 630]);
     expect(png.bytes).toBeLessThan(300 * 1024);
   }, 30000);
+
+  it('la frase debajo del logo', () => {
+    expect(FRASE_PORTADA).toBe('Encuentra la refacción que necesitas, directo con el yonke que la tiene');
+    // En dos líneas, partida después de la coma, sin perder ningún carácter.
+    expect(lineasFrase(FRASE_PORTADA)).toEqual(['Encuentra la refacción que necesitas,', 'directo con el yonke que la tiene']);
+    expect(lineasFrase(FRASE_PORTADA).join(' ')).toBe(FRASE_PORTADA);
+    expect(lineasFrase('Sin coma')).toEqual(['Sin coma']);
+  });
 
   it('solo necesita el logo nuevo y la tipografía Inter (nada de los logos viejos)', async () => {
     const raiz = await mkdtemp(path.join(tmpdir(), 'portada-'));
