@@ -45,7 +45,7 @@ const TERMINOS_OTROS_ESTADOS = 'Mecanix permite que el cliente avise a los yonke
 const CAMBIOS_2026_10_10 = {
   'Mecanix únicamente permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas.': TERMINOS_OTROS_ESTADOS,
 };
-const PRIVACIDAD_A = `(a) Mostrar tu pedido, sin tus datos de contacto, a los yonkes de tu estado para que te respondan. Si marcas la casilla "${CASILLA}", estarás aprobando que tu alerta se muestre también a yonkes de otros estados del país, pero únicamente a los yonkes Verificados que tengan activada la opción de Envíos nacionales (lo verás indicado con su insignia). Solo se muestra la alerta (el vehículo, la pieza, el estado y la fecha); tus datos de contacto siguen protegidos y no se comparten con los yonkes hasta que la alerta se elimine.`;
+const PRIVACIDAD_A = `(a) Mostrar tu pedido, sin tus datos de contacto, a los yonkes de tu estado para que te respondan. Si dejas marcada la casilla "${CASILLA}", estarás aprobando que tu alerta se muestre también a yonkes de otros estados del país, pero únicamente a los yonkes Verificados que tengan activada la opción de Envíos nacionales (lo verás indicado con su insignia). Solo se muestra la alerta (el vehículo, la pieza, el estado y la fecha); tus datos de contacto siguen protegidos y no se comparten con los yonkes hasta que la alerta se elimine.`;
 const PRIVACIDAD_B = 'Asimismo, cuando el usuario utiliza la función de Alerta de Búsqueda, la información de la autoparte o refacción solicitada en dicha alerta es compartida con los yonkes y yonkeros afiliados para atender la disponibilidad del pedido dentro de la alerta autorizada por el cliente.';
 
 const textoDe = (Pagina) => render(<Pagina />).container.textContent.replace(/\s+/g, ' ');

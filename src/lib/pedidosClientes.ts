@@ -138,8 +138,8 @@ export function avisoRespuestaOtroEstado(estadoNombre: string, enviosNacionales:
   return `Este yonke es de ${estadoNombre}, distinto al de tu pedido, pero respondió tu solicitud. ${envio} hasta tu estado; confírmalo directamente con él antes de pagar.`;
 }
 // Consejos para comprar a distancia (debajo del aviso anterior). Sin repetir "antes de pagar": se
-// quitaron "Te la enviaría un yonke de…" y "Confirma por WhatsApp cómo se hará el pago"
-// (PENDIENTE de visto bueno del abogado).
+// quitaron "Te la enviaría un yonke de…" y "Confirma por WhatsApp cómo se hará el pago" (aprobado
+// por el abogado, igual que la insignia "📦 Envíos nacionales").
 export const CONSEJOS_ENVIO = '📦 Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Mecanix no vende ni cobra.';
 
 // Primero los que la tienen (más barato primero), luego los que no.
