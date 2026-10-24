@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function datosUsuario() {
+      return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    function esAdmin() {
+      return request.auth != null && datosUsuario().rol == 'admin';
+    }
+    function esDuenoDeYonke(yonkeId) {
+      return request.auth != null
+        && datosUsuario().rol == 'yonke'
+        && datosUsuario().yonkeId == yonkeId;
+    }
+    // Logo de un yonke: logos/{yonkeId}.png es el ÚNICO nombre que usa la app (subirLogoYonke.js).
+    function esDuenoDelLogo(fileName) {
+      return request.auth != null
+        && datosUsuario().rol == 'yonke'
+        && fileName == datosUsuario().yonkeId + '.png';
+    }
+
+    // Admin: cualquier logo. Yonke: solo el suyo. 700 KB: un PNG de 400 × 400 (lo que sube la app)
+    // no pasa de ~626 KB, así que el tope nunca bloquea un logo real. Solo imágenes.
+    match /logos/{fileName} {
+      allow read: if true;
+      allow create, update: if (esAdmin() || esDuenoDelLogo(fileName))
+        && request.resource.size <= 700 * 1024
+        && request.resource.contentType.matches('image/(png|webp|jpeg)');
+      allow delete: if esAdmin() || esDuenoDelLogo(fileName);
+    }
+
+    match /branding/{yonkeId}/promos/{archivo} {
+      allow read: if true;
+      allow create, update: if (esAdmin() || esDuenoDeYonke(yonkeId))
+        && request.resource.size <= 500 * 1024
+        && request.resource.contentType.matches('image/(webp|jpeg|png)');
+      allow delete: if esAdmin() || esDuenoDeYonke(yonkeId);
+    }
+
+    // ---------- NUEVO: foto de "Sobre nosotros" ----------
+    match /branding/{yonkeId}/sobre-nosotros/{archivo} {
+      allow read: if true;
+      allow create, update: if (esAdmin() || esDuenoDeYonke(yonkeId))
+        && request.resource.size <= 500 * 1024
+        && request.resource.contentType.matches('image/(webp|jpeg|png)');
+      allow delete: if esAdmin() || esDuenoDeYonke(yonkeId);
+    }
+
+    // ---------- NUEVO: fondo de la página (franja superior) ----------
+    match /branding/{yonkeId}/fondo/{archivo} {
+      allow read: if true;
+      allow create, update: if (esAdmin() || esDuenoDeYonke(yonkeId))
+        && request.resource.size <= 1024 * 1024
+        && request.resource.contentType.matches('image/(webp|jpeg|png)');
+      allow delete: if esAdmin() || esDuenoDeYonke(yonkeId);
+    }
+
+    // ---------- NUEVO: fotos de inventario (vehículos, piezas, motores, piezas sueltas) ----------
+    // Topes de tamaño con margen sobre lo que realmente sube comprimirImagen.js (vehículo apunta
+    // a <=250 KB, pieza/motor/pieza suelta a <=100 KB) -- son un límite de seguridad del lado del
+    // servidor, independiente de la compresión del navegador, nunca deberían alcanzarse en uso
+    // normal.
+    match /yonkes/{yonkeId}/vehiculos/{vehiculoId}/{archivo} {
+      allow read: if true;
+      allow create, update: if (esAdmin() || esDuenoDeYonke(yonkeId))
+        && request.resource.size <= 400 * 1024
+        && request.resource.contentType.matches('image/(webp|jpeg|png)');
+      allow delete: if esAdmin() || esDuenoDeYonke(yonkeId);
+    }
+
+    match /yonkes/{yonkeId}/vehiculos/{vehiculoId}/piezas/{archivo} {
+      allow read: if true;
+      allow create, update: if (esAdmin() || esDuenoDeYonke(yonkeId))
+        && request.resource.size <= 200 * 1024
+        && request.resource.contentType.matches('image/(webp|jpeg|png)');
+      allow delete: if esAdmin() || esDuenoDeYonke(yonkeId);
+    }
+
+    match /yonkes/{yonkeId}/motores/{archivo} {
+      allow read: if true;
+      allow create, update: if (esAdmin() || esDuenoDeYonke(yonkeId))
+        && request.resource.size <= 200 * 1024
+        && request.resource.contentType.matches('image/(webp|jpeg|png)');
+      allow delete: if esAdmin() || esDuenoDeYonke(yonkeId);
+    }
+
+    match /yonkes/{yonkeId}/piezasSueltas/{archivo} {
+      allow read: if true;
+      allow create, update: if (esAdmin() || esDuenoDeYonke(yonkeId))
+        && request.resource.size <= 200 * 1024
+        && request.resource.contentType.matches('image/(webp|jpeg|png)');
+      allow delete: if esAdmin() || esDuenoDeYonke(yonkeId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

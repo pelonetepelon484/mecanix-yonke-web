@@ -1,0 +1,11 @@
+// Solo para arrancar el emulador de Storage (exige un archivo dentro de esta carpeta). Las pruebas
+// cargan las reglas REALES (../../storage.rules) con initializeTestEnvironment, que reemplazan a
+// estas. Si algo no las cargara, todo queda cerrado.
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
