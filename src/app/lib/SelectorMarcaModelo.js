@@ -10,6 +10,15 @@ import { CATALOGO_BASE } from './catalogoBase';
 const DIACRITICOS = new RegExp('[\\u0300-\\u036f]', 'g');
 const claveMarca = (m) => String(m).normalize('NFD').replace(DIACRITICOS, '').trim().replace(/\s+/g, ' ').toLowerCase();
 
+// Opción del selector que corresponde a un valor ya guardado: la igual, o si no, la de la misma clave
+// ("dodge" -> "Dodge", "Civic " -> "Civic"). "crv" y "CR-V" siguen siendo distintos. null si no hay.
+function opcionEquivalente(opciones, valor) {
+  if (!valor) return null;
+  if (opciones.includes(valor)) return valor;
+  const clave = claveMarca(valor);
+  return opciones.find((o) => claveMarca(o) === clave) ?? null;
+}
+
 // Fusiona el catálogo base con el catálogo vivo de Firestore (solo lo lee). La usan todos los
 // selectores de marca/modelo, también los dos de la página principal (HomeClient). Solo en
 // pantalla: cada marca sale una vez, con el nombre del catálogo base si existe (si no, la primera
@@ -50,12 +59,14 @@ export default function SelectorMarcaModelo({ marca, modelo, onMarca, onModelo, 
     cargarCatalogoCombinado().then(setCatalogo);
   }, []);
 
-  // Sincroniza el selector cuando se edita un vehículo existente
+  // Sincroniza el selector cuando se edita un vehículo existente. Solo cambia lo que se ve elegido:
+  // no llama a onMarca/onModelo, así que abrir y guardar sin tocar nada deja los datos como estaban.
   useEffect(() => {
     if (!Object.keys(catalogo).length) return;
-    if (marca && catalogo[marca]) {
-      setMarcaSel(marca);
-      setModeloSel(catalogo[marca].includes(modelo) ? modelo : (modelo ? 'OTRA' : ''));
+    const marcaCatalogo = opcionEquivalente(Object.keys(catalogo), marca);
+    if (marcaCatalogo) {
+      setMarcaSel(marcaCatalogo);
+      setModeloSel(opcionEquivalente(catalogo[marcaCatalogo], modelo) ?? (modelo ? 'OTRA' : ''));
     } else if (marca) {
       setMarcaSel('OTRA');
     }
