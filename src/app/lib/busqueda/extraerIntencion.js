@@ -10,6 +10,9 @@ import { compactarModelo } from '../modeloCompacto';
 
 // Alias comunes de marcas — mismo espíritu que el mapa MARCAS de admin/page.js (migrarInventario).
 const ALIAS_MARCA = {
+  // Marcas nuevas primero: se toma el PRIMER alias que aparece, y "byd dolphin mini" no es Mini.
+  'mg': 'MG', 'chirey': 'Chirey', 'jac': 'JAC', 'byd': 'BYD', 'tesla': 'Tesla',
+  'gwm': 'GWM', 'haval': 'GWM', 'great wall': 'GWM', 'changan': 'Changan', 'geely': 'Geely',
   'vw': 'Volkswagen', 'volkswagen': 'Volkswagen', 'chevy': 'Chevrolet', 'chevrolet': 'Chevrolet',
   'nissan': 'Nissan', 'toyota': 'Toyota', 'ford': 'Ford', 'honda': 'Honda', 'dodge': 'Dodge',
   'chrysler': 'Chrysler', 'jeep': 'Jeep', 'gmc': 'GMC', 'hyundai': 'Hyundai', 'kia': 'Kia',
@@ -22,6 +25,10 @@ const ALIAS_MARCA = {
   'isuzu': 'Isuzu', 'hummer': 'Hummer', 'scion': 'Scion', 'geo': 'Geo',
   'land rover': 'Land Rover', 'landrover': 'Land Rover', 'mini': 'Mini', 'smart': 'Smart',
 };
+
+// Alias cortos que solo cuentan como palabra completa, no dentro de otra palabra: "mg" está dentro
+// de "Emgrand" (Geely) y "jac" dentro de "jacket". Los demás alias siguen buscándose como antes.
+const ALIAS_PALABRA_COMPLETA = new Set(['mg', 'jac', 'byd', 'gwm']);
 
 // Generaciones de plataforma que los mecánicos usan como nombre de vehículo. Solo se aplican como
 // último recurso (ver extraerMarcaModelo) — nunca pisan una marca/modelo ya resuelto por alias o
@@ -44,12 +51,14 @@ const MODELOS_RAM_EXCLUSIVOS = (CATALOGO_BASE['RAM'] || []).filter((modelo) => {
 
 // Nombres de modelo genéricos (en compacto): solo cuentan como modelo si la marca viene en el
 // texto. Sin marca, "pickup 1990 defensa" NO debe volverse Toyota (ni ninguna otra marca).
-const MODELOS_GENERICOS = new Set(['pickup', 'estacas']);
+// Lo mismo para nombres que chocan con palabras comunes: "no avanza", "me han dicho", "king cab",
+// "seal" (retén), "alineación hunter", "beat", "note", "one"…
+const MODELOS_GENERICOS = new Set(['pickup', 'estacas', 'note', 'beat', 'groove', 'venue', 'avanza', 'one', 'han', 'king', 'seal', 'hunter', 'unit']);
 
 // Búsqueda en compacto SIN marca: solo modelos de 4+ letras/números en compacto, más esta lista
 // corta de modelos populares de 3 que no chocan con otro modelo, con una palabra común, con una
 // pieza ni son solo números (revisado contra CATALOGO_BASE). Con marca en el texto aplica a todos.
-const MODELOS_3_SIN_MARCA = new Set(['crv', 'hrv', 'cx3', 'cx5', 'cx7', 'cx9', 'mx5', 's10', 'c10', 'k10', 'd21']);
+const MODELOS_3_SIN_MARCA = new Set(['crv', 'hrv', 'cx3', 'cx5', 'cx7', 'cx9', 'mx5', 's10', 'c10', 'k10', 'd21', 'brv', 'wrv', 'chr']);
 const MAX_PALABRAS_COMPACTO = 3;
 
 const DIACRITICOS_COMBINABLES = new RegExp('[\\u0300-\\u036f]', 'g');
@@ -157,8 +166,10 @@ async function extraerMarcaModelo(textoNormalizado, anio) {
 
   // 1. Exacto: alias/marca por substring en todo el texto.
   let marcaEncontrada = null;
+  const palabrasCompletas = new Set(textoNormalizado.split(/\s+/).map(limpiarToken));
   for (const [alias, canonica] of Object.entries(ALIAS_MARCA)) {
-    if (textoNormalizado.includes(normalizar(alias))) {
+    const presente = ALIAS_PALABRA_COMPLETA.has(alias) ? palabrasCompletas.has(alias) : textoNormalizado.includes(normalizar(alias));
+    if (presente) {
       marcaEncontrada = canonica;
       break;
     }

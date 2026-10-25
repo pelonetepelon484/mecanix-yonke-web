@@ -120,6 +120,53 @@ describe('modelos nuevos de camionetas viejas', () => {
   });
 });
 
+describe('modelos y marcas nuevos del catálogo base (México)', () => {
+  const casos = [
+    ['atos 2008', 'Hyundai', 'Atos'], ['atoz 2005 faro', 'Hyundai', 'Atoz'], ['gladiator 2021', 'Jeep', 'Gladiator'],
+    ['jeep gladiator 2020', 'Jeep', 'Gladiator'], ['corolla cross 2022', 'Toyota', 'Corolla Cross'], ['corolla 2010', 'Toyota', 'Corolla'],
+    ['bronco sport 2021', 'Ford', 'Bronco Sport'], ['eclipse cross 2019', 'Mitsubishi', 'Eclipse Cross'], ['chr 2018', 'Toyota', 'C-HR'],
+    ['br v 2017', 'Honda', 'BR-V'], ['cx 30 2021', 'Mazda', 'CX-30'], ['t cross 2020', 'Volkswagen', 'T-Cross'],
+    ['grand vitara 2008', 'Suzuki', 'Grand Vitara'], ['vitara 2018', 'Suzuki', 'Vitara'], ['ram rampage 2024', 'RAM', 'Rampage'],
+    ['mg zs 2022', 'MG', 'ZS'], ['mg5 2021', 'MG', 'MG5'], ['chirey tiggo 7 pro 2023', 'Chirey', 'Tiggo 7 Pro'],
+    ['chirey tiggo 7 2023', 'Chirey', 'Tiggo 7'], ['jac sei 4 pro 2022', 'JAC', 'Sei4 Pro'], ['byd dolphin mini 2024', 'BYD', 'Dolphin Mini'],
+    ['tesla model 3 2020', 'Tesla', 'Model 3'], ['haval h6 2022', 'GWM', 'H6'], ['great wall poer 2023', 'GWM', 'Poer'],
+    ['changan cs35 plus 2022', 'Changan', 'CS35 Plus'], ['emgrand 2021', 'Geely', 'Emgrand'], ['geely coolray 2022', 'Geely', 'Coolray'],
+  ];
+  it.each(casos)('"%s" -> %s %s', async (texto, marca, modelo) => {
+    expect(await leer(texto)).toMatchObject({ marca, modelo, pregunta: false });
+  });
+  it('nombres que chocan con palabras comunes solo valen con la marca', async () => {
+    expect(await leer('nissan note 2015')).toMatchObject({ marca: 'Nissan', modelo: 'Note' });
+    expect(await leer('chevrolet beat 2019')).toMatchObject({ marca: 'Chevrolet', modelo: 'Beat' });
+    expect(await leer('toyota avanza 2012')).toMatchObject({ marca: 'Toyota', modelo: 'Avanza' });
+    expect(await leer('byd king 2024')).toMatchObject({ marca: 'BYD', modelo: 'King' });
+    for (const texto of ['note 2015 faro', 'beat 2019 cofre', 'el carro no avanza 2010', 'me han dicho que la bomba 2008', 'king cab 1995 puerta', 'seal de cigueñal 2005', 'alineacion hunter']) {
+      const r = await leer(texto);
+      expect([r.marca, r.modelo]).not.toEqual(expect.arrayContaining(['Nissan', 'Chevrolet', 'Toyota', 'BYD', 'Changan']));
+    }
+  });
+  it('alias cortos solo como palabra completa: "mg" dentro de "Emgrand" no es MG', async () => {
+    expect((await leer('emgrand 2021')).marca).toBe('Geely');
+    expect(await leer('mg 2022 faro')).toMatchObject({ marca: 'MG' });
+    expect(await leer('jac 2022 faro')).toMatchObject({ marca: 'JAC' });
+  });
+  it('palabras comunes no se corrigen hacia un modelo nuevo', async () => {
+    for (const [texto, pieza] of [['elevador de ventana 2005', 'Elevador de vidrio'], ['radiator 2005', 'Radiador']]) {
+      expect(await leer(texto)).toMatchObject({ marca: null, modelo: null, pieza, pregunta: false });
+    }
+    expect(await leer('elevador de ventana chevrolet 2010')).toMatchObject({ marca: 'Chevrolet', modelo: null });
+    for (const texto of ['poder 2005', 'modelo 2005', 'magneto 2005', 'giro 2005']) {
+      expect(await leer(texto)).toMatchObject({ marca: null, modelo: null });
+    }
+  });
+  it('ningún modelo se repite en compacto dentro de su marca', () => {
+    for (const [marca, modelos] of Object.entries(CATALOGO_BASE)) {
+      const claves = modelos.map((m) => compactarModelo(m));
+      expect(new Set(claves).size, marca).toBe(claves.length);
+    }
+  });
+});
+
 describe('lo que ya funcionaba sigue igual', () => {
   const casos = [
     ['mazda 3 2015', 'Mazda', '3'], ['dodge ram 1500 2010', 'Dodge', 'Ram 1500'], ['dodge ram 700', 'RAM', '700'],
@@ -137,7 +184,7 @@ describe('lo que ya funcionaba sigue igual', () => {
     expect((await leer('audi motor a 4 cilindros')).modelo).not.toBe('A4');
   });
   it('un modelo que de verdad no existe sigue siendo "modelo desconocido"', async () => {
-    expect(await leer('toyota hiace 2010')).toMatchObject({ marca: 'Toyota', modelo: null, modeloDesconocido: true });
+    expect(await leer('toyota zorbex 2010')).toMatchObject({ marca: 'Toyota', modelo: null, modeloDesconocido: true });
   });
   it('solo marca y año: sin modelo y sin "modelo desconocido"', async () => {
     expect(await leer('nissan 2015')).toMatchObject({ marca: 'Nissan', modelo: null, modeloDesconocido: false });
