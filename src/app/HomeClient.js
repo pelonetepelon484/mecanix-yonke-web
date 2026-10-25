@@ -24,8 +24,9 @@ import VentanaAlertas from './VentanaAlertas';
 import ComoFuncionaBuscador from './ComoFuncionaBuscador';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
-import { leerBanderaAlertaUnPaso, leerBanderaAlertaSiempre, leerBanderaInventarioVehiculos } from './lib/banderaPedidosClientes';
-import { lugarAlertaConResultados, mensajeConAlerta } from '../lib/alertaSiempre';
+import { leerBanderaAlertaUnPaso, leerBanderaAlertaSiempre, leerBanderaInventarioVehiculos, useBanderaPedidosClientes } from './lib/banderaPedidosClientes';
+import { cuantosYonkes, verboTener } from '../lib/textoYonkes';
+import { lugarAlertaConResultados, mensajeConAlerta, tituloAlertaProtagonista } from '../lib/alertaSiempre';
 import AlertaUnPaso from './AlertaUnPaso';
 import OtrosEstadosResultados from './OtrosEstadosResultados';
 import { TITULO_CON_OTROS_ESTADOS, leerOtrosEstados, partesCuadroMensaje, cuadroMensajeTieneContenido, textoConOtrosEstados } from '../lib/otrosEstadosPantalla';
@@ -288,6 +289,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   // config/pedidosClientes.alertaUnPaso: sin resultados, la alerta de un paso va PRIMERO (y una
   // discreta debajo de los resultados). Apagada (o sin leer), las alertas quedan como siempre.
   const [alertaUnPaso, setAlertaUnPaso] = useState(false);
+  const pedidosClientesActivos = useBanderaPedidosClientes();
   // Sube con cada respuesta del buscador inteligente: el scroll hacia "otros estados" se hace una
   // sola vez por búsqueda (OtrosEstadosResultados).
   const [numeroBusqueda, setNumeroBusqueda] = useState(0);
@@ -1188,12 +1190,13 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       }
       return `No encontramos ese vehículo en ningún yonke registrado${sufijoCiudad}`;
     }
-    if (tipoBusqueda === 'motor') return `${resultados.length} yonke(s) tienen el motor que buscas${sufijoCiudad}`;
-    if (tipoBusqueda === 'transmision') return `${resultados.length} yonke(s) tienen la transmisión que buscas${sufijoCiudad}`;
-    if (tipoResultado === 'cercano') return `No encontramos el ${marca} ${modelo} ${ano} exacto, pero hay ${resultados.length} yonke(s) con años cercanos${sufijoCiudad}`;
-    if (tipoResultado === 'cualquierAno') return `No encontramos años cercanos, pero hay ${resultados.length} yonke(s) con ${marca} ${modelo} en otros años${sufijoCiudad}`;
-    if (piezaNoEncontrada) return `No encontramos esa pieza exacta, pero ${resultados.length} yonke(s) tienen este vehículo${sufijoCiudad}`;
-    return `${resultados.length} yonke(s) tienen este vehículo${sufijoCiudad}`;
+    const n = resultados.length;
+    if (tipoBusqueda === 'motor') return `${cuantosYonkes(n)} ${verboTener(n)} el motor que buscas${sufijoCiudad}`;
+    if (tipoBusqueda === 'transmision') return `${cuantosYonkes(n)} ${verboTener(n)} la transmisión que buscas${sufijoCiudad}`;
+    if (tipoResultado === 'cercano') return `No encontramos el ${marca} ${modelo} ${ano} exacto, pero hay ${cuantosYonkes(n)} con años cercanos${sufijoCiudad}`;
+    if (tipoResultado === 'cualquierAno') return `No encontramos años cercanos, pero hay ${cuantosYonkes(n)} con ${marca} ${modelo} en otros años${sufijoCiudad}`;
+    if (piezaNoEncontrada) return `No encontramos esa pieza exacta, pero ${cuantosYonkes(n)} ${verboTener(n)} este vehículo${sufijoCiudad}`;
+    return `${cuantosYonkes(n)} ${verboTener(n)} este vehículo${sufijoCiudad}`;
   }
 
   function getBannerCompatibilidad() {
@@ -1616,9 +1619,12 @@ function obtenerEstadoAbierto(horario) {
   // Caso a de otros estados (estado elegido sin nada y abajo resultados de otros estados): el
   // recuadro de la alerta cambia solo su título y su texto.
   const nombreEstadoBusqueda = estadosDisponibles.find((e) => e.id === estadoBusqueda)?.nombre || estadoBusqueda;
+  // Número de parte, marca muy general o pieza sin vehículo: título propio (no "No tenemos ese
+  // vehículo todavía", porque no se buscó un vehículo).
+  const tituloIncompleta = mensajeLibre ? tituloAlertaProtagonista(mensajeLibre.tipo) : null;
   const alertaConOtrosEstados = mensajeLibre?.otrosEstados?.modo === 'a'
     ? { titulo: TITULO_CON_OTROS_ESTADOS, texto: textoConOtrosEstados(nombreEstadoBusqueda) }
-    : {};
+    : (tituloIncompleta ? { titulo: tituloIncompleta } : {});
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', padding: '32px 16px', fontFamily: "'Inter', sans-serif" }}>
@@ -1694,9 +1700,12 @@ function obtenerEstadoAbierto(horario) {
               <button onClick={buscarConTextoLibre} disabled={buscandoLibre} className="mecanix-btn-primary">
                 {buscandoLibre ? 'Buscando...' : '✨ Buscar con IA'}
               </button>
-              <p style={{ textAlign: 'center', fontSize: '13px', color: '#1A3C5E', margin: '12px 0 0', lineHeight: '1.5' }}>
-                ¿No la encuentras? Avisamos a los yonkes y te responden.
-              </p>
+              {/* Solo con la alerta de búsqueda encendida (config/pedidosClientes): apagada, no existe. */}
+              {pedidosClientesActivos && (
+                <p style={{ textAlign: 'center', fontSize: '13px', color: '#1A3C5E', margin: '12px 0 0', lineHeight: '1.5' }}>
+                  ¿No la encuentras? Avisamos a los yonkes y te responden.
+                </p>
+              )}
               {/* Conteo real (page.js); si no se pudo leer, la línea no aparece. */}
               {textoConteoRed && (
                 <p style={{ textAlign: 'center', fontSize: '13px', color: '#1A3C5E', fontWeight: '600', margin: '4px 0 0', lineHeight: '1.5' }}>
@@ -2196,7 +2205,7 @@ function obtenerEstadoAbierto(horario) {
                 {piezaNoEncontrada && (
                   <div style={compatibilidadBannerStyle}>
                     <p style={{ margin: 0, fontSize: '13px', color: '#7A4F00', fontWeight: 'bold' }}>
-                      🔧 No encontramos {piezaTextoActual ? `"${piezaTextoActual}"` : 'esta pieza'} registrada por separado
+                      🔧 No encontramos esa pieza registrada por separado{piezaTextoActual ? `: "${piezaTextoActual}"` : ''}
                     </p>
                     <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00' }}>
                       Pero sí hay {[marca, modelo, ano].filter(Boolean).join(' ') || 'el vehículo'} completo para partes en el/los yonke(s) de abajo — muchos yonkeros la sacan al momento aunque no esté en su lista. Llama o escribe por WhatsApp para confirmar si la tienen antes de ir.

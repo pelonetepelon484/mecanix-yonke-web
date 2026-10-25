@@ -9,6 +9,14 @@
 export const TIPOS_SIN_RESULTADO_CON_ALERTA = ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado', 'sin_en_tu_zona'];
 export const TIPOS_EXTRA_ALERTA_SIEMPRE = ['numero_de_parte', 'marca_muy_general', 'pieza_sin_vehiculo'];
 
+// Título del recuadro grande de la alerta cuando la búsqueda no llegó a buscar un vehículo
+// (número de parte, marca muy general o pieza sin vehículo): ahí no aplica "No tenemos ese
+// vehículo todavía". null para los demás tipos (se queda el título de siempre).
+export const TITULO_ALERTA_BUSQUEDA_INCOMPLETA = '¿No encuentras la pieza? Activa una alerta de búsqueda';
+export function tituloAlertaProtagonista(tipo) {
+  return TIPOS_EXTRA_ALERTA_SIEMPRE.includes(tipo) ? TITULO_ALERTA_BUSQUEDA_INCOMPLETA : null;
+}
+
 export function alertaSiempreActiva(config) {
   return config?.alertaSiempre !== false;
 }

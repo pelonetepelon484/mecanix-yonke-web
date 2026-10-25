@@ -12,7 +12,7 @@ const getDoc = vi.fn(async () => {
 vi.mock('firebase/firestore', () => ({ doc: (...a) => a.join('/'), getDoc: (...a) => getDoc(...a) }));
 vi.mock('./lib/firebase', () => ({ db: 'db' }));
 
-const PLACEHOLDER = 'Tu WhatsApp (opcional, para avisarte si no hay stock)';
+const PLACEHOLDER = 'Tu WhatsApp (opcional, para avisarte cuando llegue)';
 
 // La bandera se cachea por módulo: cada prueba importa el componente de nuevo.
 async function cargar() {

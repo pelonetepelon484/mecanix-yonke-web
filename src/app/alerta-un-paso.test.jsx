@@ -52,9 +52,9 @@ describe('alerta en un paso', () => {
   it('sin resultados: título, texto con el estado real y el botón de siempre (más grande)', async () => {
     render(<AlertaUnPaso {...completo} />);
     expect(await screen.findByText(TITULO_SIN_RESULTADOS)).toBeInTheDocument();
-    expect(screen.getByText('Crea una alerta: los yonkes de Sonora la verán y te responderán con su precio.')).toBeInTheDocument();
+    expect(screen.getByText('Activa una alerta: los yonkes de Sonora la verán y te responderán con su precio.')).toBeInTheDocument();
     const boton = screen.getByRole('button', { name: TEXTO_BOTON_ALERTA });
-    expect(TEXTO_BOTON_ALERTA).toBe('🚨 Activar alerta de búsqueda 🚨');
+    expect(TEXTO_BOTON_ALERTA).toBe('🚨 Activa una alerta de búsqueda 🚨');
     expect(boton.style.fontSize).toBe('clamp(12px, 3.7vw, 18px)');
   });
 
@@ -90,7 +90,7 @@ describe('alerta en un paso', () => {
   it('estado desconocido ("Todos los estados"): lo pide, sin elegir uno por su cuenta', async () => {
     global.fetch = vi.fn();
     render(<AlertaUnPaso {...completo} estado="todos" />);
-    expect(await screen.findByText('Crea una alerta: los yonkes de tu estado la verán y te responderán con su precio.')).toBeInTheDocument();
+    expect(await screen.findByText('Activa una alerta: los yonkes de tu estado la verán y te responderán con su precio.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: TEXTO_BOTON_ALERTA }));
     expect(screen.getByLabelText('¿En qué estado la buscas?')).toHaveValue('');
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
@@ -120,7 +120,7 @@ describe('alerta en un paso', () => {
     expect(screen.getByLabelText('¿En qué estado la buscas?')).toHaveValue('sonora');
   });
 
-  it('con resultados (discreta): "¿No encontraste la pieza exacta? Crea una alerta" abre el mismo paso', async () => {
+  it('con resultados (discreta): "¿No encontraste la pieza exacta? Activa una alerta" abre el mismo paso', async () => {
     render(<AlertaUnPaso {...completo} variante="discreta" />);
     fireEvent.click(await screen.findByRole('button', { name: `🔔 ${TEXTO_DISCRETO}` }));
     expect(screen.getByLabelText('Tu WhatsApp')).toBeInTheDocument();
@@ -159,7 +159,7 @@ describe('alerta compacta (config/pedidosClientes.alertaSiempre)', () => {
   it('texto pedido y, al tocarla, el mismo formulario de siempre', async () => {
     render(<AlertaUnPaso variante="compacta" {...completo} />);
     const boton = await screen.findByRole('button', { name: `🔔 ${TEXTO_COMPACTO}` });
-    expect(TEXTO_COMPACTO).toBe('¿No era lo que buscabas? Crea una alerta aquí');
+    expect(TEXTO_COMPACTO).toBe('¿No era lo que buscabas? Activa una alerta aquí');
     expect(screen.queryByText(TITULO_SIN_RESULTADOS)).not.toBeInTheDocument();
     expect(screen.queryByText(TEXTO_DISCRETO, { exact: false })).not.toBeInTheDocument();
     fireEvent.click(boton);

@@ -18,7 +18,7 @@ import {
 } from '../lib/alertasRecientes';
 
 export const TEXTO_YO_LA_TENGO = 'Yo la tengo';
-export const TEXTO_ELIGE_ESTADO = 'Elige tu estado arriba para ver las alertas de búsqueda de tu zona.';
+export const TEXTO_ELIGE_ESTADO = 'Elige tu estado arriba para ver las alertas de búsqueda de tu estado.';
 export const RUTA_REGISTRO_ALERTAS = '/panel/registro?desde=alertas';
 const ALTO_FILA = 80;
 

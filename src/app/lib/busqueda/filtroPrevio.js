@@ -84,4 +84,4 @@ export function filtrarPrevio(textoOriginal, sinonimos) {
 }
 
 export const MENSAJE_RECHAZO_CAPA0 =
-  `No identifiqué qué pieza buscas, ¿puedes intentar de otra forma? Ej: '${EJEMPLO_BUSQUEDA_CORRECTA}'`;
+  `No identificamos qué pieza buscas, ¿puedes intentar de otra forma? Ej: "${EJEMPLO_BUSQUEDA_CORRECTA}"`;

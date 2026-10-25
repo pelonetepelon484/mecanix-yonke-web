@@ -12,7 +12,7 @@ export default function CampoWhatsappBusqueda({ value, onChange }) {
     <input
       className="mecanix-input"
       type="text"
-      placeholder="Tu WhatsApp (opcional, para avisarte si no hay stock)"
+      placeholder="Tu WhatsApp (opcional, para avisarte cuando llegue)"
       value={value}
       onChange={onChange}
     />
