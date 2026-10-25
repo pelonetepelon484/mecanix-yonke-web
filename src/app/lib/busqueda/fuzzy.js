@@ -37,6 +37,8 @@ export const MIN_LARGO_PARA_DIFUSO = 4;
 // marca/modelo/pieza, por más cerca que caigan en distancia — el umbral numérico solo no basta
 // (ej. "carro"~"camaro" y "hola"~"honda" caen dentro de distancias razonables).
 export const PALABRAS_EXCLUIDAS_DIFUSO = new Set([
+  // "baja" ("Baja California", "luz baja") está a 1 letra de "caja": se corregía a Caja de fusibles.
+  'baja', 'bajas',
   'carro', 'carros', 'coche', 'coches', 'auto', 'autos', 'vehiculo', 'vehiculos',
   'pieza', 'piezas', 'parte', 'partes', 'necesito', 'busco', 'quiero', 'tengo',
   'hola', 'gracias', 'favor', 'ayuda', 'urgente', 'rapido', 'bueno', 'buena',
