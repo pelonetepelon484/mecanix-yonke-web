@@ -4,7 +4,9 @@
 // estado vienen de la búsqueda; solo se pide el WhatsApp (y, si faltan, la pieza, el estado o el
 // vehículo). Sin cuenta. Crea la MISMA alerta que AvisarYonkes (enviarAlertaCliente ->
 // /api/pedir-pieza): mismos datos, mismas validaciones, mismos límites.
-// - variante="protagonista": bloque grande "No tenemos ese vehículo todavía" (sin resultados).
+// - variante="protagonista": bloque grande "No tenemos ese vehículo todavía" (sin resultados). Con
+//   titulo/texto (opcionales) se cambian SOLO ese título y ese texto (p. ej. cuando abajo hay
+//   resultados de otros estados); el botón y el formulario de la alerta no cambian.
 // - variante="discreta": "¿No encontraste la pieza exacta? Crea una alerta" (debajo de resultados).
 // - variante="compacta": "¿No era lo que buscabas? Crea una alerta aquí", chica pero a la vista,
 //   ARRIBA de los resultados (config/pedidosClientes.alertaSiempre).
@@ -29,7 +31,7 @@ const anioValido = (a) => /^\d{4}$/.test(String(a ?? '').trim());
 
 export default function AlertaUnPaso({
   variante = 'protagonista', marca: marcaInicial = '', modelo: modeloInicial = '', anio: anioInicial = '', pieza: piezaInicial = '',
-  estado: estadoInicial = '', estados: estadosProp = null,
+  estado: estadoInicial = '', estados: estadosProp = null, titulo = null, texto = null,
 }) {
   const [activa, setActiva] = useState(false);
   const [otrosEstadosActivo, setOtrosEstadosActivo] = useState(false);
@@ -126,8 +128,8 @@ export default function AlertaUnPaso({
     }
     return (
       <div style={cajaProtagonista}>
-        <p style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: '800', color: '#1A3C5E', lineHeight: '1.3' }}>{TITULO_SIN_RESULTADOS}</p>
-        <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.5' }}>{textoSinResultados(nombreDe(estadoConocido))}</p>
+        <p style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: '800', color: '#1A3C5E', lineHeight: '1.3' }}>{titulo || TITULO_SIN_RESULTADOS}</p>
+        <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.5' }}>{texto || textoSinResultados(nombreDe(estadoConocido))}</p>
         <button type="button" onClick={() => setAbierto(true)} style={botonGrande}>{TEXTO_BOTON_ALERTA}</button>
       </div>
     );

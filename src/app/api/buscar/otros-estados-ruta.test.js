@@ -25,6 +25,7 @@ vi.mock('../../lib/busqueda/estadosServer', async () => {
   return { estadoDeYonke, obtenerEstadosCombinado: async () => [{ id: 'jalisco', nombre: 'Jalisco' }, { id: 'sonora', nombre: 'Sonora' }, { id: 'baja-california', nombre: 'Baja California' }] };
 });
 let bandera = false;
+let banderaScroll = false; // config/buscador.scrollOtrosEstados (true, false o 'falla')
 let banderaIp = false;
 // Respaldo por vehículo: apagado en las pruebas de otros estados (para no mezclar); sus propias
 // pruebas lo encienden al final del archivo.
@@ -32,6 +33,7 @@ let banderaRespaldo = false;
 vi.mock('../../lib/busqueda/configBuscadorServer', () => ({
   rangoAniosServer: async () => 2, otrosEstadosSinResultadosServer: async () => bandera, otrosEstadosPorIpServer: async () => banderaIp,
   respaldoVehiculoServer: async () => banderaRespaldo,
+  scrollOtrosEstadosServer: async () => { if (banderaScroll === 'falla') throw new Error('sin red'); return banderaScroll; },
 }));
 
 // Inventario: en el estado del cliente nada (o ningún yonke); en otros estados, lo que diga `otros`.
@@ -145,6 +147,29 @@ describe('bandera encendida', () => {
 
 // Tarjetas como las arma consultarInventario (con estadoYonke y enviosNacionales).
 const tarjeta = (yonkeId, estadoYonke, enviosNacionales = true, vehiculoId = yonkeId) => ({ yonkeId, vehiculoId, estadoYonke, enviosNacionales });
+
+describe('scroll hacia otros estados (config/buscador.scrollOtrosEstados)', () => {
+  beforeEach(() => { bandera = true; banderaScroll = false; });
+  it('con la bandera en true y resultados de otros estados: scrollOtrosEstados en la respuesta', async () => {
+    banderaScroll = true;
+    expect((await buscar({ estado: 'jalisco' })).scrollOtrosEstados).toBe(true);
+    sinYonkes = true;
+    expect((await buscar({ estado: 'jalisco' })).scrollOtrosEstados).toBe(true);
+  });
+  it('sin el campo, con otro valor o si la lectura falla: no se manda', async () => {
+    for (const valor of [false, undefined, 'true', 1, 'falla']) {
+      banderaScroll = valor;
+      const r = await buscar({ estado: 'jalisco' });
+      expect(r.resultadosOtrosEstados).toBeTruthy();
+      expect(r).not.toHaveProperty('scrollOtrosEstados');
+    }
+  });
+  it('sin resultados de otros estados: nunca se manda, aunque la bandera esté encendida', async () => {
+    banderaScroll = true;
+    bandera = false;
+    expect(await buscar({ estado: 'jalisco' })).not.toHaveProperty('scrollOtrosEstados');
+  });
+});
 
 describe('"Todos los estados" con estado por IP', () => {
   beforeEach(() => { encontrados = { resultados: [tarjeta('SON', 'sonora')], resultadosCercanos: [] }; });

@@ -28,7 +28,7 @@ import { leerBanderaAlertaUnPaso, leerBanderaAlertaSiempre, leerBanderaInventari
 import { lugarAlertaConResultados, mensajeConAlerta } from '../lib/alertaSiempre';
 import AlertaUnPaso from './AlertaUnPaso';
 import OtrosEstadosResultados from './OtrosEstadosResultados';
-import { leerOtrosEstados, partesCuadroMensaje, cuadroMensajeTieneContenido } from '../lib/otrosEstadosPantalla';
+import { TITULO_CON_OTROS_ESTADOS, leerOtrosEstados, partesCuadroMensaje, cuadroMensajeTieneContenido, textoConOtrosEstados } from '../lib/otrosEstadosPantalla';
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
@@ -288,6 +288,9 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   // config/pedidosClientes.alertaUnPaso: sin resultados, la alerta de un paso va PRIMERO (y una
   // discreta debajo de los resultados). Apagada (o sin leer), las alertas quedan como siempre.
   const [alertaUnPaso, setAlertaUnPaso] = useState(false);
+  // Sube con cada respuesta del buscador inteligente: el scroll hacia "otros estados" se hace una
+  // sola vez por búsqueda (OtrosEstadosResultados).
+  const [numeroBusqueda, setNumeroBusqueda] = useState(0);
   // config/pedidosClientes.alertaSiempre (encendida salvo false, ver lib/alertaSiempre.js).
   const [alertaSiempre, setAlertaSiempre] = useState(true);
   useEffect(() => {
@@ -925,6 +928,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   }
 
   function aplicarRespuestaBusquedaLibre(data, { deOtroEstado = false } = {}) {
+    setNumeroBusqueda((n) => n + 1);
     setVehiculosAlerta({ lista: Array.isArray(data.vehiculosAlerta) ? data.vehiculosAlerta : [], pieza: data.piezaVehiculosAlerta || '' });
     // "Disponible en otros estados" (OtrosEstadosResultados): null sin los campos nuevos del
     // servidor (banderas apagadas), y entonces todo queda exactamente como siempre.
@@ -1603,8 +1607,18 @@ function obtenerEstadoAbierto(horario) {
 
   // Partes del cuadro de mensaje del buscador inteligente (ver partesCuadroMensaje).
   const partesCuadro = mensajeLibre
-    ? partesCuadroMensaje({ tipo: mensajeLibre.tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados: Boolean(mensajeLibre.otrosEstados || mensajeLibre.otrosEstadosRevisados) })
+    ? partesCuadroMensaje({
+      tipo: mensajeLibre.tipo, alertaUnPaso, estadoBusqueda,
+      conOtrosEstados: Boolean(mensajeLibre.otrosEstados || mensajeLibre.otrosEstadosRevisados),
+      seMuestranOtrosEstados: Boolean(mensajeLibre.otrosEstados),
+    })
     : null;
+  // Caso a de otros estados (estado elegido sin nada y abajo resultados de otros estados): el
+  // recuadro de la alerta cambia solo su título y su texto.
+  const nombreEstadoBusqueda = estadosDisponibles.find((e) => e.id === estadoBusqueda)?.nombre || estadoBusqueda;
+  const alertaConOtrosEstados = mensajeLibre?.otrosEstados?.modo === 'a'
+    ? { titulo: TITULO_CON_OTROS_ESTADOS, texto: textoConOtrosEstados(nombreEstadoBusqueda) }
+    : {};
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F0F2F5', padding: '32px 16px', fontFamily: "'Inter', sans-serif" }}>
@@ -1761,6 +1775,7 @@ function obtenerEstadoAbierto(horario) {
                   marca={mensajeLibre.busqueda?.marca} modelo={mensajeLibre.busqueda?.modelo}
                   anio={mensajeLibre.busqueda?.anio} pieza={mensajeLibre.busqueda?.pieza ?? mensajeLibre.pieza ?? ''}
                   estado={estadoBusqueda} estados={estadosDisponibles}
+                  {...alertaConOtrosEstados}
                 />
               )}
 
@@ -1830,7 +1845,8 @@ function obtenerEstadoAbierto(horario) {
             {mensajeLibre?.otrosEstados && (
               <OtrosEstadosResultados
                 info={mensajeLibre.otrosEstados}
-                nombreEstadoCliente={estadosDisponibles.find((e) => e.id === estadoBusqueda)?.nombre || estadoBusqueda}
+                nombreEstadoCliente={nombreEstadoBusqueda}
+                numeroBusqueda={numeroBusqueda}
                 renderTarjeta={(r, key, opciones) => (r.esMotor
                   ? renderTarjetaMotor(r, key, r.motor?.tipo === 'Transmisión' ? '⚙️' : '🔧', opciones)
                   : renderTarjetaVehiculo(r, key, opciones))}

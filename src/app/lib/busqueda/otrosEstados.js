@@ -2,7 +2,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { dbServer } from '../firebase-server';
 import { estadoDeYonke, obtenerEstadosCombinado } from './estadosServer';
 import { esPremiumVigente } from '../../../lib/planes';
-import { otrosEstadosSinResultadosServer } from './configBuscadorServer';
+import { otrosEstadosSinResultadosServer, scrollOtrosEstadosServer } from './configBuscadorServer';
 import {
   consultarInventarioEnYonkes, consultarInventarioVehiculoEnYonkes, consultarMotoresTransmisionesEnYonkes,
 } from './consultarInventario';
@@ -153,12 +153,26 @@ export async function otrosEstadosSiAplica(estadoFiltro, consulta, deps = {}) {
 // otrosEstadosRevisados cuando la búsqueda en otros estados sí se hizo (aunque no encontrara nada):
 // la pantalla ya no ofrece el botón "Buscar en todos los estados". Si se cortó por tiempo o falló,
 // no se marca y el botón sigue. Sin la bandera, nada (respuesta de siempre).
-export function camposRespuestaOtrosEstados(otros) {
+// scroll: con config/buscador.scrollOtrosEstados (ver hayScrollOtrosEstados), y solo si hay tarjetas
+// de otros estados, la portada se desplaza una vez hacia esa sección (scrollOtrosEstados: true).
+export function camposRespuestaOtrosEstados(otros, { scroll = false } = {}) {
   if (!otros) return {};
   return {
     ...(otros.omitido ? {} : { otrosEstadosRevisados: true }),
     ...(otros.mostrados > 0 ? { resultadosOtrosEstados: otros.grupos } : {}),
+    ...(otros.mostrados > 0 && scroll === true ? { scrollOtrosEstados: true } : {}),
   };
+}
+
+// ¿Pedir el scroll? Solo lee la bandera (con caché de 1 minuto) cuando hay tarjetas de otros estados.
+// Sin el campo, con otro valor o si la lectura falla: false.
+export async function hayScrollOtrosEstados(otros, { bandera = scrollOtrosEstadosServer } = {}) {
+  if (!(otros?.mostrados > 0)) return false;
+  try {
+    return (await bandera()) === true;
+  } catch {
+    return false;
+  }
 }
 
 // Lo que se agrega a registrarBusqueda: solo si la función aplicó (aunque no hubiera nada).

@@ -14,19 +14,31 @@ export const AVISO_SIN_ENVIOS = 'ℹ️ Este yonke no anuncia envíos: pregúnta
 export const AVISO_ENVIO_SI_LEJOS = '📦 Si estás lejos de este yonke, pídele fotos o video y confirma el costo del envío antes de pagar.';
 export const TEXTO_ELIGE_ESTADO_OTROS = '¿No es tu zona? Elige tu estado';
 
+// Caso a: título y texto del recuadro de la alerta de un paso (AlertaUnPaso, protagonista) cuando
+// abajo sí hay resultados de otros estados. El botón de la alerta no cambia.
+export const TITULO_CON_OTROS_ESTADOS = 'Lo encontramos en otros estados';
+export const textoConOtrosEstados = (nombreEstado) =>
+  `No hay yonkes de ${nombreEstado || 'tu estado'} con ese vehículo, pero abajo ves los de otros estados. ¿Lo quieres solo en tu estado? Activa la alerta de búsqueda.`;
+
+// Scroll automático hacia el encabezado de la sección (config/buscador.scrollOtrosEstados): espacio
+// que se deja ARRIBA del encabezado, en píxeles, para que se alcance a ver el final del recuadro
+// de la alerta. Se suma la altura de cualquier barra fija de arriba (alturaBarrasFijasArriba).
+export const MARGEN_SCROLL_OTROS_ESTADOS = 120;
+
 const conTarjetas = (grupos) => Array.isArray(grupos)
   ? grupos.filter((g) => Array.isArray(g?.resultados) && g.resultados.length > 0)
   : [];
 
-// null o { modo: 'a' | 'b', grupos, busqueda }.
+// null o { modo: 'a' | 'b', grupos, busqueda, scroll }. scroll: solo en el caso a y solo si el
+// servidor lo pidió (scrollOtrosEstados: true, su bandera).
 export function leerOtrosEstados(data) {
   const grupos = conTarjetas(data?.resultadosOtrosEstados);
   if (grupos.length === 0) return null;
   const busqueda = data.busqueda || null;
   if (data.estado === 'resultados') {
-    return data.sinResultadosEnTuEstado ? { modo: 'b', grupos, busqueda } : null;
+    return data.sinResultadosEnTuEstado ? { modo: 'b', grupos, busqueda, scroll: false } : null;
   }
-  return { modo: 'a', grupos, busqueda };
+  return { modo: 'a', grupos, busqueda, scroll: data.scrollOtrosEstados === true };
 }
 
 export function tituloOtrosEstados(modo, nombreEstadoCliente) {
@@ -49,14 +61,17 @@ export function avisoTarjetaOtroEstado(modo, r, estadoNombre) {
 // Cuadro de mensaje del buscador inteligente (HomeClient): qué partes se dibujan adentro. Una sola
 // fuente para cada parte y para decidir si el cuadro tiene algo; sin nada adentro no se dibuja
 // (antes quedaba una franja vacía con la alerta de un paso + estado elegido + otros estados).
-// - texto: oculto con la alerta de un paso y sin_inventario (el título de la alerta ya lo dice);
+// - texto: oculto con la alerta de un paso y sin_inventario (el título de la alerta ya lo dice), y
+//   con la alerta de un paso cuando abajo SÍ se muestran resultados de otros estados
+//   (seMuestranOtrosEstados): "Prueba buscando en Todos los estados" los contradiría;
 // - confirmar: "Sí, buscar así / No, corregir";
 // - botonTodos: "Buscar en todos los estados", solo con un estado elegido y cuando el servidor NO
 //   buscó ya en otros estados (conOtrosEstados: llegó la sección o otrosEstadosRevisados). Así
 //   solo se ve donde hace falta: "no identificamos el modelo", bandera apagada o búsqueda cortada.
-export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados }) {
+export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados, seMuestranOtrosEstados = false }) {
   return {
-    texto: !(alertaUnPaso && tipo === 'sin_inventario'),
+    texto: !(alertaUnPaso && tipo === 'sin_inventario')
+      && !(alertaUnPaso && seMuestranOtrosEstados && ['sin_inventario', 'sin_yonkes_estado'].includes(tipo)),
     confirmar: tipo === 'confirmar',
     botonTodos: ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(tipo) && estadoBusqueda !== 'todos' && !conOtrosEstados,
   };
