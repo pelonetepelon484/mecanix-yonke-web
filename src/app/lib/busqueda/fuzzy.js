@@ -41,4 +41,8 @@ export const PALABRAS_EXCLUIDAS_DIFUSO = new Set([
   'pieza', 'piezas', 'parte', 'partes', 'necesito', 'busco', 'quiero', 'tengo',
   'hola', 'gracias', 'favor', 'ayuda', 'urgente', 'rapido', 'bueno', 'buena',
   'para', 'como', 'estas', 'esta', 'este', 'usado', 'usados', 'comprar', 'vender',
+  // Palabras comunes a 1-2 letras de un modelo del catálogo (ej. "ventana"~"Montana",
+  // "poder"~"Poer", "modelo"~"Model 3", "magneto"~"Magnite", "giro"~"Niro", "radiator"~"Aviator").
+  'ventana', 'ventanas', 'poder', 'modelo', 'model', 'magneto', 'giro', 'nido', 'lona', 'ajos',
+  'raiz', 'tank', 'cross', 'expander', 'radiator',
 ]);
