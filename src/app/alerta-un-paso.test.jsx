@@ -37,6 +37,18 @@ describe('alerta en un paso', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('caso a con otros estados: cambian SOLO el título y el texto; el botón y el formulario son los mismos', async () => {
+    otros = true;
+    render(<AlertaUnPaso {...completo} titulo="Lo encontramos en otros estados" texto="No hay yonkes de Sonora con ese vehículo, pero abajo ves los de otros estados. ¿Lo quieres solo en tu estado? Activa la alerta de búsqueda." />);
+    expect(await screen.findByText('Lo encontramos en otros estados')).toBeInTheDocument();
+    expect(screen.getByText(/No hay yonkes de Sonora con ese vehículo/)).toBeInTheDocument();
+    expect(screen.queryByText(TITULO_SIN_RESULTADOS)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: TEXTO_BOTON_ALERTA }));
+    // El formulario de siempre, con su casilla y su consentimiento.
+    expect(await screen.findByLabelText(TEXTO_CASILLA_OTROS_ESTADOS)).toBeChecked();
+    expect(screen.getByText(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS)).toBeInTheDocument();
+  });
+
   it('sin resultados: título, texto con el estado real y el botón de siempre (más grande)', async () => {
     render(<AlertaUnPaso {...completo} />);
     expect(await screen.findByText(TITULO_SIN_RESULTADOS)).toBeInTheDocument();

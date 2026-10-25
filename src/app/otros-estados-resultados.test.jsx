@@ -5,7 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import OtrosEstadosResultados from './OtrosEstadosResultados';
 import {
   AVISO_ENVIO_SI_LEJOS, AVISO_SIN_ENVIOS, TEXTO_ELIGE_ESTADO_OTROS, leerOtrosEstados, opcionesTarjetaOtroEstado,
-  partesCuadroMensaje, cuadroMensajeTieneContenido,
+  partesCuadroMensaje, cuadroMensajeTieneContenido, TITULO_CON_OTROS_ESTADOS, textoConOtrosEstados, MARGEN_SCROLL_OTROS_ESTADOS,
 } from '../lib/otrosEstadosPantalla';
 import { avisoEnvioOtroEstado } from '../lib/pedidosClientes';
 
@@ -27,7 +27,13 @@ describe('leerOtrosEstados (qué caso es)', () => {
     expect(leerOtrosEstados({ estado: 'sin_inventario', resultadosOtrosEstados: [{ estado: 'sonora', resultados: [] }] })).toBeNull();
   });
   it('caso a: sin resultados en el estado elegido', () => {
-    expect(leerOtrosEstados({ estado: 'sin_yonkes_estado', resultadosOtrosEstados: grupos, busqueda })).toEqual({ modo: 'a', grupos, busqueda });
+    expect(leerOtrosEstados({ estado: 'sin_yonkes_estado', resultadosOtrosEstados: grupos, busqueda })).toEqual({ modo: 'a', grupos, busqueda, scroll: false });
+  });
+  it('scroll: solo en el caso a y solo si el servidor lo pidió (scrollOtrosEstados: true)', () => {
+    expect(leerOtrosEstados({ estado: 'sin_inventario', resultadosOtrosEstados: grupos, busqueda, scrollOtrosEstados: true }).scroll).toBe(true);
+    expect(leerOtrosEstados({ estado: 'sin_inventario', resultadosOtrosEstados: grupos, busqueda, scrollOtrosEstados: 'true' }).scroll).toBe(false);
+    const b = { estado: 'resultados', sinResultadosEnTuEstado: { estado: 'cdmx' }, resultadosOtrosEstados: grupos, busqueda, scrollOtrosEstados: true };
+    expect(leerOtrosEstados(b).scroll).toBe(false);
   });
   it('caso b: "Todos los estados" y nada del estado por IP', () => {
     const data = { estado: 'resultados', sinResultadosEnTuEstado: { estado: 'cdmx', estadoNombre: 'CDMX' }, resultadosOtrosEstados: grupos, busqueda };
@@ -134,5 +140,30 @@ describe('cuadro de mensaje del buscador inteligente (franja vacía)', () => {
         }
       }
     }
+  });
+});
+
+describe('recuadro azul cuando abajo SÍ hay resultados de otros estados (seMuestranOtrosEstados)', () => {
+  it('con la alerta de un paso: se oculta en sin_yonkes_estado ("Prueba buscando en Todos…") y en sin_inventario', () => {
+    for (const tipo of ['sin_yonkes_estado', 'sin_inventario']) {
+      const partes = partesCuadroMensaje({ tipo, alertaUnPaso: true, estadoBusqueda: 'jalisco', conOtrosEstados: true, seMuestranOtrosEstados: true });
+      expect(cuadroMensajeTieneContenido(partes)).toBe(false);
+    }
+  });
+  it('con la alerta de un paso APAGADA: el recuadro sigue (no queda el cliente sin explicación)', () => {
+    const partes = partesCuadroMensaje({ tipo: 'sin_yonkes_estado', alertaUnPaso: false, estadoBusqueda: 'jalisco', conOtrosEstados: true, seMuestranOtrosEstados: true });
+    expect(partes.texto).toBe(true);
+  });
+  it('si se buscó en otros estados SIN encontrar nada, el texto sigue', () => {
+    const partes = partesCuadroMensaje({ tipo: 'sin_yonkes_estado', alertaUnPaso: true, estadoBusqueda: 'jalisco', conOtrosEstados: true, seMuestranOtrosEstados: false });
+    expect(partes.texto).toBe(true);
+  });
+});
+
+describe('textos del caso a y margen del scroll', () => {
+  it('título, texto con el estado y margen inicial de 120 px', () => {
+    expect(TITULO_CON_OTROS_ESTADOS).toBe('Lo encontramos en otros estados');
+    expect(textoConOtrosEstados('Jalisco')).toBe('No hay yonkes de Jalisco con ese vehículo, pero abajo ves los de otros estados. ¿Lo quieres solo en tu estado? Activa la alerta de búsqueda.');
+    expect(MARGEN_SCROLL_OTROS_ESTADOS).toBe(120);
   });
 });

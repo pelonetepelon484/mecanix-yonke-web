@@ -7,6 +7,7 @@ import { rangoDeConfig } from '../../../lib/rangoAnios';
 // - rangoAniosServer(): el rango de años (rangoDeConfig) o null con la bandera apagada;
 // - otrosEstadosSinResultadosServer(): true solo con otrosEstadosSinResultados === true;
 // - otrosEstadosPorIpServer(): true solo con otrosEstadosPorIp === true;
+// - scrollOtrosEstadosServer(): true solo con scrollOtrosEstados === true;
 // - respaldoVehiculoServer(): AL REVÉS que las demás, encendida por omisión: solo
 //   respaldoVehiculo === false la apaga (sin el campo, sin documento o si la lectura falla, sigue
 //   encendida).
@@ -34,6 +35,11 @@ export async function rangoAniosServer() {
 // Resultados de otros estados cuando no hay nada en el del cliente (ver otrosEstados.js).
 export async function otrosEstadosSinResultadosServer() {
   return (await leerConfigBuscador())?.otrosEstadosSinResultados === true;
+}
+
+// Scroll automático hacia "Esto es lo que hay en otros estados" en la portada (OtrosEstadosResultados).
+export async function scrollOtrosEstadosServer() {
+  return (await leerConfigBuscador())?.scrollOtrosEstados === true;
 }
 
 // "Todos los estados" con el estado por IP del visitante (ver otrosEstadosPorIp.js).

@@ -15,7 +15,7 @@ async function leer(config) {
   respuesta = config;
   vi.resetModules();
   const m = await import('./configBuscadorServer');
-  return { respaldo: await m.respaldoVehiculoServer(), ip: await m.otrosEstadosPorIpServer() };
+  return { respaldo: await m.respaldoVehiculoServer(), ip: await m.otrosEstadosPorIpServer(), scroll: await m.scrollOtrosEstadosServer() };
 }
 
 describe('config/buscador.respaldoVehiculo (encendida por omisión)', () => {
@@ -31,5 +31,14 @@ describe('config/buscador.respaldoVehiculo (encendida por omisión)', () => {
   });
   it('las otras banderas siguen apagadas por omisión', async () => {
     expect((await leer(null)).ip).toBe(false);
+  });
+});
+
+describe('config/buscador.scrollOtrosEstados (apagada por omisión)', () => {
+  it('solo con true exacto; sin documento, sin el campo, otro valor o si falla la lectura: apagada', async () => {
+    expect((await leer({ scrollOtrosEstados: true })).scroll).toBe(true);
+    for (const config of [null, {}, { scrollOtrosEstados: false }, { scrollOtrosEstados: 'true' }, 'error']) {
+      expect((await leer(config)).scroll).toBe(false);
+    }
   });
 });
