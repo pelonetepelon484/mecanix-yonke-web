@@ -10,10 +10,9 @@ import { CONSEJOS_ENVIO } from './pedidosClientes';
 //   sinResultadosEnTuEstado). La IP puede equivocarse: las tarjetas conservan Reservar y "Pedir
 //   entrega a mi taller", y el aviso de envío es condicional.
 
-// Avisos de envío de las tarjetas: los MISMOS textos aprobados de la página de respuestas
-// (/mi-pedido, src/lib/pedidosClientes.ts). Con Envíos nacionales, los consejos de envío
-// (CONSEJOS_ENVIO); sin la insignia, la frase "Es posible que pueda hacer el envío…".
-export const AVISO_SIN_ENVIOS = 'ℹ️ Es posible que pueda hacer el envío hasta tu estado; confírmalo directamente con él antes de pagar.';
+// Aviso de envío de las tarjetas con Envíos nacionales: el MISMO texto aprobado de la página de
+// respuestas (/mi-pedido, CONSEJOS_ENVIO en src/lib/pedidosClientes.ts).
+export const AVISO_SIN_ENVIOS = 'ℹ️ Este yonke no anuncia envíos: pregúntale si te la puede mandar.';
 export const AVISO_ENVIO_SI_LEJOS = CONSEJOS_ENVIO;
 export const TEXTO_ELIGE_ESTADO_OTROS = '¿No es tu zona? Elige tu estado';
 
