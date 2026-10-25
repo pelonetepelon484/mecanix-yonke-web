@@ -306,7 +306,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
     });
     return NextResponse.json(esNumeroDeParte
       ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }
-      : { estado: 'sin_inventario', mensaje: mensajeSinInventario({ pedidosClientesActivos: await pedidosClientesActivos() }), ...extraVehiculosAlerta, busqueda: datosDeLaBusqueda({ marca, modelo, anio, pieza }), ...camposRespuestaOtrosEstados(otros, { scroll: await hayScrollOtrosEstados(otros) }) });
+      : { estado: 'sin_inventario', mensaje: mensajeSinInventario({ pedidosClientesActivos: await pedidosClientesActivos(), conContacto: Boolean(contacto) }), ...extraVehiculosAlerta, busqueda: datosDeLaBusqueda({ marca, modelo, anio, pieza }), ...camposRespuestaOtrosEstados(otros, { scroll: await hayScrollOtrosEstados(otros) }) });
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);
@@ -405,7 +405,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
       texto, estado: estadoLog, pieza: null, marca, modelo, anio,
       tipoResultado, totalResultados: 0, origen, tieneContacto, ...datosGeo, ...camposRegistroOtrosEstados(otros),
     });
-    return NextResponse.json({ ...estadoYMensajeNoEncontrado('sin_inventario', mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: await pedidosClientesActivos() })), busqueda: datosDeLaBusqueda({ marca, modelo, anio }), ...camposRespuestaOtrosEstados(otros, { scroll: await hayScrollOtrosEstados(otros) }) });
+    return NextResponse.json({ ...estadoYMensajeNoEncontrado('sin_inventario', mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: await pedidosClientesActivos(), conContacto: Boolean(contacto) })), busqueda: datosDeLaBusqueda({ marca, modelo, anio }), ...camposRespuestaOtrosEstados(otros, { scroll: await hayScrollOtrosEstados(otros) }) });
   }
 
   const yonkeIds = recolectarYonkeIds(resultados, resultadosCercanos, motores, motoresCercanos, transmisiones, transmisionesCercanos);

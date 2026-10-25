@@ -7,7 +7,7 @@ import {
   AVISO_ENVIO_SI_LEJOS, AVISO_SIN_ENVIOS, TEXTO_ELIGE_ESTADO_OTROS, leerOtrosEstados, opcionesTarjetaOtroEstado,
   partesCuadroMensaje, cuadroMensajeTieneContenido, TITULO_CON_OTROS_ESTADOS, textoConOtrosEstados, MARGEN_SCROLL_OTROS_ESTADOS,
 } from '../lib/otrosEstadosPantalla';
-import { avisoEnvioOtroEstado } from '../lib/pedidosClientes';
+import { CONSEJOS_ENVIO } from '../lib/pedidosClientes';
 
 afterEach(cleanup);
 
@@ -69,7 +69,7 @@ describe('OtrosEstadosResultados', () => {
     expect(screen.getByRole('heading')).toHaveTextContent('No hay en Chihuahua. Esto es lo que hay en otros estados');
     expect(screen.getByText('📍 Sonora')).toBeInTheDocument();
     expect(screen.getByText('📍 Jalisco')).toBeInTheDocument();
-    expect(screen.getByText(avisoEnvioOtroEstado('Sonora'))).toBeInTheDocument();
+    expect(screen.getAllByText(CONSEJOS_ENVIO)).toHaveLength(2);
     expect(screen.getByText(AVISO_SIN_ENVIOS)).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_ELIGE_ESTADO_OTROS)).not.toBeInTheDocument();
   });
@@ -82,6 +82,9 @@ describe('OtrosEstadosResultados', () => {
     />);
     expect(screen.getByRole('heading')).toHaveTextContent('No encontramos en tu estado. Esto es lo que hay en otros estados');
     expect(screen.getAllByText(AVISO_ENVIO_SI_LEJOS)).toHaveLength(2);
+    expect(AVISO_ENVIO_SI_LEJOS).toBe(CONSEJOS_ENVIO);
+    // Igual a la versión aprobada de /mi-pedido: sin "Te la enviaría" ni "cómo se hará el pago".
+    expect(document.body.textContent).not.toMatch(/Te la enviaría|cómo se hará el pago/);
     expect(screen.getByText(AVISO_SIN_ENVIOS)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: TEXTO_ELIGE_ESTADO_OTROS }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Elige tu estado' }), { target: { value: 'baja-california' } });

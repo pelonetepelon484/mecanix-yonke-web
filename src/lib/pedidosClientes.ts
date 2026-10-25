@@ -118,10 +118,6 @@ export function puedeVerOtrosEstados(
     && yonke?.activo === true && yonke?.verificado === true && yonke?.enviosNacionales === true;
 }
 
-// Aviso debajo de una respuesta de un yonke de otro estado (alerta que aceptó envíos).
-export function avisoEnvioOtroEstado(estadoNombre: string): string {
-  return `📦 Te la enviaría un yonke de ${estadoNombre}. Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Confirma por WhatsApp cómo se hará el pago. Mecanix no vende ni cobra.`;
-}
 
 // Casilla "otros estados" del formulario de la alerta (AvisarYonkes / AlertaUnPaso): nace MARCADA.
 // El Aviso de Privacidad (sección 14, inciso a) cita su primera frase. Textos aprobados por el abogado.

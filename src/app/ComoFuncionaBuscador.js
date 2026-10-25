@@ -19,10 +19,14 @@ const PASOS = [
 const RAMA_SI = [
   { emoji: '🏪', titulo: 'Ves qué yonke la tiene' },
   { emoji: '💬', titulo: 'WhatsApp o reserva' },
-  { emoji: '🤝', titulo: 'Pagas en persona', desc: 'Con la pieza en la mano' },
+  // Términos 8 ("confirmar directamente con el yonke antes de pagar"), advertencia de pago aprobada
+  // (TEXTO_AVISO_PAGO) y Términos 9 ("el yonke envía piezas a otros estados").
+  { emoji: '🤝', titulo: 'Confirma antes de pagar', desc: 'Antes de pagar, confirma la pieza directamente con el yonke. Con yonkes sin verificar, evita pagos por adelantado. Hay yonkes que envían piezas a otros estados.' },
 ];
 const OTROS_ESTADOS = { emoji: '🌎', titulo: 'Busca en otros estados', desc: 'Hay yonkes con envíos' };
-const ALERTA = { emoji: '🔔', titulo: 'Deja una alerta', desc: 'El yonke que la tenga te avisa por WhatsApp' };
+// Aviso de privacidad, sección 14: "(b) Mostrarte, en tu enlace privado, las respuestas de los
+// yonkes", "Si decides escribirle a un yonke desde tu enlace…" y "Nunca ven tu número de WhatsApp".
+const ALERTA = { emoji: '🔔', titulo: 'Deja una alerta', desc: 'Ves las respuestas de los yonkes en tu enlace privado y tú decides a quién escribirle. Nunca ven tu número de WhatsApp.' };
 
 function Paso({ emoji, titulo, desc }) {
   return (

@@ -57,7 +57,7 @@ export default function OtrosEstadosResultados({ info, nombreEstadoCliente, rend
           {g.resultados.map((r, i) => (
             <div key={`${r.yonkeId}-${r.motorId ?? r.vehiculoId ?? i}`} style={{ marginBottom: '16px' }}>
               {renderTarjeta(r, `otro-estado-${g.estado}-${i}`, opciones)}
-              <p style={aviso}>{avisoTarjetaOtroEstado(info.modo, r, g.estadoNombre)}</p>
+              <p style={aviso}>{avisoTarjetaOtroEstado(r)}</p>
             </div>
           ))}
         </div>
