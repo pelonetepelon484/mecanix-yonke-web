@@ -1,20 +1,17 @@
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { dbServer } from '../firebase-server';
+import { calcularAlcanceResultado } from '../../../lib/alcanceResultado';
 
-// IMPORTANTE: este Set debe coincidir con el enum de `estado` en la regla de seguridad de
-// Firestore para /busquedas/{docId} (esa regla vive en la consola de Firebase, no en este
-// repo). Agregar un valor aquí sin agregarlo también allá hace que addDoc() falle en silencio
-// (permission-denied, atrapado abajo) — el buscador sigue funcionando para el cliente, pero esa
-// búsqueda no queda registrada para el dashboard. 'numero_de_parte' y 'marca_muy_general' son
-// nuevos: confirmar con David que la regla ya los incluye.
+// IMPORTANTE: este Set debe coincidir con la lista de `estado` permitidos en firestore.rules
+// (match /busquedas/{docId}, en este repositorio). Agregar un valor aquí sin agregarlo también en
+// las reglas hace que addDoc() falle en silencio (permission-denied, atrapado abajo): el buscador
+// sigue funcionando para el cliente, pero esa búsqueda no queda registrada. Lo mismo con los
+// campos de busquedasResumen, que en las reglas son una lista EXACTA (keys().hasOnly): un campo
+// nuevo ahí se publica primero en las reglas y después en el código.
 const ESTADOS_VALIDOS = new Set([
   'no_interpretada', 'fuera_de_giro', 'parseo_parcial', 'fuera_de_catalogo', 'sin_inventario', 'ok',
   'numero_de_parte', 'marca_muy_general', 'pieza_sin_vehiculo',
 ]);
-// IMPORTANTE (auditoría 2026-09-28): 'pieza_sin_vehiculo' es nuevo — confirmar que la regla de
-// Firestore para /busquedas/{docId} ya incluye este valor en su enum antes de desplegar, o estas
-// escrituras fallarán en silencio (permission-denied, atrapado abajo) igual que cualquier otro
-// estado no sincronizado con la regla.
 
 // Nombres de campo EXACTOS exigidos por la regla de Firestore (match /busquedas/{docId}):
 // textoOriginal (string, 1-299 chars), estado (enum), numResultados (int >= 0, nunca null),
@@ -43,13 +40,17 @@ export async function registrarBusqueda({
   sinVehiculo = false,
   // otrosEstados: { mostrados, yonkeIds } solo cuando aplicó "resultados de otros estados"
   // (config/buscador.otrosEstadosSinResultados, ver otrosEstados.js). La búsqueda sigue siendo
-  // sin_inventario (conResultado false) y yonkeIds de arriba sigue vacío: la demanda no cambia.
+  // sin_inventario (conResultado false) y yonkeIds de arriba sigue vacío; con mostrados > 0, su
+  // alcanceResultado es 'solo_otros_estados'.
   // Sin él, el documento queda idéntico al de siempre. Solo va en busquedas, no en el resumen.
   otrosEstados = null,
   // soloOtrosEstados: true solo con "Todos los estados" por IP cuando ningún resultado era del
   // estado del visitante (config/buscador.otrosEstadosPorIp, ver otrosEstadosPorIp.js). estado y
   // conResultado no cambian (sí hubo resultados en el país). Sin él, documento idéntico.
   soloOtrosEstados = false,
+  // estadoBusqueda: el estado que eligió el cliente en el buscador ('todos' o el id del estado).
+  // estadoGeografico es OTRO dato: el del visitante según su conexión. Solo va en busquedas.
+  estadoBusqueda = null,
 }) {
   if (!ESTADOS_VALIDOS.has(estado)) {
     console.error(`[registrarBusqueda] estado inválido, no se guarda: "${estado}"`);
@@ -87,6 +88,9 @@ export async function registrarBusqueda({
       },
     } : {}),
     ...(soloOtrosEstados === true ? { soloOtrosEstados: true } : {}),
+    // con_resultado | solo_otros_estados | sin_resultado (ver src/lib/alcanceResultado.js).
+    alcanceResultado: calcularAlcanceResultado({ estado, soloOtrosEstados, otrosEstados }),
+    ...(typeof estadoBusqueda === 'string' && estadoBusqueda ? { estadoBusqueda: estadoBusqueda.slice(0, 60) } : {}),
     fecha: Timestamp.now(),
   };
 
@@ -108,6 +112,7 @@ export async function registrarBusqueda({
     const datosResumen = {
       estadoGeografico, pieza, marca, modelo, anio,
       estado, conResultado: datos.conResultado, sinVehiculo: datos.sinVehiculo,
+      alcanceResultado: datos.alcanceResultado,
       fecha: datos.fecha,
     };
     try {

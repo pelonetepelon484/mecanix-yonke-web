@@ -159,13 +159,16 @@ service cloud.firestore {
     // ver registrarBusqueda.js. El yonke lee esta colección directo desde el navegador; busquedas
     // (la completa) sigue siendo solo-admin arriba.
     match /busquedasResumen/{docId} {
+      // alcanceResultado: opcional (registros de antes y versiones viejas de la app no lo mandan).
       allow create: if request.resource.data.keys().hasOnly([
                          'estadoGeografico', 'pieza', 'marca', 'modelo', 'anio',
-                         'estado', 'conResultado', 'sinVehiculo', 'fecha'
+                         'estado', 'conResultado', 'sinVehiculo', 'fecha', 'alcanceResultado'
                        ])
                     && request.resource.data.estadoGeografico is string
                     && request.resource.data.conResultado is bool
-                    && request.resource.data.sinVehiculo is bool;
+                    && request.resource.data.sinVehiculo is bool
+                    && (!('alcanceResultado' in request.resource.data)
+                        || request.resource.data.alcanceResultado in ['con_resultado', 'solo_otros_estados', 'sin_resultado']);
       allow read: if esAdmin()
                   || (esYonkeDeEseEstado(resource.data.estadoGeografico)
                       // Demanda es del plan Premium cuando config/planes.limitesActivos es true

@@ -68,3 +68,39 @@ describe('mapa de búsquedas: fechas por estado', () => {
     expect(within(lista).queryByText(/Otra/)).not.toBeInTheDocument();
   });
 });
+
+describe('mapa de búsquedas: tres grupos (con resultado, solo en otros estados, sin resultado)', () => {
+  const tres = () => [
+    { ...son, pieza: 'Alternador', fecha: hace(1), conResultado: true, alcanceResultado: 'con_resultado' },
+    { ...son, pieza: 'Alternador', fecha: hace(2), conResultado: false, alcanceResultado: 'solo_otros_estados' },
+    // Viejo, sin el campo: "Todos" por IP sin nada de su estado (soloOtrosEstados).
+    { ...son, pieza: 'Alternador', fecha: hace(3), conResultado: true, soloOtrosEstados: true },
+    { ...son, pieza: 'Faro', fecha: hace(4), conResultado: false, alcanceResultado: 'sin_resultado' },
+    // Viejo, sin el campo: caso a con tarjetas de otros estados.
+    { ...son, pieza: 'Faro', fecha: hace(5), conResultado: false, otrosEstados: { mostrados: 2, yonkeIds: [] } },
+  ];
+  it('lista de las últimas: tercera etiqueta "↗ Solo en otros estados" (también en registros viejos)', async () => {
+    docs = tres();
+    await abrirSonora();
+    const items = within(screen.getByRole('list', { name: 'Búsquedas recientes en Sonora' })).getAllByRole('listitem');
+    expect(items.map((li) => li.textContent.match(/✓ Con resultado|↗ Solo en otros estados|✗ Sin resultado/)[0])).toEqual([
+      '✓ Con resultado', '↗ Solo en otros estados', '↗ Solo en otros estados', '✗ Sin resultado', '↗ Solo en otros estados',
+    ]);
+  });
+  it('tabla con la columna "Solo en otros estados"', async () => {
+    docs = tres();
+    await abrirSonora();
+    const tabla = screen.getByRole('columnheader', { name: 'Solo en otros estados' }).closest('table');
+    const fila = within(tabla).getByRole('cell', { name: 'Alternador — Nissan Sentra 2005' }).closest('tr');
+    expect(within(fila).getAllByRole('cell').map((c) => c.textContent).slice(1, 4)).toEqual(['3', '1 / 3', '2 / 3']);
+  });
+  it('filtro con los tres grupos', async () => {
+    docs = tres();
+    await abrirSonora();
+    fireEvent.click(screen.getByRole('button', { name: '↗ Solo en otros estados' }));
+    const items = within(screen.getByRole('list', { name: 'Búsquedas recientes en Sonora' })).getAllByRole('listitem');
+    expect(items).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: '✗ Sin resultado' }));
+    expect(within(screen.getByRole('list', { name: 'Búsquedas recientes en Sonora' })).getAllByRole('listitem')).toHaveLength(1);
+  });
+});

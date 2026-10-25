@@ -8,6 +8,7 @@ import { filtroBusquedasConfiables } from '../../../lib/busqueda/corteBusquedasC
 import mexicoMap from '@svg-maps/mexico';
 import { aFecha, esDeLasUltimas24Horas, formatearFechaTijuana } from './fechas';
 import { NOMBRES_ESTADO } from '../nombresEstado';
+import { ETIQUETAS_ALCANCE, alcanceResultado } from '../../../../lib/alcanceResultado';
 
 const RANGOS = [
   { key: '7', label: '7 días', dias: 7 },
@@ -16,18 +17,14 @@ const RANGOS = [
   { key: 'todo', label: 'Todo', dias: null },
 ];
 
+// Tres grupos (src/lib/alcanceResultado.js): con resultado, solo en otros estados y sin resultado.
+// alcanceResultado() también deduce el grupo de los registros de antes, sin reescribirlos.
 const FILTROS_RESULTADO = [
   { key: 'todos', label: 'Todas' },
-  { key: 'con', label: '✓ Con resultado' },
-  { key: 'sin', label: '✗ Sin resultado' },
+  { key: 'con_resultado', label: ETIQUETAS_ALCANCE.con_resultado.texto },
+  { key: 'solo_otros_estados', label: ETIQUETAS_ALCANCE.solo_otros_estados.texto },
+  { key: 'sin_resultado', label: ETIQUETAS_ALCANCE.sin_resultado.texto },
 ];
-
-// conResultado es un campo nuevo (ver registrarBusqueda.js) — para docs escritos antes de este
-// cambio, se infiere del `estado` de búsqueda ya existente, para no dejar vacío el mapa con
-// datos históricos.
-function tieneResultado(d) {
-  return typeof d.conResultado === 'boolean' ? d.conResultado : d.estado === 'ok';
-}
 
 // Igual: docs viejos no tienen estadoGeografico — cuentan como "sin ubicación identificada",
 // no se pierden, solo no se pueden ubicar en el mapa.
@@ -111,7 +108,7 @@ export default function MapaBusquedasPage() {
 
   const docsFiltrados = useMemo(() => {
     if (filtroResultado === 'todos') return docsConVehiculo;
-    return docsConVehiculo.filter((d) => (filtroResultado === 'con') === tieneResultado(d));
+    return docsConVehiculo.filter((d) => alcanceResultado(d) === filtroResultado);
   }, [docsConVehiculo, filtroResultado]);
 
   const { conteoPorEstado, maximo, sinUbicacion } = useMemo(() => {
@@ -131,9 +128,11 @@ export default function MapaBusquedasPage() {
     for (const d of docsFiltrados) {
       if (claveEstado(d) !== estadoActivo) continue;
       const clave = queBuscaba(d);
-      const actual = mapa.get(clave) || { clave, conteo: 0, conResultado: 0, ultima: null };
+      const actual = mapa.get(clave) || { clave, conteo: 0, conResultado: 0, soloOtrosEstados: 0, ultima: null };
       actual.conteo++;
-      if (tieneResultado(d)) actual.conResultado++;
+      const alcance = alcanceResultado(d);
+      if (alcance === 'con_resultado') actual.conResultado++;
+      if (alcance === 'solo_otros_estados') actual.soloOtrosEstados++;
       const fecha = aFecha(d.fecha);
       if (fecha && (!actual.ultima || fecha > actual.ultima)) actual.ultima = fecha;
       mapa.set(clave, actual);
@@ -252,6 +251,7 @@ export default function MapaBusquedasPage() {
                           <th style={thStyle}>Pieza / vehículo</th>
                           <th style={thStyle}>Veces buscado</th>
                           <th style={thStyle}>Con resultado</th>
+                          <th style={thStyle}>Solo en otros estados</th>
                           <th style={thStyle}>Última vez</th>
                         </tr>
                       </thead>
@@ -261,6 +261,7 @@ export default function MapaBusquedasPage() {
                             <td style={tdStyle}>{r.clave}</td>
                             <td style={tdStyle}>{r.conteo}</td>
                             <td style={tdStyle}>{r.conResultado} / {r.conteo}</td>
+                            <td style={tdStyle}>{r.soloOtrosEstados} / {r.conteo}</td>
                             <td style={tdStyle}>
                               {formatearFechaTijuana(r.ultima)}
                               {esDeLasUltimas24Horas(r.ultima, cargadoEn) && <EtiquetaReciente />}
@@ -283,7 +284,7 @@ export default function MapaBusquedasPage() {
                     <ul aria-label={`Búsquedas recientes en ${NOMBRES_ESTADO[estadoActivo] || estadoActivo}`} style={{ listStyle: 'none', margin: 0, padding: 0, backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                       {recientesEnEstado.map((d, i) => {
                         const reciente = esDeLasUltimas24Horas(d.fecha, cargadoEn);
-                        const conResultado = tieneResultado(d);
+                        const etiqueta = ETIQUETAS_ALCANCE[alcanceResultado(d)];
                         return (
                           <li key={i} style={{ padding: '10px 12px', borderTop: i === 0 ? 'none' : '1px solid #EEF1F5', borderLeft: reciente ? '4px solid #2E7D32' : '4px solid transparent' }}>
                             <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>
@@ -292,8 +293,8 @@ export default function MapaBusquedasPage() {
                             </p>
                             <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#333' }}>
                               {queBuscaba(d)}{' '}
-                              <span style={{ color: conResultado ? '#2E7D32' : '#C62828', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                                {conResultado ? '✓ Con resultado' : '✗ Sin resultado'}
+                              <span style={{ color: etiqueta.color, fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                {etiqueta.texto}
                               </span>
                             </p>
                           </li>

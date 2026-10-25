@@ -103,6 +103,31 @@ describe('DemandaPanel — estados de la interfaz', () => {
     expect(screen.getByText('Demanda sin cubrir')).toBeInTheDocument();
   });
 
+  it('"solo en otros estados" cuenta como Demanda sin cubrir; los registros viejos (sin el campo) siguen con conResultado', async () => {
+    getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
+    getDocsMock.mockResolvedValue(busquedasSnapFake([
+      // Nuevos: en el estado del yonke no hubo, sí en otros estados (aunque conResultado sea true, caso "Todos" por IP).
+      { pieza: 'Alternador', marca: 'Honda', modelo: 'Civic', anio: 2016, conResultado: true, estado: 'ok', alcanceResultado: 'solo_otros_estados' },
+      { pieza: 'Alternador', marca: 'Honda', modelo: 'Civic', anio: 2017, conResultado: false, estado: 'sin_inventario', alcanceResultado: 'solo_otros_estados' },
+      // Nuevos con resultado.
+      { pieza: 'Faro', marca: 'Nissan', modelo: 'Versa', anio: 2015, conResultado: true, estado: 'ok', alcanceResultado: 'con_resultado' },
+      { pieza: 'Faro', marca: 'Nissan', modelo: 'Versa', anio: 2016, conResultado: true, estado: 'ok', alcanceResultado: 'con_resultado' },
+      // Viejos, sin el campo.
+      { pieza: 'Motor', marca: 'Ford', modelo: 'Focus', anio: 2010, conResultado: true, estado: 'ok' },
+      { pieza: 'Motor', marca: 'Ford', modelo: 'Focus', anio: 2011, conResultado: true, estado: 'ok' },
+    ]));
+    render(<DemandaPanel />);
+    const fila = async (clave) => (await screen.findByText(clave)).closest('tr') ?? (await screen.findByText(clave)).parentElement;
+    expect(await fila('Alternador — Honda Civic')).toHaveTextContent('Demanda sin cubrir');
+    expect(await fila('Faro — Nissan Versa')).toHaveTextContent('Con resultado');
+    expect(await fila('Motor — Ford Focus')).toHaveTextContent('Con resultado');
+    expect(await fila('Alternador — Honda Civic')).not.toHaveTextContent('Con resultado');
+    expect(await fila('Faro — Nissan Versa')).not.toHaveTextContent('Demanda sin cubrir');
+    expect(await fila('Motor — Ford Focus')).not.toHaveTextContent('Demanda sin cubrir');
+    // Sin números ni nada nuevo a la vista.
+    expect(screen.queryByText(/otros estados/i)).not.toBeInTheDocument();
+  });
+
   it('sin filas: mensaje amable, nunca una tabla vacía', async () => {
     getDocMock.mockResolvedValue(yonkeDocFake(true, { activo: true, estado: 'baja-california' }));
     getDocsMock.mockResolvedValue(busquedasSnapFake([]));
