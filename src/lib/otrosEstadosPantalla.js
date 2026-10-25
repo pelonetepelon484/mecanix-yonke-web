@@ -12,7 +12,7 @@ import { avisoEnvioOtroEstado } from './pedidosClientes';
 
 export const AVISO_SIN_ENVIOS = 'ℹ️ Este yonke no anuncia envíos: pregúntale si te la puede mandar.';
 export const AVISO_ENVIO_SI_LEJOS = '📦 Si estás lejos de este yonke, pídele fotos o video y confirma el costo del envío antes de pagar.';
-export const TEXTO_ELIGE_ESTADO_OTROS = '¿No es tu zona? Elige tu estado';
+export const TEXTO_ELIGE_ESTADO_OTROS = '¿No es tu estado? Elígelo aquí';
 
 // Caso a: título y texto del recuadro de la alerta de un paso (AlertaUnPaso, protagonista) cuando
 // abajo sí hay resultados de otros estados. El botón de la alerta no cambia.

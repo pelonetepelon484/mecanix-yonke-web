@@ -74,7 +74,7 @@ describe('OtrosEstadosResultados', () => {
     expect(screen.queryByText(TEXTO_ELIGE_ESTADO_OTROS)).not.toBeInTheDocument();
   });
 
-  it('caso b: título suave, aviso condicional y "¿No es tu zona?" que elige estado y repite la búsqueda', () => {
+  it('caso b: título suave, aviso condicional y "¿No es tu estado?" que elige estado y repite la búsqueda', () => {
     const onElegirEstado = vi.fn();
     render(<OtrosEstadosResultados
       info={{ modo: 'b', grupos, busqueda }} renderTarjeta={renderTarjeta} onElegirEstado={onElegirEstado}

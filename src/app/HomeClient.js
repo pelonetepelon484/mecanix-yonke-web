@@ -1008,7 +1008,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
     }
   }
 
-  // estadoForzado: solo desde "¿No es tu zona? Elige tu estado" (el selector todavía no se
+  // estadoForzado: solo desde "¿No es tu estado? Elígelo aquí" (el selector todavía no se
   // actualizó en este render); desde el botón llega el evento del clic y se ignora.
   async function buscarConTextoLibre(estadoForzado) {
     if (!textoLibre.trim()) return;
@@ -2231,7 +2231,7 @@ function obtenerEstadoAbierto(horario) {
                       🌎 Estos resultados son de otros estados
                     </p>
                     <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#7A4F00' }}>
-                      No hay nada en tu estado por ahora. Los yonkes de abajo están fuera de tu zona — coordina el envío directamente con cada uno por WhatsApp (costo y tiempo varían). La insignia 📦 Envíos nacionales indica cuáles hacen envíos a otros estados con más frecuencia, pero siempre confirma antes de comprar.
+                      No hay nada en tu estado por ahora. Los yonkes de abajo están fuera de tu estado — coordina el envío directamente con cada uno por WhatsApp (costo y tiempo varían). La insignia 📦 Envíos nacionales indica cuáles hacen envíos a otros estados con más frecuencia, pero siempre confirma antes de comprar.
                     </p>
                   </div>
                 )}

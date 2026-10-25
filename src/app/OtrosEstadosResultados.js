@@ -4,7 +4,7 @@
 // en el estado del cliente. Tarjetas agrupadas por estado ("📍 Sonora"), cada una con su aviso de
 // envío. Las tarjetas las dibuja HomeClient (renderTarjeta), con las opciones de cada caso (ver
 // lib/otrosEstadosPantalla.js). Sin grupos con tarjetas no dibuja nada.
-// En el caso b (estado por IP) el título trae "¿No es tu zona? Elige tu estado": al elegir uno se
+// En el caso b (estado por IP) el título trae "¿No es tu estado? Elígelo aquí": al elegir uno se
 // pone en el selector y se repite la búsqueda (onElegirEstado).
 // Scroll (config/buscador.scrollOtrosEstados, llega como info.scroll): una sola vez por búsqueda
 // (numeroBusqueda), ya con las tarjetas dibujadas, hacia el encabezado; no al volver a dibujar.
