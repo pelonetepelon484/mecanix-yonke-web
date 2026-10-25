@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DIAS_VIGENCIA_PEDIDO, MAX_PEDIDOS_POR_WHATSAPP_DIA, MENSAJES_PEDIDO, calcularExpiraAtPedido, enlaceGuardarPorWhatsapp, enlaceMiPedido, esCodigo, esIdPedido, estaVencido,
-  CASILLA_OTROS_ESTADOS_INICIAL, CONSEJOS_ENVIO, TEXTO_CASILLA_OTROS_ESTADOS, TEXTO_CONSENTIMIENTO_OTROS_ESTADOS, avisoEnvioOtroEstado, avisoRespuestaOtroEstado, estadoVisible, mensajeAvisoAdmin, puedeVerOtrosEstados, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
+  CASILLA_OTROS_ESTADOS_INICIAL, CONSEJOS_ENVIO, TEXTO_CASILLA_OTROS_ESTADOS, TEXTO_CONSENTIMIENTO_OTROS_ESTADOS, avisoRespuestaOtroEstado, estadoVisible, mensajeAvisoAdmin, puedeVerOtrosEstados, normalizarWhatsapp, ordenarRespuestas, pedidoPublico, respuestaParaCliente, resumenPedidos,
   validarPedidoCliente,
 } from './pedidosClientes';
 import { MENSAJES_SOLICITUD } from './solicitudesPiezas';
@@ -145,9 +145,6 @@ describe('alertas de otros estados', () => {
     const r = { yonkeId: 'Y1', yonkeNombre: 'El Güero', tieneLaPieza: true, precio: 1500 };
     expect(respuestaParaCliente(r, { estado: 'jalisco' }).estadoYonke).toBe('jalisco');
     expect(respuestaParaCliente(r, null).estadoYonke).toBe('');
-  });
-  it('texto del aviso de envío', () => {
-    expect(avisoEnvioOtroEstado('Jalisco')).toBe('📦 Te la enviaría un yonke de Jalisco. Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Confirma por WhatsApp cómo se hará el pago. Mecanix no vende ni cobra.');
   });
   it('aviso de respuesta de otro estado: con Envíos nacionales lo afirma; sin la insignia, "es posible"', () => {
     expect(avisoRespuestaOtroEstado('Jalisco', true)).toBe('Este yonke es de Jalisco, distinto al de tu pedido, pero respondió tu solicitud. Este yonke hace envíos nacionales hasta tu estado; confírmalo directamente con él antes de pagar.');

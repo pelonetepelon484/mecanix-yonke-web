@@ -38,11 +38,15 @@ describe('/api/buscar con config/pedidosClientes APAGADA o inexistente: exactame
     expect(guardar).not.toHaveBeenCalled();
     expect(notificar).not.toHaveBeenCalled();
   });
-  it('los mensajes de "sin inventario" son los de siempre', () => {
-    expect(mensajeSinInventario()).toBe('No tenemos esa pieza en inventario ahorita, pero te avisamos en cuanto algún yonke la registre.');
-    expect(mensajeSinInventario({ vehiculo: true })).toBe('No tenemos ese vehículo en inventario ahorita, pero te avisamos en cuanto algún yonke lo registre.');
-    expect(mensajeSinInventario({ pedidosClientesActivos: false })).toBe(MENSAJE_SIN_INVENTARIO);
-    expect(mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: false })).toBe(MENSAJE_VEHICULO_SIN_INVENTARIO);
+  it('"sin inventario": promete avisar solo si el cliente dejó su WhatsApp', () => {
+    expect(mensajeSinInventario({ conContacto: true })).toBe('No tenemos esa pieza en inventario ahorita, pero te avisamos en cuanto algún yonke la registre.');
+    expect(mensajeSinInventario({ vehiculo: true, conContacto: true })).toBe('No tenemos ese vehículo en inventario ahorita, pero te avisamos en cuanto algún yonke lo registre.');
+    expect(mensajeSinInventario({ pedidosClientesActivos: false, conContacto: true })).toBe(MENSAJE_SIN_INVENTARIO);
+    expect(mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: false, conContacto: true })).toBe(MENSAJE_VEHICULO_SIN_INVENTARIO);
+    // Sin WhatsApp: solo "No tenemos … en inventario ahorita."
+    expect(mensajeSinInventario()).toBe('No tenemos esa pieza en inventario ahorita.');
+    expect(mensajeSinInventario({ vehiculo: true })).toBe('No tenemos ese vehículo en inventario ahorita.');
+    expect(mensajeSinInventario({ conContacto: false })).toBe(MENSAJE_SIN_INVENTARIO_PEDIDOS);
   });
 });
 
@@ -56,6 +60,7 @@ describe('/api/buscar con config/pedidosClientes PRENDIDA', () => {
   it('el mensaje de "sin inventario" ya no promete avisar', () => {
     expect(mensajeSinInventario({ pedidosClientesActivos: true })).toBe(MENSAJE_SIN_INVENTARIO_PEDIDOS);
     expect(mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: true })).toBe(MENSAJE_VEHICULO_SIN_INVENTARIO_PEDIDOS);
+    expect(mensajeSinInventario({ pedidosClientesActivos: true, conContacto: true })).toBe(MENSAJE_SIN_INVENTARIO_PEDIDOS);
     expect(MENSAJE_SIN_INVENTARIO_PEDIDOS).not.toMatch(/avisamos/);
     expect(MENSAJE_VEHICULO_SIN_INVENTARIO_PEDIDOS).not.toMatch(/avisamos/);
   });

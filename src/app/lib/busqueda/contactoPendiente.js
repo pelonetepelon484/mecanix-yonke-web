@@ -12,9 +12,13 @@ export const MENSAJE_VEHICULO_SIN_INVENTARIO =
 export const MENSAJE_SIN_INVENTARIO_PEDIDOS = 'No tenemos esa pieza en inventario ahorita.';
 export const MENSAJE_VEHICULO_SIN_INVENTARIO_PEDIDOS = 'No tenemos ese vehículo en inventario ahorita.';
 
-export function mensajeSinInventario({ vehiculo = false, pedidosClientesActivos = false } = {}) {
-  if (vehiculo) return pedidosClientesActivos ? MENSAJE_VEHICULO_SIN_INVENTARIO_PEDIDOS : MENSAJE_VEHICULO_SIN_INVENTARIO;
-  return pedidosClientesActivos ? MENSAJE_SIN_INVENTARIO_PEDIDOS : MENSAJE_SIN_INVENTARIO;
+// conContacto: el cliente dejó su WhatsApp. Solo entonces se promete avisarle (aviso de privacidad,
+// sección 4: "Si nos dejas tu WhatsApp, … avisarte cuando la pieza esté disponible"). Sin él, o con
+// el pedido de clientes encendido, solo "No tenemos … en inventario ahorita."
+export function mensajeSinInventario({ vehiculo = false, pedidosClientesActivos = false, conContacto = false } = {}) {
+  const prometer = conContacto === true && !pedidosClientesActivos;
+  if (vehiculo) return prometer ? MENSAJE_VEHICULO_SIN_INVENTARIO : MENSAJE_VEHICULO_SIN_INVENTARIO_PEDIDOS;
+  return prometer ? MENSAJE_SIN_INVENTARIO : MENSAJE_SIN_INVENTARIO_PEDIDOS;
 }
 
 // Aviso al WhatsApp del admin cuando un cliente deja su contacto en una búsqueda que no dio

@@ -1,4 +1,4 @@
-import { avisoEnvioOtroEstado } from './pedidosClientes';
+import { CONSEJOS_ENVIO } from './pedidosClientes';
 
 // Sección "Disponible en otros estados" de la portada (etapa 2). Lógica pura, sin React: lee la
 // respuesta de /api/buscar y decide qué mostrar. Sin los campos nuevos (banderas apagadas en el
@@ -10,8 +10,11 @@ import { avisoEnvioOtroEstado } from './pedidosClientes';
 //   sinResultadosEnTuEstado). La IP puede equivocarse: las tarjetas conservan Reservar y "Pedir
 //   entrega a mi taller", y el aviso de envío es condicional.
 
-export const AVISO_SIN_ENVIOS = 'ℹ️ Este yonke no anuncia envíos: pregúntale si te la puede mandar.';
-export const AVISO_ENVIO_SI_LEJOS = '📦 Si estás lejos de este yonke, pídele fotos o video y confirma el costo del envío antes de pagar.';
+// Avisos de envío de las tarjetas: los MISMOS textos aprobados de la página de respuestas
+// (/mi-pedido, src/lib/pedidosClientes.ts). Con Envíos nacionales, los consejos de envío
+// (CONSEJOS_ENVIO); sin la insignia, la frase "Es posible que pueda hacer el envío…".
+export const AVISO_SIN_ENVIOS = 'ℹ️ Es posible que pueda hacer el envío hasta tu estado; confírmalo directamente con él antes de pagar.';
+export const AVISO_ENVIO_SI_LEJOS = CONSEJOS_ENVIO;
 export const TEXTO_ELIGE_ESTADO_OTROS = '¿No es tu zona? Elige tu estado';
 
 // Caso a: título y texto del recuadro de la alerta de un paso (AlertaUnPaso, protagonista) cuando
@@ -53,9 +56,8 @@ export function opcionesTarjetaOtroEstado(modo, busqueda) {
   return { conReservar: modo !== 'a', busqueda: busqueda || null };
 }
 
-export function avisoTarjetaOtroEstado(modo, r, estadoNombre) {
-  if (r?.enviosNacionales !== true) return AVISO_SIN_ENVIOS;
-  return modo === 'a' ? avisoEnvioOtroEstado(estadoNombre) : AVISO_ENVIO_SI_LEJOS;
+export function avisoTarjetaOtroEstado(r) {
+  return r?.enviosNacionales === true ? CONSEJOS_ENVIO : AVISO_SIN_ENVIOS;
 }
 
 // Cuadro de mensaje del buscador inteligente (HomeClient): qué partes se dibujan adentro. Una sola

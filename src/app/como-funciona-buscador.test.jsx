@@ -23,7 +23,7 @@ describe('¿Cómo funciona el buscador de Mecanix?', () => {
     render(<ComoFunciona />);
     expect(screen.getByRole('heading', { name: '¿CÓMO FUNCIONA EL BUSCADOR DE MECANIX?' })).toBeInTheDocument();
     for (const t of ['1. Escribe lo que buscas', '2. Elige tu estado (o todos)', '3. Buscamos en los yonkes de la red',
-      '¿La encontramos?', 'Ves qué yonke la tiene', 'WhatsApp o reserva', 'Pagas en persona', 'Busca en otros estados']) {
+      '¿La encontramos?', 'Ves qué yonke la tiene', 'WhatsApp o reserva', 'Confirma antes de pagar', 'Busca en otros estados']) {
       expect(screen.getByText(t)).toBeInTheDocument();
     }
   });
