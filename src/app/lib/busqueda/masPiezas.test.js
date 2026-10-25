@@ -129,3 +129,16 @@ describe('choques de palabras', () => {
     expect(await pieza('filtro de aire sentra 2010')).toBe('Filtro de aire');
   });
 });
+
+describe('"baja" no se corrige a "caja"', () => {
+  it('"Baja California" y "luz baja" no son Caja de fusibles', async () => {
+    expect(await pieza('Baja California')).toBeNull();
+    expect(await pieza('luz baja tsuru 2005')).not.toBe('Caja de fusibles');
+    expect(await pieza('faro baja tsuru 2005')).toBe('Faro');
+  });
+  it('"caja de fusibles" sigue funcionando (y "caja" sola sigue siendo transmisión)', async () => {
+    expect(await pieza('caja de fusibles tsuru 2005')).toBe('Caja de fusibles');
+    expect(await pieza('caja fusibles sentra 2010')).toBe('Caja de fusibles');
+    expect(await pieza('caja tsuru 2005')).toBe('Transmisión');
+  });
+});
