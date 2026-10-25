@@ -5,26 +5,38 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { CATALOGO_BASE } from './catalogoBase';
 
+// Clave para juntar variantes de una marca: sin mayúsculas, sin acentos y sin espacios sobrantes
+// ("dodge", "DODGE", " Dodge " y "Dodge" son la misma).
+const DIACRITICOS = new RegExp('[\\u0300-\\u036f]', 'g');
+const claveMarca = (m) => String(m).normalize('NFD').replace(DIACRITICOS, '').trim().replace(/\s+/g, ' ').toLowerCase();
+
 // Fusiona el catálogo base con el catálogo vivo de Firestore (solo lo lee). La usan todos los
-// selectores de marca/modelo, también los dos de la página principal (HomeClient).
+// selectores de marca/modelo, también los dos de la página principal (HomeClient). Solo en
+// pantalla: cada marca sale una vez, con el nombre del catálogo base si existe (si no, la primera
+// versión del vivo), y los modelos sin repetirse por espacios al inicio o al final. "CR-V" y
+// "crv" todavía salen por separado. Los datos de Firestore no se tocan.
 export async function cargarCatalogoCombinado() {
-  const combinado = {};
-  Object.keys(CATALOGO_BASE).forEach((m) => {
-    combinado[m] = new Set(CATALOGO_BASE[m]);
-  });
+  const porClave = new Map(); // clave -> { nombre, modelos }
+  const agregar = (marca, modelos) => {
+    const clave = claveMarca(marca);
+    if (!clave) return;
+    if (!porClave.has(clave)) porClave.set(clave, { nombre: String(marca).trim().replace(/\s+/g, ' '), modelos: new Set() });
+    (modelos || []).forEach((mo) => {
+      const limpio = String(mo).trim();
+      if (limpio) porClave.get(clave).modelos.add(limpio);
+    });
+  };
+  Object.keys(CATALOGO_BASE).forEach((m) => agregar(m, CATALOGO_BASE[m]));
   try {
     const snap = await getDoc(doc(db, 'config', 'catalogoVehiculos'));
     if (snap.exists()) {
       const vivo = snap.data().catalogo || {};
-      Object.keys(vivo).forEach((m) => {
-        if (!combinado[m]) combinado[m] = new Set();
-        vivo[m].forEach((mo) => combinado[m].add(mo));
-      });
+      Object.keys(vivo).forEach((m) => agregar(m, vivo[m]));
     }
   } catch (e) { console.error('Catálogo vivo no disponible, usando base', e); }
   const final = {};
-  Object.keys(combinado).sort((a, b) => a.localeCompare(b, 'es')).forEach((m) => {
-    final[m] = [...combinado[m]].sort((a, b) => a.localeCompare(b, 'es'));
+  [...porClave.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).forEach(({ nombre, modelos }) => {
+    final[nombre] = [...modelos].sort((a, b) => a.localeCompare(b, 'es'));
   });
   return final;
 }
