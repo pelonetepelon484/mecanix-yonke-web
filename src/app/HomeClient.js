@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { buscarVehiculosPorAnio, buscarVehiculosEnAniosParalelo } from './lib/buscarVehiculosPorAnio';
 import { ESTADO_DEFAULT, estadoDeYonke, cargarEstados } from './lib/estados';
@@ -18,6 +18,7 @@ import VisorFotosVehiculo from './lib/VisorFotosVehiculo';
 import VisorFotos from './lib/VisorFotos';
 import { fotosDeItem } from '../lib/fotosPieza';
 import AvisarYonkes from './AvisarYonkes';
+import { cargarCatalogoCombinado } from './lib/SelectorMarcaModelo';
 import PestanasPortada from './PestanasPortada';
 import { aniosCercanos, ordenarPorCercania } from '../lib/rangoAnios';
 import VentanaAlertas from './VentanaAlertas';
@@ -350,14 +351,9 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   const [resultadosMotoresCercanosLibre, setResultadosMotoresCercanosLibre] = useState([]);
   const [resultadosTransmisionesCercanosLibre, setResultadosTransmisionesCercanosLibre] = useState([]);
 
+  // Misma lista que el resto de los selectores: catálogo base + catálogo vivo (solo lectura).
   useEffect(() => {
-    async function cargarCatalogo() {
-      try {
-        const snap = await getDoc(doc(db, 'config', 'catalogoVehiculos'));
-        if (snap.exists()) setCatalogoVehiculos(snap.data().catalogo || {});
-      } catch (e) { console.error('No se pudo cargar el catálogo', e); }
-    }
-    cargarCatalogo();
+    cargarCatalogoCombinado().then(setCatalogoVehiculos);
   }, []);
 
   // Si este navegador ya envió una reseña de la plataforma antes, no se vuelve a invitar —
