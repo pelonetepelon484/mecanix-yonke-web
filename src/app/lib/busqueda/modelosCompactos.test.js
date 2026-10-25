@@ -198,6 +198,14 @@ describe('modelos populares de 1995 a 2020 y Plymouth', () => {
     expect(await leer('pick up vw 2005')).toMatchObject({ marca: 'Volkswagen', modelo: null });
     expect(await leer('cilindro master renault master 2012')).toMatchObject({ marca: 'Renault', modelo: 'Master' });
   });
+  it('Idea, Hombre y Vision solo con la marca', async () => {
+    for (const texto of ['ni idea', 'un hombre', 'visión nocturna', 'idea 2010', 'hombre 2000', 'vision 2016']) {
+      expect(await leer(texto)).toMatchObject({ marca: null, modelo: null });
+    }
+    expect(await leer('fiat idea 2010')).toMatchObject({ marca: 'Fiat', modelo: 'Idea', pregunta: false });
+    expect(await leer('isuzu hombre 2000')).toMatchObject({ marca: 'Isuzu', modelo: 'Hombre', pregunta: false });
+    expect(await leer('dodge vision 2016')).toMatchObject({ marca: 'Dodge', modelo: 'Vision', pregunta: false });
+  });
   it('palabras comunes no se corrigen hacia los modelos nuevos', async () => {
     for (const texto of ['cosa 2005', 'trafico 2005', 'ideas 2005', 'experto 2005', 'estilo 2005', 'pasaporte 2005']) {
       expect(await leer(texto)).toMatchObject({ marca: null, modelo: null });

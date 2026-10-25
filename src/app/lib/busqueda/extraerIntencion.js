@@ -58,7 +58,7 @@ const MODELOS_RAM_EXCLUSIVOS = (CATALOGO_BASE['RAM'] || []).filter((modelo) => {
 // nuevos de 3 caracteres o menos ("ka", "cc", "cl", "mr2", "306"…).
 const MODELOS_GENERICOS = new Set([
   'pickup', 'estacas', 'note', 'beat', 'groove', 'venue', 'avanza', 'one', 'han', 'king', 'seal', 'hunter', 'unit',
-  'master', 'sedan', 'baja', 'express', 'up', 'rush', 'punto',
+  'master', 'sedan', 'baja', 'express', 'up', 'rush', 'punto', 'idea', 'hombre', 'vision',
   'ka', 'cc', 'cl', 'mr2', 'rx8', 'mpv', 'wrx', 'brz', 'rsx', 'crz', '306', '406', '407',
 ]);
 // Términos de pieza, carrocería o medida: además de pedir la marca, solo cuentan JUSTO después de
