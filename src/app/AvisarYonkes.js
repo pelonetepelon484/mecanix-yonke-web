@@ -61,13 +61,14 @@ export async function enviarAlertaCliente(datos, idsEstados, { otrosEstadosActiv
 
 // titulo (opcional): encabezado en negritas. mensaje (opcional): texto arriba del botón, en lugar del
 // de siempre. destacado: recuadro más visible (lo usa la página principal cuando no hay el año
-// exacto). Sin ellos se ve como siempre.
+// exacto). Sin ellos se ve como siempre. abiertoDeEntrada: el formulario sale abierto, sin tocar el
+// botón (hoy la página principal no lo usa: el formulario completo no se abre de entrada).
 export default function AvisarYonkes({
   marcaInicial = '', modeloInicial = '', anioInicial = '', piezaInicial = '', estadoInicial = '',
-  titulo = '', mensaje = '', destacado = false,
+  titulo = '', mensaje = '', destacado = false, abiertoDeEntrada = false,
 }) {
   const [habilitado, setHabilitado] = useState(false);
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto] = useState(abiertoDeEntrada);
   const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [marca, setMarca] = useState(marcaInicial);
   const [modelo, setModelo] = useState(modeloInicial);
@@ -86,8 +87,10 @@ export default function AvisarYonkes({
     let cancelado = false;
     leerBanderaPedidosClientes().then((v) => { if (!cancelado) setHabilitado(v); });
     leerBanderaOtrosEstados().then((v) => { if (!cancelado) setOtrosEstadosActivo(v); });
+    // Abierto de entrada: los estados se cargan aquí (normalmente los carga abrir()).
+    if (abiertoDeEntrada) cargarEstados().then((lista) => { if (!cancelado) setEstados(lista); }).catch(() => {});
     return () => { cancelado = true; };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function abrir() {
     setAbierto(true);

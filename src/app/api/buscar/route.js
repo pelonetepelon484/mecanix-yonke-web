@@ -15,7 +15,7 @@ import { notificarAdmin } from '../../lib/notificarAdmin';
 import { debeMostrarAvisoPiezaSinVehiculo } from '../../../lib/piezaSinVehiculo';
 import { EJEMPLO_BUSQUEDA_CORRECTA } from '../../lib/busqueda/ejemploBusqueda';
 import { crearPersistirContacto, mensajeSinInventario } from '../../lib/busqueda/contactoPendiente';
-import { inventarioVehiculosActivoServer, pedidosClientesActivos } from '../../lib/busqueda/banderaPedidosClientesServer';
+import { formularioAbiertoServer, inventarioVehiculosActivoServer, pedidosClientesActivos } from '../../lib/busqueda/banderaPedidosClientesServer';
 import { rangoAniosServer, otrosEstadosPorIpServer, respaldoVehiculoServer } from '../../lib/busqueda/configBuscadorServer';
 import { estadoDelVisitante, repartoPorIp, sinEstadoYonke } from '../../lib/busqueda/otrosEstadosPorIp';
 import { sinYonkesYaMostrados } from '../../lib/buscarVehiculosAlerta';
@@ -431,7 +431,38 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
   return respuestaConResultados(respuesta, porIp, datosDeLaBusqueda({ marca, modelo, anio }));
 }
 
+// Formulario de la alerta abierto de entrada (config/pedidosClientes.formularioAbierto): el servidor
+// lo avisa en la respuesta, solo en las búsquedas sin resultado en que la alerta sale como
+// protagonista — sin_inventario, no_catalogado, sin_yonkes_estado y "resultados" que solo hay en
+// otros estados (sin_en_tu_zona en la página). Así el navegador no hace lecturas extra. Si la
+// bandera no se puede leer, la respuesta queda igual que siempre.
+const ESTADOS_FORMULARIO_ABIERTO = new Set(['sin_inventario', 'no_catalogado', 'sin_yonkes_estado']);
+export function admiteFormularioAbierto(data) {
+  return ESTADOS_FORMULARIO_ABIERTO.has(data?.estado) || (data?.estado === 'resultados' && Boolean(data?.sinResultadosEnTuEstado));
+}
+
 export async function POST(request) {
+  const respuesta = await procesarBusqueda(request);
+  let data;
+  try {
+    data = await respuesta.clone().json();
+  } catch {
+    return respuesta;
+  }
+  if (!admiteFormularioAbierto(data)) return respuesta;
+  let abierto = false;
+  try {
+    abierto = await formularioAbiertoServer();
+  } catch (error) {
+    console.error('[buscar] No se pudo leer config/pedidosClientes.formularioAbierto; se asume apagada', { message: error?.message });
+  }
+  if (!abierto) return respuesta;
+  const headers = new Headers(respuesta.headers);
+  headers.delete('content-length');
+  return NextResponse.json({ ...data, formularioAbierto: true }, { status: respuesta.status, headers });
+}
+
+async function procesarBusqueda(request) {
   let body;
   try {
     body = await request.json();

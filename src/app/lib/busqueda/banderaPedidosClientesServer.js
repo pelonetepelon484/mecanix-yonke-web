@@ -29,3 +29,10 @@ export async function pedidosClientesActivos() {
 export async function inventarioVehiculosActivoServer() {
   return inventarioVehiculosActivo(await leerConfig());
 }
+
+// Tercera bandera, mismo documento y misma caché: formulario de la alerta abierto de entrada en las
+// búsquedas sin resultado (config/pedidosClientes.formularioAbierto). Sin el campo, apagada.
+export async function formularioAbiertoServer() {
+  const config = await leerConfig();
+  return config?.habilitado === true && config?.formularioAbierto === true;
+}
