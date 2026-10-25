@@ -85,7 +85,7 @@ async function responderPiezaSinVehiculo({ texto, pieza, marca, anio, contacto, 
 }
 
 const MENSAJE_NO_CATALOGADO =
-  'No identificamos ese modelo todavía — ¿nos confirmas la marca y el año? o cuéntanos qué modelo es y lo agregamos a la plataforma.';
+  'No identificamos ese modelo todavía — ¿nos confirmas la marca y el año?';
 const MENSAJE_FUERA_DE_GIRO =
   'Este buscador es solo para encontrar autopartes usadas en yonkes — no identificamos una búsqueda de pieza o vehículo en tu mensaje.';
 const MENSAJE_PARSEO_PARCIAL =

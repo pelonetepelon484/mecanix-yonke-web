@@ -16,7 +16,7 @@ import {
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 // Mismo botón en los dos lugares donde se ofrece (sin resultados y sin el año exacto).
-export const TEXTO_BOTON_ALERTA = '🚨 Activar alerta de búsqueda 🚨';
+export const TEXTO_BOTON_ALERTA = '🚨 Activa una alerta de búsqueda 🚨';
 
 // Envío compartido por este formulario y el de un paso (AlertaUnPaso.js): valida con
 // validarPedidoCliente y crea la alerta en /api/pedir-pieza. Devuelve { ok: true, enlace } o

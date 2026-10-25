@@ -74,13 +74,13 @@ describe('OtrosEstadosResultados', () => {
     expect(screen.queryByText(TEXTO_ELIGE_ESTADO_OTROS)).not.toBeInTheDocument();
   });
 
-  it('caso b: título suave, aviso condicional y "¿No es tu zona?" que elige estado y repite la búsqueda', () => {
+  it('caso b: título suave, aviso condicional y "¿No es tu estado?" que elige estado y repite la búsqueda', () => {
     const onElegirEstado = vi.fn();
     render(<OtrosEstadosResultados
       info={{ modo: 'b', grupos, busqueda }} renderTarjeta={renderTarjeta} onElegirEstado={onElegirEstado}
       estados={[{ id: 'baja-california', nombre: 'Baja California' }, { id: 'sonora', nombre: 'Sonora' }]}
     />);
-    expect(screen.getByRole('heading')).toHaveTextContent('No encontramos en tu zona. Esto es lo que hay en otros estados');
+    expect(screen.getByRole('heading')).toHaveTextContent('No encontramos en tu estado. Esto es lo que hay en otros estados');
     expect(screen.getAllByText(AVISO_ENVIO_SI_LEJOS)).toHaveLength(2);
     expect(screen.getByText(AVISO_SIN_ENVIOS)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: TEXTO_ELIGE_ESTADO_OTROS }));
@@ -150,9 +150,11 @@ describe('recuadro azul cuando abajo SÍ hay resultados de otros estados (seMues
       expect(cuadroMensajeTieneContenido(partes)).toBe(false);
     }
   });
-  it('con la alerta de un paso APAGADA: el recuadro sigue (no queda el cliente sin explicación)', () => {
-    const partes = partesCuadroMensaje({ tipo: 'sin_yonkes_estado', alertaUnPaso: false, estadoBusqueda: 'jalisco', conOtrosEstados: true, seMuestranOtrosEstados: true });
-    expect(partes.texto).toBe(true);
+  it('sin la alerta de un paso: "Prueba buscando en Todos los estados" (sin_yonkes_estado) también se oculta; el de sin_inventario sigue (es la única explicación)', () => {
+    const sinYonkes = partesCuadroMensaje({ tipo: 'sin_yonkes_estado', alertaUnPaso: false, estadoBusqueda: 'jalisco', conOtrosEstados: true, seMuestranOtrosEstados: true });
+    expect(cuadroMensajeTieneContenido(sinYonkes)).toBe(false);
+    const sinInventario = partesCuadroMensaje({ tipo: 'sin_inventario', alertaUnPaso: false, estadoBusqueda: 'jalisco', conOtrosEstados: true, seMuestranOtrosEstados: true });
+    expect(sinInventario.texto).toBe(true);
   });
   it('si se buscó en otros estados SIN encontrar nada, el texto sigue', () => {
     const partes = partesCuadroMensaje({ tipo: 'sin_yonkes_estado', alertaUnPaso: true, estadoBusqueda: 'jalisco', conOtrosEstados: true, seMuestranOtrosEstados: false });

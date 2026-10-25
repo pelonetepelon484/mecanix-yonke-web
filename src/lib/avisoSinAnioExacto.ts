@@ -1,4 +1,4 @@
-// "No encontramos tu [marca] [modelo] [año] exacta." + "Activar alerta de búsqueda": cuándo
+// "No encontramos el año exacto de tu [marca] [modelo] [año]." + "Activa una alerta de búsqueda": cuándo
 // se ofrece la alerta (el formulario AvisarYonkes) ARRIBA de los resultados de la página principal (buscador con
 // IA y búsqueda avanzada). Solo cambia lo que se muestra; la búsqueda (±4 años, cualquier año)
 // sigue exactamente igual.
@@ -20,7 +20,7 @@ export function debeOfrecerAvisoSinAnioExacto({ tipoBusqueda, tipoResultado, hay
 
 export function tituloAvisoSinAnioExacto({ marca, modelo, anio }: { marca?: unknown; modelo?: unknown; anio?: unknown }): string {
   const vehiculo = [marca, modelo, anio].map((v) => String(v ?? '').trim()).filter(Boolean).join(' ');
-  return `No encontramos tu ${vehiculo} exacta.`;
+  return `No encontramos el año exacto de tu ${vehiculo}.`;
 }
 
 export const MENSAJE_AVISO_SIN_ANIO_EXACTO =

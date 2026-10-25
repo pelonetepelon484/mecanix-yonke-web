@@ -1,6 +1,6 @@
 'use client';
 
-// Recuadro "No encontramos tu [marca] [modelo] [año] exacta." con "🚨 Activar alerta de búsqueda 🚨"
+// Recuadro "No encontramos el año exacto de tu [marca] [modelo] [año]." con "🚨 Activa una alerta de búsqueda 🚨"
 // arriba de los resultados de años cercanos o de cualquier año (buscador con IA y búsqueda
 // avanzada usan la misma sección de resultados de HomeClient). Es el mismo formulario
 // "Avisar a los yonkes", prellenado con lo que buscó el cliente; con config/pedidosClientes

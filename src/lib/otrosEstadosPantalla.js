@@ -12,7 +12,7 @@ import { avisoEnvioOtroEstado } from './pedidosClientes';
 
 export const AVISO_SIN_ENVIOS = 'ℹ️ Este yonke no anuncia envíos: pregúntale si te la puede mandar.';
 export const AVISO_ENVIO_SI_LEJOS = '📦 Si estás lejos de este yonke, pídele fotos o video y confirma el costo del envío antes de pagar.';
-export const TEXTO_ELIGE_ESTADO_OTROS = '¿No es tu zona? Elige tu estado';
+export const TEXTO_ELIGE_ESTADO_OTROS = '¿No es tu estado? Elígelo aquí';
 
 // Caso a: título y texto del recuadro de la alerta de un paso (AlertaUnPaso, protagonista) cuando
 // abajo sí hay resultados de otros estados. El botón de la alerta no cambia.
@@ -44,7 +44,7 @@ export function leerOtrosEstados(data) {
 export function tituloOtrosEstados(modo, nombreEstadoCliente) {
   return modo === 'a'
     ? `No hay en ${nombreEstadoCliente}. Esto es lo que hay en otros estados`
-    : 'No encontramos en tu zona. Esto es lo que hay en otros estados';
+    : 'No encontramos en tu estado. Esto es lo que hay en otros estados';
 }
 
 // Opciones que reciben las tarjetas de la sección. Reservar y "Pedir entrega" solo se quitan en el
@@ -62,8 +62,10 @@ export function avisoTarjetaOtroEstado(modo, r, estadoNombre) {
 // fuente para cada parte y para decidir si el cuadro tiene algo; sin nada adentro no se dibuja
 // (antes quedaba una franja vacía con la alerta de un paso + estado elegido + otros estados).
 // - texto: oculto con la alerta de un paso y sin_inventario (el título de la alerta ya lo dice), y
-//   con la alerta de un paso cuando abajo SÍ se muestran resultados de otros estados
-//   (seMuestranOtrosEstados): "Prueba buscando en Todos los estados" los contradiría;
+//   cuando abajo SÍ se muestran resultados de otros estados (seMuestranOtrosEstados): con
+//   sin_yonkes_estado SIEMPRE ("Prueba buscando en Todos los estados" los contradiría, haya o no
+//   alerta de un paso) y con sin_inventario solo con la alerta de un paso (sin ella, su texto
+//   "No tenemos esa pieza en inventario ahorita." no contradice nada y es la única explicación);
 // - confirmar: "Sí, buscar así / No, corregir";
 // - botonTodos: "Buscar en todos los estados", solo con un estado elegido y cuando el servidor NO
 //   buscó ya en otros estados (conOtrosEstados: llegó la sección o otrosEstadosRevisados). Así
@@ -71,7 +73,7 @@ export function avisoTarjetaOtroEstado(modo, r, estadoNombre) {
 export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados, seMuestranOtrosEstados = false }) {
   return {
     texto: !(alertaUnPaso && tipo === 'sin_inventario')
-      && !(alertaUnPaso && seMuestranOtrosEstados && ['sin_inventario', 'sin_yonkes_estado'].includes(tipo)),
+      && !(seMuestranOtrosEstados && (tipo === 'sin_yonkes_estado' || (alertaUnPaso && tipo === 'sin_inventario'))),
     confirmar: tipo === 'confirmar',
     botonTodos: ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(tipo) && estadoBusqueda !== 'todos' && !conOtrosEstados,
   };

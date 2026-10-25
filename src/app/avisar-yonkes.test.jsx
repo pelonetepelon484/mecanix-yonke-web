@@ -52,7 +52,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, id: 'X', enlace: 'https://m.test/mi-pedido/X?c=COD' }) }));
     const AvisarYonkes = await cargar();
     render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" estadoInicial="sonora" />);
-    fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+    fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
     expect(screen.getByText(/Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes\./)).toBeInTheDocument();
     expect(screen.getByText(/Al enviar aceptas los/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'términos' })).toHaveAttribute('href', 'https://mecanixyonkevirtual.com/terminos');
@@ -85,7 +85,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false, mensaje: 'Ya enviaste 3 alertas hoy con este WhatsApp. Intenta mañana.' }) }));
     const AvisarYonkes = await cargar();
     render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-    fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+    fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
     fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/WhatsApp a 10 dígitos/);
     expect(global.fetch).not.toHaveBeenCalled();
@@ -111,7 +111,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
       expect(screen.queryByText(/aceptas que la información que capturaste/)).not.toBeInTheDocument();
       expect(Object.keys(await enviar())).not.toContain('aceptaOtrosEstados');
@@ -122,7 +122,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
       expect(await screen.findByRole('checkbox', CASILLA)).toBeChecked();
       const enlaces = screen.getAllByRole('link', { name: 'Aviso de privacidad' }).map((l) => l.getAttribute('href'));
       expect(enlaces).toContain('https://mecanixyonkevirtual.com/privacidad#pedidos-clientes');
@@ -140,7 +140,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
       fireEvent.click(await screen.findByRole('checkbox', CASILLA));
       expect(screen.getByRole('checkbox', CASILLA)).not.toBeChecked();
       expect((await enviar()).aceptaOtrosEstados).toBe(false);
@@ -153,10 +153,10 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
       fireEvent.click(await screen.findByRole('checkbox', CASILLA));
       fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activar alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
       expect(await screen.findByRole('checkbox', CASILLA)).not.toBeChecked();
       expect((await enviar()).aceptaOtrosEstados).toBe(false);
     });

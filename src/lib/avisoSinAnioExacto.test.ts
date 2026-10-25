@@ -24,12 +24,12 @@ describe('cuándo se ofrece "Avisar a los yonkes" arriba de los resultados', () 
 describe('texto del recuadro', () => {
   it('lleva marca, modelo y año que buscó el cliente', () => {
     expect(tituloAvisoSinAnioExacto({ marca: 'Toyota', modelo: 'Tacoma', anio: '2015' }))
-      .toBe('No encontramos tu Toyota Tacoma 2015 exacta.');
+      .toBe('No encontramos el año exacto de tu Toyota Tacoma 2015.');
     expect(MENSAJE_AVISO_SIN_ANIO_EXACTO)
       .toBe('Si quieres, activa una alerta de búsqueda: los yonkes verán tu pedido (sin tus datos de contacto) y te responderán aquí si tienen la pieza.');
   });
   it('si falta el modelo no deja huecos', () => {
     expect(tituloAvisoSinAnioExacto({ marca: 'Toyota', modelo: '', anio: 2015 }))
-      .toBe('No encontramos tu Toyota 2015 exacta.');
+      .toBe('No encontramos el año exacto de tu Toyota 2015.');
   });
 });

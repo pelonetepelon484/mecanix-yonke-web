@@ -7,8 +7,8 @@
 // - variante="protagonista": bloque grande "No tenemos ese vehículo todavía" (sin resultados). Con
 //   titulo/texto (opcionales) se cambian SOLO ese título y ese texto (p. ej. cuando abajo hay
 //   resultados de otros estados); el botón y el formulario de la alerta no cambian.
-// - variante="discreta": "¿No encontraste la pieza exacta? Crea una alerta" (debajo de resultados).
-// - variante="compacta": "¿No era lo que buscabas? Crea una alerta aquí", chica pero a la vista,
+// - variante="discreta": "¿No encontraste la pieza exacta? Activa una alerta" (debajo de resultados).
+// - variante="compacta": "¿No era lo que buscabas? Activa una alerta aquí", chica pero a la vista,
 //   ARRIBA de los resultados (config/pedidosClientes.alertaSiempre).
 // Sin la bandera (o sin config/pedidosClientes.habilitado) no muestra NADA.
 import { useEffect, useState } from 'react';
@@ -20,10 +20,10 @@ import { enlaceGuardarPorWhatsapp } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 export const TITULO_SIN_RESULTADOS = 'No tenemos ese vehículo todavía';
-export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Crea una alerta';
-export const TEXTO_COMPACTO = '¿No era lo que buscabas? Crea una alerta aquí';
+export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Activa una alerta';
+export const TEXTO_COMPACTO = '¿No era lo que buscabas? Activa una alerta aquí';
 export const textoSinResultados = (estadoNombre) =>
-  `Crea una alerta: los yonkes de ${estadoNombre || 'tu estado'} la verán y te responderán con su precio.`;
+  `Activa una alerta: los yonkes de ${estadoNombre || 'tu estado'} la verán y te responderán con su precio.`;
 export const textoConfirmacion = (estadoNombre) =>
   `✅ Listo, los yonkes de ${estadoNombre} ya pueden ver tu búsqueda. Aquí verás sus respuestas:`;
 
