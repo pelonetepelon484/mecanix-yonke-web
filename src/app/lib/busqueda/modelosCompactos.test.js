@@ -167,6 +167,45 @@ describe('modelos y marcas nuevos del catálogo base (México)', () => {
   });
 });
 
+describe('modelos populares de 1995 a 2020 y Plymouth', () => {
+  const casos = [
+    ['dodge atos 2008', 'Dodge', 'Atos'], ['dodge i10 2015', 'Dodge', 'i10'], ['dodge h100 2005', 'Dodge', 'H100'],
+    ['renault master 2012', 'Renault', 'Master'], ['vw sedan 1998', 'Volkswagen', 'Sedán'], ['volkswagen sedán 2001', 'Volkswagen', 'Sedán'],
+    ['subaru baja 2004', 'Subaru', 'Baja'], ['chevrolet express 2010', 'Chevrolet', 'Express'], ['vw up 2016', 'Volkswagen', 'Up!'],
+    ['ford ka 2005', 'Ford', 'Ka'], ['toyota mr2 1995', 'Toyota', 'MR2'], ['toyota rush 2019', 'Toyota', 'Rush'], ['fiat punto 2010', 'Fiat', 'Punto'],
+    ['jetta clasico 2012', 'Volkswagen', 'Jetta Clásico'], ['montero sport 2010', 'Mitsubishi', 'Montero Sport'], ['tornado 2012', 'Chevrolet', 'Tornado'],
+    ['ikon 2008', 'Ford', 'Ikon'], ['lucino 1999', 'Nissan', 'Lucino'], ['verna 2005', 'Dodge', 'Verna'], ['sport trac 2005', 'Ford', 'Sport Trac'],
+    ['plymouth breeze 1998', 'Plymouth', 'Breeze'], ['plymouth neon 1998', 'Plymouth', 'Neon'],
+  ];
+  it.each(casos)('"%s" -> %s %s', async (texto, marca, modelo) => {
+    expect(await leer(texto)).toMatchObject({ marca, modelo, pregunta: false });
+  });
+  it('sin marca, Atos, i10 y H100 siguen siendo Hyundai', async () => {
+    for (const [texto, modelo] of [['atos 2008', 'Atos'], ['i10 2015', 'i10'], ['h100 2005', 'H100']]) {
+      expect(await leer(texto)).toMatchObject({ marca: 'Hyundai', modelo });
+    }
+  });
+  it('términos de pieza y carrocería no son modelo: "cilindro master", "defensa de sedán", "Baja California", "envío express"', async () => {
+    for (const texto of ['cilindro master 2010', 'bomba master de freno', 'defensa de sedán 2005', 'Baja California', 'envío express', 'master 2010', 'sedan 2005', 'punto 2005']) {
+      expect(await leer(texto)).toMatchObject({ marca: null, modelo: null });
+    }
+    // Con la marca, solo cuentan JUSTO después de ella.
+    expect(await leer('cilindro master renault 2010')).toMatchObject({ marca: 'Renault', modelo: null });
+    expect(await leer('defensa de sedán vw 2005')).toMatchObject({ marca: 'Volkswagen', modelo: null });
+    expect(await leer('luz baja subaru 2005')).toMatchObject({ marca: 'Subaru', modelo: null });
+    expect(await leer('caja de cambios subaru 2005')).toMatchObject({ marca: 'Subaru', modelo: null });
+    expect(await leer('1500 cc vw 2005')).toMatchObject({ marca: 'Volkswagen', modelo: null });
+    expect(await leer('pick up vw 2005')).toMatchObject({ marca: 'Volkswagen', modelo: null });
+    expect(await leer('cilindro master renault master 2012')).toMatchObject({ marca: 'Renault', modelo: 'Master' });
+  });
+  it('palabras comunes no se corrigen hacia los modelos nuevos', async () => {
+    for (const texto of ['cosa 2005', 'trafico 2005', 'ideas 2005', 'experto 2005', 'estilo 2005', 'pasaporte 2005']) {
+      expect(await leer(texto)).toMatchObject({ marca: null, modelo: null });
+    }
+    expect(await leer('wiper motor 2005')).toMatchObject({ marca: null, modelo: null, pieza: 'Motor de limpiaparabrisas' });
+  });
+});
+
 describe('lo que ya funcionaba sigue igual', () => {
   const casos = [
     ['mazda 3 2015', 'Mazda', '3'], ['dodge ram 1500 2010', 'Dodge', 'Ram 1500'], ['dodge ram 700', 'RAM', '700'],

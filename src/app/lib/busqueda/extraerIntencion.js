@@ -24,6 +24,7 @@ const ALIAS_MARCA = {
   'renault': 'Renault', 'peugeot': 'Peugeot', 'seat': 'SEAT', 'fiat': 'Fiat', 'ram': 'RAM',
   'isuzu': 'Isuzu', 'hummer': 'Hummer', 'scion': 'Scion', 'geo': 'Geo',
   'land rover': 'Land Rover', 'landrover': 'Land Rover', 'mini': 'Mini', 'smart': 'Smart',
+  'plymouth': 'Plymouth',
 };
 
 // Alias cortos que solo cuentan como palabra completa, no dentro de otra palabra: "mg" está dentro
@@ -52,8 +53,35 @@ const MODELOS_RAM_EXCLUSIVOS = (CATALOGO_BASE['RAM'] || []).filter((modelo) => {
 // Nombres de modelo genéricos (en compacto): solo cuentan como modelo si la marca viene en el
 // texto. Sin marca, "pickup 1990 defensa" NO debe volverse Toyota (ni ninguna otra marca).
 // Lo mismo para nombres que chocan con palabras comunes: "no avanza", "me han dicho", "king cab",
-// "seal" (retén), "alineación hunter", "beat", "note", "one"…
-const MODELOS_GENERICOS = new Set(['pickup', 'estacas', 'note', 'beat', 'groove', 'venue', 'avanza', 'one', 'han', 'king', 'seal', 'hunter', 'unit']);
+// "seal" (retén), "alineación hunter", "beat", "note", "one"…; con términos de pieza o carrocería
+// ("cilindro master", "defensa de sedán", "luz baja", "envío express", "pick up"), y los modelos
+// nuevos de 3 caracteres o menos ("ka", "cc", "cl", "mr2", "306"…).
+const MODELOS_GENERICOS = new Set([
+  'pickup', 'estacas', 'note', 'beat', 'groove', 'venue', 'avanza', 'one', 'han', 'king', 'seal', 'hunter', 'unit',
+  'master', 'sedan', 'baja', 'express', 'up', 'rush', 'punto',
+  'ka', 'cc', 'cl', 'mr2', 'rx8', 'mpv', 'wrx', 'brz', 'rsx', 'crz', '306', '406', '407',
+]);
+// Términos de pieza, carrocería o medida: además de pedir la marca, solo cuentan JUSTO después de
+// ella ("renault master", "vw sedan", "subaru baja") y nunca por parecido. Así "cilindro master
+// renault", "defensa de sedán vw", "luz baja subaru", "1500 cc vw" o "pick up vw" no son modelo.
+const MODELOS_JUNTO_A_MARCA = new Set(['master', 'sedan', 'baja', 'express', 'up', 'cc']);
+// Genéricos solo en UNA marca: Dodge vendió en México el Atos, el i10 y el H100 de Hyundai. Sin
+// marca siguen siendo Hyundai; "dodge atos" sí es Dodge.
+const MODELOS_GENERICOS_POR_MARCA = { Dodge: new Set(['atos', 'i10', 'h100']) };
+function esGenerico(marca, clave) {
+  return MODELOS_GENERICOS.has(clave) || Boolean(MODELOS_GENERICOS_POR_MARCA[marca]?.has(clave));
+}
+// Palabras con las que se escribe la marca ("vw", "volkswagen"…), para MODELOS_JUNTO_A_MARCA.
+function palabrasDeMarca(marca) {
+  const set = new Set(normalizar(marca).split(/\s+/));
+  for (const [alias, canonica] of Object.entries(ALIAS_MARCA)) {
+    if (canonica === marca) normalizar(alias).split(/\s+/).forEach((w) => set.add(w));
+  }
+  return set;
+}
+function vaJuntoAMarca(tokensTexto, inicio, marca) {
+  return inicio > 0 && palabrasDeMarca(marca).has(tokensTexto[inicio - 1]);
+}
 
 // Búsqueda en compacto SIN marca: solo modelos de 4+ letras/números en compacto, más esta lista
 // corta de modelos populares de 3 que no chocan con otro modelo, con una palabra común, con una
@@ -107,9 +135,10 @@ function limpiarToken(token) {
 // "6" (Mazda) o multi-palabra como "Serie 3" (BMW) casen exacto sin los falsos positivos
 // que un regex \b tendría contra tokens compuestos con guion (ej. "cx-3" contiene un "3"
 // delimitado por \b, pero como TOKEN completo "cx-3" nunca es igual a "3").
-function contieneSecuenciaTokens(tokensTexto, tokensModelo) {
+function contieneSecuenciaTokens(tokensTexto, tokensModelo, aceptarInicio = () => true) {
   if (tokensModelo.length === 0) return false;
   for (let i = 0; i <= tokensTexto.length - tokensModelo.length; i++) {
+    if (!aceptarInicio(i)) continue;
     let coincide = true;
     for (let j = 0; j < tokensModelo.length; j++) {
       if (tokensTexto[i + j] !== tokensModelo[j]) { coincide = false; break; }
@@ -138,7 +167,8 @@ function buscarModeloCompacto(tokensConVacios, anioStr, marcasAProbar, catalogo,
       for (const marca of marcasAProbar) {
         const modelo = (catalogo[marca] || []).find((m) => {
           if (compactarModelo(m) !== clave) return false;
-          if (!conMarca && MODELOS_GENERICOS.has(clave)) return false;
+          if (!conMarca && esGenerico(marca, clave)) return false;
+          if (MODELOS_JUNTO_A_MARCA.has(clave) && !vaJuntoAMarca(tokensTexto, i, marca)) return false;
           const tokensModelo = normalizar(m).split(/\s+/).filter(Boolean);
           return !(tokensModelo.length === ventana.length && tokensModelo.every((t, j) => t === ventana[j]));
         });
@@ -203,9 +233,10 @@ async function extraerMarcaModelo(textoNormalizado, anio) {
     const modelos = catalogo[marca] || [];
     for (const modelo of modelos) {
       // Genéricos ("Pickup", "Estacas") solo con la marca en el texto.
-      if (!marcaEncontrada && MODELOS_GENERICOS.has(compactarModelo(modelo))) continue;
+      if (!marcaEncontrada && esGenerico(marca, compactarModelo(modelo))) continue;
       const tokensModelo = normalizar(modelo).split(/\s+/).filter(Boolean);
-      if (contieneSecuenciaTokens(tokensTexto, tokensModelo)) {
+      const aceptarInicio = MODELOS_JUNTO_A_MARCA.has(compactarModelo(modelo)) ? (i) => vaJuntoAMarca(tokensTexto, i, marca) : undefined;
+      if (contieneSecuenciaTokens(tokensTexto, tokensModelo, aceptarInicio)) {
         modeloEncontrado = modelo;
         marcaDelModelo = marca;
         palabrasDelModelo = tokensModelo.length;
@@ -270,7 +301,9 @@ async function extraerMarcaModelo(textoNormalizado, anio) {
       let encontrado = null;
       for (const m of marcasABuscar) {
         // Sin marca en el texto, los modelos genéricos tampoco se adivinan por parecido.
-        const candidatos = (catalogo[m] || []).filter((x) => marca || !MODELOS_GENERICOS.has(compactarModelo(x)));
+        // Los términos de pieza (MODELOS_JUNTO_A_MARCA) nunca: "caja" no es "Baja".
+        const candidatos = (catalogo[m] || []).filter((x) => !MODELOS_JUNTO_A_MARCA.has(compactarModelo(x))
+          && (marca || !esGenerico(m, compactarModelo(x))));
         const candidato = mejorCandidatoDifuso(palabra, candidatos);
         if (candidato) { encontrado = { marca: m, modelo: candidato }; break; }
       }

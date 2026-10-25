@@ -45,4 +45,9 @@ export const PALABRAS_EXCLUIDAS_DIFUSO = new Set([
   // "poder"~"Poer", "modelo"~"Model 3", "magneto"~"Magnite", "giro"~"Niro", "radiator"~"Aviator").
   'ventana', 'ventanas', 'poder', 'modelo', 'model', 'magneto', 'giro', 'nido', 'lona', 'ajos',
   'raiz', 'tank', 'cross', 'expander', 'radiator',
+  // Nombres de modelo que también son palabras comunes: valen tal cual, nunca como typo.
+  'idea', 'vision', 'genesis', 'insight', 'equator', 'sidekick', 'hombre', 'expert', 'esteem',
+  'magnum', 'raider', 'sport', 'trac',
+  // Y palabras comunes a 1-2 letras de esos modelos ("cosa"~"Corsa", "wiper"~"Viper"…).
+  'cosa', 'caja', 'cajas', 'escala', 'trafico', 'wiper', 'wipers', 'ideas', 'experto', 'estilo', 'pasaporte',
 ]);
