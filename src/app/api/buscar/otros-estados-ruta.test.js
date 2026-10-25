@@ -125,6 +125,8 @@ describe('bandera encendida', () => {
     expect(r.resultadosOtrosEstados[0].estado).toBe('sonora');
     expect(r.busqueda).toEqual({ marca: 'Honda', modelo: 'Civic', anio: 2016, pieza: 'Alternador' });
     expect(registro()).toMatchObject({ estado: 'sin_inventario', otrosEstados: { mostrados: 2, yonkeIds: ['SON', 'SON-SIN-ENVIOS'] } });
+    // El estado que eligió el cliente también se guarda (solo en busquedas).
+    expect(registro().estadoBusqueda).toBe('jalisco');
   });
 
   it('no_catalogado: no aplica', async () => {

@@ -73,11 +73,11 @@ function respuestaConResultados(respuesta, porIp, busqueda) {
 // Registra y responde el aviso de "pieza sin vehículo" — usado tanto en el flujo normal (recién
 // interpretado) como en el de "confirmado" (cuando el cliente ya venía de aclarar un typo o una
 // cilindrada), para que ninguno de los dos pueda colarse a una búsqueda sin vehículo suficiente.
-async function responderPiezaSinVehiculo({ texto, pieza, marca, anio, contacto, origen, tieneContacto, estadoGeografico, ciudad, pais }) {
+async function responderPiezaSinVehiculo({ texto, pieza, marca, anio, contacto, origen, tieneContacto, estadoGeografico, ciudad, pais, estadoBusqueda }) {
   await persistirContactoSiExiste(contacto, { texto, pieza, marca, modelo: null, anio, estado: 'pieza_sin_vehiculo' });
   await registrarBusqueda({
     texto, estado: 'pieza_sin_vehiculo', pieza, marca, modelo: null, anio, origen, tieneContacto,
-    estadoGeografico, ciudad, pais, sinVehiculo: true,
+    estadoGeografico, ciudad, pais, estadoBusqueda, sinVehiculo: true,
   });
   return NextResponse.json({
     estado: 'pieza_sin_vehiculo', mensaje: MENSAJE_PIEZA_SIN_VEHICULO, pieza, ejemplo: EJEMPLO_BUSQUEDA_CORRECTA,
@@ -177,7 +177,7 @@ function datosDeLaBusqueda({ marca = null, modelo = null, anio = null, pieza = n
 // y consulta inventario filtrado por esa pieza.
 async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null, numeroDeParteExplicito = false, numeroDeParteSospechoso = false }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
-  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais };
+  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais, estadoBusqueda: estadoFiltro };
   // Señal explícita de SKU/número de parte ("sku 609", "código 609"): 100% segura, así que
   // sustituye el mensaje de "no encontrado" en CUALQUIER punto de esta función donde de otro
   // modo se respondería con no_catalogado/sin_inventario — nunca antes de intentar la búsqueda
@@ -336,7 +336,7 @@ async function resolverBusqueda({ pieza, marca, modelo, anio, cilindrada = null,
 // consultarInventarioVehiculo no filtra/separa por pieza.
 async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExplicito = false }, texto, contacto, origen, estadoFiltro, geo) {
   const tieneContacto = Boolean(contacto);
-  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais };
+  const datosGeo = { estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais, estadoBusqueda: estadoFiltro };
   // Marca sola, sin modelo NI año (ej. "chevrolet" a secas): no hay nada más con qué acotar la
   // búsqueda. Solo se OFRECE la ayuda si de verdad no hay ningún resultado que mostrar (ver los
   // dos usos de estadoYMensajeNoEncontrado abajo) — si la marca sí tiene inventario disponible,
@@ -489,7 +489,7 @@ export async function POST(request) {
     if (debeMostrarAvisoPiezaSinVehiculo({ pieza: datos.pieza, modelo: datos.modelo, cilindrada: datos.cilindrada })) {
       return responderPiezaSinVehiculo({
         texto, pieza: datos.pieza, marca: datos.marca, anio: datos.anio, contacto, origen,
-        tieneContacto: Boolean(contacto), estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
+        tieneContacto: Boolean(contacto), estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais, estadoBusqueda: estadoFiltro,
       });
     }
     return datos.pieza
@@ -503,7 +503,7 @@ export async function POST(request) {
   const { permitido } = filtrarPrevio(texto, await obtenerSinonimosCombinados());
   if (!permitido) {
     await persistirContactoSiExiste(contacto, { texto, estado: 'no_interpretada' });
-    await registrarBusqueda({ texto, estado: 'no_interpretada', origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais });
+    await registrarBusqueda({ texto, estado: 'no_interpretada', origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais, estadoBusqueda: estadoFiltro });
     return NextResponse.json({ estado: 'rechazado', mensaje: MENSAJE_RECHAZO_CAPA0 });
   }
 
@@ -524,7 +524,7 @@ export async function POST(request) {
     await registrarBusqueda({
       texto, estado: 'fuera_de_giro', subtipo: categoria,
       pieza: intencion.pieza, marca: intencion.marca, modelo: intencion.modelo, anio: intencion.anio,
-      origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
+      origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais, estadoBusqueda: estadoFiltro,
     });
     return NextResponse.json({ estado: 'fuera_de_giro', mensaje: MENSAJE_FUERA_DE_GIRO });
   }
@@ -553,7 +553,7 @@ export async function POST(request) {
   if (intencion.piezaSinVehiculo) {
     return responderPiezaSinVehiculo({
       texto, pieza: intencion.pieza, marca: intencion.marca, anio: intencion.anio, contacto, origen,
-      tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
+      tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais, estadoBusqueda: estadoFiltro,
     });
   }
 
@@ -570,7 +570,7 @@ export async function POST(request) {
       });
       await registrarBusqueda({
         texto, estado: 'numero_de_parte', pieza: intencion.pieza, anio: intencion.anio, origen, tieneContacto,
-        estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
+        estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais, estadoBusqueda: estadoFiltro,
       });
       return NextResponse.json({ estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE });
     }
@@ -584,7 +584,7 @@ export async function POST(request) {
     });
     await registrarBusqueda({
       texto, estado: estadoLog, pieza: intencion.pieza, anio: intencion.anio, origen, tieneContacto,
-      estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
+      estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais, estadoBusqueda: estadoFiltro,
     });
     return NextResponse.json({
       estado: estadoLog,
@@ -625,7 +625,7 @@ export async function POST(request) {
     });
     await registrarBusqueda({
       texto, estado: esNumeroDeParte ? 'numero_de_parte' : 'fuera_de_catalogo', pieza: null, marca: intencion.marca, modelo: null,
-      anio: intencion.anio, origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais,
+      anio: intencion.anio, origen, tieneContacto, estadoGeografico: geo.estado, ciudad: geo.ciudad, pais: geo.pais, estadoBusqueda: estadoFiltro,
     });
     return NextResponse.json(esNumeroDeParte
       ? { estado: 'numero_de_parte', mensaje: MENSAJE_NUMERO_DE_PARTE }

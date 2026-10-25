@@ -10,6 +10,7 @@ import BottomNav from '../BottomNav';
 import CandadoPremium from '../CandadoPremium';
 import { codigoGeoDeEstado } from '../../../lib/estadoGeoMapping';
 import { construirReporteDemanda } from '../../../lib/reporteDemandaYonke';
+import { alcanceResultado } from '../../../lib/alcanceResultado';
 import { CORTE_BUSQUEDAS_CONFIABLES } from '../../lib/busqueda/corteBusquedasConfiables';
 
 const PERIODOS = [
@@ -97,7 +98,9 @@ export default function DemandaPanel() {
             marca: typeof d.marca === 'string' ? d.marca : null,
             modelo: typeof d.modelo === 'string' ? d.modelo : null,
             anio: typeof d.anio === 'number' ? d.anio : null,
-            conResultado: d.conResultado === true,
+            // Solo cuenta como cubierta si hubo resultado: "solo en otros estados" significa que
+            // en el estado de este yonke no hubo, así que es demanda sin cubrir para él.
+            conResultado: alcanceResultado(d) === 'con_resultado',
           }));
         const filasCalculadas = construirReporteDemanda(busquedas, { incluirAnio: INCLUIR_ANIO });
         setFilas(filasCalculadas);
