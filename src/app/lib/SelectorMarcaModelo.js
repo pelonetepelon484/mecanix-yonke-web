@@ -5,8 +5,9 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { CATALOGO_BASE } from './catalogoBase';
 
-// Fusiona el catálogo base con el catálogo vivo de Firestore
-async function cargarCatalogoCombinado() {
+// Fusiona el catálogo base con el catálogo vivo de Firestore (solo lo lee). La usan todos los
+// selectores de marca/modelo, también los dos de la página principal (HomeClient).
+export async function cargarCatalogoCombinado() {
   const combinado = {};
   Object.keys(CATALOGO_BASE).forEach((m) => {
     combinado[m] = new Set(CATALOGO_BASE[m]);
