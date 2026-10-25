@@ -27,7 +27,7 @@ import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
 import { leerBanderaAlertaUnPaso, leerBanderaAlertaSiempre, leerBanderaInventarioVehiculos, useBanderaPedidosClientes } from './lib/banderaPedidosClientes';
 import { cuantosYonkes, verboTener } from '../lib/textoYonkes';
-import { lugarAlertaConResultados, mensajeConAlerta, tituloAlertaProtagonista } from '../lib/alertaSiempre';
+import { TIPOS_SIN_RESULTADO_CON_ALERTA, lugarAlertaConResultados, mensajeConAlerta, tituloAlertaProtagonista } from '../lib/alertaSiempre';
 import AlertaUnPaso from './AlertaUnPaso';
 import OtrosEstadosResultados from './OtrosEstadosResultados';
 import { TITULO_CON_OTROS_ESTADOS, leerOtrosEstados, partesCuadroMensaje, cuadroMensajeTieneContenido, textoConOtrosEstados } from '../lib/otrosEstadosPantalla';
@@ -937,7 +937,10 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
       // estados (la lista normal queda vacía, sin duplicar). Lo demás (marca, pieza...) se guarda
       // igual que siempre: lo usan Reservar y el mensaje de WhatsApp.
       const enOtraZona = otrosEstados?.modo === 'b';
-      setMensajeLibre(enOtraZona ? { tipo: 'sin_en_tu_zona', texto: '', busqueda: data.busqueda || null, otrosEstados } : null);
+      setMensajeLibre(enOtraZona ? {
+        tipo: 'sin_en_tu_zona', texto: '', busqueda: data.busqueda || null, otrosEstados,
+        ...(data.formularioAbierto === true ? { formularioAbierto: true } : {}),
+      } : null);
       setResultadosDeOtroEstado(deOtroEstado);
       setEncabezadoVehiculo(data.encabezadoVehiculo || null);
       setTipoBusqueda('vehiculo');
@@ -999,6 +1002,8 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
         tipo: data.estado, texto: data.mensaje, busqueda: data.busqueda || null,
         ...(otrosEstados ? { otrosEstados } : {}),
         ...(data.otrosEstadosRevisados === true ? { otrosEstadosRevisados: true } : {}),
+        // config/pedidosClientes.formularioAbierto: lo manda el servidor (sin lecturas del navegador).
+        ...(data.formularioAbierto === true ? { formularioAbierto: true } : {}),
       });
       registrarEvento('busqueda_texto_libre', { estado: data.estado, resultados: 0 });
     }
@@ -1781,6 +1786,7 @@ function obtenerEstadoAbierto(horario) {
                   anio={mensajeLibre.busqueda?.anio} pieza={mensajeLibre.busqueda?.pieza ?? mensajeLibre.pieza ?? ''}
                   estado={estadoBusqueda} estados={estadosDisponibles}
                   {...alertaConOtrosEstados}
+                  abiertoDeEntrada={mensajeLibre.formularioAbierto === true && TIPOS_SIN_RESULTADO_CON_ALERTA.includes(mensajeLibre.tipo)}
                 />
               )}
 

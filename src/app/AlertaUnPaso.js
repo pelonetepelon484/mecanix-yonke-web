@@ -10,6 +10,8 @@
 // - variante="discreta": "¿No encontraste la pieza exacta? Activa una alerta" (debajo de resultados).
 // - variante="compacta": "¿No era lo que buscabas? Activa una alerta aquí", chica pero a la vista,
 //   ARRIBA de los resultados (config/pedidosClientes.alertaSiempre).
+// - abiertoDeEntrada (config/pedidosClientes.formularioAbierto, lo decide HomeClient): el formulario
+//   sale abierto, sin tocar el botón; en la protagonista, su título y su texto quedan encima.
 // Sin la bandera (o sin config/pedidosClientes.habilitado) no muestra NADA.
 import { useEffect, useState } from 'react';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
@@ -31,7 +33,7 @@ const anioValido = (a) => /^\d{4}$/.test(String(a ?? '').trim());
 
 export default function AlertaUnPaso({
   variante = 'protagonista', marca: marcaInicial = '', modelo: modeloInicial = '', anio: anioInicial = '', pieza: piezaInicial = '',
-  estado: estadoInicial = '', estados: estadosProp = null, titulo = null, texto = null,
+  estado: estadoInicial = '', estados: estadosProp = null, titulo = null, texto = null, abiertoDeEntrada = false,
 }) {
   const [activa, setActiva] = useState(false);
   const [otrosEstadosActivo, setOtrosEstadosActivo] = useState(false);
@@ -44,7 +46,7 @@ export default function AlertaUnPaso({
   const faltaPieza = !String(piezaInicial).trim();
   const faltaEstado = !estadoConocido;
 
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto] = useState(abiertoDeEntrada);
   const [corregir, setCorregir] = useState(false);
   const [marca, setMarca] = useState(marcaInicial);
   const [modelo, setModelo] = useState(modeloInicial);
@@ -111,6 +113,14 @@ export default function AlertaUnPaso({
     );
   }
 
+  // Título y texto del recuadro grande: arriba del botón o, abierto de entrada, arriba del formulario.
+  const encabezadoProtagonista = (
+    <>
+      <p style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: '800', color: '#1A3C5E', lineHeight: '1.3' }}>{titulo || TITULO_SIN_RESULTADOS}</p>
+      <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.5' }}>{texto || textoSinResultados(nombreDe(estadoConocido))}</p>
+    </>
+  );
+
   if (!abierto) {
     if (variante === 'compacta') {
       return (
@@ -128,8 +138,7 @@ export default function AlertaUnPaso({
     }
     return (
       <div style={cajaProtagonista}>
-        <p style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: '800', color: '#1A3C5E', lineHeight: '1.3' }}>{titulo || TITULO_SIN_RESULTADOS}</p>
-        <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.5' }}>{texto || textoSinResultados(nombreDe(estadoConocido))}</p>
+        {encabezadoProtagonista}
         <button type="button" onClick={() => setAbierto(true)} style={botonGrande}>{TEXTO_BOTON_ALERTA}</button>
       </div>
     );
@@ -146,6 +155,7 @@ export default function AlertaUnPaso({
 
   return (
     <div style={variante === 'protagonista' ? cajaProtagonista : caja}>
+      {abiertoDeEntrada && variante === 'protagonista' && encabezadoProtagonista}
       <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px' }}>{TEXTO_BOTON_ALERTA}</p>
       {resumen.length > 0 && (
         <div style={resumenStyle}>
