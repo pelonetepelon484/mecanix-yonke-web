@@ -19,8 +19,9 @@ export const TEXTO_ELIGE_ESTADO_OTROS = '¿No es tu estado? Elígelo aquí';
 // Caso a: título y texto del recuadro de la alerta de un paso (AlertaUnPaso, protagonista) cuando
 // abajo sí hay resultados de otros estados. El botón de la alerta no cambia.
 export const TITULO_CON_OTROS_ESTADOS = 'Lo encontramos en otros estados';
-export const textoConOtrosEstados = (nombreEstado) =>
-  `No hay yonkes de ${nombreEstado || 'tu estado'} con ese vehículo, pero abajo ves los de otros estados. ¿Lo quieres solo en tu estado? Consulta con los yonkes de tu estado.`;
+// consulta: config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta").
+export const textoConOtrosEstados = (nombreEstado, consulta = false) =>
+  `No hay yonkes de ${nombreEstado || 'tu estado'} con ese vehículo, pero abajo ves los de otros estados. ¿Lo quieres solo en tu estado? ${consulta ? 'Consulta con los yonkes de tu estado.' : 'Activa la alerta de búsqueda.'}`;
 
 // Scroll automático hacia el encabezado de la sección (config/buscador.scrollOtrosEstados): espacio
 // que se deja ARRIBA del encabezado, en píxeles, para que se alcance a ver el final del recuadro

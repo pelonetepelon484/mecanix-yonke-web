@@ -168,7 +168,7 @@ describe('recuadro azul cuando abajo SÍ hay resultados de otros estados (seMues
 describe('textos del caso a y margen del scroll', () => {
   it('título, texto con el estado y margen inicial de 120 px', () => {
     expect(TITULO_CON_OTROS_ESTADOS).toBe('Lo encontramos en otros estados');
-    expect(textoConOtrosEstados('Jalisco')).toBe('No hay yonkes de Jalisco con ese vehículo, pero abajo ves los de otros estados. ¿Lo quieres solo en tu estado? Consulta con los yonkes de tu estado.');
+    expect(textoConOtrosEstados('Jalisco')).toBe('No hay yonkes de Jalisco con ese vehículo, pero abajo ves los de otros estados. ¿Lo quieres solo en tu estado? Activa la alerta de búsqueda.');
     expect(MARGEN_SCROLL_OTROS_ESTADOS).toBe(120);
   });
 });

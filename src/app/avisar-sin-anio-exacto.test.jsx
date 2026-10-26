@@ -30,7 +30,7 @@ async function cargar() {
 }
 
 const TITULO = 'No encontramos el año exacto de tu Toyota Tacoma 2015.';
-const TEXTO = 'Si quieres, consulta con los yonkes: verán tu pedido (sin tus datos de contacto) y te responderán aquí si tienen la pieza.';
+const TEXTO = 'Si quieres, activa una alerta de búsqueda: los yonkes verán tu pedido (sin tus datos de contacto) y te responderán aquí si tienen la pieza.';
 const BOTON = '🚨 Activa una alerta de búsqueda 🚨';
 // Lo que deja en pantalla cada búsqueda al no hallar el año exacto (los dos usan la misma sección
 // de resultados de HomeClient): el buscador con IA guarda la pieza reconocida; la búsqueda

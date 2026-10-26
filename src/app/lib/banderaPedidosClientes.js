@@ -56,6 +56,13 @@ export function leerBanderaAlertaSiempre() {
   return leerConfig().then((c) => alertaSiempreActiva(c));
 }
 
+// Séptima bandera (config/pedidosClientes.formularioAbierto): textos de "consulta" en lugar de
+// "alerta" en lo que ve el cliente. Mismo documento y misma lectura; exige también la primera. (El
+// formulario abierto en los casos sin resultado lo decide el servidor en la respuesta de búsqueda.)
+export function leerBanderaFormularioAbierto() {
+  return leerConfig().then((c) => c.habilitado === true && c.formularioAbierto === true);
+}
+
 export function useBanderaPedidosClientes() {
   const [activa, setActiva] = useState(false);
   useEffect(() => {

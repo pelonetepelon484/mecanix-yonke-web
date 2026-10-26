@@ -34,12 +34,12 @@ describe('¿Cómo funciona el buscador de Mecanix?', () => {
     render(<ComoFunciona />);
     await screen.findByText('Busca en otros estados');
     await new Promise((r) => setTimeout(r, 0));
-    expect(screen.queryByText('Publica tu búsqueda')).not.toBeInTheDocument();
+    expect(screen.queryByText('Deja una alerta')).not.toBeInTheDocument();
     cleanup();
 
     config = { habilitado: true };
     ComoFunciona = await cargar();
     render(<ComoFunciona />);
-    expect(await screen.findByText('Publica tu búsqueda')).toBeInTheDocument();
+    expect(await screen.findByText('Deja una alerta')).toBeInTheDocument();
   });
 });

@@ -7,6 +7,8 @@ import '@testing-library/jest-dom/vitest';
 // resultado): sin la palabra "alerta" (salvo en la casilla y el consentimiento aprobados, que no
 // cambian), sin promesas de aviso, "📲 Consultar con los yonkes" y la confirmación nueva. Sin el modo, igual que hoy.
 vi.mock('./lib/banderaPedidosClientes', () => ({
+  // Aquí la bandera de textos va apagada: el modo número usa los textos de "consulta" por sí mismo.
+  leerBanderaFormularioAbierto: async () => false,
   leerBanderaAlertaUnPaso: async () => true,
   leerBanderaOtrosEstados: async () => true,
   leerBanderaPedidosClientes: async () => true,
@@ -42,6 +44,7 @@ async function abrir(props) {
 describe('modo número (bandera encendida)', () => {
   it('encima solo el texto nuevo; sin "alerta", sin el botón naranja, sin "Cancelar"', async () => {
     const { container } = await abrir();
+    expect(TEXTO_MODO_NUMERO).toBe('Deja tu número y revisa en tu link si algún yonke tiene tu pieza. Guarda tu link: ahí verás las respuestas.');
     expect(screen.getByText(TEXTO_MODO_NUMERO)).toBeInTheDocument();
     expect(screen.queryByText(TITULO_SIN_RESULTADOS)).not.toBeInTheDocument();
     expect(screen.queryByText(TEXTO_BOTON_ALERTA)).not.toBeInTheDocument();
@@ -90,20 +93,20 @@ describe('sin el modo número (bandera apagada): igual que hoy', () => {
     await act(async () => {});
     expect(screen.getByText(TITULO_SIN_RESULTADOS)).toBeInTheDocument();
     expect(screen.getByText(TEXTO_BOTON_ALERTA)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '📲 Consultar con los yonkes' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '🚨 Enviar alerta' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
     expect(screen.getByText(LINEA_VIEJA, { exact: false })).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_MODO_NUMERO)).not.toBeInTheDocument();
   });
 
-  it('la confirmación es la misma nueva, sin "alerta" (también con la bandera apagada)', async () => {
+  it('confirmación de siempre (con "Ver mi alerta")', async () => {
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, enlace: ENLACE }) }));
-    const { container } = render(<AlertaUnPaso variante="protagonista" {...completo} abiertoDeEntrada />);
+    render(<AlertaUnPaso variante="protagonista" {...completo} abiertoDeEntrada />);
     await act(async () => {});
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: TEXTO_ENVIAR_NUMERO })); });
-    expect(screen.getByText(TEXTO_CONFIRMACION_NUMERO)).toBeInTheDocument();
-    expect(screen.queryByText('Ver mi alerta')).not.toBeInTheDocument();
-    expect(container.textContent).not.toMatch(/alerta/i);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' })); });
+    expect(screen.getByText('✅ Listo, los yonkes de Sonora ya pueden ver tu búsqueda. Aquí verás sus respuestas:', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Ver mi alerta')).toBeInTheDocument();
+    expect(screen.queryByText(TEXTO_CONFIRMACION_NUMERO)).not.toBeInTheDocument();
   });
 });

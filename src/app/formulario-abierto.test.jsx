@@ -6,6 +6,7 @@ import '@testing-library/jest-dom/vitest';
 // Opción abiertoDeEntrada (config/pedidosClientes.formularioAbierto): el formulario de la alerta sale
 // abierto, sin tocar el botón. Mismo formulario, mismos textos.
 vi.mock('./lib/banderaPedidosClientes', () => ({
+  leerBanderaFormularioAbierto: async () => false, // config/pedidosClientes.formularioAbierto apagada: igual que hoy
   leerBanderaAlertaUnPaso: async () => true,
   leerBanderaOtrosEstados: async () => true,
   leerBanderaPedidosClientes: async () => true,
@@ -33,7 +34,7 @@ function esperarFormularioCompleto() {
   expect(screen.getByLabelText('Tu WhatsApp')).toBeInTheDocument();
   expect(screen.getByText(TEXTO_CASILLA_OTROS_ESTADOS)).toBeInTheDocument();
   expect(screen.getByText(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '📲 Consultar con los yonkes' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '🚨 Enviar alerta' })).toBeInTheDocument();
   expect(screen.getByText(/Al enviar aceptas los/)).toHaveTextContent('Al enviar aceptas los términos y el aviso de privacidad.');
   expect(screen.getByRole('link', { name: 'términos' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'aviso de privacidad' })).toBeInTheDocument();

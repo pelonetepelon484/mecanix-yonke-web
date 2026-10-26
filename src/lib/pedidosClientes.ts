@@ -22,14 +22,27 @@ export const MENSAJES_PEDIDO = {
   ...MENSAJES_SOLICITUD,
   estado: 'Elige el estado donde buscas la pieza.',
   whatsapp: 'Escribe tu WhatsApp a 10 dígitos (ej. 664 123 4567).',
-  limiteWhatsapp: `Ya tienes ${MAX_PEDIDOS_POR_WHATSAPP_DIA} búsquedas publicadas hoy con este WhatsApp. Intenta mañana.`,
-  limiteIp: 'Llevas muchas búsquedas publicadas seguidas. Espera un rato y vuelve a intentar.',
+  limiteWhatsapp: `Ya enviaste ${MAX_PEDIDOS_POR_WHATSAPP_DIA} alertas hoy con este WhatsApp. Intenta mañana.`,
+  limiteIp: 'Enviaste muchas alertas seguidas. Espera un rato y vuelve a intentar.',
   limiteConsultas: 'Demasiadas consultas seguidas. Espera un momento.',
   noDisponible: 'Esta función no está disponible por ahora.',
   noEncontrado: 'No encontramos este pedido. Revisa que el enlace esté completo.',
-  guardarFallo: 'No pudimos publicar tu búsqueda. Revisa tu conexión e intenta de nuevo.',
+  guardarFallo: 'No pudimos enviar tu alerta. Revisa tu conexión e intenta de nuevo.',
   solicitudInvalida: 'Solicitud inválida.',
 } as const;
+
+// Con config/pedidosClientes.formularioAbierto el cliente ve "consulta" en lugar de "alerta". El
+// servidor sigue mandando MENSAJES_PEDIDO; el navegador los cambia por estos al mostrarlos.
+export const MENSAJES_CONSULTA = {
+  limiteWhatsapp: `Ya tienes ${MAX_PEDIDOS_POR_WHATSAPP_DIA} consultas hoy con este WhatsApp. Intenta mañana.`,
+  limiteIp: 'Llevas muchas consultas seguidas. Espera un rato y vuelve a intentar.',
+  guardarFallo: 'No pudimos enviar tu consulta. Revisa tu conexión e intenta de nuevo.',
+} as const;
+export function mensajeParaCliente(mensaje: string, consulta: boolean): string {
+  if (!consulta) return mensaje;
+  const clave = (Object.keys(MENSAJES_CONSULTA) as (keyof typeof MENSAJES_CONSULTA)[]).find((k) => MENSAJES_PEDIDO[k] === mensaje);
+  return clave ? MENSAJES_CONSULTA[clave] : mensaje;
+}
 
 // WhatsApp de México a 10 dígitos. Acepta espacios, guiones, +52 o 52 al inicio (y el 1 viejo
 // de celulares, +521). Devuelve null si no son 10 dígitos al final.
