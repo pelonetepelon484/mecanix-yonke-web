@@ -1610,11 +1610,16 @@ function obtenerEstadoAbierto(horario) {
   }
 
   // Partes del cuadro de mensaje del buscador inteligente (ver partesCuadroMensaje).
+  // config/pedidosClientes.formularioAbierto (lo manda el servidor): en los 4 casos sin resultado, el
+  // formulario sale abierto en modo número (AlertaUnPaso modoNumero).
+  const formularioNumero = Boolean(mensajeLibre && mensajeLibre.formularioAbierto === true
+    && TIPOS_SIN_RESULTADO_CON_ALERTA.includes(mensajeLibre.tipo));
   const partesCuadro = mensajeLibre
     ? partesCuadroMensaje({
       tipo: mensajeLibre.tipo, alertaUnPaso, estadoBusqueda,
       conOtrosEstados: Boolean(mensajeLibre.otrosEstados || mensajeLibre.otrosEstadosRevisados),
       seMuestranOtrosEstados: Boolean(mensajeLibre.otrosEstados),
+      sinYonkesYaRevisado: formularioNumero && mensajeLibre.otrosEstadosRevisados === true,
     })
     : null;
   // Caso a de otros estados (estado elegido sin nada y abajo resultados de otros estados): el
@@ -1786,7 +1791,8 @@ function obtenerEstadoAbierto(horario) {
                   anio={mensajeLibre.busqueda?.anio} pieza={mensajeLibre.busqueda?.pieza ?? mensajeLibre.pieza ?? ''}
                   estado={estadoBusqueda} estados={estadosDisponibles}
                   {...alertaConOtrosEstados}
-                  abiertoDeEntrada={mensajeLibre.formularioAbierto === true && TIPOS_SIN_RESULTADO_CON_ALERTA.includes(mensajeLibre.tipo)}
+                  abiertoDeEntrada={formularioNumero}
+                  modoNumero={formularioNumero}
                 />
               )}
 

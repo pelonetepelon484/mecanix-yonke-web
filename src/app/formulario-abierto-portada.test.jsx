@@ -66,7 +66,7 @@ describe('formulario de la alerta abierto de entrada', () => {
         await buscar(caso, true);
         expect(abierta()).toBe(true);
         expect(screen.queryByRole('button', { name: TEXTO_BOTON_ALERTA })).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '🚨 Enviar alerta' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '📲 Enviar' })).toBeInTheDocument();
       });
     }
     for (const caso of ['numero_de_parte', 'pieza_sin_vehiculo']) {

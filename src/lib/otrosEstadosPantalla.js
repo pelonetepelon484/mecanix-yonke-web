@@ -71,10 +71,14 @@ export function avisoTarjetaOtroEstado(r) {
 // - botonTodos: "Buscar en todos los estados", solo con un estado elegido y cuando el servidor NO
 //   buscó ya en otros estados (conOtrosEstados: llegó la sección o otrosEstadosRevisados). Así
 //   solo se ve donde hace falta: "no identificamos el modelo", bandera apagada o búsqueda cortada.
-export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados, seMuestranOtrosEstados = false }) {
+// sinYonkesYaRevisado (solo con config/pedidosClientes.formularioAbierto): ya se buscó en otros
+// estados, así que "Aún no tenemos yonkes registrados en… Prueba buscando en Todos los estados" no
+// sale, aunque allá tampoco haya resultados.
+export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados, seMuestranOtrosEstados = false, sinYonkesYaRevisado = false }) {
   return {
     texto: !(alertaUnPaso && tipo === 'sin_inventario')
-      && !(seMuestranOtrosEstados && (tipo === 'sin_yonkes_estado' || (alertaUnPaso && tipo === 'sin_inventario'))),
+      && !(seMuestranOtrosEstados && (tipo === 'sin_yonkes_estado' || (alertaUnPaso && tipo === 'sin_inventario')))
+      && !(sinYonkesYaRevisado && tipo === 'sin_yonkes_estado'),
     confirmar: tipo === 'confirmar',
     botonTodos: ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(tipo) && estadoBusqueda !== 'todos' && !conOtrosEstados,
   };

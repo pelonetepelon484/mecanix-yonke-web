@@ -12,6 +12,11 @@
 //   ARRIBA de los resultados (config/pedidosClientes.alertaSiempre).
 // - abiertoDeEntrada (config/pedidosClientes.formularioAbierto, lo decide HomeClient): el formulario
 //   sale abierto, sin tocar el botón; en la protagonista, su título y su texto quedan encima.
+// - modoNumero (con abiertoDeEntrada, misma bandera, solo en los 4 casos sin resultado): pantalla sin
+//   la palabra "alerta" y sin promesas de aviso — TEXTO_MODO_NUMERO encima (debajo del título de
+//   otros estados, si lo hay), "📲 Enviar", "Nunca ven tu número de WhatsApp." (aviso de privacidad,
+//   sección 14), sin "Cancelar", y su propia confirmación. Casilla, consentimiento y "Al enviar
+//   aceptas…" no cambian.
 // Sin la bandera (o sin config/pedidosClientes.habilitado) no muestra NADA.
 import { useEffect, useState } from 'react';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
@@ -29,11 +34,17 @@ export const textoSinResultados = (estadoNombre) =>
 export const textoConfirmacion = (estadoNombre) =>
   `✅ Listo, los yonkes de ${estadoNombre} ya pueden ver tu búsqueda. Aquí verás sus respuestas:`;
 
+// Modo número (config/pedidosClientes.formularioAbierto).
+export const TEXTO_MODO_NUMERO = 'Deja tu número y revisa en tu link si encontramos tu vehículo. Guarda tu link: ahí verás las respuestas de los yonkes.';
+export const TEXTO_ENVIAR_NUMERO = '📲 Enviar';
+export const TEXTO_NUNCA_VEN_NUMERO = 'Nunca ven tu número de WhatsApp.';
+export const TEXTO_CONFIRMACION_NUMERO = '✅ ¡Listo! Guarda este enlace: ahí verás si los yonkes tienen tu pieza. Vence en 5 días.';
+
 const anioValido = (a) => /^\d{4}$/.test(String(a ?? '').trim());
 
 export default function AlertaUnPaso({
   variante = 'protagonista', marca: marcaInicial = '', modelo: modeloInicial = '', anio: anioInicial = '', pieza: piezaInicial = '',
-  estado: estadoInicial = '', estados: estadosProp = null, titulo = null, texto = null, abiertoDeEntrada = false,
+  estado: estadoInicial = '', estados: estadosProp = null, titulo = null, texto = null, abiertoDeEntrada = false, modoNumero = false,
 }) {
   const [activa, setActiva] = useState(false);
   const [otrosEstadosActivo, setOtrosEstadosActivo] = useState(false);
@@ -96,6 +107,18 @@ export default function AlertaUnPaso({
     setEnlace(r.enlace);
   }
 
+  if (enlace && modoNumero) {
+    return (
+      <div style={cajaConfirmacion}>
+        <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px', lineHeight: '1.4' }}>{TEXTO_CONFIRMACION_NUMERO}</p>
+        <a href={enlace} style={{ display: 'block', margin: '0 0 10px', fontSize: '12px', color: '#555', wordBreak: 'break-all', backgroundColor: '#F4F5F5', padding: '8px', borderRadius: '8px' }}>{enlace}</a>
+        <a href={enlaceGuardarPorWhatsapp(whatsapp, enlace)} target="_blank" rel="noopener noreferrer" style={{ ...botonBase, backgroundColor: '#25D366', display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+          💬 Guardar mi enlace por WhatsApp
+        </a>
+      </div>
+    );
+  }
+
   if (enlace) {
     return (
       <div style={cajaConfirmacion}>
@@ -155,8 +178,17 @@ export default function AlertaUnPaso({
 
   return (
     <div style={variante === 'protagonista' ? cajaProtagonista : caja}>
-      {abiertoDeEntrada && variante === 'protagonista' && encabezadoProtagonista}
-      <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px' }}>{TEXTO_BOTON_ALERTA}</p>
+      {modoNumero ? (
+        <>
+          {titulo && <p style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: '800', color: '#1A3C5E', lineHeight: '1.3' }}>{titulo}</p>}
+          <p style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: '700', color: '#1A3C5E', lineHeight: '1.45' }}>{TEXTO_MODO_NUMERO}</p>
+        </>
+      ) : (
+        <>
+          {abiertoDeEntrada && variante === 'protagonista' && encabezadoProtagonista}
+          <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px' }}>{TEXTO_BOTON_ALERTA}</p>
+        </>
+      )}
       {resumen.length > 0 && (
         <div style={resumenStyle}>
           {resumen.map((r) => <p key={r} style={{ margin: '2px 0' }}>{r}</p>)}
@@ -189,14 +221,14 @@ export default function AlertaUnPaso({
       <input id="alerta-whatsapp" type="tel" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="10 dígitos" autoComplete="tel" style={input} />
       {otrosEstadosActivo && <CasillaOtrosEstados id="alerta-otros-estados" marcada={aceptaOtrosEstados} onCambiar={setAceptaOtrosEstados} />}
       <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#555', lineHeight: '1.5' }}>
-        Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes.{' '}
+        {modoNumero ? TEXTO_NUNCA_VEN_NUMERO : 'Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes.'}{' '}
         <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>Aviso de privacidad</a>
       </p>
       {error && <p role="alert" style={{ margin: '0 0 10px', fontSize: '13px', color: '#B3261E' }}>{error}</p>}
       <button type="button" onClick={enviar} disabled={enviando} style={{ ...botonGrande, opacity: enviando ? 0.6 : 1 }}>
-        {enviando ? 'Enviando...' : '🚨 Enviar alerta'}
+        {enviando ? 'Enviando...' : (modoNumero ? TEXTO_ENVIAR_NUMERO : '🚨 Enviar alerta')}
       </button>
-      <button type="button" onClick={() => setAbierto(false)} style={botonCancelar}>Cancelar</button>
+      {!modoNumero && <button type="button" onClick={() => setAbierto(false)} style={botonCancelar}>Cancelar</button>}
       <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#777', textAlign: 'center', lineHeight: '1.5' }}>
         Al enviar aceptas los{' '}
         <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>términos</a>
