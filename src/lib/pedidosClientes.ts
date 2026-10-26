@@ -31,6 +31,19 @@ export const MENSAJES_PEDIDO = {
   solicitudInvalida: 'Solicitud inválida.',
 } as const;
 
+// Con config/pedidosClientes.formularioAbierto el cliente ve "consulta" en lugar de "alerta". El
+// servidor sigue mandando MENSAJES_PEDIDO; el navegador los cambia por estos al mostrarlos.
+export const MENSAJES_CONSULTA = {
+  limiteWhatsapp: `Ya tienes ${MAX_PEDIDOS_POR_WHATSAPP_DIA} consultas hoy con este WhatsApp. Intenta mañana.`,
+  limiteIp: 'Llevas muchas consultas seguidas. Espera un rato y vuelve a intentar.',
+  guardarFallo: 'No pudimos enviar tu consulta. Revisa tu conexión e intenta de nuevo.',
+} as const;
+export function mensajeParaCliente(mensaje: string, consulta: boolean): string {
+  if (!consulta) return mensaje;
+  const clave = (Object.keys(MENSAJES_CONSULTA) as (keyof typeof MENSAJES_CONSULTA)[]).find((k) => MENSAJES_PEDIDO[k] === mensaje);
+  return clave ? MENSAJES_CONSULTA[clave] : mensaje;
+}
+
 // WhatsApp de México a 10 dígitos. Acepta espacios, guiones, +52 o 52 al inicio (y el 1 viejo
 // de celulares, +521). Devuelve null si no son 10 dígitos al final.
 export function normalizarWhatsapp(texto: unknown): string | null {
@@ -153,7 +166,7 @@ export function enlaceMiPedido(origen: string, id: string, codigo: string): stri
 // wa.me hacia el propio número del cliente, con su enlace ya escrito (para guardarlo).
 export function enlaceGuardarPorWhatsapp(whatsapp: string, enlace: string): string {
   const numero = normalizarWhatsapp(whatsapp) ?? '';
-  const texto = `Mi alerta de búsqueda en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`;
+  const texto = `Mi consulta en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`;
   return `https://wa.me/52${numero}?text=${encodeURIComponent(texto)}`;
 }
 

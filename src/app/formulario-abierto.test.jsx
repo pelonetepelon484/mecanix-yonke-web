@@ -6,6 +6,7 @@ import '@testing-library/jest-dom/vitest';
 // Opción abiertoDeEntrada (config/pedidosClientes.formularioAbierto): el formulario de la alerta sale
 // abierto, sin tocar el botón. Mismo formulario, mismos textos.
 vi.mock('./lib/banderaPedidosClientes', () => ({
+  leerBanderaFormularioAbierto: async () => false, // config/pedidosClientes.formularioAbierto apagada: igual que hoy
   leerBanderaAlertaUnPaso: async () => true,
   leerBanderaOtrosEstados: async () => true,
   leerBanderaPedidosClientes: async () => true,

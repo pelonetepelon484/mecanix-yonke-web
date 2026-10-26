@@ -7,7 +7,7 @@
 // "Avisar a los yonkes"; sin la bandera (o mientras no se sabe), esa rama solo dice lo de buscar
 // en otros estados. No dice cuántos años cercanos: eso depende de config/buscador.
 import { useEffect, useState } from 'react';
-import { leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
+import { leerBanderaFormularioAbierto, leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
 
 export const TITULO_COMO_FUNCIONA = '¿CÓMO FUNCIONA EL BUSCADOR DE MECANIX?';
 
@@ -26,6 +26,8 @@ const RAMA_SI = [
 const OTROS_ESTADOS = { emoji: '🌎', titulo: 'Busca en otros estados', desc: 'Hay yonkes con envíos' };
 // Aviso de privacidad, sección 14: "(b) Mostrarte, en tu enlace privado, las respuestas de los
 // yonkes", "Si decides escribirle a un yonke desde tu enlace…" y "Nunca ven tu número de WhatsApp".
+// Con config/pedidosClientes.formularioAbierto el título dice TITULO_ALERTA_CONSULTA.
+export const TITULO_ALERTA_CONSULTA = 'Consulta con los yonkes';
 const ALERTA = { emoji: '🔔', titulo: 'Deja una alerta', desc: 'Ves las respuestas de los yonkes en tu enlace privado y tú decides a quién escribirle. Nunca ven tu número de WhatsApp.' };
 
 function Paso({ emoji, titulo, desc }) {
@@ -44,9 +46,11 @@ const Flecha = () => <div style={flecha} aria-hidden="true">↓</div>;
 
 export default function ComoFuncionaBuscador() {
   const [conAlertas, setConAlertas] = useState(false);
+  const [consulta, setConsulta] = useState(false);
   useEffect(() => {
     let cancelado = false;
     leerBanderaPedidosClientes().then((v) => { if (!cancelado) setConAlertas(v); });
+    leerBanderaFormularioAbierto().then((v) => { if (!cancelado) setConsulta(v); });
     return () => { cancelado = true; };
   }, []);
 
@@ -76,7 +80,7 @@ export default function ComoFuncionaBuscador() {
           {conAlertas && (
             <>
               <p style={separador}>o</p>
-              <Paso {...ALERTA} />
+              <Paso {...ALERTA} {...(consulta ? { titulo: TITULO_ALERTA_CONSULTA } : {})} />
             </>
           )}
         </div>

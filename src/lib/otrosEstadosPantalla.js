@@ -19,8 +19,9 @@ export const TEXTO_ELIGE_ESTADO_OTROS = '¿No es tu estado? Elígelo aquí';
 // Caso a: título y texto del recuadro de la alerta de un paso (AlertaUnPaso, protagonista) cuando
 // abajo sí hay resultados de otros estados. El botón de la alerta no cambia.
 export const TITULO_CON_OTROS_ESTADOS = 'Lo encontramos en otros estados';
-export const textoConOtrosEstados = (nombreEstado) =>
-  `No hay yonkes de ${nombreEstado || 'tu estado'} con ese vehículo, pero abajo ves los de otros estados. ¿Lo quieres solo en tu estado? Activa la alerta de búsqueda.`;
+// consulta: config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta").
+export const textoConOtrosEstados = (nombreEstado, consulta = false) =>
+  `No hay yonkes de ${nombreEstado || 'tu estado'} con ese vehículo, pero abajo ves los de otros estados. ¿Lo quieres solo en tu estado? ${consulta ? 'Consulta con los yonkes de tu estado.' : 'Activa la alerta de búsqueda.'}`;
 
 // Scroll automático hacia el encabezado de la sección (config/buscador.scrollOtrosEstados): espacio
 // que se deja ARRIBA del encabezado, en píxeles, para que se alcance a ver el final del recuadro
@@ -71,10 +72,14 @@ export function avisoTarjetaOtroEstado(r) {
 // - botonTodos: "Buscar en todos los estados", solo con un estado elegido y cuando el servidor NO
 //   buscó ya en otros estados (conOtrosEstados: llegó la sección o otrosEstadosRevisados). Así
 //   solo se ve donde hace falta: "no identificamos el modelo", bandera apagada o búsqueda cortada.
-export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados, seMuestranOtrosEstados = false }) {
+// sinYonkesYaRevisado (solo con config/pedidosClientes.formularioAbierto): ya se buscó en otros
+// estados, así que "Aún no tenemos yonkes registrados en… Prueba buscando en Todos los estados" no
+// sale, aunque allá tampoco haya resultados.
+export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados, seMuestranOtrosEstados = false, sinYonkesYaRevisado = false }) {
   return {
     texto: !(alertaUnPaso && tipo === 'sin_inventario')
-      && !(seMuestranOtrosEstados && (tipo === 'sin_yonkes_estado' || (alertaUnPaso && tipo === 'sin_inventario'))),
+      && !(seMuestranOtrosEstados && (tipo === 'sin_yonkes_estado' || (alertaUnPaso && tipo === 'sin_inventario')))
+      && !(sinYonkesYaRevisado && tipo === 'sin_yonkes_estado'),
     confirmar: tipo === 'confirmar',
     botonTodos: ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado'].includes(tipo) && estadoBusqueda !== 'todos' && !conOtrosEstados,
   };

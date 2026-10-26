@@ -12,12 +12,18 @@
 //   ARRIBA de los resultados (config/pedidosClientes.alertaSiempre).
 // - abiertoDeEntrada (config/pedidosClientes.formularioAbierto, lo decide HomeClient): el formulario
 //   sale abierto, sin tocar el botón; en la protagonista, su título y su texto quedan encima.
+// - modoNumero (con abiertoDeEntrada, misma bandera, solo en los 4 casos sin resultado): pantalla sin
+//   la palabra "alerta" y sin promesas de aviso — TEXTO_MODO_NUMERO encima (debajo del título de
+//   otros estados, si lo hay), "Nunca ven tu número de WhatsApp." (aviso de privacidad, sección 14)
+//   y sin "Cancelar". Casilla, consentimiento y "Al enviar aceptas…" no cambian.
 // Sin la bandera (o sin config/pedidosClientes.habilitado) no muestra NADA.
 import { useEffect, useState } from 'react';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
 import { cargarEstados } from './lib/estados';
-import { leerBanderaAlertaUnPaso, leerBanderaOtrosEstados } from './lib/banderaPedidosClientes';
-import { CASILLA_OTROS_ESTADOS_INICIAL, CasillaOtrosEstados, TEXTO_BOTON_ALERTA, enviarAlertaCliente } from './AvisarYonkes';
+import { leerBanderaAlertaUnPaso, leerBanderaFormularioAbierto, leerBanderaOtrosEstados } from './lib/banderaPedidosClientes';
+import {
+  CASILLA_OTROS_ESTADOS_INICIAL, CasillaOtrosEstados, ConfirmacionConsulta, TEXTO_BOTON_ALERTA, TEXTO_BOTON_ENVIAR, TEXTO_ENVIAR_ALERTA, enviarAlertaCliente,
+} from './AvisarYonkes';
 import { enlaceGuardarPorWhatsapp } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
@@ -28,15 +34,28 @@ export const textoSinResultados = (estadoNombre) =>
   `Activa una alerta: los yonkes de ${estadoNombre || 'tu estado'} la verán y te responderán con su precio.`;
 export const textoConfirmacion = (estadoNombre) =>
   `✅ Listo, los yonkes de ${estadoNombre} ya pueden ver tu búsqueda. Aquí verás sus respuestas:`;
+// Con config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta").
+export const TEXTO_DISCRETO_CONSULTA = '¿No encontraste la pieza exacta? Consulta con los yonkes';
+export const TEXTO_COMPACTO_CONSULTA = '¿No era lo que buscabas? Consulta con los yonkes aquí';
+export const textoSinResultadosConsulta = (estadoNombre) =>
+  `Consulta con los yonkes de ${estadoNombre || 'tu estado'}: verán tu búsqueda y te responderán con su precio.`;
+
+// Modo número (config/pedidosClientes.formularioAbierto).
+export const TEXTO_MODO_NUMERO = 'Deja tu número y revisa en tu link si algún yonke tiene tu pieza. Guarda tu link: ahí verás las respuestas.';
+export const TEXTO_NUNCA_VEN_NUMERO = 'Nunca ven tu número de WhatsApp.';
 
 const anioValido = (a) => /^\d{4}$/.test(String(a ?? '').trim());
 
 export default function AlertaUnPaso({
   variante = 'protagonista', marca: marcaInicial = '', modelo: modeloInicial = '', anio: anioInicial = '', pieza: piezaInicial = '',
-  estado: estadoInicial = '', estados: estadosProp = null, titulo = null, texto = null, abiertoDeEntrada = false,
+  estado: estadoInicial = '', estados: estadosProp = null, titulo = null, texto = null, abiertoDeEntrada = false, modoNumero = false,
 }) {
   const [activa, setActiva] = useState(false);
   const [otrosEstadosActivo, setOtrosEstadosActivo] = useState(false);
+  // config/pedidosClientes.formularioAbierto: textos de "consulta" en lugar de "alerta". El modo
+  // número (que solo llega con esa bandera) los usa siempre.
+  const [banderaConsulta, setBanderaConsulta] = useState(false);
+  const consulta = modoNumero || banderaConsulta;
   const [estadosCargados, setEstadosCargados] = useState(null);
   const estados = estadosProp && estadosProp.length > 0 ? estadosProp : (estadosCargados || []);
   const estadoConocido = estadoInicial && estadoInicial !== 'todos' ? estadoInicial : '';
@@ -63,6 +82,7 @@ export default function AlertaUnPaso({
     let cancelado = false;
     leerBanderaAlertaUnPaso().then((v) => { if (!cancelado) setActiva(v); });
     leerBanderaOtrosEstados().then((v) => { if (!cancelado) setOtrosEstadosActivo(v); });
+    leerBanderaFormularioAbierto().then((v) => { if (!cancelado) setBanderaConsulta(v); });
     return () => { cancelado = true; };
   }, []);
 
@@ -86,7 +106,7 @@ export default function AlertaUnPaso({
       whatsapp: whatsapp.trim(),
     };
     setEnviando(true);
-    const r = await enviarAlertaCliente(datos, estados.map((e) => e.id), { otrosEstadosActivo, aceptaOtrosEstados });
+    const r = await enviarAlertaCliente(datos, estados.map((e) => e.id), { otrosEstadosActivo, aceptaOtrosEstados, consulta });
     setEnviando(false);
     if (!r.ok) {
       if (r.disponible === false) setActiva(false);
@@ -94,6 +114,10 @@ export default function AlertaUnPaso({
       return;
     }
     setEnlace(r.enlace);
+  }
+
+  if (enlace && consulta) {
+    return <ConfirmacionConsulta enlace={enlace} whatsapp={whatsapp} />;
   }
 
   if (enlace) {
@@ -113,11 +137,13 @@ export default function AlertaUnPaso({
     );
   }
 
+  const textoBoton = consulta ? TEXTO_BOTON_ENVIAR : TEXTO_BOTON_ALERTA;
+
   // Título y texto del recuadro grande: arriba del botón o, abierto de entrada, arriba del formulario.
   const encabezadoProtagonista = (
     <>
       <p style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: '800', color: '#1A3C5E', lineHeight: '1.3' }}>{titulo || TITULO_SIN_RESULTADOS}</p>
-      <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.5' }}>{texto || textoSinResultados(nombreDe(estadoConocido))}</p>
+      <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.5' }}>{texto || (consulta ? textoSinResultadosConsulta : textoSinResultados)(nombreDe(estadoConocido))}</p>
     </>
   );
 
@@ -125,21 +151,21 @@ export default function AlertaUnPaso({
     if (variante === 'compacta') {
       return (
         <button type="button" onClick={() => setAbierto(true)} style={botonCompacto}>
-          🔔 {TEXTO_COMPACTO}
+          🔔 {consulta ? TEXTO_COMPACTO_CONSULTA : TEXTO_COMPACTO}
         </button>
       );
     }
     if (variante === 'discreta') {
       return (
         <button type="button" onClick={() => setAbierto(true)} style={botonDiscreto}>
-          🔔 {TEXTO_DISCRETO}
+          🔔 {consulta ? TEXTO_DISCRETO_CONSULTA : TEXTO_DISCRETO}
         </button>
       );
     }
     return (
       <div style={cajaProtagonista}>
         {encabezadoProtagonista}
-        <button type="button" onClick={() => setAbierto(true)} style={botonGrande}>{TEXTO_BOTON_ALERTA}</button>
+        <button type="button" onClick={() => setAbierto(true)} style={botonGrande}>{textoBoton}</button>
       </div>
     );
   }
@@ -155,8 +181,17 @@ export default function AlertaUnPaso({
 
   return (
     <div style={variante === 'protagonista' ? cajaProtagonista : caja}>
-      {abiertoDeEntrada && variante === 'protagonista' && encabezadoProtagonista}
-      <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px' }}>{TEXTO_BOTON_ALERTA}</p>
+      {modoNumero ? (
+        <>
+          {titulo && <p style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: '800', color: '#1A3C5E', lineHeight: '1.3' }}>{titulo}</p>}
+          <p style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: '700', color: '#1A3C5E', lineHeight: '1.45' }}>{TEXTO_MODO_NUMERO}</p>
+        </>
+      ) : (
+        <>
+          {abiertoDeEntrada && variante === 'protagonista' && encabezadoProtagonista}
+          <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px' }}>{textoBoton}</p>
+        </>
+      )}
       {resumen.length > 0 && (
         <div style={resumenStyle}>
           {resumen.map((r) => <p key={r} style={{ margin: '2px 0' }}>{r}</p>)}
@@ -189,14 +224,14 @@ export default function AlertaUnPaso({
       <input id="alerta-whatsapp" type="tel" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="10 dígitos" autoComplete="tel" style={input} />
       {otrosEstadosActivo && <CasillaOtrosEstados id="alerta-otros-estados" marcada={aceptaOtrosEstados} onCambiar={setAceptaOtrosEstados} />}
       <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#555', lineHeight: '1.5' }}>
-        Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes.{' '}
+        {modoNumero ? TEXTO_NUNCA_VEN_NUMERO : 'Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes.'}{' '}
         <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>Aviso de privacidad</a>
       </p>
       {error && <p role="alert" style={{ margin: '0 0 10px', fontSize: '13px', color: '#B3261E' }}>{error}</p>}
       <button type="button" onClick={enviar} disabled={enviando} style={{ ...botonGrande, opacity: enviando ? 0.6 : 1 }}>
-        {enviando ? 'Enviando...' : '🚨 Enviar alerta'}
+        {enviando ? 'Enviando...' : (consulta ? TEXTO_BOTON_ENVIAR : TEXTO_ENVIAR_ALERTA)}
       </button>
-      <button type="button" onClick={() => setAbierto(false)} style={botonCancelar}>Cancelar</button>
+      {!modoNumero && <button type="button" onClick={() => setAbierto(false)} style={botonCancelar}>Cancelar</button>}
       <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#777', textAlign: 'center', lineHeight: '1.5' }}>
         Al enviar aceptas los{' '}
         <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#1A3C5E' }}>términos</a>
@@ -213,10 +248,10 @@ const botonBase = { width: '100%', padding: '12px', borderRadius: '50px', border
 // Más alto y con sombra; la letra crece hasta 18 px en pantallas anchas y en celulares de 320 px
 // baja a la del botón de siempre (12 px), para que el texto completo quepa en una sola línea
 // dentro de la tarjeta del buscador con IA (el lugar más angosto).
+const cajaConfirmacion = { margin: '14px 0', padding: '16px', borderRadius: '16px', backgroundColor: '#fff', border: '2px solid #2E7D32' };
 const botonGrande = { ...botonBase, backgroundColor: '#E8720C', padding: '16px 6px', fontSize: 'clamp(12px, 3.7vw, 18px)', whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(232,114,12,0.35)' };
 const cajaProtagonista = { margin: '14px 0', padding: '16px 12px', borderRadius: '16px', backgroundColor: '#FFF4E8', border: '2px solid #E8720C' };
 const caja = { marginTop: '12px', padding: '14px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #C5D8EC' };
-const cajaConfirmacion = { margin: '14px 0', padding: '16px', borderRadius: '16px', backgroundColor: '#fff', border: '2px solid #2E7D32' };
 const resumenStyle = { backgroundColor: '#fff', border: '1px solid #F2C9A0', borderRadius: '10px', padding: '8px 12px', marginBottom: '12px', fontSize: '14px', color: '#1A3C5E', fontWeight: '600' };
 const botonCorregir = { marginTop: '4px', padding: 0, border: 'none', background: 'none', color: '#E8720C', fontSize: '12px', fontWeight: '700', textDecoration: 'underline', cursor: 'pointer' };
 const botonCancelar = { display: 'block', width: '100%', marginTop: '8px', padding: '8px', border: 'none', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' };

@@ -13,8 +13,11 @@ export const TIPOS_EXTRA_ALERTA_SIEMPRE = ['numero_de_parte', 'marca_muy_general
 // (número de parte, marca muy general o pieza sin vehículo): ahí no aplica "No tenemos ese
 // vehículo todavía". null para los demás tipos (se queda el título de siempre).
 export const TITULO_ALERTA_BUSQUEDA_INCOMPLETA = '¿No encuentras la pieza? Activa una alerta de búsqueda';
-export function tituloAlertaProtagonista(tipo) {
-  return TIPOS_EXTRA_ALERTA_SIEMPRE.includes(tipo) ? TITULO_ALERTA_BUSQUEDA_INCOMPLETA : null;
+// Con config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta").
+export const TITULO_CONSULTA_BUSQUEDA_INCOMPLETA = '¿No encuentras la pieza? Consulta con los yonkes';
+export function tituloAlertaProtagonista(tipo, consulta = false) {
+  if (!TIPOS_EXTRA_ALERTA_SIEMPRE.includes(tipo)) return null;
+  return consulta ? TITULO_CONSULTA_BUSQUEDA_INCOMPLETA : TITULO_ALERTA_BUSQUEDA_INCOMPLETA;
 }
 
 export function alertaSiempreActiva(config) {

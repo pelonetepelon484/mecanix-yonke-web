@@ -6,6 +6,7 @@ import '@testing-library/jest-dom/vitest';
 let unPaso = true;
 let otros = false;
 vi.mock('./lib/banderaPedidosClientes', () => ({
+  leerBanderaFormularioAbierto: async () => false, // config/pedidosClientes.formularioAbierto apagada: igual que hoy
   leerBanderaAlertaUnPaso: async () => unPaso,
   leerBanderaOtrosEstados: async () => otros,
   leerBanderaPedidosClientes: async () => true,

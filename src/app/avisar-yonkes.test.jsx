@@ -77,7 +77,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     });
     const guardar = screen.getByRole('link', { name: /Guardar mi enlace por WhatsApp/ });
     expect(guardar.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/526641234567\?text=/);
-    expect(decodeURIComponent(guardar.getAttribute('href'))).toContain('Mi alerta de búsqueda en Mecanix (guárdalo para ver las respuestas de los yonkes): https://m.test/mi-pedido/X?c=COD');
+    expect(decodeURIComponent(guardar.getAttribute('href'))).toContain('Mi consulta en Mecanix (guárdalo para ver las respuestas de los yonkes): https://m.test/mi-pedido/X?c=COD');
     expect(screen.getByRole('link', { name: 'Ver mi alerta' })).toHaveAttribute('href', 'https://m.test/mi-pedido/X?c=COD');
   });
   it('valida antes de enviar y muestra el mensaje del servidor (por ejemplo, el límite)', async () => {

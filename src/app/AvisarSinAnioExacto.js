@@ -6,7 +6,7 @@
 // "Avisar a los yonkes", prellenado con lo que buscó el cliente; con config/pedidosClientes
 // apagada, AvisarYonkes no muestra nada y la página queda como siempre.
 import AvisarYonkes from './AvisarYonkes';
-import { MENSAJE_AVISO_SIN_ANIO_EXACTO, debeOfrecerAvisoSinAnioExacto, tituloAvisoSinAnioExacto } from '../lib/avisoSinAnioExacto';
+import { MENSAJE_AVISO_SIN_ANIO_EXACTO, MENSAJE_AVISO_SIN_ANIO_EXACTO_CONSULTA, debeOfrecerAvisoSinAnioExacto, tituloAvisoSinAnioExacto } from '../lib/avisoSinAnioExacto';
 
 export default function AvisarSinAnioExacto({ tipoBusqueda, tipoResultado, hayResultados, marca, modelo, anio, pieza, estado }) {
   if (!debeOfrecerAvisoSinAnioExacto({ tipoBusqueda, tipoResultado, hayResultados, anio })) return null;
@@ -17,6 +17,7 @@ export default function AvisarSinAnioExacto({ tipoBusqueda, tipoResultado, hayRe
       destacado
       titulo={tituloAvisoSinAnioExacto({ marca, modelo, anio })}
       mensaje={MENSAJE_AVISO_SIN_ANIO_EXACTO}
+      mensajeConsulta={MENSAJE_AVISO_SIN_ANIO_EXACTO_CONSULTA}
       marcaInicial={marca}
       modeloInicial={modelo}
       anioInicial={anio}

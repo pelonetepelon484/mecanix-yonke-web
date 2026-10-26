@@ -8,15 +8,21 @@
 import { useEffect, useState } from 'react';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
 import { ESTADO_DEFAULT, cargarEstados } from './lib/estados';
-import { leerBanderaOtrosEstados, leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
+import { leerBanderaFormularioAbierto, leerBanderaOtrosEstados, leerBanderaPedidosClientes } from './lib/banderaPedidosClientes';
 import {
   CASILLA_OTROS_ESTADOS_INICIAL, MENSAJES_PEDIDO, TEXTO_CASILLA_OTROS_ESTADOS, TEXTO_CONSENTIMIENTO_OTROS_ESTADOS, enlaceGuardarPorWhatsapp,
-  validarPedidoCliente,
+  mensajeParaCliente, validarPedidoCliente,
 } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 // Mismo botón en los dos lugares donde se ofrece (sin resultados y sin el año exacto).
 export const TEXTO_BOTON_ALERTA = '🚨 Activa una alerta de búsqueda 🚨';
+export const TEXTO_ENVIAR_ALERTA = '🚨 Enviar alerta';
+// Con config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta"), en este formulario
+// y en AlertaUnPaso: el mismo texto para el botón que abre el formulario, su título y el envío.
+export const TEXTO_BOTON_ENVIAR = '📲 Consultar con los yonkes';
+export const TEXTO_CONFIRMACION = '✅ ¡Listo! Guarda este enlace: ahí verás si algún yonke tiene tu pieza. Vence en 5 días.';
+export const MENSAJE_AVISAR_CONSULTA = '¿No la encontraste? Consulta con los yonkes de tu estado y revisa sus respuestas en tu link.';
 
 // Envío compartido por este formulario y el de un paso (AlertaUnPaso.js): valida con
 // validarPedidoCliente y crea la alerta en /api/pedir-pieza. Devuelve { ok: true, enlace } o
@@ -41,7 +47,22 @@ export function CasillaOtrosEstados({ id, marcada, onCambiar }) {
   );
 }
 
-export async function enviarAlertaCliente(datos, idsEstados, { otrosEstadosActivo = false, aceptaOtrosEstados = false } = {}) {
+// Confirmación con la bandera encendida (este formulario y AlertaUnPaso): el texto, el enlace (se
+// puede tocar) y el botón para guardarlo por WhatsApp.
+export function ConfirmacionConsulta({ enlace, whatsapp }) {
+  return (
+    <div style={cajaConfirmacion}>
+      <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px', lineHeight: '1.4' }}>{TEXTO_CONFIRMACION}</p>
+      <a href={enlace} style={{ display: 'block', margin: '0 0 10px', fontSize: '12px', color: '#555', wordBreak: 'break-all', backgroundColor: '#F4F5F5', padding: '8px', borderRadius: '8px' }}>{enlace}</a>
+      <a href={enlaceGuardarPorWhatsapp(whatsapp, enlace)} target="_blank" rel="noopener noreferrer" style={{ ...boton, backgroundColor: '#25D366', display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+        💬 Guardar mi enlace por WhatsApp
+      </a>
+    </div>
+  );
+}
+
+// consulta (config/pedidosClientes.formularioAbierto): los mensajes de error dicen "consulta".
+export async function enviarAlertaCliente(datos, idsEstados, { otrosEstadosActivo = false, aceptaOtrosEstados = false, consulta = false } = {}) {
   const problema = validarPedidoCliente(datos, idsEstados);
   if (problema) return { ok: false, mensaje: problema };
   try {
@@ -51,11 +72,11 @@ export async function enviarAlertaCliente(datos, idsEstados, { otrosEstadosActiv
       body: JSON.stringify(otrosEstadosActivo ? { ...datos, aceptaOtrosEstados } : datos),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return { ok: false, mensaje: data.mensaje || MENSAJES_PEDIDO.guardarFallo, disponible: data.disponible };
+    if (!res.ok || !data.ok) return { ok: false, mensaje: mensajeParaCliente(data.mensaje || MENSAJES_PEDIDO.guardarFallo, consulta), disponible: data.disponible };
     return { ok: true, enlace: data.enlace };
   } catch (err) {
     console.error(err);
-    return { ok: false, mensaje: MENSAJES_PEDIDO.guardarFallo };
+    return { ok: false, mensaje: mensajeParaCliente(MENSAJES_PEDIDO.guardarFallo, consulta) };
   }
 }
 
@@ -65,7 +86,7 @@ export async function enviarAlertaCliente(datos, idsEstados, { otrosEstadosActiv
 // botón (hoy la página principal no lo usa: el formulario completo no se abre de entrada).
 export default function AvisarYonkes({
   marcaInicial = '', modeloInicial = '', anioInicial = '', piezaInicial = '', estadoInicial = '',
-  titulo = '', mensaje = '', destacado = false, abiertoDeEntrada = false,
+  titulo = '', mensaje = '', mensajeConsulta = '', destacado = false, abiertoDeEntrada = false,
 }) {
   const [habilitado, setHabilitado] = useState(false);
   const [abierto, setAbierto] = useState(abiertoDeEntrada);
@@ -79,6 +100,8 @@ export default function AvisarYonkes({
   // Casilla de otros estados: solo existe con config/pedidosClientes.otrosEstados encendida.
   const [otrosEstadosActivo, setOtrosEstadosActivo] = useState(false);
   const [aceptaOtrosEstados, setAceptaOtrosEstados] = useState(CASILLA_OTROS_ESTADOS_INICIAL);
+  // config/pedidosClientes.formularioAbierto: textos de "consulta" en lugar de "alerta".
+  const [consulta, setConsulta] = useState(false);
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enlace, setEnlace] = useState('');
@@ -87,6 +110,7 @@ export default function AvisarYonkes({
     let cancelado = false;
     leerBanderaPedidosClientes().then((v) => { if (!cancelado) setHabilitado(v); });
     leerBanderaOtrosEstados().then((v) => { if (!cancelado) setOtrosEstadosActivo(v); });
+    leerBanderaFormularioAbierto().then((v) => { if (!cancelado) setConsulta(v); });
     // Abierto de entrada: los estados se cargan aquí (normalmente los carga abrir()).
     if (abiertoDeEntrada) cargarEstados().then((lista) => { if (!cancelado) setEstados(lista); }).catch(() => {});
     return () => { cancelado = true; };
@@ -108,7 +132,7 @@ export default function AvisarYonkes({
     const problema = validarPedidoCliente(datos, estados.map((e) => e.id));
     if (problema) { setError(problema); return; }
     setEnviando(true);
-    const r = await enviarAlertaCliente(datos, estados.map((e) => e.id), { otrosEstadosActivo, aceptaOtrosEstados });
+    const r = await enviarAlertaCliente(datos, estados.map((e) => e.id), { otrosEstadosActivo, aceptaOtrosEstados, consulta });
     setEnviando(false);
     if (!r.ok) {
       if (r.disponible === false) setHabilitado(false);
@@ -119,6 +143,10 @@ export default function AvisarYonkes({
   }
 
   if (!habilitado) return null;
+
+  if (enlace && consulta) {
+    return <ConfirmacionConsulta enlace={enlace} whatsapp={whatsapp} />;
+  }
 
   if (enlace) {
     const nombreEstado = estados.find((e) => e.id === estado)?.nombre || estado;
@@ -143,6 +171,8 @@ export default function AvisarYonkes({
     );
   }
 
+  const textoBoton = consulta ? TEXTO_BOTON_ENVIAR : TEXTO_BOTON_ALERTA;
+
   if (!abierto) {
     return (
       <div style={destacado ? cajaDestacada : caja}>
@@ -151,16 +181,18 @@ export default function AvisarYonkes({
           ? { margin: '0 0 12px', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.45' }
           : { margin: '0 0 8px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}
         >
-          {mensaje || '¿No la encontraste? Activa una alerta de búsqueda y los yonkes de tu estado te responden con precio si la tienen.'}
+          {consulta
+            ? (mensajeConsulta || MENSAJE_AVISAR_CONSULTA)
+            : (mensaje || '¿No la encontraste? Activa una alerta de búsqueda y los yonkes de tu estado te responden con precio si la tienen.')}
         </p>
-        <button type="button" onClick={abrir} style={botonAlerta}>{TEXTO_BOTON_ALERTA}</button>
+        <button type="button" onClick={abrir} style={botonAlerta}>{textoBoton}</button>
       </div>
     );
   }
 
   return (
     <div style={caja}>
-      <p style={tituloFormulario}>{TEXTO_BOTON_ALERTA}</p>
+      <p style={tituloFormulario}>{textoBoton}</p>
       <SelectorMarcaModelo marca={marca} modelo={modelo} onMarca={setMarca} onModelo={setModelo} inputStyle={input} selectStyle={input} />
       <label style={etiqueta} htmlFor="avisar-anio">Año</label>
       <input id="avisar-anio" type="number" inputMode="numeric" value={anio} onChange={(e) => setAnio(e.target.value)} style={input} />
@@ -181,7 +213,7 @@ export default function AvisarYonkes({
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => setAbierto(false)} style={{ ...botonFila, backgroundColor: '#EEF1F5', color: '#333' }}>Cancelar</button>
         <button type="button" onClick={enviar} disabled={enviando} style={{ ...botonFila, backgroundColor: '#1A3C5E', opacity: enviando ? 0.6 : 1 }}>
-          {enviando ? 'Enviando...' : '🚨 Enviar alerta'}
+          {enviando ? 'Enviando...' : (consulta ? TEXTO_BOTON_ENVIAR : TEXTO_ENVIAR_ALERTA)}
         </button>
       </div>
       {/* Solo enlaces, no una casilla de aceptación. URLs absolutas igual que en el registro de yonkes. */}
@@ -196,6 +228,7 @@ export default function AvisarYonkes({
 }
 
 const caja = { marginTop: '12px', padding: '14px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #C5D8EC' };
+const cajaConfirmacion = { margin: '14px 0', padding: '16px', borderRadius: '16px', backgroundColor: '#fff', border: '2px solid #2E7D32' };
 const cajaDestacada = { margin: '0 0 14px', padding: '16px', borderRadius: '12px', backgroundColor: '#FFF4E8', border: '2px solid #E8720C' };
 const boton = { width: '100%', padding: '12px', borderRadius: '50px', border: 'none', color: '#fff', fontWeight: '700', fontSize: '14px', cursor: 'pointer' };
 // En una sola línea con las dos sirenas aun en celulares de 320-360 px (medido con Chromium): la

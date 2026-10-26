@@ -95,7 +95,7 @@ describe('lo que sale hacia afuera', () => {
     const wa = enlaceGuardarPorWhatsapp('+52 664 123 4567', enlace);
     expect(wa.startsWith('https://wa.me/526641234567?text=')).toBe(true);
     expect(decodeURIComponent(wa)).toContain(enlace);
-    expect(decodeURIComponent(wa)).toContain(`text=Mi alerta de búsqueda en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`);
+    expect(decodeURIComponent(wa)).toContain(`text=Mi consulta en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`);
   });
   it('mensajes de error que ve el cliente hablan de "alertas" y usan el límite real', () => {
     expect(MENSAJES_PEDIDO.limiteWhatsapp).toBe(`Ya enviaste ${MAX_PEDIDOS_POR_WHATSAPP_DIA} alertas hoy con este WhatsApp. Intenta mañana.`);

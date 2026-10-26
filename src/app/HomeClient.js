@@ -25,7 +25,7 @@ import VentanaAlertas from './VentanaAlertas';
 import ComoFuncionaBuscador from './ComoFuncionaBuscador';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
-import { leerBanderaAlertaUnPaso, leerBanderaAlertaSiempre, leerBanderaInventarioVehiculos, useBanderaPedidosClientes } from './lib/banderaPedidosClientes';
+import { leerBanderaAlertaUnPaso, leerBanderaAlertaSiempre, leerBanderaFormularioAbierto, leerBanderaInventarioVehiculos, useBanderaPedidosClientes } from './lib/banderaPedidosClientes';
 import { cuantosYonkes, verboTener } from '../lib/textoYonkes';
 import { TIPOS_SIN_RESULTADO_CON_ALERTA, lugarAlertaConResultados, mensajeConAlerta, tituloAlertaProtagonista } from '../lib/alertaSiempre';
 import AlertaUnPaso from './AlertaUnPaso';
@@ -296,10 +296,14 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   const [numeroBusqueda, setNumeroBusqueda] = useState(0);
   // config/pedidosClientes.alertaSiempre (encendida salvo false, ver lib/alertaSiempre.js).
   const [alertaSiempre, setAlertaSiempre] = useState(true);
+  // config/pedidosClientes.formularioAbierto: textos de "consulta" en lugar de "alerta" (mismo
+  // documento y misma lectura que las demás banderas).
+  const [textosConsulta, setTextosConsulta] = useState(false);
   useEffect(() => {
     let vigente = true;
     leerBanderaAlertaUnPaso().then((v) => { if (vigente) setAlertaUnPaso(v); });
     leerBanderaAlertaSiempre().then((v) => { if (vigente) setAlertaSiempre(v); });
+    leerBanderaFormularioAbierto().then((v) => { if (vigente) setTextosConsulta(v); });
     return () => { vigente = false; };
   }, []);
   const [estadoPlanes, setEstadoPlanes] = useState(ESTADO_DEFAULT);
@@ -1610,11 +1614,16 @@ function obtenerEstadoAbierto(horario) {
   }
 
   // Partes del cuadro de mensaje del buscador inteligente (ver partesCuadroMensaje).
+  // config/pedidosClientes.formularioAbierto (lo manda el servidor): en los 4 casos sin resultado, el
+  // formulario sale abierto en modo número (AlertaUnPaso modoNumero).
+  const formularioNumero = Boolean(mensajeLibre && mensajeLibre.formularioAbierto === true
+    && TIPOS_SIN_RESULTADO_CON_ALERTA.includes(mensajeLibre.tipo));
   const partesCuadro = mensajeLibre
     ? partesCuadroMensaje({
       tipo: mensajeLibre.tipo, alertaUnPaso, estadoBusqueda,
       conOtrosEstados: Boolean(mensajeLibre.otrosEstados || mensajeLibre.otrosEstadosRevisados),
       seMuestranOtrosEstados: Boolean(mensajeLibre.otrosEstados),
+      sinYonkesYaRevisado: formularioNumero && mensajeLibre.otrosEstadosRevisados === true,
     })
     : null;
   // Caso a de otros estados (estado elegido sin nada y abajo resultados de otros estados): el
@@ -1622,9 +1631,9 @@ function obtenerEstadoAbierto(horario) {
   const nombreEstadoBusqueda = estadosDisponibles.find((e) => e.id === estadoBusqueda)?.nombre || estadoBusqueda;
   // Número de parte, marca muy general o pieza sin vehículo: título propio (no "No tenemos ese
   // vehículo todavía", porque no se buscó un vehículo).
-  const tituloIncompleta = mensajeLibre ? tituloAlertaProtagonista(mensajeLibre.tipo) : null;
+  const tituloIncompleta = mensajeLibre ? tituloAlertaProtagonista(mensajeLibre.tipo, textosConsulta) : null;
   const alertaConOtrosEstados = mensajeLibre?.otrosEstados?.modo === 'a'
-    ? { titulo: TITULO_CON_OTROS_ESTADOS, texto: textoConOtrosEstados(nombreEstadoBusqueda) }
+    ? { titulo: TITULO_CON_OTROS_ESTADOS, texto: textoConOtrosEstados(nombreEstadoBusqueda, textosConsulta) }
     : (tituloIncompleta ? { titulo: tituloIncompleta } : {});
 
   return (
@@ -1786,7 +1795,8 @@ function obtenerEstadoAbierto(horario) {
                   anio={mensajeLibre.busqueda?.anio} pieza={mensajeLibre.busqueda?.pieza ?? mensajeLibre.pieza ?? ''}
                   estado={estadoBusqueda} estados={estadosDisponibles}
                   {...alertaConOtrosEstados}
-                  abiertoDeEntrada={mensajeLibre.formularioAbierto === true && TIPOS_SIN_RESULTADO_CON_ALERTA.includes(mensajeLibre.tipo)}
+                  abiertoDeEntrada={formularioNumero}
+                  modoNumero={formularioNumero}
                 />
               )}
 
