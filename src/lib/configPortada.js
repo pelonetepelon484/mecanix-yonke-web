@@ -2,9 +2,11 @@
 // valor o si falla la lectura, todo apagado: la página se ve como hoy.
 //   botonPanel: con sesión iniciada, "Ir a mi panel" en lugar de "¿Tienes un yonke?" y
 //   "¿Tienes un taller?" en la portada, y "← Ir a Mecanix" dentro del panel.
+//   ecosistema: bloque "Ecosistema de soluciones automotrices" al final de la pestaña cliente
+//   (EcosistemaMecanix.js). Se lee en el servidor (page.js) para que el texto vaya en el HTML inicial.
 import { doc, getDoc } from 'firebase/firestore';
 
-export const banderasPortada = (config) => ({ botonPanel: config?.botonPanel === true });
+export const banderasPortada = (config) => ({ botonPanel: config?.botonPanel === true, ecosistema: config?.ecosistema === true });
 
 export async function leerConfigPortada(db) {
   try {
