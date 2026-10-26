@@ -28,7 +28,7 @@ const OTROS_ESTADOS = { emoji: '🌎', titulo: 'Busca en otros estados', desc: '
 // yonkes", "Si decides escribirle a un yonke desde tu enlace…" y "Nunca ven tu número de WhatsApp".
 // Con config/pedidosClientes.formularioAbierto el título dice TITULO_ALERTA_CONSULTA.
 export const TITULO_ALERTA_CONSULTA = 'Consulta con los yonkes';
-const ALERTA = { emoji: '🔔', titulo: 'Deja una alerta', desc: 'Ves las respuestas de los yonkes en tu enlace privado y tú decides a quién escribirle. Nunca ven tu número de WhatsApp.' };
+const ALERTA = { emoji: '🔔', titulo: 'Deja una búsqueda activa', desc: 'Ves las respuestas de los yonkes en tu enlace privado y tú decides a quién escribirle. Nunca ven tu número de WhatsApp.' };
 
 function Paso({ emoji, titulo, desc }) {
   return (

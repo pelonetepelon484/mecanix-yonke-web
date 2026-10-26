@@ -20,7 +20,7 @@ import {
 } from '../lib/alertasRecientes';
 
 export const TEXTO_YO_LA_TENGO = 'Yo la tengo';
-export const TEXTO_ELIGE_ESTADO = 'Elige tu estado arriba para ver las alertas de búsqueda de tu estado.';
+export const TEXTO_ELIGE_ESTADO = 'Elige tu estado arriba para ver las búsquedas activas de tu estado.';
 export const RUTA_REGISTRO_ALERTAS = '/panel/registro?desde=alertas';
 const ALTO_FILA = 80;
 
@@ -116,12 +116,12 @@ export default function VentanaAlertas({ estado }) {
 
   return (
     <div
-      role="link" tabIndex={0} aria-label="Ver todas las alertas de búsqueda"
+      role="link" tabIndex={0} aria-label="Ver todas las búsquedas activas"
       onClick={irAlListado} onKeyDown={(e) => { if (e.key === 'Enter') irAlListado(); }}
       style={caja}
     >
       <style>{ANIMACION}</style>
-      <p style={titulo}>🔔 Alertas de búsqueda recientes</p>
+      <p style={titulo}>🔔 Búsquedas activas recientes</p>
       <p style={subtitulo}>Clientes buscando piezas ahora. ¿Tienes alguna?</p>
       <div style={{ height: Math.min(mostradas.length, VISIBLES_PORTADA) * ALTO_FILA, overflow: 'hidden' }}>
         {mostradas.map((a, i) => (

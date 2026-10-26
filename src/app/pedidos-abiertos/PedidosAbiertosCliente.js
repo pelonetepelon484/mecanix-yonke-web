@@ -14,7 +14,7 @@ function fecha(iso) {
   return iso ? new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
 }
 
-export const TEXTO_ELIGE_ESTADO_PEDIDOS = 'Elige tu estado para ver los pedidos abiertos.';
+export const TEXTO_ELIGE_ESTADO_PEDIDOS = 'Elige tu estado para ver las búsquedas activas.';
 
 export default function PedidosAbiertosCliente() {
   // consulta: lo que se pide al servidor ('auto' la primera vez); seleccion: lo que marca el selector.
@@ -74,8 +74,8 @@ export default function PedidosAbiertosCliente() {
             {situacion === 'sinEstado' && <p style={{ color: '#555' }}>{TEXTO_ELIGE_ESTADO_PEDIDOS}</p>}
 
             {situacion === 'cargando' && <p style={{ color: '#555' }}>Cargando...</p>}
-            {situacion === 'error' && <p role="alert" style={{ color: '#B3261E' }}>No pudimos cargar los pedidos. Intenta de nuevo.</p>}
-            {situacion === 'listo' && pedidos.length === 0 && <p style={{ color: '#555' }}>No hay pedidos abiertos en este estado por ahora.</p>}
+            {situacion === 'error' && <p role="alert" style={{ color: '#B3261E' }}>No pudimos cargar las búsquedas activas. Intenta de nuevo.</p>}
+            {situacion === 'listo' && pedidos.length === 0 && <p style={{ color: '#555' }}>No hay búsquedas activas en este estado por ahora.</p>}
             {situacion === 'listo' && pedidos.map((p) => (
               <div key={p.id} style={tarjeta}>
                 <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E', fontSize: '16px' }}>{p.pieza}</p>

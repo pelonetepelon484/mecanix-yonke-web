@@ -61,7 +61,7 @@ describe('Pedidos de clientes (lado del yonke)', () => {
   it('muestra los pedidos del estado como "Cliente particular", sin ningún dato del cliente', async () => {
     abiertos = [pedido];
     render(<PedidosClientesYonke yonkeId="Y1" />);
-    expect(await screen.findByText(/Pedidos de clientes \(1\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/Búsquedas activas de clientes \(1\)/)).toBeInTheDocument();
     expect(screen.getByText(/Cliente particular/)).toBeInTheDocument();
     expect(escuchar).toHaveBeenCalledWith('baja-california');
   });
@@ -88,7 +88,7 @@ describe('Pedidos de clientes (lado del yonke)', () => {
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, pedido: { ...pedido, estado: 'sonora', estadoNombre: 'Sonora' } }) }));
     render(<PedidosClientesYonke yonkeId="Y1" />);
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'Este pedido es de Sonora y tu yonke está registrado en Baja California. Solo los yonkes de Sonora pueden responderlo.',
+      'Esta búsqueda activa es de Sonora y tu yonke está registrado en Baja California. Solo los yonkes de Sonora pueden responderla.',
     );
   });
   it('con ?pedido={id} de otro estado que acepta envíos, sin ser Verificado con Envíos (con alertasPortada): mensaje corto', async () => {
@@ -96,14 +96,14 @@ describe('Pedidos de clientes (lado del yonke)', () => {
     window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, pedido: { ...pedido, estado: 'sonora', estadoNombre: 'Sonora', aceptaOtrosEstados: true } }) }));
     render(<PedidosClientesYonke yonkeId="Y1" />);
-    expect(await screen.findByText('Esta alerta solo la pueden contestar yonkes Verificados con Envíos nacionales.')).toBeInTheDocument();
+    expect(await screen.findByText('Esta búsqueda activa solo la pueden contestar yonkes Verificados con Envíos nacionales.')).toBeInTheDocument();
   });
 
   it('sin alertasPortada, ese mismo caso explica como siempre (solo los de ese estado)', async () => {
     window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, pedido: { ...pedido, estado: 'sonora', estadoNombre: 'Sonora', aceptaOtrosEstados: true } }) }));
     render(<PedidosClientesYonke yonkeId="Y1" />);
-    expect(await screen.findByText(/Solo los yonkes de Sonora pueden responderlo/)).toBeInTheDocument();
+    expect(await screen.findByText(/Solo los yonkes de Sonora pueden responderla/)).toBeInTheDocument();
   });
 
   it('con ?pedido={id} y el yonke desactivado por el admin: "Tu yonke está desactivado. Escríbenos para revisarlo."', async () => {
@@ -118,20 +118,20 @@ describe('Pedidos de clientes (lado del yonke)', () => {
     window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
     global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false }) }));
     render(<PedidosClientesYonke yonkeId="Y1" />);
-    expect(await screen.findByRole('status')).toHaveTextContent('Este pedido ya venció o ya no está disponible.');
+    expect(await screen.findByRole('status')).toHaveTextContent('Esta búsqueda activa ya venció o ya no está disponible.');
   });
   it('con ?pedido={id} ya respondido, avisa en vez de abrir el formulario', async () => {
     window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
     abiertos = [pedido];
     yaRespondio = vi.fn(async () => ({ tieneLaPieza: true }));
     render(<PedidosClientesYonke yonkeId="Y1" />);
-    expect(await screen.findByRole('status')).toHaveTextContent('Ya respondiste este pedido.');
+    expect(await screen.findByRole('status')).toHaveTextContent('Ya respondiste esta búsqueda activa.');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
 
 describe('Alertas de otros estados (lado del yonke)', () => {
-  const SWITCH = { name: 'Ver también alertas de otros estados con envío' };
+  const SWITCH = { name: 'Ver también búsquedas activas de otros estados con envío' };
   const yonkeConEnvio = (extra = {}) => ({ estado: 'baja-california', activo: true, nombre: 'Yonke Prueba', whatsapp: '6641234567', verificado: true, enviosNacionales: true, ...extra });
   const deJalisco = { id: 'Pedido00000000000002', pieza: 'Faro', vehiculo: { marca: 'Ford', modelo: 'Focus', anio: 2012 }, estado: 'jalisco', expiraAt: 'X', aceptaOtrosEstados: true };
 
@@ -139,7 +139,7 @@ describe('Alertas de otros estados (lado del yonke)', () => {
     leerYonkeEstadoActivo.mockImplementation(async () => yonkeConEnvio({ verAlertasOtrosEstados: true }));
     abiertos = [pedido];
     render(<PedidosClientesYonke yonkeId="Y1" />);
-    expect(await screen.findByText(/Pedidos de clientes \(1\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/Búsquedas activas de clientes \(1\)/)).toBeInTheDocument();
     expect(screen.queryByRole('switch', SWITCH)).not.toBeInTheDocument();
     expect(escucharOtros).not.toHaveBeenCalled();
   });
@@ -149,7 +149,7 @@ describe('Alertas de otros estados (lado del yonke)', () => {
       leerYonkeEstadoActivo.mockImplementation(async () => yonkeConEnvio({ ...extra, verAlertasOtrosEstados: true }));
       abiertos = [pedido];
       render(<PedidosClientesYonke yonkeId="Y1" />);
-      expect(await screen.findByText(/Pedidos de clientes \(1\)/)).toBeInTheDocument();
+      expect(await screen.findByText(/Búsquedas activas de clientes \(1\)/)).toBeInTheDocument();
       expect(screen.queryByRole('switch', SWITCH)).not.toBeInTheDocument();
       expect(escucharOtros).not.toHaveBeenCalled();
       cleanup();
@@ -163,13 +163,13 @@ describe('Alertas de otros estados (lado del yonke)', () => {
     render(<PedidosClientesYonke yonkeId="Y1" />);
     const interruptor = await screen.findByRole('switch', SWITCH);
     expect(interruptor).toHaveAttribute('aria-checked', 'false');
-    expect(await screen.findByText(/Pedidos de clientes \(1\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/Búsquedas activas de clientes \(1\)/)).toBeInTheDocument();
     expect(escucharOtros).not.toHaveBeenCalled();
 
     fireEvent.click(interruptor);
     await waitFor(() => expect(guardarVerOtrosEstados).toHaveBeenCalledWith('Y1', true));
     await waitFor(() => expect(interruptor).toHaveAttribute('aria-checked', 'true'));
-    expect(await screen.findByText(/Pedidos de clientes \(2\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/Búsquedas activas de clientes \(2\)/)).toBeInTheDocument();
     expect(escucharOtros).toHaveBeenCalled();
     expect(await screen.findByText('📦 Acepta envío · Desde Jalisco')).toBeInTheDocument();
     expect(screen.getAllByText(/Acepta envío/)).toHaveLength(1); // la de su estado, sin etiqueta
@@ -193,7 +193,7 @@ describe('Alertas de otros estados (lado del yonke)', () => {
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, pedido: { ...deJalisco, estadoNombre: 'Jalisco' } }) }));
     render(<PedidosClientesYonke yonkeId="Y1" />);
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'Esta alerta es de Jalisco y el cliente acepta yonkes de otros estados con envío. Enciende “Ver también alertas de otros estados con envío” para responderla.',
+      'Esta búsqueda activa es de Jalisco y el cliente acepta yonkes de otros estados con envío. Enciende “Ver también búsquedas activas de otros estados con envío” para responderla.',
     );
   });
   it('con ?pedido={id} de otro estado y el interruptor encendido: la abre para responder', async () => {
@@ -219,22 +219,22 @@ describe('"Yo la tengo" en una alerta de otro estado con config/pedidosClientes.
 
   it('le falta Verificado', async () => {
     expect(await abrirDeSonora({ verificado: false, enviosNacionales: true }))
-      .toContain('Esta alerta es de otro estado. Para contestarla necesitas la insignia Verificado. Escríbenos para verificar tu yonke.');
+      .toContain('Esta búsqueda activa es de otro estado. Para contestarla necesitas la insignia Verificado. Escríbenos para verificar tu yonke.');
   });
   it('le falta Envíos nacionales', async () => {
     expect(await abrirDeSonora({ verificado: true, enviosNacionales: false }))
-      .toContain('Esta alerta es de otro estado. Para contestarla, tu yonke necesita la insignia Envíos nacionales. Escríbenos para activarla.');
+      .toContain('Esta búsqueda activa es de otro estado. Para contestarla, tu yonke necesita la insignia Envíos nacionales. Escríbenos para activarla.');
   });
   it('le faltan las dos', async () => {
     expect(await abrirDeSonora({ verificado: false, enviosNacionales: false }))
-      .toContain('Esta alerta es de otro estado. Para contestarla tu yonke necesita las insignias Verificado y Envíos nacionales. Escríbenos para activarlas.');
+      .toContain('Esta búsqueda activa es de otro estado. Para contestarla tu yonke necesita las insignias Verificado y Envíos nacionales. Escríbenos para activarlas.');
   });
   it('tiene las dos pero el interruptor apagado: el aviso de siempre para encenderlo', async () => {
     expect(await abrirDeSonora({ verificado: true, enviosNacionales: true, verAlertasOtrosEstados: false }))
-      .toContain('Esta alerta es de Sonora y el cliente acepta yonkes de otros estados con envío. Enciende “Ver también alertas de otros estados con envío” para responderla.');
+      .toContain('Esta búsqueda activa es de Sonora y el cliente acepta yonkes de otros estados con envío. Enciende “Ver también búsquedas activas de otros estados con envío” para responderla.');
   });
   it('con la bandera apagada: el mensaje corto de siempre', async () => {
     expect(await abrirDeSonora({ verificado: false, enviosNacionales: false }, { habilitado: true, alertasPortada: true, otrosEstados: true }))
-      .toContain('Esta alerta solo la pueden contestar yonkes Verificados con Envíos nacionales.');
+      .toContain('Esta búsqueda activa solo la pueden contestar yonkes Verificados con Envíos nacionales.');
   });
 });

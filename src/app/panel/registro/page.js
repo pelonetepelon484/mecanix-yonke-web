@@ -287,7 +287,7 @@ export default function RegistroYonke() {
           </p>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#555' }}>
             {limitesPlanes
-              ? 'Sube tu inventario con fotos, aparece en búsquedas y atiende reservaciones, pedidos de talleres y alertas de clientes sin costo.'
+              ? 'Sube tu inventario con fotos, aparece en búsquedas y atiende reservaciones, pedidos de talleres y búsquedas activas de clientes sin costo.'
               : 'Sube tu inventario y aparece en búsquedas sin costo. Así de simple.'}
           </p>
         </div>

@@ -72,9 +72,9 @@ describe('textos nuevos de las tarjetas', () => {
       'Tu yonke visible en el buscador público de Mecanix',
       'Inventario sin límite con fotos: vehículos, motores y piezas sueltas',
       'Pedidos: reservaciones de clientes y pedidos de talleres',
-      'Alertas de búsqueda en tiempo real: responde hasta 50 al día',
+      'Búsquedas activas en tiempo real: responde hasta 50 al día',
       'Si tienes el vehículo completo, queda disponible 30 días sin capturarlo',
-      'Avisos en tu celular cuando llega una alerta o un pedido (Android)',
+      'Avisos en tu celular cuando llega una búsqueda activa o un pedido (Android)',
       'Contacto directo por WhatsApp',
       'Datos de tu negocio: logo, información, horario, métodos de pago y garantía',
       'Calificaciones de tus clientes',
@@ -86,6 +86,7 @@ describe('textos nuevos de las tarjetas', () => {
     for (const f of ['sin límite', 'Sigo manteniendo mis vehículos', 'Venta manual', 'notas de garantía', 'Demanda', 'Reciclaje', 'subdominio', '⭐ Premium', 'Las demás funciones']) {
       expect(todo).toContain(f);
     }
+    expect(FUNCIONES_PLAN_PREMIUM).toContain('Botón "Sigo manteniendo mis vehículos": renueva tus vehículos con un toque');
     expect(todo).not.toMatch(/gratis|sin costo|noviembre|año/i);
     expect(URL_QUIERO_PREMIUM).toBe('https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual');
   });

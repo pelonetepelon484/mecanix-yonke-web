@@ -52,7 +52,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, id: 'X', enlace: 'https://m.test/mi-pedido/X?c=COD' }) }));
     const AvisarYonkes = await cargar();
     render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" estadoInicial="sonora" />);
-    fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
+    fireEvent.click(await screen.findByRole('button', { name: '🚨 Consultar con los yonkes 🚨' }));
     expect(screen.getByText(/Tu WhatsApp solo lo usa Mecanix para avisarte y no se comparte con los yonkes\./)).toBeInTheDocument();
     expect(screen.getByText(/Al enviar aceptas los/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'términos' })).toHaveAttribute('href', 'https://mecanixyonkevirtual.com/terminos');
@@ -60,16 +60,16 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText('¿En qué estado la buscas?')).toHaveValue('sonora'));
     // "Cancelar" y "🚨 Enviar alerta" lado a lado, cada uno en una sola línea (cabe en celular de 320 px).
-    for (const nombre of ['Cancelar', '🚨 Enviar alerta']) {
+    for (const nombre of ['Cancelar', '🚨 Enviar búsqueda activa']) {
       const b = screen.getByRole('button', { name: nombre });
       expect(b.style.whiteSpace).toBe('nowrap');
       expect(b.style.fontSize).toBe('clamp(12px, 3.7vw, 14px)');
     }
     expect(screen.queryByRole('button', { name: 'Enviar pedido' })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '664 123 4567' } });
-    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
+    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' }));
 
-    expect(await screen.findByText('✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de Sonora la ven en su panel.')).toBeInTheDocument();
+    expect(await screen.findByText('✅ ¡Listo! Tu búsqueda activa quedó registrada. Los yonkes de Sonora la ven en su panel.')).toBeInTheDocument();
     const [url, opciones] = global.fetch.mock.calls[0];
     expect(url).toBe('/api/pedir-pieza');
     expect(JSON.parse(opciones.body)).toEqual({
@@ -77,30 +77,30 @@ describe('"Avisar a los yonkes" en la página principal', () => {
     });
     const guardar = screen.getByRole('link', { name: /Guardar mi enlace por WhatsApp/ });
     expect(guardar.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/526641234567\?text=/);
-    expect(decodeURIComponent(guardar.getAttribute('href'))).toContain('Mi consulta en Mecanix (guárdalo para ver las respuestas de los yonkes): https://m.test/mi-pedido/X?c=COD');
-    expect(screen.getByRole('link', { name: 'Ver mi alerta' })).toHaveAttribute('href', 'https://m.test/mi-pedido/X?c=COD');
+    expect(decodeURIComponent(guardar.getAttribute('href'))).toContain('Mi búsqueda activa en Mecanix (guárdalo para ver las respuestas de los yonkes): https://m.test/mi-pedido/X?c=COD');
+    expect(screen.getByRole('link', { name: 'Ver mi búsqueda activa' })).toHaveAttribute('href', 'https://m.test/mi-pedido/X?c=COD');
   });
   it('valida antes de enviar y muestra el mensaje del servidor (por ejemplo, el límite)', async () => {
     config = { habilitado: true };
-    global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false, mensaje: 'Ya enviaste 3 alertas hoy con este WhatsApp. Intenta mañana.' }) }));
+    global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false, mensaje: 'Ya enviaste 3 búsquedas activas hoy con este WhatsApp. Intenta mañana.' }) }));
     const AvisarYonkes = await cargar();
     render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-    fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
-    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
+    fireEvent.click(await screen.findByRole('button', { name: '🚨 Consultar con los yonkes 🚨' }));
+    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/WhatsApp a 10 dígitos/);
     expect(global.fetch).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
-    expect(await screen.findByText('Ya enviaste 3 alertas hoy con este WhatsApp. Intenta mañana.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' }));
+    expect(await screen.findByText('Ya enviaste 3 búsquedas activas hoy con este WhatsApp. Intenta mañana.')).toBeInTheDocument();
   });
 
   describe('casilla de otros estados', () => {
-    const CASILLA = { name: 'Mostrar mi alerta a yonkes de otros estados que hacen envíos. Esta casilla viene marcada; si solo quieres yonkes de tu estado, desmárcala. No se comparte tu nombre ni tu WhatsApp.' };
-    const LISTO = '✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de Baja California la ven en su panel.';
+    const CASILLA = { name: 'Quiero buscar también en otros estados.' };
+    const LISTO = '✅ ¡Listo! Tu búsqueda activa quedó registrada. Los yonkes de Baja California la ven en su panel.';
     const OTROS = 'También la pueden ver yonkes Verificados de otros estados con Envíos nacionales.';
     const enviar = async () => {
       fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-      fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' }));
+      fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' }));
       await waitFor(() => expect(global.fetch).toHaveBeenCalled());
       return JSON.parse(global.fetch.mock.calls[0][1].body);
     };
@@ -111,7 +111,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Consultar con los yonkes 🚨' }));
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
       expect(screen.queryByText(/aceptas que la información que capturaste/)).not.toBeInTheDocument();
       expect(Object.keys(await enviar())).not.toContain('aceptaOtrosEstados');
@@ -122,14 +122,14 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Consultar con los yonkes 🚨' }));
       expect(await screen.findByRole('checkbox', CASILLA)).toBeChecked();
       const enlaces = screen.getAllByRole('link', { name: 'Aviso de privacidad' }).map((l) => l.getAttribute('href'));
       expect(enlaces).toContain('https://mecanixyonkevirtual.com/privacidad#pedidos-clientes');
       // Consentimiento: visible debajo de la casilla y antes del botón de enviar.
-      const consentimiento = screen.getByText('Al enviar tu alerta con esta casilla marcada, aceptas que la información que capturaste (vehículo, pieza y estado) se muestre a yonkes de otros estados que hacen envíos. No se comparte tu nombre ni tu WhatsApp.');
+      const consentimiento = screen.getByText('Si la dejas marcada, mostraremos los datos de tu vehículo, la pieza que buscas y tu estado en nuestra portada y a la red de yonkes Verificados con Envíos Nacionales de todo el país. Así aumentas tus posibilidades de encontrarla. Jamás mostraremos tu nombre, teléfono ni datos de contacto. Si la desmarcas, tu búsqueda solo será visible dentro de tu propio estado.');
       const casilla = screen.getByRole('checkbox', CASILLA);
-      const boton = screen.getByRole('button', { name: '🚨 Enviar alerta' });
+      const boton = screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' });
       expect(casilla.compareDocumentPosition(consentimiento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(consentimiento.compareDocumentPosition(boton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect((await enviar()).aceptaOtrosEstados).toBe(true);
@@ -140,7 +140,7 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Consultar con los yonkes 🚨' }));
       fireEvent.click(await screen.findByRole('checkbox', CASILLA));
       expect(screen.getByRole('checkbox', CASILLA)).not.toBeChecked();
       expect((await enviar()).aceptaOtrosEstados).toBe(false);
@@ -153,10 +153,10 @@ describe('"Avisar a los yonkes" en la página principal', () => {
       global.fetch = exito();
       const AvisarYonkes = await cargar();
       render(<AvisarYonkes marcaInicial="Nissan" modeloInicial="Sentra" anioInicial="2005" piezaInicial="Alternador" />);
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Consultar con los yonkes 🚨' }));
       fireEvent.click(await screen.findByRole('checkbox', CASILLA));
       fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
-      fireEvent.click(await screen.findByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
+      fireEvent.click(await screen.findByRole('button', { name: '🚨 Consultar con los yonkes 🚨' }));
       expect(await screen.findByRole('checkbox', CASILLA)).not.toBeChecked();
       expect((await enviar()).aceptaOtrosEstados).toBe(false);
     });

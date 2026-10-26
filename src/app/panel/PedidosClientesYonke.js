@@ -35,7 +35,7 @@ function fechaCorta(ts) {
 // Solo pasa si el admin lo desactivó: un yonke nace activo al registrarse.
 export const TEXTO_YONKE_DESACTIVADO = 'Tu yonke está desactivado. Escríbenos para revisarlo.';
 
-export const TEXTO_INTERRUPTOR_OTROS_ESTADOS = 'Ver también alertas de otros estados con envío';
+export const TEXTO_INTERRUPTOR_OTROS_ESTADOS = 'Ver también búsquedas activas de otros estados con envío';
 
 export default function PedidosClientesYonke({ yonkeId }) {
   // Sin términos vigentes el interruptor se ve pero no se cambia; responder alertas sí se puede.
@@ -159,7 +159,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
           yonke: { verificado: estadoActivo?.verificado === true, enviosNacionales: estadoActivo?.enviosNacionales === true },
         }).then(setAviso);
       }
-      else if (ya[id]) setAviso('Ya respondiste este pedido. El cliente ya puede ver tu respuesta.');
+      else if (ya[id]) setAviso('Ya respondiste esta búsqueda activa. El cliente ya puede ver tu respuesta.');
       else setAbierto(encontrado);
     }
 
@@ -216,7 +216,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
 
       {estadoActivo?.activo && pendientes.length > 0 && (
         <div style={seccion}>
-          <p style={titulo}>🙋 Pedidos de clientes ({pendientes.length})</p>
+          <p style={titulo}>🙋 Búsquedas activas de clientes ({pendientes.length})</p>
           {sinRespuestasHoy && (
             <div role="note" style={avisoLimite}>
               <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#1A3C5E', fontWeight: 'bold' }}>{MENSAJES_VEHICULO_ALERTA.limiteAlcanzado}</p>
@@ -308,14 +308,14 @@ function EtiquetaEnvio({ estado }) {
 }
 
 // El pedido no está entre los que ve el yonke: ¿es de otro estado o ya no está?
-export const TEXTO_SOLO_VERIFICADOS_CON_ENVIO = 'Esta alerta solo la pueden contestar yonkes Verificados con Envíos nacionales.';
+export const TEXTO_SOLO_VERIFICADOS_CON_ENVIO = 'Esta búsqueda activa solo la pueden contestar yonkes Verificados con Envíos nacionales.';
 
 // Con config/pedidosClientes.alertasPortadaTodos: qué le falta al yonke para contestar una alerta de
 // otro estado. Verificado y Envíos nacionales los pone el admin (el yonke no puede activarlos), por
 // eso los dos mensajes piden escribirnos.
-export const TEXTO_FALTA_VERIFICADO = 'Esta alerta es de otro estado. Para contestarla necesitas la insignia Verificado. Escríbenos para verificar tu yonke.';
-export const TEXTO_FALTA_ENVIOS = 'Esta alerta es de otro estado. Para contestarla, tu yonke necesita la insignia Envíos nacionales. Escríbenos para activarla.';
-export const TEXTO_FALTAN_AMBOS = 'Esta alerta es de otro estado. Para contestarla tu yonke necesita las insignias Verificado y Envíos nacionales. Escríbenos para activarlas.';
+export const TEXTO_FALTA_VERIFICADO = 'Esta búsqueda activa es de otro estado. Para contestarla necesitas la insignia Verificado. Escríbenos para verificar tu yonke.';
+export const TEXTO_FALTA_ENVIOS = 'Esta búsqueda activa es de otro estado. Para contestarla, tu yonke necesita la insignia Envíos nacionales. Escríbenos para activarla.';
+export const TEXTO_FALTAN_AMBOS = 'Esta búsqueda activa es de otro estado. Para contestarla tu yonke necesita las insignias Verificado y Envíos nacionales. Escríbenos para activarlas.';
 export function textoQueLeFalta(yonke) {
   const verificado = yonke?.verificado === true;
   const envios = yonke?.enviosNacionales === true;
@@ -333,7 +333,7 @@ async function explicarPedidoNoDisponible(id, estadoYonke, {
     const data = await res.json();
     if (res.ok && data.pedido && data.pedido.estado !== estadoYonke) {
       if (data.pedido.aceptaOtrosEstados && puedeOtros && !verOtros) {
-        return `Esta alerta es de ${data.pedido.estadoNombre} y el cliente acepta yonkes de otros estados con envío. Enciende “${TEXTO_INTERRUPTOR_OTROS_ESTADOS}” para responderla.`;
+        return `Esta búsqueda activa es de ${data.pedido.estadoNombre} y el cliente acepta yonkes de otros estados con envío. Enciende “${TEXTO_INTERRUPTOR_OTROS_ESTADOS}” para responderla.`;
       }
       // Enlace directo (p. ej. desde la portada) a una alerta de otro estado que acepta envíos,
       // abierto por un yonke que no es Verificado con Envíos nacionales (con alertasPortada).
@@ -344,12 +344,12 @@ async function explicarPedidoNoDisponible(id, estadoYonke, {
       if (data.pedido.aceptaOtrosEstados && !puedeOtros && alertasPortada) return TEXTO_SOLO_VERIFICADOS_CON_ENVIO;
       const estados = await cargarEstados();
       const tuEstado = estados.find((e) => e.id === estadoYonke)?.nombre || estadoYonke;
-      return `Este pedido es de ${data.pedido.estadoNombre} y tu yonke está registrado en ${tuEstado}. Solo los yonkes de ${data.pedido.estadoNombre} pueden responderlo.`;
+      return `Esta búsqueda activa es de ${data.pedido.estadoNombre} y tu yonke está registrado en ${tuEstado}. Solo los yonkes de ${data.pedido.estadoNombre} pueden responderla.`;
     }
   } catch (error) {
     console.error(error);
   }
-  return 'Este pedido ya venció o ya no está disponible.';
+  return 'Esta búsqueda activa ya venció o ya no está disponible.';
 }
 
 function ModalResponderPedido({ pedido, estadoNombre = '', onCerrar, onResponder }) {
@@ -443,7 +443,7 @@ function ModalVehiculoCompleto({ pedido, onSi, onNo }) {
           🚗 {pedido.vehiculo?.marca} {pedido.vehiculo?.modelo} {pedido.vehiculo?.anio}
         </p>
         <p style={{ color: '#888', fontSize: '12px', margin: '0 0 14px', lineHeight: '1.4' }}>
-          Si dices que sí, por 30 días los clientes que busquen otra pieza de este vehículo te verán disponible, sin que te llegue otra alerta.
+          Si dices que sí, por 30 días los clientes que busquen otra pieza de este vehículo te verán disponible, sin que te llegue otra búsqueda activa.
         </p>
         {error && <p role="alert" style={{ color: '#B3261E', fontSize: '13px', margin: '0 0 10px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: '10px' }}>

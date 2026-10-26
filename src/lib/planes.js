@@ -23,9 +23,9 @@ export const FUNCIONES_PLAN_BASICO = [
   'Tu yonke visible en el buscador público de Mecanix',
   'Inventario sin límite con fotos: vehículos, motores y piezas sueltas',
   'Pedidos: reservaciones de clientes y pedidos de talleres',
-  `Alertas de búsqueda en tiempo real: responde hasta ${LIMITE_RESPUESTAS_DIARIAS_BASICO} al día`,
+  `Búsquedas activas en tiempo real: responde hasta ${LIMITE_RESPUESTAS_DIARIAS_BASICO} al día`,
   'Si tienes el vehículo completo, queda disponible 30 días sin capturarlo',
-  'Avisos en tu celular cuando llega una alerta o un pedido (Android)',
+  'Avisos en tu celular cuando llega una búsqueda activa o un pedido (Android)',
   'Contacto directo por WhatsApp',
   'Datos de tu negocio: logo, información, horario, métodos de pago y garantía',
   'Calificaciones de tus clientes',
@@ -34,8 +34,8 @@ export const FUNCIONES_PLAN_BASICO = [
 // Tarjeta "Plan Premium" de yonkes (solo con config/planes.limitesActivos). Sin el año gratis.
 export const FUNCIONES_PLAN_PREMIUM = [
   'Todo lo del Plan Básico',
-  'Responde alertas de búsqueda sin límite',
-  'Botón "Sigo manteniendo mis vehículos": renueva tu inventario de alertas con un toque',
+  'Responde búsquedas activas sin límite',
+  'Botón "Sigo manteniendo mis vehículos": renueva tus vehículos con un toque',
   'Venta manual: registra tus ventas de mostrador',
   'Historial completo de tus ventas y notas de garantía en PDF',
   'Demanda: qué piezas buscan los clientes en tu estado',

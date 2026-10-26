@@ -47,7 +47,7 @@ function falsos({ habilitado = true, cliente = 'ok', contar } = {}) {
 
 describe('texto y pantalla del aviso', () => {
   it('solo pieza y vehículo; nada del cliente ni del taller', () => {
-    expect(textoAviso('alertaCliente', ALERTA)).toEqual({ titulo: 'Nueva alerta de búsqueda', cuerpo: 'Alternador · Nissan Sentra 2005' });
+    expect(textoAviso('alertaCliente', ALERTA)).toEqual({ titulo: 'Nueva búsqueda activa', cuerpo: 'Alternador · Nissan Sentra 2005' });
     expect(textoAviso('pedidoTaller', { ...TALLER, tallerNombre: 'Taller X', whatsapp: '6641234567' })).toEqual({ titulo: 'Nuevo pedido de un taller', cuerpo: 'Faro · Ford Focus 2012' });
   });
   it('al tocarlo abre Pedidos (con la alerta, si es de un cliente)', () => {
@@ -89,7 +89,7 @@ describe('a quién se avisa', () => {
     expect(r).toEqual({ enviados: 3, borrados: 0 });
     expect(f.enviados.map((e) => e.token).sort()).toEqual(['tok-bc1-a', 'tok-bc1-b', 'tok-bc2']);
     expect(f.deps.yonkesOtrosEstados).not.toHaveBeenCalled();
-    expect(f.enviados[0].datos).toEqual({ titulo: 'Nueva alerta de búsqueda', cuerpo: 'Alternador · Nissan Sentra 2005', url: '/panel/reservaciones?pedido=Pedido0001', etiqueta: 'mecanix-alertas' });
+    expect(f.enviados[0].datos).toEqual({ titulo: 'Nueva búsqueda activa', cuerpo: 'Alternador · Nissan Sentra 2005', url: '/panel/reservaciones?pedido=Pedido0001', etiqueta: 'mecanix-alertas' });
   });
   it('alerta que acepta otros estados: suma a los que cumplen la regla (sin repetir a los del estado)', async () => {
     const f = falsos();

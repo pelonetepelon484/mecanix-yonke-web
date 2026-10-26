@@ -28,17 +28,17 @@ import { enlaceGuardarPorWhatsapp } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 export const TITULO_SIN_RESULTADOS = 'No tenemos ese vehículo todavía';
-export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Activa una alerta';
-export const TEXTO_COMPACTO = '¿No era lo que buscabas? Activa una alerta aquí';
+export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Consulta con los yonkes';
+export const TEXTO_COMPACTO = '¿No era lo que buscabas? Consulta con los yonkes aquí';
 export const textoSinResultados = (estadoNombre) =>
-  `Activa una alerta: los yonkes de ${estadoNombre || 'tu estado'} la verán y te responderán con su precio.`;
+  `Consulta con los yonkes de ${estadoNombre || 'tu estado'}: verán tu búsqueda activa y te responderán con su precio.`;
 export const textoConfirmacion = (estadoNombre) =>
-  `✅ Listo, los yonkes de ${estadoNombre} ya pueden ver tu búsqueda. Aquí verás sus respuestas:`;
+  `✅ Listo, los yonkes de ${estadoNombre} ya pueden ver tu búsqueda activa. Aquí verás sus respuestas:`;
 // Con config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta").
 export const TEXTO_DISCRETO_CONSULTA = '¿No encontraste la pieza exacta? Consulta con los yonkes';
 export const TEXTO_COMPACTO_CONSULTA = '¿No era lo que buscabas? Consulta con los yonkes aquí';
 export const textoSinResultadosConsulta = (estadoNombre) =>
-  `Consulta con los yonkes de ${estadoNombre || 'tu estado'}: verán tu búsqueda y te responderán con su precio.`;
+  `Consulta con los yonkes de ${estadoNombre || 'tu estado'}: verán tu búsqueda activa y te responderán con su precio.`;
 
 // Modo número (config/pedidosClientes.formularioAbierto).
 export const TEXTO_MODO_NUMERO = 'Deja tu número y revisa en tu link si algún yonke tiene tu pieza. Guarda tu link: ahí verás las respuestas.';
@@ -128,11 +128,11 @@ export default function AlertaUnPaso({
           {otrosEstadosActivo && aceptaOtrosEstados && ' También la pueden ver yonkes Verificados de otros estados con Envíos nacionales.'}
         </p>
         <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#555', wordBreak: 'break-all', backgroundColor: '#F4F5F5', padding: '8px', borderRadius: '8px' }}>{enlace}</p>
-        <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>Guárdalo: ahí verás las respuestas con precio y tú decides a quién escribirle. Tu alerta dura 5 días.</p>
+        <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>Guárdalo: ahí verás las respuestas con precio y tú decides a quién escribirle. Tu búsqueda activa dura 5 días.</p>
         <a href={enlaceGuardarPorWhatsapp(whatsapp, enlace)} target="_blank" rel="noopener noreferrer" style={{ ...botonBase, backgroundColor: '#25D366', display: 'block', textAlign: 'center', textDecoration: 'none' }}>
           💬 Guardar mi enlace por WhatsApp
         </a>
-        <a href={enlace} style={{ display: 'block', textAlign: 'center', marginTop: '10px', color: '#1A3C5E', fontWeight: 'bold', fontSize: '14px' }}>Ver mi alerta</a>
+        <a href={enlace} style={{ display: 'block', textAlign: 'center', marginTop: '10px', color: '#1A3C5E', fontWeight: 'bold', fontSize: '14px' }}>Ver mi búsqueda activa</a>
       </div>
     );
   }

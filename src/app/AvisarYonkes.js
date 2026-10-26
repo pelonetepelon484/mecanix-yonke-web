@@ -16,8 +16,8 @@ import {
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 // Mismo botón en los dos lugares donde se ofrece (sin resultados y sin el año exacto).
-export const TEXTO_BOTON_ALERTA = '🚨 Activa una alerta de búsqueda 🚨';
-export const TEXTO_ENVIAR_ALERTA = '🚨 Enviar alerta';
+export const TEXTO_BOTON_ALERTA = '🚨 Consultar con los yonkes 🚨';
+export const TEXTO_ENVIAR_ALERTA = '🚨 Enviar búsqueda activa';
 // Con config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta"), en este formulario
 // y en AlertaUnPaso: el mismo texto para el botón que abre el formulario, su título y el envío.
 export const TEXTO_BOTON_ENVIAR = '📲 Consultar con los yonkes';
@@ -153,7 +153,7 @@ export default function AvisarYonkes({
     return (
       <div style={caja}>
         <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px' }}>
-          ✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de {nombreEstado} la ven en su panel.
+          ✅ ¡Listo! Tu búsqueda activa quedó registrada. Los yonkes de {nombreEstado} la ven en su panel.
           {/* Solo si marcó la casilla de otros estados (y la casilla existía: segunda bandera encendida). */}
           {otrosEstadosActivo && aceptaOtrosEstados && ' También la pueden ver yonkes Verificados de otros estados con Envíos nacionales.'}
         </p>
@@ -165,7 +165,7 @@ export default function AvisarYonkes({
           💬 Guardar mi enlace por WhatsApp
         </a>
         <a href={enlace} style={{ display: 'block', textAlign: 'center', marginTop: '10px', color: '#1A3C5E', fontWeight: 'bold', fontSize: '14px' }}>
-          Ver mi alerta
+          Ver mi búsqueda activa
         </a>
       </div>
     );
@@ -183,7 +183,7 @@ export default function AvisarYonkes({
         >
           {consulta
             ? (mensajeConsulta || MENSAJE_AVISAR_CONSULTA)
-            : (mensaje || '¿No la encontraste? Activa una alerta de búsqueda y los yonkes de tu estado te responden con precio si la tienen.')}
+            : (mensaje || '¿No la encontraste? Deja una búsqueda activa y los yonkes de tu estado te responden con precio si la tienen.')}
         </p>
         <button type="button" onClick={abrir} style={botonAlerta}>{textoBoton}</button>
       </div>
