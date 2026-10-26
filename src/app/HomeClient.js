@@ -23,6 +23,7 @@ import PestanasPortada from './PestanasPortada';
 import { aniosCercanos, ordenarPorCercania } from '../lib/rangoAnios';
 import VentanaAlertas from './VentanaAlertas';
 import ComoFuncionaBuscador from './ComoFuncionaBuscador';
+import EcosistemaMecanix from './EcosistemaMecanix';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
 import { leerBanderaAlertaUnPaso, leerBanderaAlertaSiempre, leerBanderaFormularioAbierto, leerBanderaInventarioVehiculos, useBanderaPedidosClientes } from './lib/banderaPedidosClientes';
@@ -215,7 +216,7 @@ function AvisoCompraSeguraCorto() {
 // textoSeoEstados llega ya armado desde page.js (Server Component) — lee la colección
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
-export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, rangoAnios = null }) {
+export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, rangoAnios = null }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
   // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
@@ -2336,6 +2337,10 @@ function obtenerEstadoAbierto(horario) {
                 muchas más. {textoSeoEstados}
               </p>
             </div>
+
+            {/* Ecosistema de soluciones automotrices: solo con config/portada.ecosistema (page.js lo
+                lee en el servidor, así que el texto va en el HTML inicial). */}
+            {ecosistema && <EcosistemaMecanix />}
           </>
         )}
 

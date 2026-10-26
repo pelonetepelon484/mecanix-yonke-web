@@ -81,9 +81,9 @@ export default async function Home() {
   const textoSeoEstados = construirTextoSeoEstados(estadosConCobertura);
   // config/portada se lee aquí, en el servidor, con la misma cadencia de 10 min (revalidate):
   // ninguna lectura extra por visitante. Un cambio en la consola tarda hasta 10 min en verse.
-  const { botonPanel } = await leerConfigPortada(dbServer);
+  const { botonPanel, ecosistema } = await leerConfigPortada(dbServer);
   // Rango de años de la búsqueda avanzada (config/buscador; null = el de siempre). Misma cadencia.
   const rangoAnios = await rangoAniosServer();
 
-  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} rangoAnios={rangoAnios} />;
+  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} ecosistema={ecosistema} rangoAnios={rangoAnios} />;
 }
