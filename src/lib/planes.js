@@ -35,7 +35,7 @@ export const FUNCIONES_PLAN_BASICO = [
 export const FUNCIONES_PLAN_PREMIUM = [
   'Todo lo del Plan Básico',
   'Responde búsquedas activas sin límite',
-  'Botón "Sigo manteniendo mis vehículos": renueva tu inventario de búsquedas activas con un toque',
+  'Botón "Sigo manteniendo mis vehículos": renueva tus vehículos con un toque',
   'Venta manual: registra tus ventas de mostrador',
   'Historial completo de tus ventas y notas de garantía en PDF',
   'Demanda: qué piezas buscan los clientes en tu estado',

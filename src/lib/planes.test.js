@@ -86,6 +86,7 @@ describe('textos nuevos de las tarjetas', () => {
     for (const f of ['sin límite', 'Sigo manteniendo mis vehículos', 'Venta manual', 'notas de garantía', 'Demanda', 'Reciclaje', 'subdominio', '⭐ Premium', 'Las demás funciones']) {
       expect(todo).toContain(f);
     }
+    expect(FUNCIONES_PLAN_PREMIUM).toContain('Botón "Sigo manteniendo mis vehículos": renueva tus vehículos con un toque');
     expect(todo).not.toMatch(/gratis|sin costo|noviembre|año/i);
     expect(URL_QUIERO_PREMIUM).toBe('https://wa.me/5216611034260?text=Hola%2C%20me%20interesa%20el%20Plan%20Premium%20de%20Mecanix%20Yonke%20Virtual');
   });
