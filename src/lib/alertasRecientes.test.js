@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_RESUMEN_ALERTAS, alertasDeEstado, armarResumen } from './alertasRecientes';
+import { MAX_RESUMEN_ALERTAS, alertasDeEstado, alertasParaPortada, armarResumen } from './alertasRecientes';
 
 const AHORA = new Date('2026-10-15T18:00:00Z');
 const H = 60 * 60 * 1000;
@@ -21,9 +21,10 @@ describe('resumen público de alertas', () => {
     expect(r.slice(0, 3).map((a) => a.id)).toEqual(['B', 'A', 'X0']);
   });
 
-  it('guarda SOLO id, pieza, vehículo, estado y fechas (nada del cliente ni campos de más)', () => {
+  it('guarda SOLO id, pieza, vehículo, estado, fechas y la casilla de otros estados (nada del cliente ni campos de más)', () => {
     const [a] = armarResumen([pedido('A', 1, { whatsapp: '6641234567', aceptaOtrosEstados: true, nota: 'x' })], AHORA);
-    expect(Object.keys(a).sort()).toEqual(['creadoMs', 'estado', 'expiraMs', 'id', 'pieza', 'vehiculo']);
+    expect(Object.keys(a).sort()).toEqual(['aceptaOtrosEstados', 'creadoMs', 'estado', 'expiraMs', 'id', 'pieza', 'vehiculo']);
+    expect(a.aceptaOtrosEstados).toBe(true);
     expect(a.vehiculo).toEqual({ marca: 'Nissan', modelo: 'Sentra', anio: 2005 });
   });
 
@@ -75,5 +76,56 @@ describe('rotación de la ventana', () => {
     r = rotarUnPaso(r, l);
     expect(r.mostradas).toEqual(['A0', 'A6', 'A5', 'A1', 'A2']);
     expect(new Set(r.mostradas).size).toBe(5);
+  });
+});
+
+describe('casilla de otros estados en el resumen', () => {
+  it('sin el campo (alertas viejas) o con otro valor cuenta como false', () => {
+    const r = armarResumen([pedido('A', 1), pedido('B', 2, { aceptaOtrosEstados: 'true' }), pedido('C', 3, { aceptaOtrosEstados: false })], AHORA);
+    expect(r.map((a) => a.aceptaOtrosEstados)).toEqual([false, false, false]);
+  });
+});
+
+describe('alertasParaPortada (config/pedidosClientes.alertasPortadaTodos)', () => {
+  const NOMBRES = { 'baja-california': 'Baja California', sonora: 'Sonora', jalisco: 'Jalisco' };
+  const deBC = (n) => Array.from({ length: n }, (_, i) => pedido(`BC${i}`, i + 1));
+
+  it('con 5 o más del estado del visitante: solo esas (rotan como hoy), aunque haya de otros estados', () => {
+    const resumen = armarResumen([...deBC(6), pedido('S1', 0.5, { estado: 'sonora', aceptaOtrosEstados: true })], AHORA);
+    const r = alertasParaPortada(resumen, 'baja-california', AHORA, NOMBRES);
+    expect(r.map((a) => a.id)).toEqual(['BC0', 'BC1', 'BC2', 'BC3', 'BC4', 'BC5']);
+    expect(r.every((a) => a.estadoNombre === 'Baja California')).toBe(true);
+  });
+
+  it('con menos de 5: primero las propias y se completa HASTA 5 con otros estados que aceptan envíos, cada una con su estado', () => {
+    const resumen = armarResumen([
+      ...deBC(2),
+      pedido('S1', 0.5, { estado: 'sonora', aceptaOtrosEstados: true }),
+      pedido('J1', 4, { estado: 'jalisco', aceptaOtrosEstados: true }),
+      pedido('S2', 5, { estado: 'sonora', aceptaOtrosEstados: true }),
+      pedido('J2', 6, { estado: 'jalisco', aceptaOtrosEstados: true }),
+    ], AHORA);
+    const r = alertasParaPortada(resumen, 'baja-california', AHORA, NOMBRES);
+    expect(r.map((a) => [a.id, a.estadoNombre])).toEqual([
+      ['BC0', 'Baja California'], ['BC1', 'Baja California'], ['S1', 'Sonora'], ['J1', 'Jalisco'], ['S2', 'Sonora'],
+    ]);
+    expect(Object.keys(r[2]).sort()).toEqual(['creadoAt', 'estado', 'estadoNombre', 'id', 'pieza', 'vehiculo']);
+  });
+
+  it('casilla desmarcada: solo se muestra a visitantes de su mismo estado', () => {
+    const resumen = armarResumen([
+      pedido('S1', 1, { estado: 'sonora' }), pedido('S2', 2, { estado: 'sonora', aceptaOtrosEstados: false }),
+      pedido('S3', 3, { estado: 'sonora', aceptaOtrosEstados: true }),
+    ], AHORA);
+    expect(alertasParaPortada(resumen, 'baja-california', AHORA, NOMBRES).map((a) => a.id)).toEqual(['S3']);
+    expect(alertasParaPortada(resumen, 'sonora', AHORA, NOMBRES).map((a) => a.id)).toEqual(['S1', 'S2', 'S3']);
+  });
+
+  it('cero alertas en ningún estado, vencidas o sin estado del visitante: lista vacía', () => {
+    expect(alertasParaPortada([], 'baja-california', AHORA, NOMBRES)).toEqual([]);
+    const vencida = armarResumen([pedido('S1', 1, { estado: 'sonora', aceptaOtrosEstados: true })], AHORA)
+      .map((a) => ({ ...a, expiraMs: AHORA.getTime() - 1 }));
+    expect(alertasParaPortada(vencida, 'baja-california', AHORA, NOMBRES)).toEqual([]);
+    expect(alertasParaPortada(armarResumen(deBC(2), AHORA), '', AHORA, NOMBRES)).toEqual([]);
   });
 });

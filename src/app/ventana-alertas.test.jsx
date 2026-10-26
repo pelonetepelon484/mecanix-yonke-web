@@ -118,3 +118,18 @@ describe('ventana de alertas de la portada', () => {
     visibilidad.mockRestore();
   });
 });
+
+describe('etiqueta de estado por alerta (config/pedidosClientes.alertasPortadaTodos)', () => {
+  it('cada alerta muestra SU estado; las que no traen estadoNombre usan el del visitante (como hoy)', async () => {
+    const deSonora = { ...alerta(2, 5), estado: 'sonora', estadoNombre: 'Sonora' };
+    const deJalisco = { ...alerta(3, 7), estado: 'jalisco', estadoNombre: 'Jalisco' };
+    responder(ok([alerta(1, 3), deSonora, deJalisco]));
+    render(<VentanaAlertas estado="baja-california" />);
+    expect(await screen.findByText('Pieza 1')).toBeInTheDocument();
+    expect(screen.getByText('Baja California · hace 3 minutos')).toBeInTheDocument();
+    expect(screen.getByText('Sonora · hace 5 minutos')).toBeInTheDocument();
+    expect(screen.getByText('Jalisco · hace 7 minutos')).toBeInTheDocument();
+    // "Yo la tengo" de una alerta de otro estado lleva a esa alerta, igual que las propias.
+    expect(screen.getAllByRole('link', { name: 'Yo la tengo' })[1]).toHaveAttribute('href', enlaceYoLaTengo(deSonora.id, false));
+  });
+});

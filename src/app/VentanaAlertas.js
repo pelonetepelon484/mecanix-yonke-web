@@ -8,6 +8,8 @@
 //   yonke con esa alerta (al terminar el registro lo lleva a contestarla).
 // - Clic en la ventana: con sesión, al listado completo (Pedidos); sin sesión, al registro.
 // - Sin config/pedidosClientes.alertasPortada, o sin alertas, no se muestra NADA.
+// - Con config/pedidosClientes.alertasPortadaTodos, si el estado del visitante tiene menos de 5, el
+//   servidor completa con alertas de otros estados que aceptan envíos, cada una con su estado.
 // - Si no se sabe el estado del visitante, en lugar de alertas le pide elegirlo arriba.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -127,7 +129,9 @@ export default function VentanaAlertas({ estado }) {
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={pieza}>{a.pieza}</p>
               <p style={detalle}>{a.vehiculo?.marca} {a.vehiculo?.modelo} {a.vehiculo?.anio}</p>
-              <p style={cuando}>{datos.estadoNombre} · {haceCuanto(a.creadoAt, ahoraServidor)}</p>
+              {/* Cada alerta con su estado: con config/pedidosClientes.alertasPortadaTodos pueden venir de
+                  otros estados (traen estadoNombre propio); si no, todas son del estado del visitante. */}
+              <p style={cuando}>{a.estadoNombre || datos.estadoNombre} · {haceCuanto(a.creadoAt, ahoraServidor)}</p>
             </div>
             <a href={enlaceYoLaTengo(a.id, conSesion)} onClick={(e) => e.stopPropagation()} style={boton}>{TEXTO_YO_LA_TENGO}</a>
           </div>

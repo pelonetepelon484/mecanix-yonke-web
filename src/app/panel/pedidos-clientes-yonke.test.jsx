@@ -205,3 +205,36 @@ describe('Alertas de otros estados (lado del yonke)', () => {
     expect(await screen.findByRole('dialog')).toHaveTextContent('Faro');
   });
 });
+
+describe('"Yo la tengo" en una alerta de otro estado con config/pedidosClientes.alertasPortadaTodos', () => {
+  const CONFIG_TODOS = { habilitado: true, alertasPortada: true, otrosEstados: true, alertasPortadaTodos: true };
+  const abrirDeSonora = async (yonke, config = CONFIG_TODOS) => {
+    leerConfigPedidosClientes.mockResolvedValue(config);
+    leerYonkeEstadoActivo.mockImplementation(async () => ({ estado: 'baja-california', activo: true, nombre: 'Yonke Prueba', whatsapp: '6641234567', ...yonke }));
+    window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, pedido: { ...pedido, estado: 'sonora', estadoNombre: 'Sonora', aceptaOtrosEstados: true } }) }));
+    render(<PedidosClientesYonke yonkeId="Y1" />);
+    return (await screen.findByRole('status')).textContent;
+  };
+
+  it('le falta Verificado', async () => {
+    expect(await abrirDeSonora({ verificado: false, enviosNacionales: true }))
+      .toContain('Esta alerta es de otro estado. Para contestarla necesitas la insignia Verificado. Escríbenos para verificar tu yonke.');
+  });
+  it('le falta Envíos nacionales', async () => {
+    expect(await abrirDeSonora({ verificado: true, enviosNacionales: false }))
+      .toContain('Esta alerta es de otro estado. Para contestarla, tu yonke necesita la insignia Envíos nacionales. Escríbenos para activarla.');
+  });
+  it('le faltan las dos', async () => {
+    expect(await abrirDeSonora({ verificado: false, enviosNacionales: false }))
+      .toContain('Esta alerta es de otro estado. Para contestarla tu yonke necesita las insignias Verificado y Envíos nacionales. Escríbenos para activarlas.');
+  });
+  it('tiene las dos pero el interruptor apagado: el aviso de siempre para encenderlo', async () => {
+    expect(await abrirDeSonora({ verificado: true, enviosNacionales: true, verAlertasOtrosEstados: false }))
+      .toContain('Esta alerta es de Sonora y el cliente acepta yonkes de otros estados con envío. Enciende “Ver también alertas de otros estados con envío” para responderla.');
+  });
+  it('con la bandera apagada: el mensaje corto de siempre', async () => {
+    expect(await abrirDeSonora({ verificado: false, enviosNacionales: false }, { habilitado: true, alertasPortada: true, otrosEstados: true }))
+      .toContain('Esta alerta solo la pueden contestar yonkes Verificados con Envíos nacionales.');
+  });
+});
