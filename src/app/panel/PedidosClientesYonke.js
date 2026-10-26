@@ -153,7 +153,11 @@ export default function PedidosClientesYonke({ yonkeId }) {
       pedidoBuscado.current = null;
       const encontrado = lista.find((p) => p.id === id);
       if (!encontrado) {
-        explicarPedidoNoDisponible(id, estadoYonke, { puedeOtros, verOtros: conOtros, alertasPortada: config?.alertasPortada === true }).then(setAviso);
+        explicarPedidoNoDisponible(id, estadoYonke, {
+          puedeOtros, verOtros: conOtros, alertasPortada: config?.alertasPortada === true,
+          alertasPortadaTodos: config?.alertasPortadaTodos === true,
+          yonke: { verificado: estadoActivo?.verificado === true, enviosNacionales: estadoActivo?.enviosNacionales === true },
+        }).then(setAviso);
       }
       else if (ya[id]) setAviso('Ya respondiste este pedido. El cliente ya puede ver tu respuesta.');
       else setAbierto(encontrado);
@@ -162,7 +166,8 @@ export default function PedidosClientesYonke({ yonkeId }) {
     const dejarPropias = escucharPedidosClientesAbiertos(estadoYonke, (lista) => { propias = lista; actualizar(); });
     const dejarOtras = conOtros ? escucharPedidosClientesOtrosEstados((lista) => { otras = lista; actualizar(); }) : null;
     return () => { cancelado = true; dejarPropias(); if (dejarOtras) dejarOtras(); };
-  }, [yonkeId, habilitado, estadoActivo?.activo, estadoActivo?.estado, conOtros, puedeOtros, config?.alertasPortada]);
+  }, [yonkeId, habilitado, estadoActivo?.activo, estadoActivo?.estado, estadoActivo?.verificado, estadoActivo?.enviosNacionales,
+    conOtros, puedeOtros, config?.alertasPortada, config?.alertasPortadaTodos]);
 
   async function cambiarVerOtros() {
     const nuevo = !verOtros;
@@ -305,7 +310,24 @@ function EtiquetaEnvio({ estado }) {
 // El pedido no está entre los que ve el yonke: ¿es de otro estado o ya no está?
 export const TEXTO_SOLO_VERIFICADOS_CON_ENVIO = 'Esta alerta solo la pueden contestar yonkes Verificados con Envíos nacionales.';
 
-async function explicarPedidoNoDisponible(id, estadoYonke, { puedeOtros = false, verOtros = false, alertasPortada = false } = {}) {
+// Con config/pedidosClientes.alertasPortadaTodos: qué le falta al yonke para contestar una alerta de
+// otro estado. Verificado y Envíos nacionales los pone el admin (el yonke no puede activarlos), por
+// eso los dos mensajes piden escribirnos.
+export const TEXTO_FALTA_VERIFICADO = 'Esta alerta es de otro estado. Para contestarla necesitas la insignia Verificado. Escríbenos para verificar tu yonke.';
+export const TEXTO_FALTA_ENVIOS = 'Esta alerta es de otro estado. Para contestarla, tu yonke necesita la insignia Envíos nacionales. Escríbenos para activarla.';
+export const TEXTO_FALTAN_AMBOS = 'Esta alerta es de otro estado. Para contestarla tu yonke necesita las insignias Verificado y Envíos nacionales. Escríbenos para activarlas.';
+export function textoQueLeFalta(yonke) {
+  const verificado = yonke?.verificado === true;
+  const envios = yonke?.enviosNacionales === true;
+  if (!verificado && !envios) return TEXTO_FALTAN_AMBOS;
+  if (!verificado) return TEXTO_FALTA_VERIFICADO;
+  if (!envios) return TEXTO_FALTA_ENVIOS;
+  return null; // tiene las dos: lo que falta es otra cosa (mensaje general)
+}
+
+async function explicarPedidoNoDisponible(id, estadoYonke, {
+  puedeOtros = false, verOtros = false, alertasPortada = false, alertasPortadaTodos = false, yonke = null,
+} = {}) {
   try {
     const res = await fetch(`/api/pedidos-abiertos?pedido=${id}`);
     const data = await res.json();
@@ -315,6 +337,10 @@ async function explicarPedidoNoDisponible(id, estadoYonke, { puedeOtros = false,
       }
       // Enlace directo (p. ej. desde la portada) a una alerta de otro estado que acepta envíos,
       // abierto por un yonke que no es Verificado con Envíos nacionales (con alertasPortada).
+      if (data.pedido.aceptaOtrosEstados && !puedeOtros && alertasPortadaTodos) {
+        const falta = textoQueLeFalta(yonke);
+        if (falta) return falta;
+      }
       if (data.pedido.aceptaOtrosEstados && !puedeOtros && alertasPortada) return TEXTO_SOLO_VERIFICADOS_CON_ENVIO;
       const estados = await cargarEstados();
       const tuEstado = estados.find((e) => e.id === estadoYonke)?.nombre || estadoYonke;

@@ -4,7 +4,7 @@ import {
   MENSAJES_PEDIDO, calcularExpiraAtPedido, enlaceMiPedido, esCodigo, esIdPedido, estaVencido, mensajeAvisoAdmin, normalizarWhatsapp,
   ordenarRespuestas, pedidoPublico, respuestaParaCliente, validarPedidoCliente,
 } from '../../../lib/pedidosClientes';
-import { POOL_PORTADA, alertasDeEstado } from '../../../lib/alertasRecientes';
+import { POOL_PORTADA, alertasDeEstado, alertasParaPortada } from '../../../lib/alertasRecientes';
 
 // Lógica de las rutas /api/pedir-pieza, /api/mi-pedido/[id], /api/pedidos-abiertos y
 // /api/alertas-recientes. Con config/pedidosClientes.alertasPortada encendida, las listas públicas
@@ -96,6 +96,17 @@ export function crearManejadores(deps) {
       return deps.alertasPortada ? (await deps.alertasPortada(db)) === true : false;
     } catch (error) {
       console.error('[pedidosClientes] No se pudo leer la bandera alertasPortada', { message: error?.message });
+      return false;
+    }
+  }
+
+  // Cuarta bandera (config/pedidosClientes.alertasPortadaTodos): la portada completa hasta 5 con
+  // alertas de otros estados que aceptan envíos. Apagada (o si falla), la portada como hoy.
+  async function alertasPortadaTodosHabilitadas(db) {
+    try {
+      return deps.alertasPortadaTodos ? (await deps.alertasPortadaTodos(db)) === true : false;
+    } catch (error) {
+      console.error('[pedidosClientes] No se pudo leer la bandera alertasPortadaTodos', { message: error?.message });
       return false;
     }
   }
@@ -301,7 +312,8 @@ export function crearManejadores(deps) {
   // para calcular "hace X minutos" sin depender del reloj del celular. Sin ?estado, el estado sale
   // de la ubicación aproximada del visitante; si no se puede saber, lista vacía y estado null (la
   // portada le pide elegirlo). Las alertas que aceptan otros estados NO se muestran fuera de su
-  // estado: esas solo se ven en el panel. Con ?estado, la respuesta se guarda 60 s en la CDN.
+  // estado: esas solo se ven en el panel (con config/pedidosClientes.alertasPortadaTodos, sí se usan
+  // para completar hasta 5). Con ?estado, la respuesta se guarda 60 s en la CDN.
   async function alertasRecientes(request) {
     const db = await prepararDb();
     if (!db || !(await alertasPortadaHabilitadas(db))) return noDisponible();
@@ -320,11 +332,20 @@ export function crearManejadores(deps) {
         const delVisitante = deps.estadoDesdeGeo ? deps.estadoDesdeGeo(request) : null;
         estado = estados.find((e) => e.id === delVisitante)?.id ?? null;
       }
+      // Con alertasPortadaTodos: primero las del estado del visitante y, si son menos de 5, se
+      // completa con las de otros estados que aceptan envíos (cada una con su estadoNombre).
+      let alertas = [];
+      if (estado) {
+        const resumen = await resumenDeAlertas(db);
+        alertas = (await alertasPortadaTodosHabilitadas(db))
+          ? alertasParaPortada(resumen, estado, ahora, Object.fromEntries(estados.map((e) => [e.id, e.nombre])), POOL_PORTADA)
+          : alertasDeEstado(resumen, estado, ahora, POOL_PORTADA);
+      }
       const cuerpo = {
         ok: true,
         estado,
         estadoNombre: estado ? estados.find((e) => e.id === estado).nombre : null,
-        alertas: estado ? alertasDeEstado(await resumenDeAlertas(db), estado, ahora, POOL_PORTADA) : [],
+        alertas,
         ahora: ahora.toISOString(),
       };
       const cache = pedido !== null ? 'public, max-age=0, s-maxage=60, stale-while-revalidate=60' : 'private, no-store';

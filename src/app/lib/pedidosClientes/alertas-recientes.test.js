@@ -116,3 +116,46 @@ describe('/api/pedidos-abiertos?estado=auto', () => {
     expect(data).toEqual({ ok: true, estado: null, pedidos: [] });
   });
 });
+
+describe('config/pedidosClientes.alertasPortadaTodos', () => {
+  const pedirBC = async (deps) => (await crearManejadores(deps).alertasRecientes(get('/api/alertas-recientes?estado=baja-california'))).json();
+
+  it('apagada (o sin la dependencia): respuesta idéntica a la de hoy', async () => {
+    const hoy = await pedirBC(falsos());
+    const apagada = await pedirBC({ ...falsos(), alertasPortadaTodos: vi.fn(async () => false) });
+    expect(apagada).toEqual(hoy);
+    expect(hoy.alertas.map((a) => a.id)).toEqual(['A', 'C']);
+    expect(hoy.alertas.every((a) => !('estadoNombre' in a))).toBe(true);
+  });
+
+  it('encendida: primero las del estado y se completa con las de otros estados que aceptan envíos, cada una con su estado', async () => {
+    const data = await pedirBC({ ...falsos(), alertasPortadaTodos: vi.fn(async () => true) });
+    expect(data.alertas.map((a) => [a.id, a.estadoNombre])).toEqual([['A', 'Baja California'], ['C', 'Baja California'], ['B', 'Sonora']]);
+    expect(JSON.stringify(data)).not.toMatch(/whatsapp|codigo|aceptaOtrosEstados/i);
+  });
+
+  it('encendida: una alerta con la casilla desmarcada no sale fuera de su estado', async () => {
+    const resumen = [alerta('A', 'baja-california', 1), alerta('S', 'sonora', 2)];
+    const data = await pedirBC({ ...falsos({ resumen }), alertasPortadaTodos: vi.fn(async () => true) });
+    expect(data.alertas.map((a) => a.id)).toEqual(['A']);
+  });
+
+  it('encendida y cero alertas en ningún estado: lista vacía (la ventana no se muestra)', async () => {
+    const data = await pedirBC({ ...falsos({ resumen: [] }), alertasPortadaTodos: vi.fn(async () => true) });
+    expect(data.alertas).toEqual([]);
+  });
+
+  it('si la bandera no se puede leer, como apagada', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const data = await pedirBC({ ...falsos(), alertasPortadaTodos: vi.fn(async () => { throw new Error('sin red'); }) });
+    expect(data.alertas.map((a) => a.id)).toEqual(['A', 'C']);
+    error.mockRestore();
+  });
+
+  it('/api/pedidos-abiertos no cambia aunque esté encendida', async () => {
+    const deps = { ...falsos(), alertasPortadaTodos: vi.fn(async () => true) };
+    const data = await (await crearManejadores(deps).pedidosAbiertos(get('/api/pedidos-abiertos?estado=baja-california'))).json();
+    expect(data.pedidos.map((p) => p.id)).toEqual(['A', 'C']);
+    expect(deps.alertasPortadaTodos).not.toHaveBeenCalled();
+  });
+});

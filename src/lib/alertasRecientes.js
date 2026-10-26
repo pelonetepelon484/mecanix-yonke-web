@@ -1,5 +1,6 @@
 // Resumen público de alertas de búsqueda (publico/alertasRecientes): las ~30 alertas abiertas más
-// recientes con SOLO pieza, vehículo, estado y fechas. Nunca el WhatsApp del cliente (vive en
+// recientes con SOLO pieza, vehículo, estado, fechas y si el cliente aceptó otros estados
+// (aceptaOtrosEstados; sin el campo, false). Nunca el WhatsApp del cliente (vive en
 // privado/contacto) ni ningún otro dato. Lo arma el servidor (o el admin) y lo leen
 // /api/alertas-recientes (portada) y /api/pedidos-abiertos, filtrando por el estado del visitante.
 // Lógica pura, sin Firestore.
@@ -36,6 +37,7 @@ export function armarResumen(pedidos, ahora) {
       estado: p.estado,
       creadoMs,
       expiraMs,
+      aceptaOtrosEstados: p.aceptaOtrosEstados === true,
     }));
 }
 
@@ -55,6 +57,32 @@ export function alertasDeEstado(resumen, estado, ahora, max = POOL_PORTADA) {
       estado: a.estado,
       creadoAt: new Date(a.creadoMs).toISOString(),
     }));
+}
+
+// Portada con config/pedidosClientes.alertasPortadaTodos: primero las del estado del visitante
+// (hasta `max`, rotan como hoy); si son menos de VISIBLES_PORTADA, se completa HASTA ese número con
+// alertas de otros estados cuyo cliente marcó la casilla de otros estados (aceptaOtrosEstados).
+// Una alerta con la casilla desmarcada solo se muestra a visitantes de su mismo estado. Cada alerta
+// lleva el nombre de su estado (estadoNombre), para la etiqueta de la ventana.
+export function alertasParaPortada(resumen, estado, ahora, nombres = {}, max = POOL_PORTADA) {
+  if (!estado || !Array.isArray(resumen)) return [];
+  const conNombre = (a) => ({ ...a, estadoNombre: nombres[a.estado] || a.estado });
+  const propias = alertasDeEstado(resumen, estado, ahora, max).map(conNombre);
+  if (propias.length >= VISIBLES_PORTADA) return propias;
+  const t = ahora.getTime();
+  const otras = resumen
+    .filter((a) => a && a.estado !== estado && a.aceptaOtrosEstados === true
+      && typeof a.expiraMs === 'number' && a.expiraMs > t && typeof a.creadoMs === 'number')
+    .sort((a, b) => b.creadoMs - a.creadoMs)
+    .slice(0, VISIBLES_PORTADA - propias.length)
+    .map((a) => conNombre({
+      id: a.id,
+      vehiculo: { marca: a.vehiculo?.marca ?? '', modelo: a.vehiculo?.modelo ?? '', anio: a.vehiculo?.anio ?? null },
+      pieza: a.pieza,
+      estado: a.estado,
+      creadoAt: new Date(a.creadoMs).toISOString(),
+    }));
+  return [...propias, ...otras];
 }
 
 // ---------- Ventana de la portada ----------

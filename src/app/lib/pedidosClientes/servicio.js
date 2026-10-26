@@ -72,6 +72,14 @@ export async function alertasPortada(db) {
   return config?.habilitado === true && config?.alertasPortada === true;
 }
 
+// Portada con alertas de otros estados (config/pedidosClientes.alertasPortadaTodos): solo true exacto;
+// exige también la primera bandera, alertasPortada y otrosEstados. Misma caché de 1 minuto.
+export async function alertasPortadaTodos(db) {
+  const config = await leerConfig(db);
+  return config?.habilitado === true && config?.alertasPortada === true && config?.otrosEstados === true
+    && config?.alertasPortadaTodos === true;
+}
+
 // Resumen publico/alertasRecientes con caché de 1 minuto por instancia: la portada lo consulta
 // seguido, pero solo cuesta 1 lectura por minuto (y la CDN guarda la respuesta 60 s más).
 let cacheResumen = { valor: null, en: 0 };
@@ -173,7 +181,7 @@ export function manejadoresReales() {
       estados: obtenerEstadosCombinado, notificar: notificarAdmin, ahora: () => new Date(),
       generarCodigo, hashCodigo, codigoCoincide, claveLimite,
       avisarYonkes: crearAvisarYonkesReal({ contar }),
-      alertasPortada, leerResumen, actualizarResumen, estadoDesdeGeo, avisoPagoCliente,
+      alertasPortada, alertasPortadaTodos, leerResumen, actualizarResumen, estadoDesdeGeo, avisoPagoCliente,
     });
   }
   return manejadores;
