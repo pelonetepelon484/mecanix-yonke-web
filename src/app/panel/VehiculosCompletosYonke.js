@@ -120,7 +120,7 @@ export default function VehiculosCompletosYonke({ yonkeId }) {
         <>
           <p style={{ ...titulo, fontSize: '13px', color: '#888', margin: '14px 0 6px' }}>Vencidos ({vencidos.length})</p>
           <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#888' }}>
-            Ya no se muestran a los clientes. Se reactivan cuando contestes una alerta de ese vehículo y digas que sí lo tienes completo.
+            Ya no se muestran a los clientes. Se reactivan cuando contestes una búsqueda activa de ese vehículo y digas que sí lo tienes completo.
           </p>
           {vencidos.map((v) => (
             <div key={v.id} style={{ ...tarjeta, opacity: 0.7 }}>

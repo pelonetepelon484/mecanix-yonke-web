@@ -21,7 +21,7 @@ export default function Privacidad() {
           Aviso de Privacidad
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginBottom: '32px' }}>
-          Última actualización: 23 de octubre de 2026
+          Última actualización: 26 de octubre de 2026
         </p>
 
         <Seccion titulo="1. Responsable del tratamiento de tus datos">
@@ -38,7 +38,7 @@ export default function Privacidad() {
           <p style={parrafoStyle}><strong>Contacto opcional por WhatsApp:</strong> si una búsqueda no encuentra resultados y decides dejarnos tu número de WhatsApp, lo guardamos junto con lo que buscabas. Es completamente voluntario.</p>
           <p style={parrafoStyle}><strong>Reseñas y calificaciones:</strong> las estrellas y comentarios que decidas enviar sobre la Plataforma o sobre un pedido. No te pedimos tu nombre para enviarlas.</p>
           <p style={parrafoStyle}><strong>Yonkes registrados:</strong> nombre del negocio, estado, ciudad y dirección (escrita manualmente, no por GPS), teléfono, WhatsApp, correo electrónico, horario, métodos de pago, logotipo, inventario y precios, registro de ventas y reciclaje, calificaciones recibidas, datos de su subdominio y marca, y un indicador de su actividad reciente en el panel. Además, correo y contraseña de acceso (la contraseña la almacena de forma cifrada Firebase Authentication de Google) para los usuarios con acceso al panel.</p>
-          <p style={parrafoStyle}><strong>Notificaciones en el dispositivo.</strong> Si el yonke activa los avisos, guardamos un identificador técnico (token) del navegador o dispositivo que utiliza, ligado a su cuenta, con el único fin de enviarle avisos de pedidos y alertas de búsqueda de su interés aunque la aplicación esté cerrada. Estos avisos no contienen datos personales del cliente. Para entregarlos utilizamos el servicio Firebase Cloud Messaging de Google, que recibe el identificador y el texto del aviso. El yonke puede desactivar los avisos en cualquier momento desde la aplicación o desde los permisos de su navegador; al hacerlo, o al eliminar su cuenta, eliminamos el identificador.</p>
+          <p style={parrafoStyle}><strong>Notificaciones en el dispositivo.</strong> Si el yonke activa los avisos, guardamos un identificador técnico (token) del navegador o dispositivo que utiliza, ligado a su cuenta, con el único fin de enviarle avisos de pedidos y búsquedas activas de su interés aunque la aplicación esté cerrada. Estos avisos no contienen datos personales del cliente. Para entregarlos utilizamos el servicio Firebase Cloud Messaging de Google, que recibe el identificador y el texto del aviso. El yonke puede desactivar los avisos en cualquier momento desde la aplicación o desde los permisos de su navegador; al hacerlo, o al eliminar su cuenta, eliminamos el identificador.</p>
           <p style={parrafoStyle}><strong>Datos técnicos:</strong> uso del sitio mediante Google Analytics 4 y cookies (ver sección 8).</p>
           <p style={parrafoStyle}>No recabamos datos personales sensibles. La Plataforma no accede a la ubicación GPS de tu dispositivo.</p>
         </Seccion>
@@ -91,7 +91,7 @@ export default function Privacidad() {
 
         <Seccion titulo="7. Conservación y eliminación">
           <p style={parrafoStyle}>Conservamos tus datos mientras sean necesarios para las finalidades descritas, mientras mantengas una cuenta activa o hasta que solicites su eliminación. La eliminación se atiende a solicitud, en el plazo indicado en la sección 6. Algunos registros, como los de búsquedas (que no incluyen tu nombre), pueden conservarse para fines estadísticos, y podemos conservar información cuando una ley nos obligue a ello. Los datos que un yonke registra sobre terceros los conserva el yonke bajo su responsabilidad (sección 3).</p>
-          <p style={parrafoStyle}>Para los pedidos de &quot;Avisar a los yonkes&quot;, consulta también la sección 14.</p>
+          <p style={parrafoStyle}>Para las búsquedas activas, consulta también la sección 14.</p>
         </Seccion>
 
         <Seccion titulo="8. Cookies y almacenamiento local">
@@ -122,32 +122,31 @@ export default function Privacidad() {
           <BloquesTalleres items={textosTalleres.privacidad} />
         </Seccion>
 
-        <Seccion titulo={'14. Clientes que piden una pieza a los yonkes ("Avisar a los yonkes")'} id="pedidos-clientes">
-          <p style={parrafoStyle}><strong>Datos que recabamos.</strong> Cuando usas &quot;Avisar a los yonkes&quot; te pedimos:</p>
+        <Seccion titulo="14. Búsquedas activas" id="pedidos-clientes">
+          <p style={parrafoStyle}><strong>Datos que recabamos.</strong> Cuando registras una búsqueda activa te pedimos:</p>
           <p style={parrafoStyle}>• marca, modelo y año de tu vehículo;</p>
           <p style={parrafoStyle}>• la pieza que buscas;</p>
           <p style={parrafoStyle}>• el estado de la República donde la buscas;</p>
           <p style={parrafoStyle}>• tu número de WhatsApp.</p>
           <p style={parrafoStyle}>No necesitas crear una cuenta. No te pedimos tu nombre ni ningún dato sensible.</p>
-          <p style={parrafoStyle}>Para proteger el servicio contra abusos, también registramos de forma técnica tu dirección IP y tu número de WhatsApp <strong>convertidos en un código irreversible</strong>. Solo sirven para limitar cuántos pedidos se pueden enviar en cierto tiempo y se eliminan automáticamente en un plazo aproximado de dos días.</p>
+          <p style={parrafoStyle}>Para proteger el servicio contra abusos, también registramos de forma técnica tu dirección IP y tu número de WhatsApp <strong>convertidos en un código irreversible</strong>. Solo sirven para limitar cuántas búsquedas activas se pueden registrar en cierto tiempo y se eliminan automáticamente en un plazo aproximado de dos días.</p>
           <p style={parrafoStyle}><strong>Para qué los usamos.</strong></p>
-          <p style={parrafoStyle}><strong>(a)</strong> Mostrar tu pedido, sin tus datos de contacto, a los yonkes de tu estado para que te respondan. Si dejas marcada la casilla &quot;Mostrar mi alerta a yonkes de otros estados que hacen envíos&quot;, estarás aprobando que tu alerta se muestre también a yonkes de otros estados del país, pero únicamente a los yonkes Verificados que tengan activada la opción de Envíos nacionales (lo verás indicado con su insignia). Solo se muestra la alerta (el vehículo, la pieza, el estado y la fecha); tus datos de contacto siguen protegidos y no se comparten con los yonkes hasta que la alerta se elimine.</p>
-          <p style={parrafoStyle}>La casilla para mostrar tu alerta a yonkes de otros estados aparece marcada por defecto. Si no deseas que tu alerta se muestre a yonkes fuera de tu estado, debes desmarcarla antes de enviarla.</p>
-          <p style={parrafoStyle}>Si envías tu alerta con la casilla marcada, estás consintiendo que el vehículo, la pieza y el estado que proporcionaste se muestren a yonkes de otros estados que hacen envíos. Si no lo deseas, desmarca la casilla antes de enviar tu alerta.</p>
+          <p style={parrafoStyle}><strong>(a)</strong> Mostrar tu búsqueda activa, sin tus datos de contacto, para que los yonkes te respondan, como se explica a continuación.</p>
+          <p style={parrafoStyle}><strong>Búsquedas activas y cobertura por estado.</strong> Al registrar una búsqueda activa, mostramos los datos técnicos de tu vehículo (año, marca, modelo), la refacción que necesitas y el estado donde actualmente buscas la pieza a los yonkes locales y a los visitantes de nuestra portada que se encuentren en tu mismo estado. La casilla &quot;Quiero buscar también en otros estados&quot; viene marcada de origen para darte mayor alcance; si la mantienes activa, estos mismos datos se mostrarán en la portada pública a visitantes de todo el país y a la red de Yonkes Verificados con Envíos Nacionales. Si decides desmarcarla, la información se limitará exclusivamente a tu estado. Te garantizamos que estos datos no incluyen tu nombre, teléfono, correo electrónico ni ubicaciones específicas. Tus datos de contacto nunca se publican y tú mantienes el control total de con quién comunicarte.</p>
           <p style={parrafoStyle}><strong>(b)</strong> Mostrarte, en tu enlace privado, las respuestas de los yonkes.</p>
-          <p style={parrafoStyle}><strong>(c)</strong> Avisar internamente a Mecanix de que hay un pedido nuevo.</p>
-          <p style={parrafoStyle}><strong>(d)</strong> Contactarte, solo si es necesario, para darle seguimiento a tu pedido.</p>
+          <p style={parrafoStyle}><strong>(c)</strong> Avisar internamente a Mecanix de que hay una búsqueda activa nueva.</p>
+          <p style={parrafoStyle}><strong>(d)</strong> Contactarte, solo si es necesario, para darle seguimiento a tu búsqueda activa.</p>
           <p style={parrafoStyle}><strong>(e)</strong> Prevenir abusos y uso indebido de la Plataforma.</p>
           <p style={parrafoStyle}>No usamos tu WhatsApp para publicidad.</p>
           <p style={parrafoStyle}><strong>Con quién compartimos tus datos.</strong></p>
-          <p style={parrafoStyle}>• <strong>Yonkes:</strong> solo ven el vehículo, la pieza, el estado y la fecha del pedido. <strong>Nunca ven tu número de WhatsApp.</strong></p>
-          <p style={parrafoStyle}>Asimismo, cuando el usuario utiliza la función de Alerta de Búsqueda, la información de la autoparte o refacción solicitada en dicha alerta es compartida con los yonkes y yonkeros afiliados para atender la disponibilidad del pedido dentro de la alerta autorizada por el cliente.</p>
+          <p style={parrafoStyle}>• <strong>Yonkes:</strong> solo ven el vehículo, la pieza, el estado y la fecha de la búsqueda activa. <strong>Nunca ven tu número de WhatsApp.</strong></p>
+          <p style={parrafoStyle}>Asimismo, cuando el usuario utiliza la función de Búsqueda Activa, la información de la autoparte o refacción solicitada en dicha búsqueda activa es compartida con los yonkes y yonkeros afiliados para atender la disponibilidad de la pieza dentro de la búsqueda activa autorizada por el cliente.</p>
           <p style={parrafoStyle}>• <strong>Proveedores de infraestructura</strong> que almacenan y procesan la información por cuenta de Mecanix, sin usarla para fines propios: Google LLC (Firebase / Google Cloud) y Vercel Inc.</p>
-          <p style={parrafoStyle}>• El aviso interno a Mecanix sobre un pedido nuevo se envía por WhatsApp mediante el servicio CallMeBot. Ese aviso <strong>no incluye tu número</strong>.</p>
+          <p style={parrafoStyle}>• El aviso interno a Mecanix sobre una búsqueda activa nueva se envía por WhatsApp mediante el servicio CallMeBot. Ese aviso <strong>no incluye tu número</strong>.</p>
           <p style={parrafoStyle}><strong>Cuando tú contactas a un yonke.</strong> Si decides escribirle a un yonke desde tu enlace, la conversación ocurre directamente entre tú y el yonke, fuera de la Plataforma. A partir de ese momento el yonke conoce tu número porque tú se lo diste, y lo trata por su cuenta, como responsable independiente.</p>
-          <p style={parrafoStyle}><strong>Tu enlace privado.</strong> Cualquier persona que tenga tu enlace puede ver las respuestas de tu pedido. Esas respuestas no incluyen tus datos de contacto. Te recomendamos no compartirlo.</p>
-          <p style={parrafoStyle}><strong>Cuánto tiempo los conservamos.</strong> Tu pedido, tu número de WhatsApp y las respuestas de los yonkes se eliminan automáticamente a los <strong>5 días</strong> de haber enviado el pedido.</p>
-          <p style={parrafoStyle}><strong>Tus derechos.</strong> Puedes solicitar el acceso, la rectificación o la cancelación de tus datos, u oponerte a su uso, escribiendo a contacto@mecanixyonkevirtual.com o al WhatsApp 661 103 4260. Para ubicar tu pedido nos puedes compartir tu enlace o tu número de WhatsApp. Si pides la cancelación antes de los 5 días, eliminamos tu pedido y tus datos.</p>
+          <p style={parrafoStyle}><strong>Tu enlace privado.</strong> Cualquier persona que tenga tu enlace puede ver las respuestas de tu búsqueda activa. Esas respuestas no incluyen tus datos de contacto. Te recomendamos no compartirlo.</p>
+          <p style={parrafoStyle}><strong>Cuánto tiempo los conservamos.</strong> Tu búsqueda activa, tu número de WhatsApp y las respuestas de los yonkes se eliminan automáticamente a los <strong>5 días</strong> de haber registrado la búsqueda activa.</p>
+          <p style={parrafoStyle}><strong>Tus derechos.</strong> Puedes solicitar el acceso, la rectificación o la cancelación de tus datos, u oponerte a su uso, escribiendo a contacto@mecanixyonkevirtual.com o al WhatsApp 661 103 4260. Para ubicar tu búsqueda activa nos puedes compartir tu enlace o tu número de WhatsApp. Si pides la cancelación antes de los 5 días, eliminamos tu búsqueda activa y tus datos.</p>
         </Seccion>
 
         <Seccion titulo="15. Contacto">

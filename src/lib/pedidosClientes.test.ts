@@ -95,13 +95,13 @@ describe('lo que sale hacia afuera', () => {
     const wa = enlaceGuardarPorWhatsapp('+52 664 123 4567', enlace);
     expect(wa.startsWith('https://wa.me/526641234567?text=')).toBe(true);
     expect(decodeURIComponent(wa)).toContain(enlace);
-    expect(decodeURIComponent(wa)).toContain(`text=Mi consulta en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`);
+    expect(decodeURIComponent(wa)).toContain(`text=Mi búsqueda activa en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`);
   });
   it('mensajes de error que ve el cliente hablan de "alertas" y usan el límite real', () => {
-    expect(MENSAJES_PEDIDO.limiteWhatsapp).toBe(`Ya enviaste ${MAX_PEDIDOS_POR_WHATSAPP_DIA} alertas hoy con este WhatsApp. Intenta mañana.`);
-    expect(MENSAJES_PEDIDO.limiteWhatsapp).toBe('Ya enviaste 3 alertas hoy con este WhatsApp. Intenta mañana.');
-    expect(MENSAJES_PEDIDO.limiteIp).toBe('Enviaste muchas alertas seguidas. Espera un rato y vuelve a intentar.');
-    expect(MENSAJES_PEDIDO.guardarFallo).toBe('No pudimos enviar tu alerta. Revisa tu conexión e intenta de nuevo.');
+    expect(MENSAJES_PEDIDO.limiteWhatsapp).toBe(`Ya enviaste ${MAX_PEDIDOS_POR_WHATSAPP_DIA} búsquedas activas hoy con este WhatsApp. Intenta mañana.`);
+    expect(MENSAJES_PEDIDO.limiteWhatsapp).toBe('Ya enviaste 3 búsquedas activas hoy con este WhatsApp. Intenta mañana.');
+    expect(MENSAJES_PEDIDO.limiteIp).toBe('Enviaste muchas búsquedas activas seguidas. Espera un rato y vuelve a intentar.');
+    expect(MENSAJES_PEDIDO.guardarFallo).toBe('No pudimos enviar tu búsqueda activa. Revisa tu conexión e intenta de nuevo.');
   });
   it('contadores del panel admin: abiertos (sin vencidos), con y sin respuestas, cerrados en 7 días', () => {
     const ahora = new Date('2026-10-08T12:00:00Z');
@@ -147,13 +147,13 @@ describe('alertas de otros estados', () => {
     expect(respuestaParaCliente(r, null).estadoYonke).toBe('');
   });
   it('aviso de respuesta de otro estado: con Envíos nacionales lo afirma; sin la insignia, "es posible"', () => {
-    expect(avisoRespuestaOtroEstado('Jalisco', true)).toBe('Este yonke es de Jalisco, distinto al de tu pedido, pero respondió tu solicitud. Este yonke hace envíos nacionales hasta tu estado; confírmalo directamente con él antes de pagar.');
-    expect(avisoRespuestaOtroEstado('Sonora', false)).toBe('Este yonke es de Sonora, distinto al de tu pedido, pero respondió tu solicitud. Es posible que pueda hacer el envío hasta tu estado; confírmalo directamente con él antes de pagar.');
+    expect(avisoRespuestaOtroEstado('Jalisco', true)).toBe('Este yonke es de Jalisco, distinto al de tu búsqueda activa, pero respondió tu solicitud. Este yonke hace envíos nacionales hasta tu estado; confírmalo directamente con él antes de pagar.');
+    expect(avisoRespuestaOtroEstado('Sonora', false)).toBe('Este yonke es de Sonora, distinto al de tu búsqueda activa, pero respondió tu solicitud. Es posible que pueda hacer el envío hasta tu estado; confírmalo directamente con él antes de pagar.');
     // Los consejos de envío no repiten "antes de pagar" ni "cómo se hará el pago".
     expect(CONSEJOS_ENVIO).not.toMatch(/antes de pagar|cómo se hará el pago/);
   });
   it('consentimiento junto al botón: el texto aprobado y nombra exactamente lo que guarda la alerta', () => {
-    expect(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS).toBe('Al enviar tu alerta con esta casilla marcada, aceptas que la información que capturaste (vehículo, pieza y estado) se muestre a yonkes de otros estados que hacen envíos. No se comparte tu nombre ni tu WhatsApp.');
+    expect(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS).toBe('Si la dejas marcada, mostraremos los datos de tu vehículo, la pieza que buscas y tu estado en nuestra portada y a la red de yonkes Verificados con Envíos Nacionales de todo el país. Así aumentas tus posibilidades de encontrarla. Jamás mostraremos tu nombre, teléfono ni datos de contacto. Si la desmarcas, tu búsqueda solo será visible dentro de tu propio estado.');
   });
   it('lo que ve un yonke (de su estado o de otro) de una alerta: vehículo, pieza, estado y fecha; nunca un comentario ni el contacto', () => {
     const p = pedidoPublico('X', { vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2005 }, pieza: 'Alternador', estado: 'sonora', creadoAt: new Date('2026-10-23T12:00:00Z'), nota: 'hola', clienteWhatsapp: '6641234567' } as never);
@@ -162,7 +162,7 @@ describe('alertas de otros estados', () => {
   });
   it('casilla de otros estados: nace marcada y con su texto', () => {
     expect(CASILLA_OTROS_ESTADOS_INICIAL).toBe(true);
-    expect(TEXTO_CASILLA_OTROS_ESTADOS).toBe('Mostrar mi alerta a yonkes de otros estados que hacen envíos. Esta casilla viene marcada; si solo quieres yonkes de tu estado, desmárcala. No se comparte tu nombre ni tu WhatsApp.');
+    expect(TEXTO_CASILLA_OTROS_ESTADOS).toBe('Quiero buscar también en otros estados.');
   });
   it('respuestaParaCliente: del yonke solo Verificado, estado y Envíos nacionales (nada más del yonke)', () => {
     const r = respuestaParaCliente({ yonkeNombre: 'Y', tieneLaPieza: true, precio: 100, nota: '', whatsapp: '6641234567' } as never,

@@ -87,7 +87,7 @@ export function alertasParaPortada(resumen, estado, ahora, nombres = {}, max = P
 
 // ---------- Ventana de la portada ----------
 // Encabezado del registro de yonke cuando llega desde la ventana o desde "Yo la tengo" (?desde=alertas).
-export const TEXTO_REGISTRO_ALERTAS = 'Regístrate gratis para ver todas las alertas y contestar';
+export const TEXTO_REGISTRO_ALERTAS = 'Regístrate gratis para ver todas las búsquedas activas y contestar';
 export const VISIBLES_PORTADA = 5;
 export const ROTACION_MS = 4000;
 export const REFRESCO_PORTADA_MS = 90 * 1000;

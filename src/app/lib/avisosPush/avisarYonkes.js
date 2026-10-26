@@ -23,7 +23,7 @@ export function textoAviso(tipo, { vehiculo, pieza }) {
   const v = vehiculo ?? {};
   const auto = [texto(v.marca, 60), texto(v.modelo, 60), Number.isInteger(v.anio) ? String(v.anio) : ''].filter(Boolean).join(' ');
   return {
-    titulo: tipo === 'alertaCliente' ? 'Nueva alerta de búsqueda' : 'Nuevo pedido de un taller',
+    titulo: tipo === 'alertaCliente' ? 'Nueva búsqueda activa' : 'Nuevo pedido de un taller',
     cuerpo: [texto(pieza, 100), auto].filter(Boolean).join(' · '),
   };
 }

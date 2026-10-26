@@ -59,8 +59,8 @@ export default function BotonAvisos() {
       <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E', fontSize: '14px' }}>🔔 Avisos en este celular</p>
       <p style={{ margin: '4px 0 10px', fontSize: '13px', color: '#666', lineHeight: 1.5 }}>
         {activo
-          ? 'Te avisamos aquí cuando llegue una alerta o un pedido de tu estado, aunque la app esté cerrada.'
-          : 'Recibe un aviso en este celular cuando llegue una alerta o un pedido de tu estado, aunque la app esté cerrada.'}
+          ? 'Te avisamos aquí cuando llegue una búsqueda activa o un pedido de tu estado, aunque la app esté cerrada.'
+          : 'Recibe un aviso en este celular cuando llegue una búsqueda activa o un pedido de tu estado, aunque la app esté cerrada.'}
       </p>
       <button
         type="button" onClick={activo ? apagar : activar} disabled={estado === 'ocupado'}

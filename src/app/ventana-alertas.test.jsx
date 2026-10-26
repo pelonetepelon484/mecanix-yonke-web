@@ -80,12 +80,12 @@ describe('ventana de alertas de la portada', () => {
     vi.stubGlobal('location', { ...window.location, set href(v) { asignar(v); } });
     responder(ok([alerta(1)]));
     render(<VentanaAlertas estado="baja-california" />);
-    fireEvent.click(await screen.findByRole('link', { name: 'Ver todas las alertas de búsqueda' }));
+    fireEvent.click(await screen.findByRole('link', { name: 'Ver todas las búsquedas activas' }));
     expect(asignar).toHaveBeenCalledWith('/panel/registro?desde=alertas');
     cleanup();
     usuario = { uid: 'u1' };
     render(<VentanaAlertas estado="baja-california" />);
-    fireEvent.click(await screen.findByRole('link', { name: 'Ver todas las alertas de búsqueda' }));
+    fireEvent.click(await screen.findByRole('link', { name: 'Ver todas las búsquedas activas' }));
     expect(asignar).toHaveBeenLastCalledWith('/panel/reservaciones');
     vi.unstubAllGlobals();
   });

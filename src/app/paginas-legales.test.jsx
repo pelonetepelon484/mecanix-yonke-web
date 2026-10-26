@@ -1,102 +1,115 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import Privacidad from './privacidad/page.js';
 import Terminos from './terminos/page.js';
-import { TEXTO_CASILLA_OTROS_ESTADOS } from '../lib/pedidosClientes';
+import { TEXTO_CASILLA_OTROS_ESTADOS, TEXTO_CONSENTIMIENTO_OTROS_ESTADOS } from '../lib/pedidosClientes';
 import { VERSION_LEGAL } from '../lib/versionesLegales';
 
-// Texto de "Avisar a los yonkes" aprobado por el abogado tal cual (legal-pedido-clientes-para-abogado.md):
-// la sección 2 va al Aviso de Privacidad y la 3 a los Términos. Las frases con [POR CONFIRMAR]
-// quedan fuera hasta que el abogado las resuelva; todo lo demás debe aparecer sin cambios.
-const md = readFileSync(join(process.cwd(), 'legal-pedido-clientes-para-abogado.md'), 'utf8');
-
-function seccion(numero) {
-  const inicio = md.indexOf(`## ${numero}. `);
-  const fin = md.indexOf('\n## ', inicio + 1);
-  return md.slice(inicio, fin === -1 ? undefined : fin).split('\n').slice(1);
-}
-
-// Líneas que deben publicarse: sin encabezados de ubicación ("### Para los ..."), sin notas en
-// cursiva, sin separadores, y sin las frases que llevan [POR CONFIRMAR].
-function lineasPublicables(lineas) {
-  return lineas
-    .filter((l) => l.trim() && l.trim() !== '---' && !/^\*[^*]/.test(l.trim()) && !/^### Para los /.test(l))
-    .map((l) => l.replace(/^### /, '').replace(/^- /, ''))
-    .map((l) => l.split(/(?<=\.)\s+(?=\*\*|[A-ZÁÉÍÓÚÑ])/).filter((frase) => !frase.includes('POR CONFIRMAR')).join(' '))
-    .map((l) => l.replace(/\*\*/g, '').trim())
-    // Ajuste de forma aprobado: "cliente" en minúscula en el texto publicado (salvo al inicio de un título).
-    .map((l) => l.replace(/Cliente/g, (m, i) => (i === 0 ? m : 'cliente')))
-    // Cambios aprobados por el abogado después de ese documento (ver CAMBIOS_2026_10_10).
-    .map((l) => CAMBIOS_2026_10_10[l] ?? l)
-    .filter(Boolean);
-}
-
-// Alertas a yonkes de otros estados (aprobado por el abogado el 10 de octubre de 2026): la línea
-// de los Términos que decía que el cliente avisa "únicamente" a los yonkes de su estado.
-// El inciso (a) cita la primera frase del texto de la casilla del formulario (TEXTO_CASILLA_OTROS_ESTADOS).
-const CASILLA = 'Mostrar mi alerta a yonkes de otros estados que hacen envíos';
-const PRIVACIDAD_CASILLA_MARCADA = 'La casilla para mostrar tu alerta a yonkes de otros estados aparece marcada por defecto. Si no deseas que tu alerta se muestre a yonkes fuera de tu estado, debes desmarcarla antes de enviarla.';
-const TERMINOS_CASILLA_MARCADA = 'Esa casilla aparece marcada por defecto: si el cliente no desea que su alerta se muestre a yonkes fuera de su estado, debe desmarcarla antes de enviarla. Al enviar su alerta con la casilla marcada, el cliente consiente que el vehículo, la pieza y el estado que proporcionó se muestren a yonkes de otros estados que hacen envíos.';
-const PRIVACIDAD_CONSENTIMIENTO = 'Si envías tu alerta con la casilla marcada, estás consintiendo que el vehículo, la pieza y el estado que proporcionaste se muestren a yonkes de otros estados que hacen envíos. Si no lo deseas, desmarca la casilla antes de enviar tu alerta.';
-const TERMINOS_OTROS_ESTADOS = 'Mecanix permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas. Si el cliente activa la casilla correspondiente, acepta que su alerta de pedido también pueda mostrarse a los yonkes Verificados que tengan activada la opción de Envíos nacionales, en los demás estados, identificados con su insignia.';
-const CAMBIOS_2026_10_10 = {
-  'Mecanix únicamente permite que el cliente avise a los yonkes de su estado que busca una pieza, y que vea sus respuestas.': TERMINOS_OTROS_ESTADOS,
-};
-const PRIVACIDAD_A = `(a) Mostrar tu pedido, sin tus datos de contacto, a los yonkes de tu estado para que te respondan. Si dejas marcada la casilla "${CASILLA}", estarás aprobando que tu alerta se muestre también a yonkes de otros estados del país, pero únicamente a los yonkes Verificados que tengan activada la opción de Envíos nacionales (lo verás indicado con su insignia). Solo se muestra la alerta (el vehículo, la pieza, el estado y la fecha); tus datos de contacto siguen protegidos y no se comparten con los yonkes hasta que la alerta se elimine.`;
-const PRIVACIDAD_B = 'Asimismo, cuando el usuario utiliza la función de Alerta de Búsqueda, la información de la autoparte o refacción solicitada en dicha alerta es compartida con los yonkes y yonkeros afiliados para atender la disponibilidad del pedido dentro de la alerta autorizada por el cliente.';
+// "Búsqueda activa" como nombre único (aprobado por el abogado el 26 de octubre de 2026): casilla
+// (TEXTO 1), Aviso de Privacidad sección 14 (TEXTO 2, con sus dos ajustes) y Términos sección 8
+// (TEXTO 3). Reemplazan los textos de "Avisar a los yonkes" / "alerta" (legal-pedido-clientes-para-abogado.md
+// y los cambios del 10 de octubre), que ya no se publican.
+const CASILLA = 'Quiero buscar también en otros estados.';
+const CONSENTIMIENTO = 'Si la dejas marcada, mostraremos los datos de tu vehículo, la pieza que buscas y tu estado en nuestra portada y a la red de yonkes Verificados con Envíos Nacionales de todo el país. Así aumentas tus posibilidades de encontrarla. Jamás mostraremos tu nombre, teléfono ni datos de contacto. Si la desmarcas, tu búsqueda solo será visible dentro de tu propio estado.';
+const TEXTO_2 = 'Búsquedas activas y cobertura por estado. Al registrar una búsqueda activa, mostramos los datos técnicos de tu vehículo (año, marca, modelo), la refacción que necesitas y el estado donde actualmente buscas la pieza a los yonkes locales y a los visitantes de nuestra portada que se encuentren en tu mismo estado. La casilla "Quiero buscar también en otros estados" viene marcada de origen para darte mayor alcance; si la mantienes activa, estos mismos datos se mostrarán en la portada pública a visitantes de todo el país y a la red de Yonkes Verificados con Envíos Nacionales. Si decides desmarcarla, la información se limitará exclusivamente a tu estado. Te garantizamos que estos datos no incluyen tu nombre, teléfono, correo electrónico ni ubicaciones específicas. Tus datos de contacto nunca se publican y tú mantienes el control total de con quién comunicarte.';
+const TEXTO_3 = 'Búsquedas activas. Al generar una búsqueda activa en nuestra plataforma, autorizas que se muestren las características del vehículo, la pieza solicitada y tu estado a los yonkes de tu misma entidad y en la portada del sitio a los visitantes ubicados en tu estado. Si dejas seleccionada la casilla "Quiero buscar también en otros estados" (activa por defecto), autorizas que dicha información sea visible también para visitantes de otros estados y para la red de Yonkes Verificados con Envíos Nacionales. Mecanix protege tu identidad: en ningún caso mostraremos tu nombre o datos de contacto en áreas públicas o comerciales. Si desmarcas la casilla, tu búsqueda se mantendrá estrictamente local. Mecanix funciona como un puente de contacto; no garantizamos que algún yonke cuente con la pieza y es responsabilidad del usuario confirmar el estado de la refacción y las condiciones de envío directamente con el vendedor antes de realizar cualquier pago.';
+// Sección 14 completa, en orden (el resto del contenido se conserva, solo con el nombre nuevo).
+const SECCION_14 = [
+  '14. Búsquedas activas',
+  'Datos que recabamos. Cuando registras una búsqueda activa te pedimos:',
+  '• marca, modelo y año de tu vehículo;', '• la pieza que buscas;', '• el estado de la República donde la buscas;', '• tu número de WhatsApp.',
+  'No necesitas crear una cuenta. No te pedimos tu nombre ni ningún dato sensible.',
+  'Para proteger el servicio contra abusos, también registramos de forma técnica tu dirección IP y tu número de WhatsApp convertidos en un código irreversible. Solo sirven para limitar cuántas búsquedas activas se pueden registrar en cierto tiempo y se eliminan automáticamente en un plazo aproximado de dos días.',
+  'Para qué los usamos.',
+  '(a) Mostrar tu búsqueda activa, sin tus datos de contacto, para que los yonkes te respondan, como se explica a continuación.',
+  TEXTO_2,
+  '(b) Mostrarte, en tu enlace privado, las respuestas de los yonkes.',
+  '(c) Avisar internamente a Mecanix de que hay una búsqueda activa nueva.',
+  '(d) Contactarte, solo si es necesario, para darle seguimiento a tu búsqueda activa.',
+  '(e) Prevenir abusos y uso indebido de la Plataforma.',
+  'No usamos tu WhatsApp para publicidad.',
+  'Con quién compartimos tus datos.',
+  '• Yonkes: solo ven el vehículo, la pieza, el estado y la fecha de la búsqueda activa. Nunca ven tu número de WhatsApp.',
+  'Asimismo, cuando el usuario utiliza la función de Búsqueda Activa, la información de la autoparte o refacción solicitada en dicha búsqueda activa es compartida con los yonkes y yonkeros afiliados para atender la disponibilidad de la pieza dentro de la búsqueda activa autorizada por el cliente.',
+  '• Proveedores de infraestructura que almacenan y procesan la información por cuenta de Mecanix, sin usarla para fines propios: Google LLC (Firebase / Google Cloud) y Vercel Inc.',
+  '• El aviso interno a Mecanix sobre una búsqueda activa nueva se envía por WhatsApp mediante el servicio CallMeBot. Ese aviso no incluye tu número.',
+  'Cuando tú contactas a un yonke. Si decides escribirle a un yonke desde tu enlace, la conversación ocurre directamente entre tú y el yonke, fuera de la Plataforma. A partir de ese momento el yonke conoce tu número porque tú se lo diste, y lo trata por su cuenta, como responsable independiente.',
+  'Tu enlace privado. Cualquier persona que tenga tu enlace puede ver las respuestas de tu búsqueda activa. Esas respuestas no incluyen tus datos de contacto. Te recomendamos no compartirlo.',
+  'Cuánto tiempo los conservamos. Tu búsqueda activa, tu número de WhatsApp y las respuestas de los yonkes se eliminan automáticamente a los 5 días de haber registrado la búsqueda activa.',
+  'Tus derechos. Puedes solicitar el acceso, la rectificación o la cancelación de tus datos, u oponerte a su uso, escribiendo a contacto@mecanixyonkevirtual.com o al WhatsApp 661 103 4260. Para ubicar tu búsqueda activa nos puedes compartir tu enlace o tu número de WhatsApp. Si pides la cancelación antes de los 5 días, eliminamos tu búsqueda activa y tus datos.',
+];
 
 const textoDe = (Pagina) => render(<Pagina />).container.textContent.replace(/\s+/g, ' ');
 
 afterEach(() => cleanup());
 
-describe('textos legales de "Avisar a los yonkes"', () => {
-  it('el Aviso de Privacidad trae la sección 14 completa, tal cual se aprobó, y Contacto pasa a 15', () => {
+describe('búsqueda activa (aprobado el 26 de octubre de 2026)', () => {
+  it('la casilla y su explicación, tal cual el TEXTO 1', () => {
+    expect(TEXTO_CASILLA_OTROS_ESTADOS).toBe(CASILLA);
+    expect(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS).toBe(CONSENTIMIENTO);
+  });
+  it('Privacidad, sección 14: completa y en orden, con el TEXTO 2 justo después del inciso (a); Contacto sigue en la 15', () => {
     const texto = textoDe(Privacidad);
-    const lineas = lineasPublicables(seccion(2));
-    expect(lineas.length).toBeGreaterThan(15);
-    for (const linea of lineas) expect(texto).toContain(linea);
-    expect(texto).toContain('14. Clientes que piden una pieza a los yonkes ("Avisar a los yonkes")');
-    expect(texto).toContain('15. Contacto');
+    let desde = texto.indexOf('14. Búsquedas activas');
+    expect(desde).toBeGreaterThan(-1);
+    for (const parrafo of SECCION_14) {
+      const en = texto.indexOf(parrafo, desde);
+      expect(en, parrafo).toBeGreaterThanOrEqual(desde);
+      desde = en + parrafo.length;
+    }
+    expect(texto.indexOf('15. Contacto')).toBe(desde);
     expect(texto).toContain('13. Talleres, cotizaciones y órdenes de servicio');
   });
-  it('los Términos traen lo de clientes en la sección 8 y lo de yonkes en la 6, tal cual se aprobó', () => {
+  it('Privacidad, sección 14: sin las frases que contradicen el TEXTO 2', () => {
+    const texto = textoDe(Privacidad);
+    expect(texto).not.toContain('únicamente a los yonkes Verificados');
+    expect(texto).not.toContain('hasta que la alerta se elimine');
+    expect(texto).not.toContain('Mostrar mi alerta a yonkes de otros estados');
+  });
+  it('Privacidad, sección 7: remite a la 14 para las búsquedas activas', () => {
+    const texto = textoDe(Privacidad);
+    const referencia = texto.indexOf('Para las búsquedas activas, consulta también la sección 14.');
+    expect(referencia).toBeGreaterThan(texto.indexOf('7. Conservación y eliminación'));
+    expect(referencia).toBeLessThan(texto.indexOf('8. Cookies'));
+  });
+  it('Términos, sección 8: el TEXTO 3 en lugar de "Pedidos de piezas a los yonkes", con los demás puntos', () => {
     const texto = textoDe(Terminos);
-    const lineas = lineasPublicables(seccion(3));
-    expect(lineas.length).toBeGreaterThan(10);
-    for (const linea of lineas) expect(texto).toContain(linea);
-    const s6 = texto.indexOf('6. Responsabilidades del yonke');
-    const s7 = texto.indexOf('7. Datos de terceros');
     const s8 = texto.indexOf('8. Responsabilidades del cliente');
     const s9 = texto.indexOf('9. Insignias y distintivos');
-    expect(texto.indexOf('Respuestas a pedidos de clientes.')).toBeGreaterThan(s6);
-    expect(texto.indexOf('Respuestas a pedidos de clientes.')).toBeLessThan(s7);
-    expect(texto.indexOf('Pedidos de piezas a los yonkes.')).toBeGreaterThan(s8);
-    expect(texto.indexOf('Pedidos de piezas a los yonkes.')).toBeLessThan(s9);
+    const t3 = texto.indexOf(TEXTO_3);
+    expect(t3).toBeGreaterThan(s8);
+    expect(t3).toBeLessThan(s9);
+    for (const punto of [
+      '• Mecanix no vende piezas, no fija precios, no garantiza que algún yonke tenga la pieza, ni su estado, precio o disponibilidad, y no participa en el pago ni en la entrega.',
+      '• El cliente debe confirmar directamente con el yonke antes de pagar o acudir.',
+      '• El cliente se obliga a proporcionar un número de WhatsApp propio y datos veraces.',
+      '• Mecanix puede dar de baja búsquedas activas que parezcan falsas, ofensivas o abusivas, y limitar el número de búsquedas activas por persona.',
+    ]) {
+      expect(texto.indexOf(punto, t3)).toBeGreaterThan(t3);
+      expect(texto.indexOf(punto, t3)).toBeLessThan(s9);
+    }
+    expect(texto).not.toContain('Pedidos de piezas a los yonkes.');
+    expect(texto).not.toContain('Mecanix permite que el cliente avise a los yonkes');
+  });
+  it('Términos, sección 6: respuestas a búsquedas activas (solo cambia el nombre)', () => {
+    const texto = textoDe(Terminos);
+    const s6 = texto.indexOf('6. Responsabilidades del yonke');
+    const s7 = texto.indexOf('7. Datos de terceros');
+    for (const frase of ['Respuestas a búsquedas activas de clientes. El yonke que responde una búsqueda activa se obliga a:',
+      'Cada yonke puede responder una sola vez a cada búsqueda activa, y su respuesta no se puede modificar.']) {
+      expect(texto.indexOf(frase)).toBeGreaterThan(s6);
+      expect(texto.indexOf(frase)).toBeLessThan(s7);
+    }
     expect(texto).toContain('23. Contacto');
   });
-  it('el texto nuevo escribe "cliente" en minúscula; el texto de talleres ("Cliente del Taller") no cambia', () => {
-    const terminos = textoDe(Terminos);
-    for (const frase of [
-      'Respuestas a pedidos de clientes.', 'aclarar al cliente cualquier diferencia', 'los datos que el cliente le proporcione',
-      'permite que el cliente avise', 'El cliente debe confirmar directamente', 'El cliente se obliga a proporcionar',
-    ]) {
-      expect(terminos).toContain(frase);
-      expect(terminos).not.toContain(frase.replace('clientes', 'Clientes').replace('cliente', 'Cliente'));
+  it('ninguna de las dos páginas dice "alerta" ni "Avisar a los yonkes"', () => {
+    for (const Pagina of [Privacidad, Terminos]) {
+      const texto = textoDe(Pagina);
+      expect(texto).not.toMatch(/alerta/i);
+      expect(texto).not.toContain('Avisar a los yonkes');
+      cleanup();
     }
-    expect(terminos).toContain('Cliente del Taller');
-    cleanup();
-    expect(textoDe(Privacidad)).toContain('14. Clientes que piden una pieza a los yonkes');
-  });
-  it('la sección 7 de Privacidad remite a la 14 para los pedidos de "Avisar a los yonkes"', () => {
-    const texto = textoDe(Privacidad);
-    const s7 = texto.indexOf('7. Conservación y eliminación');
-    const s8 = texto.indexOf('8. Cookies');
-    const referencia = texto.indexOf('Para los pedidos de "Avisar a los yonkes", consulta también la sección 14.');
-    expect(referencia).toBeGreaterThan(s7);
-    expect(referencia).toBeLessThan(s8);
   });
   it('ninguna página publica un [POR CONFIRMAR] ni las frases que dependen de él', () => {
     for (const Pagina of [Privacidad, Terminos]) {
@@ -106,58 +119,14 @@ describe('textos legales de "Avisar a los yonkes"', () => {
       cleanup();
     }
   });
-  it('fecha de última actualización y VERSION_LEGAL de hoy', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-23');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 23 de octubre de 2026');
+  it('fecha de última actualización y VERSION_LEGAL: 26 de octubre de 2026', () => {
+    expect(VERSION_LEGAL).toBe('2026-10-26');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 26 de octubre de 2026');
     cleanup();
-    expect(textoDe(Terminos)).toContain('Última actualización: 23 de octubre de 2026');
+    expect(textoDe(Terminos)).toContain('Última actualización: 26 de octubre de 2026');
   });
 });
 
-describe('alertas a yonkes de otros estados (aprobado el 10 de octubre de 2026)', () => {
-  it('Privacidad, sección 14: el inciso (a) nombra la casilla con su texto exacto del formulario', () => {
-    const texto = textoDe(Privacidad);
-    expect(texto).toContain(PRIVACIDAD_A);
-    const a = texto.indexOf(PRIVACIDAD_A);
-    expect(a).toBeGreaterThan(texto.indexOf('Para qué los usamos.'));
-    expect(a).toBeLessThan(texto.indexOf('(b) Mostrarte, en tu enlace privado'));
-  });
-  it('la cita del inciso (a) es la primera frase del texto real de la casilla', () => {
-    expect(TEXTO_CASILLA_OTROS_ESTADOS.startsWith(`${CASILLA}. `)).toBe(true);
-  });
-  it('Privacidad, sección 14: la casilla marcada por defecto, justo después del inciso (a)', () => {
-    const texto = textoDe(Privacidad);
-    expect(texto.indexOf(PRIVACIDAD_CASILLA_MARCADA)).toBe(texto.indexOf(PRIVACIDAD_A) + PRIVACIDAD_A.length);
-    expect(texto.indexOf(PRIVACIDAD_CASILLA_MARCADA)).toBeLessThan(texto.indexOf('(b) Mostrarte, en tu enlace privado'));
-    // Y enseguida, el consentimiento.
-    expect(texto.indexOf(PRIVACIDAD_CONSENTIMIENTO)).toBe(texto.indexOf(PRIVACIDAD_CASILLA_MARCADA) + PRIVACIDAD_CASILLA_MARCADA.length);
-  });
-  it('Términos, sección 8: la casilla marcada por defecto, junto a la línea de otros estados', () => {
-    const texto = textoDe(Terminos);
-    expect(texto).toContain(`${TERMINOS_OTROS_ESTADOS} ${TERMINOS_CASILLA_MARCADA}`);
-  });
-  it('Privacidad, sección 14: la frase B va justo después del renglón de "Yonkes"', () => {
-    const texto = textoDe(Privacidad);
-    const yonkes = 'Yonkes: solo ven el vehículo, la pieza, el estado y la fecha del pedido. Nunca ven tu número de WhatsApp.';
-    const y = texto.indexOf(yonkes);
-    expect(y).toBeGreaterThan(-1);
-    // Párrafo propio, inmediatamente después del renglón de Yonkes y antes de "Proveedores".
-    expect(texto.indexOf(PRIVACIDAD_B)).toBe(y + yonkes.length);
-    expect(texto.indexOf('• Proveedores de infraestructura')).toBe(y + yonkes.length + PRIVACIDAD_B.length);
-  });
-  it('Términos, sección 8: la línea nueva reemplaza a la de "únicamente ... de su estado"', () => {
-    const texto = textoDe(Terminos);
-    expect(texto).toContain(TERMINOS_OTROS_ESTADOS);
-    expect(texto).not.toContain('Mecanix únicamente permite que el cliente avise');
-  });
-  it('la sección 13 de talleres trae su título y versión vigentes', () => {
-    expect(textoDe(Privacidad)).toContain('13. Talleres, cotizaciones y órdenes de servicio');
-    expect(textoDe(Privacidad)).toContain('Versión: talleres-2026-10-5 · 22 de octubre de 2026');
-  });
-});
-
-// Textos finales aprobados por el abogado el 11 de octubre de 2026 (planes, captura a domicilio,
-// insignia Premium, solicitudes de piezas y avisos internos por CallMeBot).
 describe('textos finales del 12 de octubre de 2026', () => {
   it('Términos, sección 4 «Planes del servicio»: los tres párrafos, sin el texto anterior', () => {
     const texto = textoDe(Terminos);
@@ -191,11 +160,11 @@ describe('textos finales del 12 de octubre de 2026', () => {
 });
 
 // Avisos en el dispositivo (notificaciones push): textos aprobados por el abogado, dentro de la
-// versión vigente (VERSION_LEGAL y la fecha no cambian).
+// versión vigente (26 de octubre de 2026: solo "alertas" pasa a "búsquedas activas").
 describe('avisos en el dispositivo', () => {
-  const PRIVACIDAD = 'Notificaciones en el dispositivo. Si el yonke activa los avisos, guardamos un identificador técnico (token) del navegador o dispositivo que utiliza, ligado a su cuenta, con el único fin de enviarle avisos de pedidos y alertas de búsqueda de su interés aunque la aplicación esté cerrada. Estos avisos no contienen datos personales del cliente. Para entregarlos utilizamos el servicio Firebase Cloud Messaging de Google, que recibe el identificador y el texto del aviso. El yonke puede desactivar los avisos en cualquier momento desde la aplicación o desde los permisos de su navegador; al hacerlo, o al eliminar su cuenta, eliminamos el identificador.';
+  const PRIVACIDAD = 'Notificaciones en el dispositivo. Si el yonke activa los avisos, guardamos un identificador técnico (token) del navegador o dispositivo que utiliza, ligado a su cuenta, con el único fin de enviarle avisos de pedidos y búsquedas activas de su interés aunque la aplicación esté cerrada. Estos avisos no contienen datos personales del cliente. Para entregarlos utilizamos el servicio Firebase Cloud Messaging de Google, que recibe el identificador y el texto del aviso. El yonke puede desactivar los avisos en cualquier momento desde la aplicación o desde los permisos de su navegador; al hacerlo, o al eliminar su cuenta, eliminamos el identificador.';
   const PROVEEDOR = '• Firebase Cloud Messaging (Google): entrega de los avisos en el dispositivo a los yonkes que los activan (ver sección 2).';
-  const TERMINOS = 'Los avisos de pedidos y alertas en el dispositivo forman parte de la sección de pedidos del plan Básico. Su entrega depende de la conexión, de los permisos y de la configuración del dispositivo del usuario, por lo que Mecanix no garantiza que cada aviso llegue ni que llegue de inmediato; el yonke puede consultar siempre sus pedidos y alertas dentro del panel.';
+  const TERMINOS = 'Los avisos de pedidos y búsquedas activas en el dispositivo forman parte de la sección de pedidos del plan Básico. Su entrega depende de la conexión, de los permisos y de la configuración del dispositivo del usuario, por lo que Mecanix no garantiza que cada aviso llegue ni que llegue de inmediato; el yonke puede consultar siempre sus pedidos y búsquedas activas dentro del panel.';
   it('Privacidad, sección 2: el párrafo va justo después de "Yonkes registrados"', () => {
     const texto = textoDe(Privacidad);
     expect(texto).toContain(PRIVACIDAD);
@@ -218,8 +187,8 @@ describe('avisos en el dispositivo', () => {
     expect(texto.indexOf(TERMINOS)).toBeGreaterThan(texto.indexOf('La Plataforma ofrece dos planes.'));
     expect(texto.indexOf(TERMINOS)).toBeLessThan(texto.indexOf('Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026'));
   });
-  it('sin cambiar la versión ni la fecha', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-23');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 23 de octubre de 2026');
+  it('con la versión y la fecha vigentes', () => {
+    expect(VERSION_LEGAL).toBe('2026-10-26');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 26 de octubre de 2026');
   });
 });

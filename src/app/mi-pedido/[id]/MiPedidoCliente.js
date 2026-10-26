@@ -70,10 +70,10 @@ export default function MiPedidoCliente() {
     cargar();
   }
 
-  if (estado === 'cargando') return <Marco><p style={{ color: '#555' }}>Cargando tu pedido...</p></Marco>;
+  if (estado === 'cargando') return <Marco><p style={{ color: '#555' }}>Cargando tu búsqueda activa...</p></Marco>;
   if (estado === 'noDisponible') return <Marco><p role="alert" style={{ color: '#8A2A1A' }}>{MENSAJES_PEDIDO.noDisponible}</p></Marco>;
   if (estado === 'noEncontrado') return <Marco><p role="alert" style={{ color: '#8A2A1A' }}>{MENSAJES_PEDIDO.noEncontrado}</p></Marco>;
-  if (estado === 'error') return <Marco><p role="alert" style={{ color: '#8A2A1A' }}>{mensaje || 'No pudimos cargar tu pedido. Intenta de nuevo.'}</p><button type="button" onClick={actualizar} style={botonSecundario}>Intentar de nuevo</button></Marco>;
+  if (estado === 'error') return <Marco><p role="alert" style={{ color: '#8A2A1A' }}>{mensaje || 'No pudimos cargar tu búsqueda activa. Intenta de nuevo.'}</p><button type="button" onClick={actualizar} style={botonSecundario}>Intentar de nuevo</button></Marco>;
 
   const { pedido, respuestas } = datos;
   const conPieza = respuestas.filter((r) => r.tieneLaPieza);
@@ -82,15 +82,15 @@ export default function MiPedidoCliente() {
   return (
     <Marco>
       <div style={seccion}>
-        <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Tu pedido</p>
+        <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Tu búsqueda activa</p>
         <p style={{ margin: '4px 0 0', fontSize: '18px', fontWeight: 'bold', color: '#1A3C5E' }}>{pedido.pieza}</p>
         <p style={{ margin: '2px 0 0', fontSize: '14px', color: '#555' }}>
           {pedido.vehiculo.marca} {pedido.vehiculo.modelo} {pedido.vehiculo.anio} · {pedido.estadoNombre}
         </p>
         <p style={{ margin: '8px 0 0', fontSize: '13px', color: pedido.vencido || pedido.estadoPedido !== 'abierta' ? '#8A2A1A' : '#2E7D32', fontWeight: 'bold' }}>
-          {pedido.vencido ? 'Este pedido ya venció: los yonkes ya no lo ven.'
-            : pedido.estadoPedido === 'cerrada' ? 'Este pedido ya se cerró: los yonkes ya no lo ven.'
-            : pedido.estadoPedido !== 'abierta' ? 'Este pedido fue dado de baja.'
+          {pedido.vencido ? 'Esta búsqueda activa ya venció: los yonkes ya no la ven.'
+            : pedido.estadoPedido === 'cerrada' ? 'Esta búsqueda activa ya se cerró: los yonkes ya no la ven.'
+            : pedido.estadoPedido !== 'abierta' ? 'Esta búsqueda activa fue dada de baja.'
               : `Abierto · los yonkes pueden responder hasta el ${fecha(pedido.vence)}`}
         </p>
       </div>
@@ -162,7 +162,7 @@ function Marco({ children }) {
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '16px' }}>
       <div style={{ maxWidth: '560px', margin: '0 auto' }}>
         <Link href="/" style={{ color: '#1A3C5E', fontSize: '14px', textDecoration: 'none' }}>← Mecanix Yonke Virtual</Link>
-        <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '10px 0 14px' }}>Mi consulta</h1>
+        <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '10px 0 14px' }}>Mi búsqueda activa</h1>
         {children}
       </div>
     </main>

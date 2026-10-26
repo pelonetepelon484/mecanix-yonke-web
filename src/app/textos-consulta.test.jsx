@@ -51,7 +51,7 @@ describe('bandera encendida: "consulta"', () => {
     const { AlertaUnPaso: m, AvisarYonkes: a } = await cargar(ENCENDIDA);
     const { container } = render(<m.default variante="protagonista" {...completo} />);
     await listo();
-    expect(screen.getByText('Consulta con los yonkes de Sonora: verán tu búsqueda y te responderán con su precio.')).toBeInTheDocument();
+    expect(screen.getByText('Consulta con los yonkes de Sonora: verán tu búsqueda activa y te responderán con su precio.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '📲 Consultar con los yonkes' }));
     expect(screen.getByText('📲 Consultar con los yonkes', { selector: 'p' })).toBeInTheDocument();
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, enlace: ENLACE }) }));
@@ -64,9 +64,9 @@ describe('bandera encendida: "consulta"', () => {
   it('errores con "consultas" (el servidor manda los de siempre y el navegador los cambia)', async () => {
     const { AlertaUnPaso: m, pedidos } = await cargar(ENCENDIDA);
     expect(pedidos.MENSAJES_CONSULTA).toEqual({
-      limiteWhatsapp: `Ya tienes ${pedidos.MAX_PEDIDOS_POR_WHATSAPP_DIA} consultas hoy con este WhatsApp. Intenta mañana.`,
-      limiteIp: 'Llevas muchas consultas seguidas. Espera un rato y vuelve a intentar.',
-      guardarFallo: 'No pudimos enviar tu consulta. Revisa tu conexión e intenta de nuevo.',
+      limiteWhatsapp: `Ya tienes ${pedidos.MAX_PEDIDOS_POR_WHATSAPP_DIA} búsquedas activas hoy con este WhatsApp. Intenta mañana.`,
+      limiteIp: 'Llevas muchas búsquedas activas seguidas. Espera un rato y vuelve a intentar.',
+      guardarFallo: 'No pudimos enviar tu búsqueda activa. Revisa tu conexión e intenta de nuevo.',
     });
     render(<m.default variante="protagonista" {...completo} abiertoDeEntrada />);
     await listo();
@@ -94,12 +94,12 @@ describe('bandera encendida: "consulta"', () => {
   it('aviso sin año exacto y "¿Cómo funciona?"', async () => {
     const { AvisarSinAnioExacto, ComoFunciona } = await cargar(ENCENDIDA);
     render(<AvisarSinAnioExacto tipoBusqueda="vehiculo" hayResultados marca="Toyota" modelo="Tacoma" anio="2015" pieza="Alternador" estado="" tipoResultado="cercano" />);
-    expect(await screen.findByText('Si quieres, consulta con los yonkes: verán tu pedido (sin tus datos de contacto) y te responderán aquí si tienen la pieza.')).toBeInTheDocument();
+    expect(await screen.findByText('Si quieres, consulta con los yonkes: verán tu búsqueda activa (sin tus datos de contacto) y te responderán aquí si tienen la pieza.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '📲 Consultar con los yonkes' })).toBeInTheDocument();
     cleanup();
     render(<ComoFunciona />);
     expect(await screen.findByText('Consulta con los yonkes')).toBeInTheDocument();
-    expect(screen.queryByText('Deja una alerta')).not.toBeInTheDocument();
+    expect(screen.queryByText('Deja una búsqueda activa')).not.toBeInTheDocument();
   });
 });
 
@@ -108,20 +108,20 @@ describe('bandera apagada: igual que en main', () => {
     const { AlertaUnPaso: m } = await cargar(APAGADA);
     render(<m.default variante="compacta" {...completo} />);
     await listo();
-    expect(screen.getByRole('button', { name: '🔔 ¿No era lo que buscabas? Activa una alerta aquí' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '🔔 ¿No era lo que buscabas? Consulta con los yonkes aquí' })).toBeInTheDocument();
     cleanup();
     render(<m.default variante="discreta" {...completo} />);
     await listo();
-    expect(screen.getByRole('button', { name: '🔔 ¿No encontraste la pieza exacta? Activa una alerta' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '🔔 ¿No encontraste la pieza exacta? Consulta con los yonkes' })).toBeInTheDocument();
     cleanup();
     render(<m.default variante="protagonista" {...completo} />);
     await listo();
-    expect(screen.getByText('Activa una alerta: los yonkes de Sonora la verán y te responderán con su precio.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' }));
+    expect(screen.getByText('Consulta con los yonkes de Sonora: verán tu búsqueda activa y te responderán con su precio.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '🚨 Consultar con los yonkes 🚨' }));
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, enlace: ENLACE }) }));
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' })); });
-    expect(screen.getByText('Ver mi alerta')).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' })); });
+    expect(screen.getByText('Ver mi búsqueda activa')).toBeInTheDocument();
   });
 
   it('errores de siempre', async () => {
@@ -130,21 +130,21 @@ describe('bandera apagada: igual que en main', () => {
     await listo();
     global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false, mensaje: pedidos.MENSAJES_PEDIDO.limiteWhatsapp }) }));
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' })); });
-    expect(screen.getByRole('alert')).toHaveTextContent(`Ya enviaste ${pedidos.MAX_PEDIDOS_POR_WHATSAPP_DIA} alertas hoy con este WhatsApp. Intenta mañana.`);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' })); });
+    expect(screen.getByRole('alert')).toHaveTextContent(`Ya enviaste ${pedidos.MAX_PEDIDOS_POR_WHATSAPP_DIA} búsquedas activas hoy con este WhatsApp. Intenta mañana.`);
   });
 
   it('AvisarYonkes, aviso sin año exacto y "¿Cómo funciona?" de siempre', async () => {
     const { AvisarYonkes: a, AvisarSinAnioExacto, ComoFunciona } = await cargar(APAGADA);
     render(<a.default />);
     await listo();
-    expect(screen.getByText('¿No la encontraste? Activa una alerta de búsqueda y los yonkes de tu estado te responden con precio si la tienen.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '🚨 Activa una alerta de búsqueda 🚨' })).toBeInTheDocument();
+    expect(screen.getByText('¿No la encontraste? Deja una búsqueda activa y los yonkes de tu estado te responden con precio si la tienen.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '🚨 Consultar con los yonkes 🚨' })).toBeInTheDocument();
     cleanup();
     render(<AvisarSinAnioExacto tipoBusqueda="vehiculo" hayResultados marca="Toyota" modelo="Tacoma" anio="2015" pieza="Alternador" estado="" tipoResultado="cercano" />);
-    expect(await screen.findByText('Si quieres, activa una alerta de búsqueda: los yonkes verán tu pedido (sin tus datos de contacto) y te responderán aquí si tienen la pieza.')).toBeInTheDocument();
+    expect(await screen.findByText('Si quieres, consulta con los yonkes: verán tu búsqueda activa (sin tus datos de contacto) y te responderán aquí si tienen la pieza.')).toBeInTheDocument();
     cleanup();
     render(<ComoFunciona />);
-    expect(await screen.findByText('Deja una alerta')).toBeInTheDocument();
+    expect(await screen.findByText('Deja una búsqueda activa')).toBeInTheDocument();
   });
 });

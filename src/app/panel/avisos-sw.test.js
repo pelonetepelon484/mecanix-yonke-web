@@ -32,8 +32,8 @@ describe('service worker de avisos', () => {
   });
   it('muestra el aviso con título, texto, ícono y etiqueta (formato de FCM con "data")', async () => {
     const { self, disparar } = cargar();
-    await disparar('push', push({ data: { titulo: 'Nueva alerta de búsqueda', cuerpo: 'Alternador · Nissan Sentra 2005', url: '/panel/reservaciones?pedido=P1', etiqueta: 'mecanix-alertas' }, from: '123' }));
-    expect(self.registration.showNotification).toHaveBeenCalledWith('Nueva alerta de búsqueda', {
+    await disparar('push', push({ data: { titulo: 'Nueva búsqueda activa', cuerpo: 'Alternador · Nissan Sentra 2005', url: '/panel/reservaciones?pedido=P1', etiqueta: 'mecanix-alertas' }, from: '123' }));
+    expect(self.registration.showNotification).toHaveBeenCalledWith('Nueva búsqueda activa', {
       body: 'Alternador · Nissan Sentra 2005', icon: '/icons/icon-192.png', tag: 'mecanix-alertas', renotify: true, data: { url: '/panel/reservaciones?pedido=P1' },
     });
   });

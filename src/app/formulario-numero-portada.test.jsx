@@ -103,19 +103,19 @@ describe('bandera apagada: igual que hoy', () => {
     expect(screen.queryByText(TEXTO_MODO_NUMERO)).not.toBeInTheDocument();
     // Al abrirla, el formulario de siempre.
     fireEvent.click(screen.getByRole('button', { name: TEXTO_BOTON_ALERTA }));
-    expect(screen.getByRole('button', { name: '🚨 Enviar alerta' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' })).toBeInTheDocument();
   });
 
   it('con resultados de otros estados: el título y el texto de siempre', async () => {
     await buscar('conOtrosEstados', false);
     expect(screen.getByText(TITULO_CON_OTROS_ESTADOS)).toBeInTheDocument();
-    expect(screen.getByText(/Activa la alerta de búsqueda/)).toBeInTheDocument();
+    expect(screen.getByText(/Consulta con los yonkes de tu estado/)).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_MODO_NUMERO)).not.toBeInTheDocument();
   });
 
-  it('número de parte: título "¿No encuentras la pieza? Activa una alerta de búsqueda" y el botón de siempre', async () => {
+  it('número de parte: título "¿No encuentras la pieza? Consulta con los yonkes" y el botón de siempre', async () => {
     await buscar('numeroDeParte', false);
-    expect(screen.getByText('¿No encuentras la pieza? Activa una alerta de búsqueda')).toBeInTheDocument();
+    expect(screen.getByText('¿No encuentras la pieza? Consulta con los yonkes')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: TEXTO_BOTON_ALERTA })).toBeInTheDocument();
   });
 });

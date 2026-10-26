@@ -61,9 +61,9 @@ describe('página del cliente con las respuestas de los yonkes', () => {
     }));
     render(<MiPedidoCliente />);
     expect(await screen.findByText('Alternador')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Mi consulta');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Mi búsqueda activa');
     expect(screen.queryByText('Mi pedido de pieza')).not.toBeInTheDocument();
-    expect(metadata.title).toBe('Mi consulta | Mecanix Yonke Virtual');
+    expect(metadata.title).toBe('Mi búsqueda activa | Mecanix Yonke Virtual');
   });
 
   it('cada respuesta dice el estado del yonke; las de otro estado llevan el aviso (con o sin Envíos nacionales)', async () => {
@@ -93,14 +93,14 @@ describe('página del cliente con las respuestas de los yonkes', () => {
     const lejos = await tarjeta('Yonke Guadalajara');
     expect(lejos).toHaveTextContent('📍 Jalisco');
     expect(lejos).toHaveTextContent('📦 Envíos nacionales');
-    expect(lejos).toHaveTextContent('Este yonke es de Jalisco, distinto al de tu pedido, pero respondió tu solicitud. Este yonke hace envíos nacionales hasta tu estado; confírmalo directamente con él antes de pagar.');
+    expect(lejos).toHaveTextContent('Este yonke es de Jalisco, distinto al de tu búsqueda activa, pero respondió tu solicitud. Este yonke hace envíos nacionales hasta tu estado; confírmalo directamente con él antes de pagar.');
     expect(lejos).toHaveTextContent(CONSEJOS_ENVIO);
     expect(lejos).not.toHaveTextContent('Te la enviaría');
 
     // Otro estado SIN la insignia: sin "📦 Envíos nacionales" y el aviso dice que es posible.
     const sinInsignia = await tarjeta('Yonke Monterrey');
     expect(sinInsignia).not.toHaveTextContent('Envíos nacionales');
-    expect(sinInsignia).toHaveTextContent('Este yonke es de Nuevo León, distinto al de tu pedido, pero respondió tu solicitud. Es posible que pueda hacer el envío hasta tu estado; confírmalo directamente con él antes de pagar.');
+    expect(sinInsignia).toHaveTextContent('Este yonke es de Nuevo León, distinto al de tu búsqueda activa, pero respondió tu solicitud. Es posible que pueda hacer el envío hasta tu estado; confírmalo directamente con él antes de pagar.');
 
     // Si no la tiene, no hay nada que enviar: sin el aviso.
     const sinPieza = await tarjeta('Yonke Hermosillo');

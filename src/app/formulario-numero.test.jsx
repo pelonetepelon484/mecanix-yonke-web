@@ -56,7 +56,7 @@ describe('modo número (bandera encendida)', () => {
   it('"📲 Consultar con los yonkes" y "Nunca ven tu número de WhatsApp."; WhatsApp, casilla, consentimiento y "Al enviar aceptas…" igual', async () => {
     await abrir();
     expect(screen.getByRole('button', { name: TEXTO_ENVIAR_NUMERO })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '🚨 Enviar alerta' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '🚨 Enviar búsqueda activa' })).not.toBeInTheDocument();
     expect(screen.getByText(TEXTO_NUNCA_VEN_NUMERO)).toBeInTheDocument();
     expect(screen.queryByText(LINEA_VIEJA, { exact: false })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Tu WhatsApp')).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe('modo número (bandera encendida)', () => {
     expect(screen.getByText(TEXTO_CONFIRMACION_NUMERO)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: ENLACE })).toHaveAttribute('href', ENLACE);
     expect(screen.getByRole('link', { name: /Guardar mi enlace por WhatsApp/ })).toBeInTheDocument();
-    expect(screen.queryByText('Ver mi alerta')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ver mi búsqueda activa')).not.toBeInTheDocument();
     expect(container.textContent).not.toMatch(/alerta|la ven|la pueden ver|te avisamos|avisarte/i);
   });
 });
@@ -93,7 +93,7 @@ describe('sin el modo número (bandera apagada): igual que hoy', () => {
     await act(async () => {});
     expect(screen.getByText(TITULO_SIN_RESULTADOS)).toBeInTheDocument();
     expect(screen.getByText(TEXTO_BOTON_ALERTA)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '🚨 Enviar alerta' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
     expect(screen.getByText(LINEA_VIEJA, { exact: false })).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_MODO_NUMERO)).not.toBeInTheDocument();
@@ -104,9 +104,9 @@ describe('sin el modo número (bandera apagada): igual que hoy', () => {
     render(<AlertaUnPaso variante="protagonista" {...completo} abiertoDeEntrada />);
     await act(async () => {});
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' })); });
-    expect(screen.getByText('✅ Listo, los yonkes de Sonora ya pueden ver tu búsqueda. Aquí verás sus respuestas:', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('Ver mi alerta')).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' })); });
+    expect(screen.getByText('✅ Listo, los yonkes de Sonora ya pueden ver tu búsqueda activa. Aquí verás sus respuestas:', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Ver mi búsqueda activa')).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_CONFIRMACION_NUMERO)).not.toBeInTheDocument();
   });
 });

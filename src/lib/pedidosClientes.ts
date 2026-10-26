@@ -22,21 +22,21 @@ export const MENSAJES_PEDIDO = {
   ...MENSAJES_SOLICITUD,
   estado: 'Elige el estado donde buscas la pieza.',
   whatsapp: 'Escribe tu WhatsApp a 10 dígitos (ej. 664 123 4567).',
-  limiteWhatsapp: `Ya enviaste ${MAX_PEDIDOS_POR_WHATSAPP_DIA} alertas hoy con este WhatsApp. Intenta mañana.`,
-  limiteIp: 'Enviaste muchas alertas seguidas. Espera un rato y vuelve a intentar.',
+  limiteWhatsapp: `Ya enviaste ${MAX_PEDIDOS_POR_WHATSAPP_DIA} búsquedas activas hoy con este WhatsApp. Intenta mañana.`,
+  limiteIp: 'Enviaste muchas búsquedas activas seguidas. Espera un rato y vuelve a intentar.',
   limiteConsultas: 'Demasiadas consultas seguidas. Espera un momento.',
   noDisponible: 'Esta función no está disponible por ahora.',
-  noEncontrado: 'No encontramos este pedido. Revisa que el enlace esté completo.',
-  guardarFallo: 'No pudimos enviar tu alerta. Revisa tu conexión e intenta de nuevo.',
+  noEncontrado: 'No encontramos esta búsqueda activa. Revisa que el enlace esté completo.',
+  guardarFallo: 'No pudimos enviar tu búsqueda activa. Revisa tu conexión e intenta de nuevo.',
   solicitudInvalida: 'Solicitud inválida.',
 } as const;
 
 // Con config/pedidosClientes.formularioAbierto el cliente ve "consulta" en lugar de "alerta". El
 // servidor sigue mandando MENSAJES_PEDIDO; el navegador los cambia por estos al mostrarlos.
 export const MENSAJES_CONSULTA = {
-  limiteWhatsapp: `Ya tienes ${MAX_PEDIDOS_POR_WHATSAPP_DIA} consultas hoy con este WhatsApp. Intenta mañana.`,
-  limiteIp: 'Llevas muchas consultas seguidas. Espera un rato y vuelve a intentar.',
-  guardarFallo: 'No pudimos enviar tu consulta. Revisa tu conexión e intenta de nuevo.',
+  limiteWhatsapp: `Ya tienes ${MAX_PEDIDOS_POR_WHATSAPP_DIA} búsquedas activas hoy con este WhatsApp. Intenta mañana.`,
+  limiteIp: 'Llevas muchas búsquedas activas seguidas. Espera un rato y vuelve a intentar.',
+  guardarFallo: 'No pudimos enviar tu búsqueda activa. Revisa tu conexión e intenta de nuevo.',
 } as const;
 export function mensajeParaCliente(mensaje: string, consulta: boolean): string {
   if (!consulta) return mensaje;
@@ -132,19 +132,19 @@ export function puedeVerOtrosEstados(
 }
 
 
-// Casilla "otros estados" del formulario de la alerta (AvisarYonkes / AlertaUnPaso): nace MARCADA.
-// El Aviso de Privacidad (sección 14, inciso a) cita su primera frase. Textos aprobados por el abogado.
-export const TEXTO_CASILLA_OTROS_ESTADOS = 'Mostrar mi alerta a yonkes de otros estados que hacen envíos. Esta casilla viene marcada; si solo quieres yonkes de tu estado, desmárcala. No se comparte tu nombre ni tu WhatsApp.';
+// Casilla "otros estados" del formulario de la búsqueda activa (AvisarYonkes / AlertaUnPaso): nace
+// MARCADA. El Aviso de Privacidad (sección 14) y los Términos (sección 8) citan su nombre. Textos
+// aprobados por el abogado (2026-10-26).
+export const TEXTO_CASILLA_OTROS_ESTADOS = 'Quiero buscar también en otros estados.';
 export const CASILLA_OTROS_ESTADOS_INICIAL = true;
-// Consentimiento, visible debajo de la casilla y junto al botón de enviar. Lo que nombra es lo que
-// el cliente captura y ve el yonke: vehículo, pieza y estado (la alerta no tiene comentario libre).
-export const TEXTO_CONSENTIMIENTO_OTROS_ESTADOS = 'Al enviar tu alerta con esta casilla marcada, aceptas que la información que capturaste (vehículo, pieza y estado) se muestre a yonkes de otros estados que hacen envíos. No se comparte tu nombre ni tu WhatsApp.';
+// Explicación y consentimiento, visible debajo de la casilla y junto al botón de enviar.
+export const TEXTO_CONSENTIMIENTO_OTROS_ESTADOS = 'Si la dejas marcada, mostraremos los datos de tu vehículo, la pieza que buscas y tu estado en nuestra portada y a la red de yonkes Verificados con Envíos Nacionales de todo el país. Así aumentas tus posibilidades de encontrarla. Jamás mostraremos tu nombre, teléfono ni datos de contacto. Si la desmarcas, tu búsqueda solo será visible dentro de tu propio estado.';
 
 // Aviso junto a la respuesta de un yonke de un estado distinto al del pedido (pantalla /mi-pedido).
 // Con la insignia de Envíos nacionales lo afirma; sin ella, solo dice que es posible. Aprobado por el abogado.
 export function avisoRespuestaOtroEstado(estadoNombre: string, enviosNacionales: boolean): string {
   const envio = enviosNacionales ? 'Este yonke hace envíos nacionales' : 'Es posible que pueda hacer el envío';
-  return `Este yonke es de ${estadoNombre}, distinto al de tu pedido, pero respondió tu solicitud. ${envio} hasta tu estado; confírmalo directamente con él antes de pagar.`;
+  return `Este yonke es de ${estadoNombre}, distinto al de tu búsqueda activa, pero respondió tu solicitud. ${envio} hasta tu estado; confírmalo directamente con él antes de pagar.`;
 }
 // Consejos para comprar a distancia (debajo del aviso anterior). Sin repetir "antes de pagar": se
 // quitaron "Te la enviaría un yonke de…" y "Confirma por WhatsApp cómo se hará el pago" (aprobado
@@ -166,7 +166,7 @@ export function enlaceMiPedido(origen: string, id: string, codigo: string): stri
 // wa.me hacia el propio número del cliente, con su enlace ya escrito (para guardarlo).
 export function enlaceGuardarPorWhatsapp(whatsapp: string, enlace: string): string {
   const numero = normalizarWhatsapp(whatsapp) ?? '';
-  const texto = `Mi consulta en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`;
+  const texto = `Mi búsqueda activa en Mecanix (guárdalo para ver las respuestas de los yonkes): ${enlace}`;
   return `https://wa.me/52${numero}?text=${encodeURIComponent(texto)}`;
 }
 
