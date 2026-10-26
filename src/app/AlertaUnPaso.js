@@ -14,31 +14,25 @@
 //   sale abierto, sin tocar el botón; en la protagonista, su título y su texto quedan encima.
 // - modoNumero (con abiertoDeEntrada, misma bandera, solo en los 4 casos sin resultado): pantalla sin
 //   la palabra "alerta" y sin promesas de aviso — TEXTO_MODO_NUMERO encima (debajo del título de
-//   otros estados, si lo hay), "📲 Enviar", "Nunca ven tu número de WhatsApp." (aviso de privacidad,
-//   sección 14), sin "Cancelar", y su propia confirmación. Casilla, consentimiento y "Al enviar
-//   aceptas…" no cambian.
+//   otros estados, si lo hay), "Nunca ven tu número de WhatsApp." (aviso de privacidad, sección 14)
+//   y sin "Cancelar". Casilla, consentimiento y "Al enviar aceptas…" no cambian.
 // Sin la bandera (o sin config/pedidosClientes.habilitado) no muestra NADA.
 import { useEffect, useState } from 'react';
 import SelectorMarcaModelo from './lib/SelectorMarcaModelo';
 import { cargarEstados } from './lib/estados';
 import { leerBanderaAlertaUnPaso, leerBanderaOtrosEstados } from './lib/banderaPedidosClientes';
-import { CASILLA_OTROS_ESTADOS_INICIAL, CasillaOtrosEstados, TEXTO_BOTON_ALERTA, enviarAlertaCliente } from './AvisarYonkes';
-import { enlaceGuardarPorWhatsapp } from '../lib/pedidosClientes';
+import { CASILLA_OTROS_ESTADOS_INICIAL, CasillaOtrosEstados, ConfirmacionConsulta, TEXTO_BOTON_ALERTA, TEXTO_BOTON_ENVIAR, enviarAlertaCliente } from './AvisarYonkes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 export const TITULO_SIN_RESULTADOS = 'No tenemos ese vehículo todavía';
-export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Activa una alerta';
-export const TEXTO_COMPACTO = '¿No era lo que buscabas? Activa una alerta aquí';
+export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Consulta con los yonkes';
+export const TEXTO_COMPACTO = '¿No era lo que buscabas? Consulta con los yonkes aquí';
 export const textoSinResultados = (estadoNombre) =>
-  `Activa una alerta: los yonkes de ${estadoNombre || 'tu estado'} la verán y te responderán con su precio.`;
-export const textoConfirmacion = (estadoNombre) =>
-  `✅ Listo, los yonkes de ${estadoNombre} ya pueden ver tu búsqueda. Aquí verás sus respuestas:`;
+  `Consulta con los yonkes de ${estadoNombre || 'tu estado'}: verán tu búsqueda y te responderán con su precio.`;
 
 // Modo número (config/pedidosClientes.formularioAbierto).
 export const TEXTO_MODO_NUMERO = 'Deja tu número y revisa en tu link si encontramos tu vehículo. Guarda tu link: ahí verás las respuestas de los yonkes.';
-export const TEXTO_ENVIAR_NUMERO = '📲 Enviar';
 export const TEXTO_NUNCA_VEN_NUMERO = 'Nunca ven tu número de WhatsApp.';
-export const TEXTO_CONFIRMACION_NUMERO = '✅ ¡Listo! Guarda este enlace: ahí verás si los yonkes tienen tu pieza. Vence en 5 días.';
 
 const anioValido = (a) => /^\d{4}$/.test(String(a ?? '').trim());
 
@@ -107,33 +101,8 @@ export default function AlertaUnPaso({
     setEnlace(r.enlace);
   }
 
-  if (enlace && modoNumero) {
-    return (
-      <div style={cajaConfirmacion}>
-        <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px', lineHeight: '1.4' }}>{TEXTO_CONFIRMACION_NUMERO}</p>
-        <a href={enlace} style={{ display: 'block', margin: '0 0 10px', fontSize: '12px', color: '#555', wordBreak: 'break-all', backgroundColor: '#F4F5F5', padding: '8px', borderRadius: '8px' }}>{enlace}</a>
-        <a href={enlaceGuardarPorWhatsapp(whatsapp, enlace)} target="_blank" rel="noopener noreferrer" style={{ ...botonBase, backgroundColor: '#25D366', display: 'block', textAlign: 'center', textDecoration: 'none' }}>
-          💬 Guardar mi enlace por WhatsApp
-        </a>
-      </div>
-    );
-  }
-
   if (enlace) {
-    return (
-      <div style={cajaConfirmacion}>
-        <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px', lineHeight: '1.4' }}>
-          {textoConfirmacion(nombreDe(estado) || estado)}
-          {otrosEstadosActivo && aceptaOtrosEstados && ' También la pueden ver yonkes Verificados de otros estados con Envíos nacionales.'}
-        </p>
-        <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#555', wordBreak: 'break-all', backgroundColor: '#F4F5F5', padding: '8px', borderRadius: '8px' }}>{enlace}</p>
-        <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>Guárdalo: ahí verás las respuestas con precio y tú decides a quién escribirle. Tu alerta dura 5 días.</p>
-        <a href={enlaceGuardarPorWhatsapp(whatsapp, enlace)} target="_blank" rel="noopener noreferrer" style={{ ...botonBase, backgroundColor: '#25D366', display: 'block', textAlign: 'center', textDecoration: 'none' }}>
-          💬 Guardar mi enlace por WhatsApp
-        </a>
-        <a href={enlace} style={{ display: 'block', textAlign: 'center', marginTop: '10px', color: '#1A3C5E', fontWeight: 'bold', fontSize: '14px' }}>Ver mi alerta</a>
-      </div>
-    );
+    return <ConfirmacionConsulta enlace={enlace} whatsapp={whatsapp} />;
   }
 
   // Título y texto del recuadro grande: arriba del botón o, abierto de entrada, arriba del formulario.
@@ -226,7 +195,7 @@ export default function AlertaUnPaso({
       </p>
       {error && <p role="alert" style={{ margin: '0 0 10px', fontSize: '13px', color: '#B3261E' }}>{error}</p>}
       <button type="button" onClick={enviar} disabled={enviando} style={{ ...botonGrande, opacity: enviando ? 0.6 : 1 }}>
-        {enviando ? 'Enviando...' : (modoNumero ? TEXTO_ENVIAR_NUMERO : '🚨 Enviar alerta')}
+        {enviando ? 'Enviando...' : TEXTO_BOTON_ENVIAR}
       </button>
       {!modoNumero && <button type="button" onClick={() => setAbierto(false)} style={botonCancelar}>Cancelar</button>}
       <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#777', textAlign: 'center', lineHeight: '1.5' }}>
@@ -248,7 +217,6 @@ const botonBase = { width: '100%', padding: '12px', borderRadius: '50px', border
 const botonGrande = { ...botonBase, backgroundColor: '#E8720C', padding: '16px 6px', fontSize: 'clamp(12px, 3.7vw, 18px)', whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(232,114,12,0.35)' };
 const cajaProtagonista = { margin: '14px 0', padding: '16px 12px', borderRadius: '16px', backgroundColor: '#FFF4E8', border: '2px solid #E8720C' };
 const caja = { marginTop: '12px', padding: '14px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #C5D8EC' };
-const cajaConfirmacion = { margin: '14px 0', padding: '16px', borderRadius: '16px', backgroundColor: '#fff', border: '2px solid #2E7D32' };
 const resumenStyle = { backgroundColor: '#fff', border: '1px solid #F2C9A0', borderRadius: '10px', padding: '8px 12px', marginBottom: '12px', fontSize: '14px', color: '#1A3C5E', fontWeight: '600' };
 const botonCorregir = { marginTop: '4px', padding: 0, border: 'none', background: 'none', color: '#E8720C', fontSize: '12px', fontWeight: '700', textDecoration: 'underline', cursor: 'pointer' };
 const botonCancelar = { display: 'block', width: '100%', marginTop: '8px', padding: '8px', border: 'none', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' };

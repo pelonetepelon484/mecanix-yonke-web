@@ -17,6 +17,9 @@ import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 // Mismo botón en los dos lugares donde se ofrece (sin resultados y sin el año exacto).
 export const TEXTO_BOTON_ALERTA = '🚨 Activa una alerta de búsqueda 🚨';
+// Botón de envío y confirmación de TODOS los formularios (este y AlertaUnPaso), sin "alerta".
+export const TEXTO_BOTON_ENVIAR = '📲 Consultar con los yonkes';
+export const TEXTO_CONFIRMACION = '✅ ¡Listo! Guarda este enlace: ahí verás si algún yonke tiene tu pieza. Vence en 5 días.';
 
 // Envío compartido por este formulario y el de un paso (AlertaUnPaso.js): valida con
 // validarPedidoCliente y crea la alerta en /api/pedir-pieza. Devuelve { ok: true, enlace } o
@@ -37,6 +40,20 @@ export function CasillaOtrosEstados({ id, marcada, onCambiar }) {
       <p data-testid="consentimiento-otros-estados" style={{ margin: '6px 0 0 26px', fontSize: '12px', color: '#555', lineHeight: '1.5' }}>{TEXTO_CONSENTIMIENTO_OTROS_ESTADOS}</p>
       {/* El enlace va FUERA de la etiqueta: tocarlo no cambia la casilla. */}
       <a href={`${URL_PRIVACIDAD}#pedidos-clientes`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', margin: '4px 0 0 26px', fontSize: '12px', color: '#1A3C5E' }}>Aviso de privacidad</a>
+    </div>
+  );
+}
+
+// Confirmación después de enviar (este formulario y AlertaUnPaso): el texto, el enlace (se puede
+// tocar) y el botón para guardarlo por WhatsApp.
+export function ConfirmacionConsulta({ enlace, whatsapp }) {
+  return (
+    <div style={cajaConfirmacion}>
+      <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px', lineHeight: '1.4' }}>{TEXTO_CONFIRMACION}</p>
+      <a href={enlace} style={{ display: 'block', margin: '0 0 10px', fontSize: '12px', color: '#555', wordBreak: 'break-all', backgroundColor: '#F4F5F5', padding: '8px', borderRadius: '8px' }}>{enlace}</a>
+      <a href={enlaceGuardarPorWhatsapp(whatsapp, enlace)} target="_blank" rel="noopener noreferrer" style={{ ...boton, backgroundColor: '#25D366', display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+        💬 Guardar mi enlace por WhatsApp
+      </a>
     </div>
   );
 }
@@ -121,26 +138,7 @@ export default function AvisarYonkes({
   if (!habilitado) return null;
 
   if (enlace) {
-    const nombreEstado = estados.find((e) => e.id === estado)?.nombre || estado;
-    return (
-      <div style={caja}>
-        <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px' }}>
-          ✅ ¡Listo! Tu alerta de búsqueda ya está activa. Los yonkes de {nombreEstado} la ven en su panel.
-          {/* Solo si marcó la casilla de otros estados (y la casilla existía: segunda bandera encendida). */}
-          {otrosEstadosActivo && aceptaOtrosEstados && ' También la pueden ver yonkes Verificados de otros estados con Envíos nacionales.'}
-        </p>
-        <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
-          Guarda este enlace: ahí verás las respuestas con precio, y tú decides a quién escribirle. Vence en 5 días.
-        </p>
-        <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#555', wordBreak: 'break-all', backgroundColor: '#F4F5F5', padding: '8px', borderRadius: '8px' }}>{enlace}</p>
-        <a href={enlaceGuardarPorWhatsapp(whatsapp, enlace)} target="_blank" rel="noopener noreferrer" style={{ ...boton, backgroundColor: '#25D366', display: 'block', textAlign: 'center', textDecoration: 'none' }}>
-          💬 Guardar mi enlace por WhatsApp
-        </a>
-        <a href={enlace} style={{ display: 'block', textAlign: 'center', marginTop: '10px', color: '#1A3C5E', fontWeight: 'bold', fontSize: '14px' }}>
-          Ver mi alerta
-        </a>
-      </div>
-    );
+    return <ConfirmacionConsulta enlace={enlace} whatsapp={whatsapp} />;
   }
 
   if (!abierto) {
@@ -181,7 +179,7 @@ export default function AvisarYonkes({
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => setAbierto(false)} style={{ ...botonFila, backgroundColor: '#EEF1F5', color: '#333' }}>Cancelar</button>
         <button type="button" onClick={enviar} disabled={enviando} style={{ ...botonFila, backgroundColor: '#1A3C5E', opacity: enviando ? 0.6 : 1 }}>
-          {enviando ? 'Enviando...' : '🚨 Enviar alerta'}
+          {enviando ? 'Enviando...' : TEXTO_BOTON_ENVIAR}
         </button>
       </div>
       {/* Solo enlaces, no una casilla de aceptación. URLs absolutas igual que en el registro de yonkes. */}
@@ -196,6 +194,7 @@ export default function AvisarYonkes({
 }
 
 const caja = { marginTop: '12px', padding: '14px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #C5D8EC' };
+const cajaConfirmacion = { margin: '14px 0', padding: '16px', borderRadius: '16px', backgroundColor: '#fff', border: '2px solid #2E7D32' };
 const cajaDestacada = { margin: '0 0 14px', padding: '16px', borderRadius: '12px', backgroundColor: '#FFF4E8', border: '2px solid #E8720C' };
 const boton = { width: '100%', padding: '12px', borderRadius: '50px', border: 'none', color: '#fff', fontWeight: '700', fontSize: '14px', cursor: 'pointer' };
 // En una sola línea con las dos sirenas aun en celulares de 320-360 px (medido con Chromium): la

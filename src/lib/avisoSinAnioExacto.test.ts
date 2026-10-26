@@ -26,7 +26,7 @@ describe('texto del recuadro', () => {
     expect(tituloAvisoSinAnioExacto({ marca: 'Toyota', modelo: 'Tacoma', anio: '2015' }))
       .toBe('No encontramos el año exacto de tu Toyota Tacoma 2015.');
     expect(MENSAJE_AVISO_SIN_ANIO_EXACTO)
-      .toBe('Si quieres, activa una alerta de búsqueda: los yonkes verán tu pedido (sin tus datos de contacto) y te responderán aquí si tienen la pieza.');
+      .toBe('Si quieres, consulta con los yonkes: verán tu pedido (sin tus datos de contacto) y te responderán aquí si tienen la pieza.');
   });
   it('si falta el modelo no deja huecos', () => {
     expect(tituloAvisoSinAnioExacto({ marca: 'Toyota', modelo: '', anio: 2015 }))

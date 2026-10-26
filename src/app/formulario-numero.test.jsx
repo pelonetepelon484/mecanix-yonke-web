@@ -5,7 +5,7 @@ import '@testing-library/jest-dom/vitest';
 
 // AlertaUnPaso en modo número (config/pedidosClientes.formularioAbierto, en los 4 casos sin
 // resultado): sin la palabra "alerta" (salvo en la casilla y el consentimiento aprobados, que no
-// cambian), sin promesas de aviso, "📲 Enviar" y su propia confirmación. Sin el modo, igual que hoy.
+// cambian), sin promesas de aviso, "📲 Consultar con los yonkes" y la confirmación nueva. Sin el modo, igual que hoy.
 vi.mock('./lib/banderaPedidosClientes', () => ({
   leerBanderaAlertaUnPaso: async () => true,
   leerBanderaOtrosEstados: async () => true,
@@ -15,9 +15,12 @@ vi.mock('./lib/estados', () => ({ ESTADO_DEFAULT: 'baja-california', cargarEstad
 vi.mock('./lib/SelectorMarcaModelo', () => ({ default: () => null }));
 
 const {
-  default: AlertaUnPaso, TITULO_SIN_RESULTADOS, TEXTO_MODO_NUMERO, TEXTO_ENVIAR_NUMERO, TEXTO_NUNCA_VEN_NUMERO, TEXTO_CONFIRMACION_NUMERO,
+  default: AlertaUnPaso, TITULO_SIN_RESULTADOS, TEXTO_MODO_NUMERO, TEXTO_NUNCA_VEN_NUMERO,
 } = await import('./AlertaUnPaso.js');
-const { TEXTO_BOTON_ALERTA, TEXTO_CASILLA_OTROS_ESTADOS, TEXTO_CONSENTIMIENTO_OTROS_ESTADOS } = await import('./AvisarYonkes.js');
+const {
+  TEXTO_BOTON_ALERTA, TEXTO_CASILLA_OTROS_ESTADOS, TEXTO_CONSENTIMIENTO_OTROS_ESTADOS,
+  TEXTO_BOTON_ENVIAR: TEXTO_ENVIAR_NUMERO, TEXTO_CONFIRMACION: TEXTO_CONFIRMACION_NUMERO,
+} = await import('./AvisarYonkes.js');
 
 const ESTADOS = [{ id: 'sonora', nombre: 'Sonora' }];
 const completo = { marca: 'Nissan', modelo: 'Sentra', anio: '2005', pieza: 'Alternador', estado: 'sonora', estados: ESTADOS };
@@ -47,7 +50,7 @@ describe('modo número (bandera encendida)', () => {
     expect(container.textContent).not.toMatch(/te avisamos|avisarte/i);
   });
 
-  it('"📲 Enviar" y "Nunca ven tu número de WhatsApp."; WhatsApp, casilla, consentimiento y "Al enviar aceptas…" igual', async () => {
+  it('"📲 Consultar con los yonkes" y "Nunca ven tu número de WhatsApp."; WhatsApp, casilla, consentimiento y "Al enviar aceptas…" igual', async () => {
     await abrir();
     expect(screen.getByRole('button', { name: TEXTO_ENVIAR_NUMERO })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '🚨 Enviar alerta' })).not.toBeInTheDocument();
@@ -87,19 +90,20 @@ describe('sin el modo número (bandera apagada): igual que hoy', () => {
     await act(async () => {});
     expect(screen.getByText(TITULO_SIN_RESULTADOS)).toBeInTheDocument();
     expect(screen.getByText(TEXTO_BOTON_ALERTA)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '🚨 Enviar alerta' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '📲 Consultar con los yonkes' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
     expect(screen.getByText(LINEA_VIEJA, { exact: false })).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_MODO_NUMERO)).not.toBeInTheDocument();
   });
 
-  it('confirmación de siempre', async () => {
+  it('la confirmación es la misma nueva, sin "alerta" (también con la bandera apagada)', async () => {
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, enlace: ENLACE }) }));
-    render(<AlertaUnPaso variante="protagonista" {...completo} abiertoDeEntrada />);
+    const { container } = render(<AlertaUnPaso variante="protagonista" {...completo} abiertoDeEntrada />);
     await act(async () => {});
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar alerta' })); });
-    expect(screen.getByText('Ver mi alerta')).toBeInTheDocument();
-    expect(screen.queryByText(TEXTO_CONFIRMACION_NUMERO)).not.toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: TEXTO_ENVIAR_NUMERO })); });
+    expect(screen.getByText(TEXTO_CONFIRMACION_NUMERO)).toBeInTheDocument();
+    expect(screen.queryByText('Ver mi alerta')).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/alerta/i);
   });
 });

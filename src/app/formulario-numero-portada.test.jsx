@@ -61,7 +61,7 @@ describe('bandera encendida (modo número)', () => {
     expect(screen.queryByText(SIN_YONKES)).not.toBeInTheDocument();
     expect(screen.getByText(TEXTO_MODO_NUMERO)).toBeInTheDocument();
     expect(screen.queryByText(TITULO_SIN_RESULTADOS)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '📲 Enviar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '📲 Consultar con los yonkes' })).toBeInTheDocument();
     const texto = recuadro().textContent.replace(TEXTO_CASILLA_OTROS_ESTADOS, '').replace(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS, '');
     expect(texto).not.toMatch(/alerta|te avisamos|avisarte/i);
   });
@@ -70,7 +70,7 @@ describe('bandera encendida (modo número)', () => {
     await buscar('conOtrosEstados', true);
     expect(screen.getByText(TITULO_CON_OTROS_ESTADOS)).toBeInTheDocument();
     expect(screen.getByText(TEXTO_MODO_NUMERO)).toBeInTheDocument();
-    expect(screen.queryByText(/Activa la alerta de búsqueda/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Consulta con los yonkes de tu estado/)).not.toBeInTheDocument();
   });
 });
 
@@ -80,12 +80,15 @@ describe('bandera apagada: igual que hoy', () => {
     expect(screen.getByText(SIN_YONKES)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: TEXTO_BOTON_ALERTA })).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_MODO_NUMERO)).not.toBeInTheDocument();
+    // Al abrirla, el botón de envío ya es el nuevo (ese texto no depende de la bandera).
+    fireEvent.click(screen.getByRole('button', { name: TEXTO_BOTON_ALERTA }));
+    expect(screen.getByRole('button', { name: '📲 Consultar con los yonkes' })).toBeInTheDocument();
   });
 
   it('con resultados de otros estados: el título y el texto de siempre', async () => {
     await buscar('conOtrosEstados', false);
     expect(screen.getByText(TITULO_CON_OTROS_ESTADOS)).toBeInTheDocument();
-    expect(screen.getByText(/Activa la alerta de búsqueda/)).toBeInTheDocument();
+    expect(screen.getByText(/Consulta con los yonkes de tu estado/)).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_MODO_NUMERO)).not.toBeInTheDocument();
   });
 });

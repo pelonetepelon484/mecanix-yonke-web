@@ -26,7 +26,7 @@ const RAMA_SI = [
 const OTROS_ESTADOS = { emoji: '🌎', titulo: 'Busca en otros estados', desc: 'Hay yonkes con envíos' };
 // Aviso de privacidad, sección 14: "(b) Mostrarte, en tu enlace privado, las respuestas de los
 // yonkes", "Si decides escribirle a un yonke desde tu enlace…" y "Nunca ven tu número de WhatsApp".
-const ALERTA = { emoji: '🔔', titulo: 'Deja una alerta', desc: 'Ves las respuestas de los yonkes en tu enlace privado y tú decides a quién escribirle. Nunca ven tu número de WhatsApp.' };
+const ALERTA = { emoji: '🔔', titulo: 'Publica tu búsqueda', desc: 'Ves las respuestas de los yonkes en tu enlace privado y tú decides a quién escribirle. Nunca ven tu número de WhatsApp.' };
 
 function Paso({ emoji, titulo, desc }) {
   return (
