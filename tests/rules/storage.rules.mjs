@@ -125,3 +125,28 @@ describe('las demás rutas siguen igual', () => {
     await assertFails(subir('y1', 'talleres/T1/logo.webp'));
   });
 });
+
+describe('refaccionarias/{id}/logo/...: el dueño de la refaccionaria o el admin', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (c) => {
+      await setDoc(doc(c.firestore(), 'refaccionarias', 'R1'), { nombre: 'El Pistón', ownerUid: 'r1' });
+      await setDoc(doc(c.firestore(), 'refaccionarias', 'R2'), { nombre: 'Otra', ownerUid: 'r2' });
+    });
+    await usuario('r1', { rol: 'refaccionaria', refaccionariaId: 'R1', email: 'r1@x.mx' });
+    await usuario('r2', { rol: 'refaccionaria', refaccionariaId: 'R2', email: 'r2@x.mx' });
+  });
+  const webp = { contentType: 'image/webp' };
+  it('el dueño sube y borra su logo; otra refaccionaria, un yonke o sin sesión no', async () => {
+    await assertSucceeds(subir('r1', 'refaccionarias/R1/logo/logo.webp', 10 * KB, webp));
+    await assertFails(subir('r2', 'refaccionarias/R1/logo/logo.webp', 10 * KB, webp));
+    await assertFails(subir('y1', 'refaccionarias/R1/logo/logo.webp', 10 * KB, webp));
+    await assertFails(subir(null, 'refaccionarias/R1/logo/logo.webp', 10 * KB, webp));
+    await assertSucceeds(borrar('r1', 'refaccionarias/R1/logo/logo.webp'));
+  });
+  it('tope de 300 KB y solo imágenes; el admin también sube', async () => {
+    await assertSucceeds(subir('r1', 'refaccionarias/R1/logo/logo.webp', 300 * KB, webp));
+    await assertFails(subir('r1', 'refaccionarias/R1/logo/logo.webp', 300 * KB + 1, webp));
+    await assertFails(subir('r1', 'refaccionarias/R1/logo/logo.pdf', 10 * KB, { contentType: 'application/pdf' }));
+    await assertSucceeds(subir('adm', 'refaccionarias/R1/logo/logo.png', 10 * KB));
+  });
+});

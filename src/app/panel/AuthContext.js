@@ -16,6 +16,7 @@ export function AuthProvider({ children }) {
   const [userRole, setUserRole] = useState(null);
   const [yonkeId, setYonkeId] = useState(null);
   const [tallerId, setTallerId] = useState(null);
+  const [refaccionariaId, setRefaccionariaId] = useState(null);
   const [yonkePlan, setYonkePlan] = useState(null);
   // Solo para el dueño (rol 'yonke'): { requerida, version, resumenCambios, aceptada } según
   // config/terminosYonkes. null = no aplica o no se pudo leer (las reglas deciden igual).
@@ -38,6 +39,7 @@ export function AuthProvider({ children }) {
       setUserRole(null);
       setYonkeId(null);
       setTallerId(null);
+      setRefaccionariaId(null);
       setYonkePlan(null);
       setTerminosYonke(null);
       setLimitesActivos(false);
@@ -50,6 +52,7 @@ export function AuthProvider({ children }) {
     setUserRole(data.rol);
     setYonkeId(data.yonkeId || null);
     setTallerId(data.tallerId || null);
+    setRefaccionariaId(data.refaccionariaId || null);
     setRolListo(true);
 
     // Leer el plan del yonke (y, si es el dueño, si ya aceptó los términos vigentes)
@@ -99,6 +102,7 @@ export function AuthProvider({ children }) {
         setUserRole(null);
         setYonkeId(null);
         setTallerId(null);
+        setRefaccionariaId(null);
         setYonkePlan(null);
         setTerminosYonke(null);
         setLimitesActivos(false);
@@ -127,7 +131,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, userRole, yonkeId, tallerId, yonkePlan, loading, rolListo, recargarRol,
+      user, userRole, yonkeId, tallerId, refaccionariaId, yonkePlan, loading, rolListo, recargarRol,
       terminosYonke, puedeEditarYonke, marcarTerminosAceptados,
       limitesActivos, premiumVigente, soloBasico,
     }}>

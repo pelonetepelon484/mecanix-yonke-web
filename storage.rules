@@ -31,6 +31,18 @@ service firebase.storage {
       allow delete: if esAdmin() || esDuenoDelLogo(fileName);
     }
 
+    // Logo de una refaccionaria: el dueño (refaccionarias/{id}.ownerUid) o el admin. Solo imágenes,
+    // 300 KB como máximo (la app lo comprimirá antes de subirlo).
+    match /refaccionarias/{refaccionariaId}/logo/{archivo} {
+      allow read: if true;
+      allow create, update: if (esAdmin()
+          || (request.auth != null && firestore.get(/databases/(default)/documents/refaccionarias/$(refaccionariaId)).data.ownerUid == request.auth.uid))
+        && request.resource.size <= 300 * 1024
+        && request.resource.contentType.matches('image/(png|webp|jpeg)');
+      allow delete: if esAdmin()
+        || (request.auth != null && firestore.get(/databases/(default)/documents/refaccionarias/$(refaccionariaId)).data.ownerUid == request.auth.uid);
+    }
+
     match /branding/{yonkeId}/promos/{archivo} {
       allow read: if true;
       allow create, update: if (esAdmin() || esDuenoDeYonke(yonkeId))
