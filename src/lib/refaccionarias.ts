@@ -95,7 +95,8 @@ export function generarSlug(nombre: string, id: string): string {
 
 // config/refaccionarias: bandera, versión de los términos y sus cambios, y los topes y vigencias del
 // inventario (se usan en las etapas siguientes). Nada fijo en el código: lo que falte queda en null.
-export type TopesRefaccionarias = { basico: number | null; premium: number | null };
+// Sin plan Básico: un solo tope de piezas para todas (prueba y pago).
+export type TopesRefaccionarias = { piezas: number | null };
 export type VigenciaRefaccionarias = { precioPorConfirmarDias: number | null; ocultarBuscadorDias: number | null; ocultarPaginaDias: number | null };
 export type ConfigRefaccionarias = {
   habilitado: boolean; terminosVersion: string; resumenCambios: string;
@@ -110,7 +111,7 @@ export function leerConfigRefaccionariasDe(datos: Record<string, unknown> | null
     habilitado: c.habilitado === true,
     terminosVersion: typeof c.terminosVersion === 'string' ? c.terminosVersion : '',
     resumenCambios: typeof c.resumenCambios === 'string' ? c.resumenCambios : '',
-    topes: { basico: enteroPositivo(topes.basico), premium: enteroPositivo(topes.premium) },
+    topes: { piezas: enteroPositivo(topes.piezas) },
     vigencia: {
       precioPorConfirmarDias: enteroPositivo(vigencia.precioPorConfirmarDias),
       ocultarBuscadorDias: enteroPositivo(vigencia.ocultarBuscadorDias),
@@ -123,4 +124,59 @@ export function leerConfigRefaccionariasDe(datos: Record<string, unknown> | null
 export function refaccionariaAceptoTerminos(refaccionaria: { aceptacionVersion?: unknown } | null | undefined, config: ConfigRefaccionarias): boolean {
   if (!config.terminosVersion) return true;
   return refaccionaria?.aceptacionVersion === config.terminosVersion;
+}
+
+// Estado de la cuenta (sin plan Básico): el admin inicia la prueba (pruebaHasta) al activarla y,
+// al terminar, asigna el pago (premiumHasta). Vencida = prueba o pago ya terminados; sus datos se
+// conservan DIAS_CONSERVAR_VENCIDA días y después queda marcada "para borrado" (solo la marca).
+export const MESES_PRUEBA = 3;
+export const DIAS_CONSERVAR_VENCIDA = 90;
+export type EstadoCuentaRefaccionaria = 'prueba-vigente' | 'pago-vigente' | 'vencida' | 'sin-activar';
+export type ResumenCuentaRefaccionaria = {
+  estado: EstadoCuentaRefaccionaria;
+  // Vigente: días hasta que termine. Vencida: días que faltan para la marca "para borrado" (0 si ya).
+  diasRestantes: number | null;
+  venceEl: Date | null; // fin de la prueba o del pago (en vencida, el más reciente)
+  paraBorrado: boolean;
+};
+
+const DIA_MS = 24 * 60 * 60 * 1000;
+function fechaDe(valor: unknown): Date | null {
+  const v = valor as { toDate?: () => Date } | Date | string | number | null | undefined;
+  const fecha = v && typeof v === 'object' && 'toDate' in v && typeof v.toDate === 'function' ? v.toDate() : v ? new Date(v as Date) : null;
+  return fecha && !Number.isNaN(fecha.getTime()) ? fecha : null;
+}
+const diasHasta = (fin: Date, ahora: Date) => Math.ceil((fin.getTime() - ahora.getTime()) / DIA_MS);
+
+export function estadoCuentaRefaccionaria(
+  r: { pruebaHasta?: unknown; premiumHasta?: unknown } | null | undefined,
+  ahora: Date = new Date(),
+): ResumenCuentaRefaccionaria {
+  const pago = fechaDe(r?.premiumHasta);
+  const prueba = fechaDe(r?.pruebaHasta);
+  if (pago && pago > ahora) return { estado: 'pago-vigente', diasRestantes: diasHasta(pago, ahora), venceEl: pago, paraBorrado: false };
+  if (prueba && prueba > ahora) return { estado: 'prueba-vigente', diasRestantes: diasHasta(prueba, ahora), venceEl: prueba, paraBorrado: false };
+  const fin = [pago, prueba].filter((f): f is Date => f !== null).sort((a, b) => b.getTime() - a.getTime())[0];
+  if (!fin) return { estado: 'sin-activar', diasRestantes: null, venceEl: null, paraBorrado: false };
+  const diasParaBorrado = Math.max(0, diasHasta(new Date(fin.getTime() + DIAS_CONSERVAR_VENCIDA * DIA_MS), ahora));
+  return { estado: 'vencida', diasRestantes: diasParaBorrado, venceEl: fin, paraBorrado: diasParaBorrado === 0 };
+}
+
+// Fin de la prueba si el admin la inicia hoy: MESES_PRUEBA meses después (como "AAAA-MM-DD").
+export function finPruebaDesde(ahora: Date = new Date()): string {
+  const fin = new Date(ahora.getFullYear(), ahora.getMonth() + MESES_PRUEBA, ahora.getDate());
+  // Si el mes de destino es más corto (31 de noviembre → 1 de diciembre), queda en su último día.
+  if (fin.getDate() !== ahora.getDate()) fin.setDate(0);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${fin.getFullYear()}-${p(fin.getMonth() + 1)}-${p(fin.getDate())}`;
+}
+
+// Texto corto para la pantalla del admin.
+export function textoEstadoCuenta(e: ResumenCuentaRefaccionaria): string {
+  const dias = (n: number) => `${n} ${n === 1 ? 'día' : 'días'}`;
+  if (e.estado === 'prueba-vigente') return `🧪 Prueba vigente · quedan ${dias(e.diasRestantes ?? 0)}`;
+  if (e.estado === 'pago-vigente') return `⭐ Pago vigente · quedan ${dias(e.diasRestantes ?? 0)}`;
+  if (e.estado === 'sin-activar') return '⏸️ Sin activar';
+  if (e.paraBorrado) return `🗑️ Vencida · para borrado (más de ${DIAS_CONSERVAR_VENCIDA} días)`;
+  return `⚠️ Vencida · se conservan sus datos ${dias(e.diasRestantes ?? 0)} más`;
 }

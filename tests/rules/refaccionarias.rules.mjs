@@ -25,7 +25,7 @@ const refaccionaria = (ownerUid, extra = {}) => ({
   nombre: 'Refacciones El Pistón', whatsapp: '6641234567', estado: 'baja-california', ciudad: 'Tijuana', logoUrl: '',
   slug: `el-piston-${ownerUid}`, ownerUid, activo: true, creadoAt: new Date(), aceptacionVersion: 'r1', ...extra,
 });
-// Como la crea el registro: sin aceptar, con la hora del servidor, sin Verificado ni plan.
+// Como la crea el registro: sin aceptar, con la hora del servidor, sin Verificado, prueba ni plan.
 const refaccionariaNueva = (uid, extra = {}) => ({
   nombre: 'Refaccionaria Nueva', whatsapp: '6649876543', estado: 'sonora', ciudad: 'Hermosillo', logoUrl: '',
   zonaEntrega: { descripcion: 'Entregas en Hermosillo centro', municipios: ['Hermosillo'] },
@@ -97,8 +97,8 @@ describe('bandera config/refaccionarias.habilitado', () => {
 });
 
 describe('registro', () => {
-  it('no nace con Verificado, plan ni premiumHasta, ni inactiva, ni a nombre de otro', async () => {
-    for (const extra of [{ verificado: true }, { plan: 'premium' }, { premiumHasta: Timestamp.fromDate(new Date('2030-01-01')) }, { activo: false }, { ownerUid: 'otro' }, { aceptacionVersion: 'r1' }]) {
+  it('no nace con Verificado, pruebaHasta, plan ni premiumHasta, ni inactiva, ni a nombre de otro', async () => {
+    for (const extra of [{ verificado: true }, { pruebaHasta: Timestamp.fromDate(new Date('2030-01-01')) }, { plan: 'pago' }, { premiumHasta: Timestamp.fromDate(new Date('2030-01-01')) }, { activo: false }, { ownerUid: 'otro' }, { aceptacionVersion: 'r1' }]) {
       await assertFails(registrar('nuevo', 'RN', refaccionariaNueva('nuevo', extra)));
     }
   });
@@ -138,19 +138,20 @@ describe('datos públicos y lo que solo el admin escribe', () => {
     await assertFails(updateDoc(rref('r1', 'R2'), { nombre: 'Robada' }));
     await assertFails(updateDoc(rref('y1', 'R1'), { nombre: 'Yonke' }));
   });
-  it('el dueño NO cambia ownerUid, activo, verificado, plan, premiumHasta, creadoAt ni slug', async () => {
-    for (const cambio of [{ ownerUid: 'otro' }, { activo: false }, { verificado: true }, { plan: 'premium' },
+  it('el dueño NO cambia ownerUid, activo, verificado, pruebaHasta, plan, premiumHasta, creadoAt ni slug', async () => {
+    for (const cambio of [{ ownerUid: 'otro' }, { activo: false }, { verificado: true }, { pruebaHasta: Timestamp.fromDate(new Date('2030-01-01')) }, { plan: 'pago' },
       { premiumHasta: Timestamp.fromDate(new Date('2030-01-01')) }, { creadoAt: Timestamp.fromDate(new Date('2020-01-01')) }, { slug: 'otro-slug' }]) {
       await assertFails(updateDoc(rref('r1', 'R1'), cambio));
     }
   });
-  it('el admin escribe verificado, plan, premiumHasta y activo', async () => {
-    await assertSucceeds(updateDoc(rref('adm', 'R1'), { verificado: true, plan: 'premium', premiumHasta: Timestamp.fromDate(new Date('2030-01-01')), activo: false }));
+  it('el admin escribe verificado, pruebaHasta, plan, premiumHasta y activo', async () => {
+    await assertSucceeds(updateDoc(rref('adm', 'R1'), { verificado: true, pruebaHasta: Timestamp.fromDate(new Date('2027-01-27')), plan: 'pago', premiumHasta: Timestamp.fromDate(new Date('2030-01-01')), activo: false }));
   });
-  it('con Verificado y plan ya puestos por el admin, el dueño sigue editando sus datos sin tocarlos', async () => {
-    await updateDoc(rref('adm', 'R1'), { verificado: true, plan: 'premium' });
+  it('con Verificado, prueba y plan ya puestos por el admin, el dueño sigue editando sus datos sin tocarlos', async () => {
+    await updateDoc(rref('adm', 'R1'), { verificado: true, pruebaHasta: Timestamp.fromDate(new Date('2027-01-27')), plan: 'pago' });
     await assertSucceeds(updateDoc(rref('r1', 'R1'), { ciudad: 'Rosarito' }));
     await assertFails(updateDoc(rref('r1', 'R1'), { verificado: false }));
+    await assertFails(updateDoc(rref('r1', 'R1'), { pruebaHasta: Timestamp.fromDate(new Date('2030-01-01')) }));
   });
 });
 

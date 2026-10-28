@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   MENSAJES_REFACCIONARIA, TEXTOS_PROVISIONALES, generarSlug, leerConfigRefaccionariasDe, municipiosDeTexto,
-  refaccionariaAceptoTerminos, validarRegistroRefaccionaria, zonaEntregaDe,
+  DIAS_CONSERVAR_VENCIDA, estadoCuentaRefaccionaria, finPruebaDesde, refaccionariaAceptoTerminos, textoEstadoCuenta,
+  validarRegistroRefaccionaria, zonaEntregaDe,
 } from './refaccionarias';
 
 const base = {
@@ -54,10 +55,10 @@ describe('generarSlug', () => {
 
 describe('config/refaccionarias', () => {
   it('sin documento o sin campos: apagada, sin versión, topes y vigencias en null (nada fijo en el código)', () => {
-    for (const datos of [null, {}, { habilitado: 'true', topes: { basico: -1, premium: 1.5 }, vigencia: { ocultarBuscadorDias: '60' } }]) {
+    for (const datos of [null, {}, { habilitado: 'true', topes: { piezas: -1, basico: 2000 }, vigencia: { ocultarBuscadorDias: '60' } }]) {
       expect(leerConfigRefaccionariasDe(datos)).toEqual({
         habilitado: false, terminosVersion: '', resumenCambios: '',
-        topes: { basico: null, premium: null },
+        topes: { piezas: null },
         vigencia: { precioPorConfirmarDias: null, ocultarBuscadorDias: null, ocultarPaginaDias: null },
       });
     }
@@ -65,11 +66,11 @@ describe('config/refaccionarias', () => {
   it('con todo: lo lee tal cual', () => {
     const c = leerConfigRefaccionariasDe({
       habilitado: true, terminosVersion: 'ref-1', resumenCambios: 'Texto',
-      topes: { basico: 2000, premium: 20000 }, vigencia: { precioPorConfirmarDias: 30, ocultarBuscadorDias: 60, ocultarPaginaDias: 90 },
+      topes: { piezas: 20000 }, vigencia: { precioPorConfirmarDias: 30, ocultarBuscadorDias: 60, ocultarPaginaDias: 90 },
     });
     expect(c).toEqual({
       habilitado: true, terminosVersion: 'ref-1', resumenCambios: 'Texto',
-      topes: { basico: 2000, premium: 20000 }, vigencia: { precioPorConfirmarDias: 30, ocultarBuscadorDias: 60, ocultarPaginaDias: 90 },
+      topes: { piezas: 20000 }, vigencia: { precioPorConfirmarDias: 30, ocultarBuscadorDias: 60, ocultarPaginaDias: 90 },
     });
   });
   it('aceptación: sin versión vigente no se exige; con versión, debe coincidir', () => {
@@ -86,5 +87,47 @@ describe('textos provisionales', () => {
     for (const clave of ['aceptacionRegistro', 'resumenCambiosRespaldo', 'tituloAvisoVersion', 'soloLectura', 'proximamenteInventarioDetalle', 'registroCerrado'] as const) {
       expect(TEXTOS_PROVISIONALES[clave].startsWith('[PROVISIONAL]')).toBe(true);
     }
+  });
+});
+
+describe('estadoCuentaRefaccionaria', () => {
+  const hoy = new Date('2026-10-27T12:00:00');
+  const enDias = (n: number) => new Date(hoy.getTime() + n * 24 * 60 * 60 * 1000);
+  const ts = (d: Date) => ({ toDate: () => d }); // como llega de Firestore
+
+  it('sin pruebaHasta ni premiumHasta: sin activar', () => {
+    for (const r of [null, {}, { pruebaHasta: null, premiumHasta: 'no es fecha' }]) {
+      expect(estadoCuentaRefaccionaria(r, hoy)).toEqual({ estado: 'sin-activar', diasRestantes: null, venceEl: null, paraBorrado: false });
+    }
+  });
+  it('prueba vigente con sus días restantes', () => {
+    expect(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(10)) }, hoy)).toMatchObject({ estado: 'prueba-vigente', diasRestantes: 10, paraBorrado: false });
+    expect(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(0.5)) }, hoy)).toMatchObject({ estado: 'prueba-vigente', diasRestantes: 1 });
+  });
+  it('pago vigente: manda sobre la prueba', () => {
+    expect(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(-5)), premiumHasta: ts(enDias(30)) }, hoy)).toMatchObject({ estado: 'pago-vigente', diasRestantes: 30 });
+    expect(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(5)), premiumHasta: ts(enDias(30)) }, hoy)).toMatchObject({ estado: 'pago-vigente', diasRestantes: 30 });
+  });
+  it('vencida (prueba o pago terminados): conserva sus datos 90 días, contados desde el fin más reciente', () => {
+    expect(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(-10)) }, hoy)).toMatchObject({ estado: 'vencida', diasRestantes: 80, paraBorrado: false });
+    const pagoVencido = estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(-100)), premiumHasta: ts(enDias(-1)) }, hoy);
+    expect(pagoVencido).toMatchObject({ estado: 'vencida', diasRestantes: DIAS_CONSERVAR_VENCIDA - 1, paraBorrado: false });
+    expect(pagoVencido.venceEl).toEqual(enDias(-1));
+  });
+  it('vencida hace 90 días o más: marcada para borrado (solo la marca)', () => {
+    expect(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(-90)) }, hoy)).toMatchObject({ estado: 'vencida', diasRestantes: 0, paraBorrado: true });
+    expect(estadoCuentaRefaccionaria({ premiumHasta: ts(enDias(-400)) }, hoy)).toMatchObject({ estado: 'vencida', diasRestantes: 0, paraBorrado: true });
+    expect(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(-89)) }, hoy)).toMatchObject({ paraBorrado: false, diasRestantes: 1 });
+  });
+  it('textos para el admin', () => {
+    expect(textoEstadoCuenta(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(1)) }, hoy))).toBe('🧪 Prueba vigente · quedan 1 día');
+    expect(textoEstadoCuenta(estadoCuentaRefaccionaria({ premiumHasta: ts(enDias(30)) }, hoy))).toBe('⭐ Pago vigente · quedan 30 días');
+    expect(textoEstadoCuenta(estadoCuentaRefaccionaria({}, hoy))).toBe('⏸️ Sin activar');
+    expect(textoEstadoCuenta(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(-10)) }, hoy))).toBe('⚠️ Vencida · se conservan sus datos 80 días más');
+    expect(textoEstadoCuenta(estadoCuentaRefaccionaria({ pruebaHasta: ts(enDias(-100)) }, hoy))).toMatch(/para borrado/);
+  });
+  it('fin de la prueba: 3 meses después de hoy (o el último día del mes si no existe)', () => {
+    expect(finPruebaDesde(new Date(2026, 9, 27))).toBe('2027-01-27');
+    expect(finPruebaDesde(new Date(2026, 7, 31))).toBe('2026-11-30');
   });
 });
