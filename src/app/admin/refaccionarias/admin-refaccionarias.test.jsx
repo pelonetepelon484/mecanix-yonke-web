@@ -8,7 +8,13 @@ import '@testing-library/jest-dom/vitest';
 const updateDoc = vi.fn(async () => {});
 let lista = [];
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
-vi.mock('../../lib/firebase', () => ({ db: {} }));
+vi.mock('../../lib/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'adm' } } }));
+const crearPrueba = vi.fn(async () => {});
+const borrarPrueba = vi.fn(async () => {});
+vi.mock('./refaccionariaPrueba', () => ({
+  ID_REFACCIONARIA_PRUEBA: 'prueba-mecanix', SLUG_REFACCIONARIA_PRUEBA: 'refaccionaria-de-prueba-mecanix',
+  crearRefaccionariaPrueba: (...a) => crearPrueba(...a), borrarRefaccionariaPrueba: (...a) => borrarPrueba(...a),
+}));
 vi.mock('firebase/firestore', () => ({
   collection: () => 'refaccionarias', doc: (_db, ...p) => p.join('/'),
   getDocs: vi.fn(async () => ({ docs: lista.map((r) => ({ id: r.id, data: () => r })) })),
@@ -72,5 +78,19 @@ describe('admin/refaccionarias', () => {
     lista = [{ ...base, pruebaHasta: ts('2026-06-01') }];
     render(<AdminRefaccionarias />);
     expect(await screen.findByText(/para borrado/)).toBeInTheDocument();
+  });
+  it('refaccionaria de prueba: crear si no existe, borrar si ya existe', async () => {
+    lista = [base];
+    render(<AdminRefaccionarias />);
+    const botonCrear = await screen.findByRole('button', { name: 'Crear refaccionaria de prueba' });
+    await act(async () => { fireEvent.click(botonCrear); });
+    expect(crearPrueba).toHaveBeenCalledWith({}, 'adm');
+    expect(screen.getByText('Refaccionaria de prueba creada.')).toBeInTheDocument();
+    cleanup();
+    lista = [base, { ...base, id: 'prueba-mecanix', nombre: 'Refaccionaria de Prueba Mecanix', esPrueba: true }];
+    render(<AdminRefaccionarias />);
+    const botonBorrar = await screen.findByRole('button', { name: 'Borrar refaccionaria de prueba' });
+    await act(async () => { fireEvent.click(botonBorrar); });
+    expect(borrarPrueba).toHaveBeenCalledWith({});
   });
 });

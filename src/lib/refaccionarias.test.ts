@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   MENSAJES_REFACCIONARIA, TEXTOS_PROVISIONALES, generarSlug, leerConfigRefaccionariasDe, municipiosDeTexto,
+  HORARIO_INICIAL, PIEZAS_POR_PAGINA, formatoPrecio, paginaDeParametro, piezaPublica, piezasDePagina, refaccionariaVisible,
+  totalPaginas, ubicacionPagina, validarHorario,
   DIAS_CONSERVAR_VENCIDA, estadoCuentaRefaccionaria, finPruebaDesde, refaccionariaAceptoTerminos, textoEstadoCuenta,
   validarRegistroRefaccionaria, zonaEntregaDe,
 } from './refaccionarias';
@@ -57,7 +59,7 @@ describe('config/refaccionarias', () => {
   it('sin documento o sin campos: apagada, sin versión, topes y vigencias en null (nada fijo en el código)', () => {
     for (const datos of [null, {}, { habilitado: 'true', topes: { piezas: -1, basico: 2000 }, vigencia: { ocultarBuscadorDias: '60' } }]) {
       expect(leerConfigRefaccionariasDe(datos)).toEqual({
-        habilitado: false, terminosVersion: '', resumenCambios: '',
+        habilitado: false, paginaPublica: false, terminosVersion: '', resumenCambios: '',
         topes: { piezas: null },
         vigencia: { precioPorConfirmarDias: null, ocultarBuscadorDias: null, ocultarPaginaDias: null },
       });
@@ -69,7 +71,7 @@ describe('config/refaccionarias', () => {
       topes: { piezas: 20000 }, vigencia: { precioPorConfirmarDias: 30, ocultarBuscadorDias: 60, ocultarPaginaDias: 90 },
     });
     expect(c).toEqual({
-      habilitado: true, terminosVersion: 'ref-1', resumenCambios: 'Texto',
+      habilitado: true, paginaPublica: false, terminosVersion: 'ref-1', resumenCambios: 'Texto',
       topes: { piezas: 20000 }, vigencia: { precioPorConfirmarDias: 30, ocultarBuscadorDias: 60, ocultarPaginaDias: 90 },
     });
   });
@@ -129,5 +131,60 @@ describe('estadoCuentaRefaccionaria', () => {
   it('fin de la prueba: 3 meses después de hoy (o el último día del mes si no existe)', () => {
     expect(finPruebaDesde(new Date(2026, 9, 27))).toBe('2027-01-27');
     expect(finPruebaDesde(new Date(2026, 7, 31))).toBe('2026-11-30');
+  });
+});
+
+describe('página pública (etapa 3)', () => {
+  const hoy = new Date('2026-10-27T12:00:00');
+  const en = (dias: number) => new Date(hoy.getTime() + dias * 24 * 60 * 60 * 1000);
+
+  it('bandera paginaPublica: solo true exacto, aparte de habilitado', () => {
+    expect(leerConfigRefaccionariasDe({ paginaPublica: true }).paginaPublica).toBe(true);
+    expect(leerConfigRefaccionariasDe({ paginaPublica: true }).habilitado).toBe(false);
+    for (const v of [false, 'true', 1, undefined]) expect(leerConfigRefaccionariasDe({ paginaPublica: v, habilitado: true }).paginaPublica).toBe(false);
+  });
+  it('visible solo activa y con prueba o pago vigente', () => {
+    expect(refaccionariaVisible({ activo: true, pruebaHasta: en(5) }, hoy)).toBe(true);
+    expect(refaccionariaVisible({ activo: true, premiumHasta: en(5), pruebaHasta: en(-50) }, hoy)).toBe(true);
+    expect(refaccionariaVisible({ activo: false, pruebaHasta: en(5) }, hoy)).toBe(false);
+    expect(refaccionariaVisible({ activo: true, pruebaHasta: en(-1) }, hoy)).toBe(false);
+    expect(refaccionariaVisible({ activo: true }, hoy)).toBe(false);
+    expect(refaccionariaVisible(null, hoy)).toBe(false);
+  });
+  it('paginación: 50 por página, cada página sale de un solo bloque', () => {
+    expect(PIEZAS_POR_PAGINA).toBe(50);
+    expect(totalPaginas(0)).toBe(0);
+    expect(totalPaginas(20)).toBe(1);
+    expect(totalPaginas(51)).toBe(2);
+    expect(totalPaginas('100')).toBe(0);
+    expect(ubicacionPagina(1)).toEqual({ bloque: 0, desde: 0, hasta: 50 });
+    expect(ubicacionPagina(20)).toEqual({ bloque: 0, desde: 950, hasta: 1000 });
+    expect(ubicacionPagina(21)).toEqual({ bloque: 1, desde: 0, hasta: 50 });
+    for (const [v, n] of [[undefined, 1], ['3', 3], [['2'], 2], ['0', 1], ['-1', 1], ['abc', 1], ['2.5', 1]] as const) {
+      expect(paginaDeParametro(v)).toBe(n);
+    }
+  });
+  it('piezas de la página: solo las de su tramo y solo las válidas', () => {
+    const piezas = Array.from({ length: 120 }, (_, i) => ({ numeroParte: `P-${i}`, descripcion: `Pieza ${i}`, marca: 'X', tipo: 'marca', precio: 100 + i, incluyeIva: true }));
+    const pag2 = piezasDePagina({ piezas }, 2);
+    expect(pag2).toHaveLength(50);
+    expect(pag2[0].numeroParte).toBe('P-50');
+    expect(piezasDePagina({ piezas }, 3)).toHaveLength(20);
+    expect(piezasDePagina(null, 1)).toEqual([]);
+    expect(piezaPublica({ numeroParte: '', precio: 10 })).toBeNull();
+    expect(piezaPublica({ numeroParte: 'A', precio: 0 })).toBeNull();
+    expect(piezaPublica({ numeroParte: 'A', precio: '10' })).toBeNull();
+    expect(piezaPublica({ numeroParte: ' A-1 ', precio: 10, tipo: 'otro' })).toEqual({ numeroParte: 'A-1', descripcion: '', marca: '', tipo: 'generica', precio: 10, incluyeIva: false });
+    expect(formatoPrecio(1450)).toMatch(/1,450\.00/);
+  });
+  it('horario: 7 días, HH:MM y cierre después de apertura', () => {
+    expect(validarHorario(HORARIO_INICIAL)).toEqual({ ok: true, horario: HORARIO_INICIAL });
+    expect(validarHorario({ ...HORARIO_INICIAL, lunes: { abierto: true, apertura: '9:00', cierre: '18:00' } }).ok).toBe(false);
+    expect(validarHorario({ ...HORARIO_INICIAL, lunes: { abierto: true, apertura: '18:00', cierre: '09:00' } }).ok).toBe(false);
+    // Cerrado: no importa el orden de las horas
+    expect(validarHorario({ ...HORARIO_INICIAL, domingo: { abierto: false, apertura: '18:00', cierre: '09:00' } }).ok).toBe(true);
+    const { martes, ...sinMartes } = HORARIO_INICIAL;
+    expect(validarHorario(sinMartes).ok).toBe(false);
+    expect(validarHorario(null).ok).toBe(false);
   });
 });

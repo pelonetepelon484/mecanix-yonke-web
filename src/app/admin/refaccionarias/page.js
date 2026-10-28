@@ -9,9 +9,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, deleteField, doc, getDocs, Timestamp, updateDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { auth, db } from '../../lib/firebase';
 import { estadoCuentaRefaccionaria, finPruebaDesde, MESES_PRUEBA, textoEstadoCuenta } from '../../../lib/refaccionarias';
 import { fechaParaCampo } from '../talleres/planTaller';
+import { ID_REFACCIONARIA_PRUEBA, SLUG_REFACCIONARIA_PRUEBA, borrarRefaccionariaPrueba, crearRefaccionariaPrueba } from './refaccionariaPrueba';
 
 const fechaDeCampo = (valor) => (valor ? new Date(`${valor}T00:00:00`) : null);
 const ESTILO_ESTADO = {
@@ -109,6 +110,21 @@ export default function AdminRefaccionariasPage() {
   const [refaccionarias, setRefaccionarias] = useState(null);
   const [error, setError] = useState('');
   const [recarga, setRecarga] = useState(0);
+  const [prueba, setPrueba] = useState({ trabajando: false, mensaje: '' });
+  const hayPrueba = refaccionarias?.some((r) => r.id === ID_REFACCIONARIA_PRUEBA);
+
+  async function accionPrueba(accion) {
+    setPrueba({ trabajando: true, mensaje: '' });
+    try {
+      if (accion === 'crear') await crearRefaccionariaPrueba(db, auth.currentUser?.uid || 'admin');
+      else await borrarRefaccionariaPrueba(db);
+      setPrueba({ trabajando: false, mensaje: accion === 'crear' ? 'Refaccionaria de prueba creada.' : 'Refaccionaria de prueba borrada.' });
+      setRecarga((n) => n + 1);
+    } catch (err) {
+      console.error('[admin/refaccionarias] Refaccionaria de prueba', err);
+      setPrueba({ trabajando: false, mensaje: 'No se pudo. Revisa tu conexión y tus permisos de admin.' });
+    }
+  }
 
   useEffect(() => {
     let cancelado = false;
@@ -134,6 +150,17 @@ export default function AdminRefaccionariasPage() {
         <p style={{ fontSize: '13px', color: '#666', margin: '0 0 16px' }}>
           Activa o desactiva, asigna la insignia Verificado, la prueba y el pago. Las cuentas se registran en /panel/refaccionaria/registro con config/refaccionarias.habilitado encendido.
         </p>
+        {refaccionarias && (
+          <div style={{ ...tarjeta, backgroundColor: '#FFF8E1' }}>
+            <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#555' }}>
+              Refaccionaria de prueba (20 piezas ficticias) para revisar la página pública en /refaccionarias/{SLUG_REFACCIONARIA_PRUEBA}. Se ve solo con config/refaccionarias.paginaPublica encendida.
+            </p>
+            <button type="button" disabled={prueba.trabajando} onClick={() => accionPrueba(hayPrueba ? 'borrar' : 'crear')} style={botonGuardar}>
+              {hayPrueba ? 'Borrar refaccionaria de prueba' : 'Crear refaccionaria de prueba'}
+            </button>
+            {prueba.mensaje && <p role="status" style={{ margin: '8px 0 0', fontSize: '13px', color: '#1A3C5E' }}>{prueba.mensaje}</p>}
+          </div>
+        )}
         {error && <p role="alert" style={{ color: '#C62828' }}>{error}</p>}
         {!error && refaccionarias === null && <p style={{ color: '#666' }}>Cargando...</p>}
         {refaccionarias && refaccionarias.length === 0 && <p style={{ color: '#666' }}>Todavía no hay refaccionarias.</p>}

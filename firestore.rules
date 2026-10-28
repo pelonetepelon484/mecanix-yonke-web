@@ -290,9 +290,25 @@ service cloud.firestore {
     // admin (sin plan Básico: prueba de 3 meses y después pago); el dueño no los manda al crear ni
     // los cambia al editar. Datos privados en privado/datos.
     match /refaccionarias/{refaccionariaId} {
+      // Horario (mismo formato que el de los yonkes): cada día que venga, {abierto, apertura, cierre} en HH:MM.
+      function diaHorarioValido(h, dia) {
+        return !(dia in h)
+          || (h[dia] is map
+              && h[dia].keys().hasOnly(['abierto', 'apertura', 'cierre'])
+              && h[dia].abierto is bool
+              && h[dia].apertura is string && h[dia].apertura.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+              && h[dia].cierre is string && h[dia].cierre.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'));
+      }
+      function horarioValido(h) {
+        return h is map
+          && h.keys().hasOnly(['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'])
+          && diaHorarioValido(h, 'lunes') && diaHorarioValido(h, 'martes') && diaHorarioValido(h, 'miercoles')
+          && diaHorarioValido(h, 'jueves') && diaHorarioValido(h, 'viernes') && diaHorarioValido(h, 'sabado')
+          && diaHorarioValido(h, 'domingo');
+      }
       function refaccionariaValida() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['nombre', 'whatsapp', 'estado', 'ciudad', 'logoUrl', 'zonaEntrega', 'slug', 'ownerUid', 'activo', 'verificado', 'pruebaHasta', 'plan', 'premiumHasta', 'creadoAt', 'aceptacionVersion'])
+        return d.keys().hasOnly(['nombre', 'whatsapp', 'estado', 'ciudad', 'logoUrl', 'zonaEntrega', 'horario', 'slug', 'ownerUid', 'activo', 'verificado', 'pruebaHasta', 'plan', 'premiumHasta', 'creadoAt', 'aceptacionVersion', 'totalPiezas', 'numBloques', 'inventarioActualizadoAt', 'esPrueba'])
           && d.nombre is string && d.nombre.size() >= 2 && d.nombre.size() <= 100
           && d.whatsapp is string && d.whatsapp.matches('^[0-9]{10}$')
           && d.estado is string && d.estado.matches('^[a-z0-9-]{2,40}$')
@@ -300,6 +316,7 @@ service cloud.firestore {
           && d.logoUrl is string && d.logoUrl.size() <= 500
           && d.slug is string && d.slug.size() >= 3 && d.slug.size() <= 80 && d.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
           && d.aceptacionVersion is string && d.aceptacionVersion.size() <= 40
+          && (!('horario' in d) || horarioValido(d.horario))
           && (!('zonaEntrega' in d) || (
             d.zonaEntrega is map
             && d.zonaEntrega.keys().hasOnly(['descripcion', 'municipios'])
@@ -307,6 +324,8 @@ service cloud.firestore {
             && d.zonaEntrega.get('municipios', []) is list && d.zonaEntrega.get('municipios', []).size() <= 30));
       }
       allow read: if true;
+      // El admin crea la refaccionaria de prueba (botón en admin/refaccionarias, esPrueba: true).
+      allow create: if esAdmin() && request.resource.data.get('esPrueba', false) == true;
       allow create: if request.auth != null
                     && refaccionariasHabilitadas()
                     && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
@@ -319,6 +338,11 @@ service cloud.firestore {
                     && !('pruebaHasta' in request.resource.data)
                     && !('plan' in request.resource.data)
                     && !('premiumHasta' in request.resource.data)
+                    // Ni inventario (lo escribe la carga de la etapa 2) ni la marca de prueba.
+                    && !('totalPiezas' in request.resource.data)
+                    && !('numBloques' in request.resource.data)
+                    && !('inventarioActualizadoAt' in request.resource.data)
+                    && !('esPrueba' in request.resource.data)
                     && refaccionariaValida();
       allow update: if esAdmin()
                     || (request.auth != null
@@ -332,6 +356,11 @@ service cloud.firestore {
                         && request.resource.data.get('pruebaHasta', null) == resource.data.get('pruebaHasta', null)
                         && request.resource.data.get('plan', null) == resource.data.get('plan', null)
                         && request.resource.data.get('premiumHasta', null) == resource.data.get('premiumHasta', null)
+                        // Inventario y marca de prueba: por ahora solo el admin (la etapa 2 abre el inventario al dueño)
+                        && request.resource.data.get('totalPiezas', null) == resource.data.get('totalPiezas', null)
+                        && request.resource.data.get('numBloques', null) == resource.data.get('numBloques', null)
+                        && request.resource.data.get('inventarioActualizadoAt', null) == resource.data.get('inventarioActualizadoAt', null)
+                        && request.resource.data.get('esPrueba', null) == resource.data.get('esPrueba', null)
                         && refaccionariaValida()
                         && (
                           request.resource.data.aceptacionVersion == resource.data.aceptacionVersion
@@ -376,6 +405,31 @@ service cloud.firestore {
                       && version == versionRefaccionarias()
                       && request.resource.data.fecha == request.time;
         allow update: if false;
+        allow delete: if esAdmin();
+      }
+      // Inventario por bloques (hasta 1,000 piezas cada uno, numerados desde 0). Lectura pública:
+      // la página /refaccionarias/[slug] lo lee sin sesión. Por ahora solo escribe el admin (la
+      // refaccionaria de prueba); la carga del dueño llega en la etapa 2.
+      match /bloques/{numero} {
+        allow read: if true;
+        allow create, update: if esAdmin()
+                              && numero.matches('^[0-9]{1,3}$')
+                              && request.resource.data.keys().hasOnly(['piezas'])
+                              && request.resource.data.piezas is list
+                              && request.resource.data.piezas.size() <= 1000;
+        allow delete: if esAdmin();
+      }
+      // Contador de toques al botón de WhatsApp, uno por mes (AAAA-MM). Mismo patrón que
+      // contactosVehiculo: crear con clics 1 y sumar exactamente 1; lo leen el dueño y el admin.
+      match /contactos/{mes} {
+        allow read: if request.auth != null
+                    && (esAdmin() || get(/databases/$(database)/documents/refaccionarias/$(refaccionariaId)).data.ownerUid == request.auth.uid);
+        allow create: if mes.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+                      && exists(/databases/$(database)/documents/refaccionarias/$(refaccionariaId))
+                      && request.resource.data.keys().hasOnly(['clics'])
+                      && request.resource.data.clics == 1;
+        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clics'])
+                      && request.resource.data.clics == resource.data.clics + 1;
         allow delete: if esAdmin();
       }
     }

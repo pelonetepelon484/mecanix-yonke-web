@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDoc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { generarSlug, leerConfigRefaccionariasDe } from '../../../lib/refaccionarias';
 
@@ -53,4 +53,9 @@ export async function aceptarVersionRefaccionaria(refaccionariaId, version) {
   lote.set(doc(db, 'refaccionarias', refaccionariaId, 'aceptaciones', version), { version, fecha: serverTimestamp() });
   lote.update(doc(db, 'refaccionarias', refaccionariaId), { aceptacionVersion: version });
   await lote.commit();
+}
+
+// Horario de atención (ya validado con validarHorario): solo ese campo.
+export function guardarHorarioRefaccionaria(refaccionariaId, horario) {
+  return updateDoc(doc(db, 'refaccionarias', refaccionariaId), { horario });
 }
