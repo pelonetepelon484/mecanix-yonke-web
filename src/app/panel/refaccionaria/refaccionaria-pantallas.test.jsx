@@ -22,10 +22,12 @@ vi.mock('../../lib/estados', () => ({ cargarEstados: (...a) => cargarEstados(...
 let configActual = { habilitado: false, terminosVersion: '', resumenCambios: '' };
 let refaccionariaActual = null;
 const aceptarVersionRefaccionaria = vi.fn(async () => {});
+const guardarHorarioRefaccionaria = vi.fn(async () => {});
 vi.mock('./datos', () => ({
   leerConfigRefaccionarias: vi.fn(async () => configActual),
   leerRefaccionaria: vi.fn(async () => refaccionariaActual),
   aceptarVersionRefaccionaria: (...a) => aceptarVersionRefaccionaria(...a),
+  guardarHorarioRefaccionaria: (...a) => guardarHorarioRefaccionaria(...a),
   nuevoIdRefaccionaria: () => 'R-1', crearRefaccionaria: vi.fn(), borrarRefaccionaria: vi.fn(), crearUsuarioRefaccionaria: vi.fn(),
 }));
 
@@ -34,7 +36,7 @@ const { default: Registro } = await import('./registro/page.js');
 const { default: Panel } = await import('./page.js');
 
 beforeEach(() => {
-  replaceMock.mockReset(); pushMock.mockReset(); cargarEstados.mockClear(); aceptarVersionRefaccionaria.mockClear();
+  replaceMock.mockReset(); pushMock.mockReset(); cargarEstados.mockClear(); aceptarVersionRefaccionaria.mockClear(); guardarHorarioRefaccionaria.mockClear();
   pathnameActual = '/panel/refaccionaria';
 });
 afterEach(() => cleanup());
@@ -110,5 +112,33 @@ describe('panel', () => {
     expect(await screen.findByText(/Próximamente: carga de inventario/)).toBeInTheDocument();
     expect(screen.queryByText('Resumen de prueba')).not.toBeInTheDocument();
     expect(screen.getByText(/Centro \(Tijuana\)/)).toBeInTheDocument();
+  });
+  it('sin aceptar la versión vigente: no se edita el horario', async () => {
+    configActual = { habilitado: true, terminosVersion: 'ref-1', resumenCambios: 'Resumen de prueba' };
+    refaccionariaActual = refaccionaria;
+    estadoAuth = { refaccionariaId: 'R-1' };
+    render(<Panel />);
+    await screen.findByText('Resumen de prueba');
+    expect(screen.queryByRole('button', { name: 'Guardar horario' })).not.toBeInTheDocument();
+  });
+  it('horario: valida las horas y guarda los 7 días', async () => {
+    configActual = { habilitado: true, terminosVersion: 'ref-1', resumenCambios: '' };
+    refaccionariaActual = { ...refaccionaria, aceptacionVersion: 'ref-1' };
+    estadoAuth = { refaccionariaId: 'R-1' };
+    render(<Panel />);
+    const boton = await screen.findByRole('button', { name: 'Guardar horario' });
+    fireEvent.change(screen.getByLabelText('Lunes cierre'), { target: { value: '08:00' } });
+    fireEvent.click(boton);
+    expect(screen.getByRole('status')).toHaveTextContent('La hora de cierre debe ser después de la de apertura.');
+    expect(guardarHorarioRefaccionaria).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Lunes cierre'), { target: { value: '19:30' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Domingo' }));
+    await act(async () => { fireEvent.click(boton); });
+    const [id, horario] = guardarHorarioRefaccionaria.mock.calls[0];
+    expect(id).toBe('R-1');
+    expect(Object.keys(horario)).toHaveLength(7);
+    expect(horario.lunes).toEqual({ abierto: true, apertura: '09:00', cierre: '19:30' });
+    expect(horario.domingo.abierto).toBe(true);
+    expect(screen.getByRole('status')).toHaveTextContent('Horario guardado.');
   });
 });

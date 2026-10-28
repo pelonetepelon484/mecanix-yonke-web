@@ -8,9 +8,10 @@ import { useAuth } from '../AuthContext';
 import { TEXTOS_PROVISIONALES, refaccionariaAceptoTerminos } from '../../../lib/refaccionarias';
 import { leerConfigRefaccionarias, leerRefaccionaria } from './datos';
 import AvisoVersionRefaccionaria from './AvisoVersionRefaccionaria';
+import EditorHorario from './EditorHorario';
 
-// Panel de la refaccionaria (etapa 1): sus datos, el aviso de aceptación de términos si falta y
-// "Próximamente: carga de inventario". 2 lecturas al abrir (la refaccionaria y config/refaccionarias).
+// Panel de la refaccionaria: sus datos, el aviso de aceptación de términos si falta, su horario
+// (etapa 3; editable solo con la versión aceptada) y "Próximamente: carga de inventario". 2 lecturas al abrir (la refaccionaria y config/refaccionarias).
 export default function PanelRefaccionaria() {
   const router = useRouter();
   const { refaccionariaId } = useAuth();
@@ -56,6 +57,10 @@ export default function PanelRefaccionaria() {
             )}
             <p style={dato}><strong>Insignia Verificado:</strong> {refaccionaria.verificado === true ? '✅ Sí' : 'Todavía no'}</p>
           </div>
+        )}
+        {refaccionaria && config && !falta && (
+          <EditorHorario refaccionariaId={refaccionariaId} horarioInicial={refaccionaria.horario}
+            onGuardado={(horario) => setRefaccionaria((r) => ({ ...r, horario }))} />
         )}
         {refaccionaria && (
           <div style={{ ...tarjeta, backgroundColor: '#EEF4FA', border: '1px solid #C5D8EC' }}>
