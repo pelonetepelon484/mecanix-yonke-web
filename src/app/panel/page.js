@@ -40,6 +40,8 @@ export default function PanelLogin() {
       router.push('/admin');
     } else if (userRole === 'taller') {
       router.push('/panel/taller');
+    } else if (userRole === 'refaccionaria') {
+      router.push('/panel/refaccionaria');
     } else {
       router.push('/panel/inventario');
     }

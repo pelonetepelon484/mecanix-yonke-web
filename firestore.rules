@@ -260,10 +260,126 @@ service cloud.firestore {
                         && request.resource.data.rol == 'taller'
                         && request.resource.data.keys().hasOnly(['rol', 'tallerId', 'email', 'fechaRegistro'])
                         && request.resource.data.tallerId is string
-                        && get(/databases/$(database)/documents/talleres/$(request.resource.data.tallerId)).data.ownerUid == request.auth.uid);
+                        && get(/databases/$(database)/documents/talleres/$(request.resource.data.tallerId)).data.ownerUid == request.auth.uid)
+                    // Alta propia de refaccionaria: solo rol 'refaccionaria', con 4 campos, apuntando a una
+                    // refaccionaria cuyo dueño es este uid, y solo con config/refaccionarias.habilitado.
+                    || (request.auth != null
+                        && request.auth.uid == userId
+                        && refaccionariasHabilitadas()
+                        && request.resource.data.rol == 'refaccionaria'
+                        && request.resource.data.keys().hasOnly(['rol', 'refaccionariaId', 'email', 'fechaRegistro'])
+                        && request.resource.data.refaccionariaId is string
+                        && get(/databases/$(database)/documents/refaccionarias/$(request.resource.data.refaccionariaId)).data.ownerUid == request.auth.uid);
       allow update: if esAdmin();
       allow delete: if esAdmin();
     }
+    // ---------- Refaccionarias (cuenta de refaccionaria, separada de yonkes y talleres) ----------
+    // Bandera config/refaccionarias.habilitado: sin el documento, sin el campo o con otro valor que
+    // no sea true, nadie crea cuentas de refaccionaria. La versión de sus términos y su resumen de
+    // cambios también viven ahí (terminosVersion, resumenCambios), separados de yonkes y talleres.
+    function configRefaccionariasRef() {
+      return /databases/$(database)/documents/config/refaccionarias;
+    }
+    function refaccionariasHabilitadas() {
+      return exists(configRefaccionariasRef()) && get(configRefaccionariasRef()).data.get('habilitado', false) == true;
+    }
+    function versionRefaccionarias() {
+      return get(configRefaccionariasRef()).data.get('terminosVersion', '');
+    }
+    // Datos públicos del negocio. verificado, pruebaHasta, plan y premiumHasta solo los escribe el
+    // admin (sin plan Básico: prueba de 3 meses y después pago); el dueño no los manda al crear ni
+    // los cambia al editar. Datos privados en privado/datos.
+    match /refaccionarias/{refaccionariaId} {
+      function refaccionariaValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['nombre', 'whatsapp', 'estado', 'ciudad', 'logoUrl', 'zonaEntrega', 'slug', 'ownerUid', 'activo', 'verificado', 'pruebaHasta', 'plan', 'premiumHasta', 'creadoAt', 'aceptacionVersion'])
+          && d.nombre is string && d.nombre.size() >= 2 && d.nombre.size() <= 100
+          && d.whatsapp is string && d.whatsapp.matches('^[0-9]{10}$')
+          && d.estado is string && d.estado.matches('^[a-z0-9-]{2,40}$')
+          && d.ciudad is string && d.ciudad.size() >= 2 && d.ciudad.size() <= 100
+          && d.logoUrl is string && d.logoUrl.size() <= 500
+          && d.slug is string && d.slug.size() >= 3 && d.slug.size() <= 80 && d.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+          && d.aceptacionVersion is string && d.aceptacionVersion.size() <= 40
+          && (!('zonaEntrega' in d) || (
+            d.zonaEntrega is map
+            && d.zonaEntrega.keys().hasOnly(['descripcion', 'municipios'])
+            && d.zonaEntrega.get('descripcion', '') is string && d.zonaEntrega.get('descripcion', '').size() <= 300
+            && d.zonaEntrega.get('municipios', []) is list && d.zonaEntrega.get('municipios', []).size() <= 30));
+      }
+      allow read: if true;
+      allow create: if request.auth != null
+                    && refaccionariasHabilitadas()
+                    && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.activo == true
+                    && request.resource.data.creadoAt == request.time
+                    && request.resource.data.aceptacionVersion == ''
+                    // Nace sin Verificado, sin prueba y sin plan: la prueba la inicia el admin al activarla.
+                    && !('verificado' in request.resource.data)
+                    && !('pruebaHasta' in request.resource.data)
+                    && !('plan' in request.resource.data)
+                    && !('premiumHasta' in request.resource.data)
+                    && refaccionariaValida();
+      allow update: if esAdmin()
+                    || (request.auth != null
+                        && resource.data.ownerUid == request.auth.uid
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.activo == resource.data.activo
+                        && request.resource.data.creadoAt == resource.data.creadoAt
+                        && request.resource.data.slug == resource.data.slug
+                        // Ni su insignia, ni su prueba, ni su plan (solo el admin)
+                        && request.resource.data.get('verificado', null) == resource.data.get('verificado', null)
+                        && request.resource.data.get('pruebaHasta', null) == resource.data.get('pruebaHasta', null)
+                        && request.resource.data.get('plan', null) == resource.data.get('plan', null)
+                        && request.resource.data.get('premiumHasta', null) == resource.data.get('premiumHasta', null)
+                        && refaccionariaValida()
+                        && (
+                          request.resource.data.aceptacionVersion == resource.data.aceptacionVersion
+                          // O aceptar la versión vigente, con su entrada en el historial en el mismo lote
+                          || (request.resource.data.aceptacionVersion == versionRefaccionarias()
+                              && request.resource.data.aceptacionVersion != ''
+                              && existsAfter(/databases/$(database)/documents/refaccionarias/$(refaccionariaId)/aceptaciones/$(request.resource.data.aceptacionVersion)))
+                        ));
+      // Dueño: solo borra mientras su usuario no exista (rollback del registro). Admin siempre.
+      allow delete: if esAdmin()
+                    || (request.auth != null
+                        && resource.data.ownerUid == request.auth.uid
+                        && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
+
+      function esDuenoRefaccionaria() {
+        return request.auth != null
+          && getAfter(/databases/$(database)/documents/refaccionarias/$(refaccionariaId)).data.ownerUid == request.auth.uid;
+      }
+      // Datos privados (por ahora solo el correo): solo el dueño y el admin.
+      match /privado/{docId} {
+        allow read: if request.auth != null
+                    && (esAdmin() || get(/databases/$(database)/documents/refaccionarias/$(refaccionariaId)).data.ownerUid == request.auth.uid);
+        allow create, update: if docId == 'datos'
+                              && (esAdmin() || esDuenoRefaccionaria())
+                              && request.resource.data.keys().hasOnly(['email'])
+                              && request.resource.data.email is string
+                              && request.resource.data.email.size() >= 3 && request.resource.data.email.size() <= 200;
+        allow delete: if esAdmin()
+                      || (request.auth != null
+                          && get(/databases/$(database)/documents/refaccionarias/$(refaccionariaId)).data.ownerUid == request.auth.uid
+                          && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
+      }
+      // Historial de aceptaciones: una entrada por versión. Nadie la modifica; solo el admin la borra.
+      match /aceptaciones/{version} {
+        allow read: if request.auth != null
+                    && (esAdmin() || get(/databases/$(database)/documents/refaccionarias/$(refaccionariaId)).data.ownerUid == request.auth.uid);
+        allow create: if request.auth != null
+                      && get(/databases/$(database)/documents/refaccionarias/$(refaccionariaId)).data.ownerUid == request.auth.uid
+                      && request.resource.data.keys().hasOnly(['version', 'fecha'])
+                      && request.resource.data.version == version
+                      && version != ''
+                      && version == versionRefaccionarias()
+                      && request.resource.data.fecha == request.time;
+        allow update: if false;
+        allow delete: if esAdmin();
+      }
+    }
+
     // ---------- Talleres (cuenta de taller, separada de yonkes) ----------
     // Un taller nace SIN aceptar (aceptacionVersion vacía). Su primera aceptación se registra
     // justo después, en un lote con su entrada del historial.

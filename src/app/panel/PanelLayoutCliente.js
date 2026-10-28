@@ -12,20 +12,22 @@ import AvisoTerminosYonke from './AvisoTerminosYonke';
 import { ConteoPedidosProvider } from './ConteoPedidos';
 import EnlaceIrAMecanix from './EnlaceIrAMecanix';
 
-// Una cuenta de taller solo puede estar en /panel/taller: si intenta abrir el panel de yonkes,
-// la mandamos a su pantalla. Yonke y admin no pasan por aquí.
+// Una cuenta de taller solo puede estar en /panel/taller, y una de refaccionaria solo en
+// /panel/refaccionaria: si intentan abrir el panel de yonkes (u otro), las mandamos a su pantalla.
+// Yonke y admin no pasan por aquí.
+const SECCION_DEL_ROL = { taller: '/panel/taller', refaccionaria: '/panel/refaccionaria' };
 function GuardaTaller({ children }) {
   const { loading, userRole } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const esRutaDeTaller = pathname.startsWith('/panel/taller');
-  const debeIrseATaller = !loading && userRole === 'taller' && !esRutaDeTaller;
+  const seccion = SECCION_DEL_ROL[userRole];
+  const debeIrse = !loading && Boolean(seccion) && !pathname.startsWith(seccion);
 
   useEffect(() => {
-    if (debeIrseATaller) router.replace('/panel/taller');
-  }, [debeIrseATaller]);
+    if (debeIrse) router.replace(seccion);
+  }, [debeIrse, seccion]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (debeIrseATaller) return null;
+  if (debeIrse) return null;
   return <>{children}</>;
 }
 
