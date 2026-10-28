@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
 import { dbServer } from './firebase-server';
-import { leerConfigRefaccionariasDe } from '../../lib/refaccionarias';
+import { leerConfigRefaccionariasDe, refaccionariaVisible } from '../../lib/refaccionarias';
+import { leerIndice } from '../../lib/buscadorRefacciones';
 
 // Lecturas del servidor para la página pública /refaccionarias/[slug] (etapa 3), con caché en
 // memoria de 5 minutos: config/refaccionarias, la refaccionaria por slug (1 lectura) y el bloque de
@@ -44,16 +45,20 @@ export function refaccionariaParaPagina(id, d) {
   };
 }
 
-// Sin documento, con otro valor o si falla la lectura: apagada (la dirección da 404 como hoy).
-export const paginaPublicaEncendida = conCache(async () => {
+// config/refaccionarias. Sin documento, con otro valor o si falla la lectura: todo apagado (la
+// página da 404 y el buscador no aparece, como hoy).
+const configPublica = conCache(async () => {
   try {
     const snap = await getDoc(doc(dbServer, 'config', 'refaccionarias'));
-    return leerConfigRefaccionariasDe(snap.exists() ? snap.data() : null).paginaPublica;
+    return leerConfigRefaccionariasDe(snap.exists() ? snap.data() : null);
   } catch (error) {
-    console.warn('[refaccionarias] No se pudo leer config/refaccionarias; página apagada.', error?.code || error?.message);
-    return false;
+    console.warn('[refaccionarias] No se pudo leer config/refaccionarias; página y buscador apagados.', error?.code || error?.message);
+    return leerConfigRefaccionariasDe(null);
   }
 });
+export const paginaPublicaEncendida = async () => (await configPublica('config')).paginaPublica;
+// config/refaccionarias.buscador (exige también paginaPublica: ver leerConfigRefaccionariasDe).
+export const buscadorRefaccionesEncendido = async () => (await configPublica('config')).buscador;
 
 export const refaccionariaPorSlug = conCache(async (slug) => {
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 80) return null;
@@ -68,3 +73,40 @@ export const bloqueDeInventario = conCache(async (clave) => {
   const snap = await getDoc(doc(dbServer, 'refaccionarias', id, 'bloques', numero));
   return snap.exists() ? { piezas: snap.data().piezas } : null;
 });
+
+// ---------- Buscador "Piezas nuevas" (etapa 4) ----------
+// La lista de refaccionarias activas y sus índices se guardan 15 minutos: al vencer una cuenta o
+// cambiar su inventario, el buscador tarda hasta 15 minutos en reflejarlo. Los bloques de los
+// resultados usan la caché de 5 minutos de arriba (bloqueDeInventario).
+export const CACHE_BUSCADOR_MS = 15 * 60 * 1000;
+
+export function refaccionariaParaBuscador(id, d) {
+  return {
+    ...refaccionariaParaPagina(id, d),
+    slug: typeof d.slug === 'string' ? d.slug : '',
+    estado: typeof d.estado === 'string' ? d.estado : '',
+    verificado: d.verificado === true,
+  };
+}
+
+// La lista guarda las fechas en milisegundos: se revisa la vigencia en cada búsqueda.
+export function visibleAhora(r, ahora = new Date()) {
+  return refaccionariaVisible({
+    activo: r.activo,
+    pruebaHasta: r.pruebaHastaMs ? new Date(r.pruebaHastaMs) : null,
+    premiumHasta: r.premiumHastaMs ? new Date(r.premiumHastaMs) : null,
+  }, ahora);
+}
+
+// 1 lectura por refaccionaria activa (where activo == true, índice automático).
+export const refaccionariasActivas = conCache(async () => {
+  const snap = await getDocs(query(collection(dbServer, 'refaccionarias'), where('activo', '==', true)));
+  return snap.docs.map((d) => refaccionariaParaBuscador(d.id, d.data()));
+}, CACHE_BUSCADOR_MS);
+
+// clave: "<refaccionariaId>/<número de índice>". Sin documento: lista vacía.
+export const indiceDeBusqueda = conCache(async (clave) => {
+  const [id, numero] = clave.split('/');
+  const snap = await getDoc(doc(dbServer, 'refaccionarias', id, 'busqueda', numero));
+  return snap.exists() ? leerIndice(snap.data().entradas) : [];
+}, CACHE_BUSCADOR_MS);

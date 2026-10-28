@@ -229,6 +229,19 @@ describe('inventario y refaccionaria de prueba (etapa 3)', () => {
     await assertFails(setDoc(rref('adm', 'OTRA'), refaccionaria('adm')));
     await assertFails(setDoc(rref('y1', 'OTRA'), { ...refaccionaria('y1'), esPrueba: true }));
   });
+  it('índice del buscador (busqueda): lectura pública, solo el admin escribe, un solo texto con tope', async () => {
+    const entradas = 'DEMO0001\tbalata delantera\t650\t0';
+    await assertSucceeds(setDoc(doc(como('adm'), 'refaccionarias', 'R1', 'busqueda', '0'), { entradas }));
+    await assertSucceeds(getDoc(doc(como(null), 'refaccionarias', 'R1', 'busqueda', '0')));
+    await assertFails(setDoc(doc(como('r1'), 'refaccionarias', 'R1', 'busqueda', '1'), { entradas }));
+    await assertFails(setDoc(doc(como(null), 'refaccionarias', 'R1', 'busqueda', '1'), { entradas }));
+    await assertFails(setDoc(doc(como('adm'), 'refaccionarias', 'R1', 'busqueda', 'uno'), { entradas }));
+    await assertFails(setDoc(doc(como('adm'), 'refaccionarias', 'R1', 'busqueda', '1'), { entradas: ['DEMO0001'] }));
+    await assertFails(setDoc(doc(como('adm'), 'refaccionarias', 'R1', 'busqueda', '1'), { entradas, extra: 1 }));
+    await assertFails(setDoc(doc(como('adm'), 'refaccionarias', 'R1', 'busqueda', '1'), { entradas: 'x'.repeat(950001) }));
+    await assertFails(deleteDoc(doc(como('r1'), 'refaccionarias', 'R1', 'busqueda', '0')));
+    await assertSucceeds(deleteDoc(doc(como('adm'), 'refaccionarias', 'R1', 'busqueda', '0')));
+  });
   it('bloques: lectura pública, solo el admin escribe, hasta 1,000 piezas y número de bloque válido', async () => {
     await assertSucceeds(setDoc(doc(como('adm'), 'refaccionarias', 'R1', 'bloques', '0'), { piezas: [pieza] }));
     await assertSucceeds(getDoc(doc(como(null), 'refaccionarias', 'R1', 'bloques', '0')));

@@ -59,7 +59,7 @@ describe('config/refaccionarias', () => {
   it('sin documento o sin campos: apagada, sin versión, topes y vigencias en null (nada fijo en el código)', () => {
     for (const datos of [null, {}, { habilitado: 'true', topes: { piezas: -1, basico: 2000 }, vigencia: { ocultarBuscadorDias: '60' } }]) {
       expect(leerConfigRefaccionariasDe(datos)).toEqual({
-        habilitado: false, paginaPublica: false, terminosVersion: '', resumenCambios: '',
+        habilitado: false, paginaPublica: false, buscador: false, terminosVersion: '', resumenCambios: '',
         topes: { piezas: null },
         vigencia: { precioPorConfirmarDias: null, ocultarBuscadorDias: null, ocultarPaginaDias: null },
       });
@@ -71,7 +71,7 @@ describe('config/refaccionarias', () => {
       topes: { piezas: 20000 }, vigencia: { precioPorConfirmarDias: 30, ocultarBuscadorDias: 60, ocultarPaginaDias: 90 },
     });
     expect(c).toEqual({
-      habilitado: true, paginaPublica: false, terminosVersion: 'ref-1', resumenCambios: 'Texto',
+      habilitado: true, paginaPublica: false, buscador: false, terminosVersion: 'ref-1', resumenCambios: 'Texto',
       topes: { piezas: 20000 }, vigencia: { precioPorConfirmarDias: 30, ocultarBuscadorDias: 60, ocultarPaginaDias: 90 },
     });
   });
@@ -86,7 +86,7 @@ describe('config/refaccionarias', () => {
 
 describe('textos provisionales', () => {
   it('los textos legales provisionales van marcados [PROVISIONAL] para no publicarlos por error', () => {
-    for (const clave of ['aceptacionRegistro', 'resumenCambiosRespaldo', 'tituloAvisoVersion', 'soloLectura', 'proximamenteInventarioDetalle', 'registroCerrado'] as const) {
+    for (const clave of ['aceptacionRegistro', 'resumenCambiosRespaldo', 'tituloAvisoVersion', 'soloLectura', 'proximamenteInventarioDetalle', 'registroCerrado', 'introPiezasNuevas', 'ordenResultados'] as const) {
       expect(TEXTOS_PROVISIONALES[clave].startsWith('[PROVISIONAL]')).toBe(true);
     }
   });

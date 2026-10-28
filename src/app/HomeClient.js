@@ -20,6 +20,7 @@ import { fotosDeItem } from '../lib/fotosPieza';
 import AvisarYonkes from './AvisarYonkes';
 import { cargarCatalogoCombinado } from './lib/SelectorMarcaModelo';
 import PestanasPortada from './PestanasPortada';
+import BuscadorPiezasNuevas, { SelectorTipoPiezas } from './BuscadorPiezasNuevas';
 import { aniosCercanos, ordenarPorCercania } from '../lib/rangoAnios';
 import VentanaAlertas from './VentanaAlertas';
 import ComoFuncionaBuscador from './ComoFuncionaBuscador';
@@ -216,7 +217,7 @@ function AvisoCompraSeguraCorto() {
 // textoSeoEstados llega ya armado desde page.js (Server Component) — lee la colección
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
-export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, rangoAnios = null }) {
+export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, rangoAnios = null, buscadorRefacciones = false }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
   // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
@@ -323,6 +324,9 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
     return () => { vigente = false; };
   }, []);
   const [estadoBusqueda, setEstadoBusqueda] = useState('todos');
+  // 'usadas' (yonkes, lo de siempre) | 'nuevas' (refaccionarias). Solo cambia con el selector, que
+  // existe con config/refaccionarias.buscador encendida: apagada, siempre 'usadas'.
+  const [tipoPiezas, setTipoPiezas] = useState('usadas');
   const [sinYonkesEnEstadoManual, setSinYonkesEnEstadoManual] = useState(false);
   // true cuando los resultados que se ven vienen de "buscar en todos los estados" tras no
   // encontrar nada en el estado elegido por el cliente (ver botón en el mensaje de "sin
@@ -1662,7 +1666,15 @@ function obtenerEstadoAbierto(horario) {
           conTalleres={talleresHabilitados()} botonPanel={botonPanel}
         />
 
-        {pestanaActiva === 'cliente' && (
+        {/* Piezas nuevas de refaccionarias (etapa 4): selector y buscador aparte, solo con la bandera. */}
+        {pestanaActiva === 'cliente' && buscadorRefacciones && (
+          <SelectorTipoPiezas tipo={tipoPiezas} onCambiar={setTipoPiezas} />
+        )}
+        {pestanaActiva === 'cliente' && buscadorRefacciones && tipoPiezas === 'nuevas' && (
+          <BuscadorPiezasNuevas estados={estadosDisponibles} estado={estadoBusqueda} onCambiarEstado={setEstadoBusqueda} />
+        )}
+
+        {pestanaActiva === 'cliente' && tipoPiezas === 'usadas' && (
           <>
             <p style={{ textAlign: 'center', fontSize: '16px', color: '#1A3C5E', fontWeight: '600', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 8px' }}>
               Encuentra la autoparte usada que necesitas y contacta directo al yonke.
