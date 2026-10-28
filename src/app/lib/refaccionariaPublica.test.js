@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('./firebase-server', () => ({ dbServer: {} }));
 vi.mock('firebase/firestore', () => ({}));
-const { conCache, refaccionariaParaPagina, CACHE_PAGINA_REFACCIONARIA_MS } = await import('./refaccionariaPublica.js');
+const {
+  conCache, refaccionariaParaPagina, refaccionariaParaBuscador, visibleAhora, CACHE_PAGINA_REFACCIONARIA_MS, CACHE_BUSCADOR_MS,
+} = await import('./refaccionariaPublica.js');
 
 describe('caché de la página pública de refaccionarias', () => {
   it('5 minutos: dentro del plazo no vuelve a leer; después sí; por clave', async () => {
@@ -39,5 +41,26 @@ describe('refaccionariaParaPagina', () => {
       id: 'R1', nombre: 'El Pistón', ciudad: 'Tijuana', whatsapp: '6641234567', logoUrl: '', horario: null, zonaEntrega: null,
       totalPiezas: 20, inventarioActualizadoMs: 5, activo: true, pruebaHastaMs: 10, premiumHastaMs: null,
     });
+  });
+});
+
+describe('buscador: datos de cada refaccionaria y vigencia', () => {
+  it('la lista y los índices del buscador se guardan 15 minutos', () => {
+    expect(CACHE_BUSCADOR_MS).toBe(15 * 60 * 1000);
+  });
+  it('agrega slug, estado y Verificado; nada privado', () => {
+    const r = refaccionariaParaBuscador('R1', { nombre: 'El Pistón', slug: 'el-piston', estado: 'sonora', verificado: true, ownerUid: 'secreto', activo: true });
+    expect(r).toMatchObject({ id: 'R1', slug: 'el-piston', estado: 'sonora', verificado: true, activo: true });
+    expect(r).not.toHaveProperty('ownerUid');
+  });
+  it('visible solo activa y con prueba o pago vigente, revisado en el momento', () => {
+    const ahora = new Date('2026-10-28T12:00:00');
+    const manana = new Date('2026-10-29T00:00:00').getTime();
+    const ayer = new Date('2026-10-27T00:00:00').getTime();
+    expect(visibleAhora({ activo: true, pruebaHastaMs: manana }, ahora)).toBe(true);
+    expect(visibleAhora({ activo: true, pruebaHastaMs: ayer }, ahora)).toBe(false);
+    expect(visibleAhora({ activo: true, pruebaHastaMs: ayer, premiumHastaMs: manana }, ahora)).toBe(true);
+    expect(visibleAhora({ activo: false, pruebaHastaMs: manana }, ahora)).toBe(false);
+    expect(visibleAhora({ activo: true }, ahora)).toBe(false);
   });
 });

@@ -419,6 +419,19 @@ service cloud.firestore {
                               && request.resource.data.piezas.size() <= 1000;
         allow delete: if esAdmin();
       }
+      // Índice del buscador "Piezas nuevas" (etapa 4): hasta 5,000 piezas por documento en un solo
+      // texto `entradas` (número normalizado, palabras, precio y posición). Lectura pública, como los
+      // bloques (lo lee el servidor sin sesión). Por ahora solo escribe el admin (la refaccionaria de
+      // prueba); la carga del dueño (etapa 2) lo escribirá junto con sus bloques.
+      match /busqueda/{numero} {
+        allow read: if true;
+        allow create, update: if esAdmin()
+                              && numero.matches('^[0-9]{1,3}$')
+                              && request.resource.data.keys().hasOnly(['entradas'])
+                              && request.resource.data.entradas is string
+                              && request.resource.data.entradas.size() <= 950000;
+        allow delete: if esAdmin();
+      }
       // Contador de toques al botón de WhatsApp, uno por mes (AAAA-MM). Mismo patrón que
       // contactosVehiculo: crear con clics 1 y sumar exactamente 1; lo leen el dueño y el admin.
       match /contactos/{mes} {

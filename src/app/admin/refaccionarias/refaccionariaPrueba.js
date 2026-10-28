@@ -1,10 +1,12 @@
 import { collection, doc, getDocs, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore';
 import { HORARIO_INICIAL, finPruebaDesde } from '../../../lib/refaccionarias';
+import { armarIndices } from '../../../lib/buscadorRefacciones';
 
 // Refaccionaria de PRUEBA para revisar la página pública (etapa 3): id fijo, esPrueba: true y 20
-// piezas ficticias en un bloque. La crea y la borra el admin desde admin/refaccionarias (las reglas
-// solo dejan al admin crear con esPrueba: true). Crear: 1 lote de 2 escrituras. Borrar: lee sus
-// bloques y contadores y los borra junto con la refaccionaria en un lote.
+// piezas ficticias en un bloque, con su índice del buscador "Piezas nuevas" (etapa 4). La crea y la
+// borra el admin desde admin/refaccionarias (las reglas solo dejan al admin crear con esPrueba: true).
+// Crear: 1 lote de 3 escrituras. Borrar: lee sus bloques, su índice y sus contadores y los borra
+// junto con la refaccionaria en un lote.
 export const ID_REFACCIONARIA_PRUEBA = 'prueba-mecanix';
 export const SLUG_REFACCIONARIA_PRUEBA = 'refaccionaria-de-prueba-mecanix';
 
@@ -57,17 +59,19 @@ export async function crearRefaccionariaPrueba(db, adminUid) {
     esPrueba: true,
   });
   lote.set(doc(db, 'refaccionarias', ID_REFACCIONARIA_PRUEBA, 'bloques', '0'), { piezas: PIEZAS_PRUEBA });
+  lote.set(doc(db, 'refaccionarias', ID_REFACCIONARIA_PRUEBA, 'busqueda', '0'), { entradas: armarIndices(PIEZAS_PRUEBA)[0] });
   await lote.commit();
 }
 
 export async function borrarRefaccionariaPrueba(db) {
   const base = ['refaccionarias', ID_REFACCIONARIA_PRUEBA];
-  const [bloques, contactos] = await Promise.all([
+  const [bloques, indices, contactos] = await Promise.all([
     getDocs(collection(db, ...base, 'bloques')),
+    getDocs(collection(db, ...base, 'busqueda')),
     getDocs(collection(db, ...base, 'contactos')),
   ]);
   const lote = writeBatch(db);
-  [...bloques.docs, ...contactos.docs].forEach((d) => lote.delete(d.ref));
+  [...bloques.docs, ...indices.docs, ...contactos.docs].forEach((d) => lote.delete(d.ref));
   lote.delete(doc(db, ...base));
   await lote.commit();
 }

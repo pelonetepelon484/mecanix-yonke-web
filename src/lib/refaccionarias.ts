@@ -16,6 +16,9 @@ export const TEXTOS_PROVISIONALES = {
   // Página pública (etapa 3)
   avisoPrecios: '[PROVISIONAL] Precios y existencias sujetos a confirmación con la refaccionaria. Mecanix no vende piezas: el trato es directo con el negocio.',
   noDisponible: '[PROVISIONAL] Esta refaccionaria no está disponible por ahora en Mecanix.',
+  // Buscador "Piezas nuevas" (etapa 4)
+  introPiezasNuevas: '[PROVISIONAL] Busca piezas nuevas por número de parte o descripción entre las refaccionarias de Mecanix y contacta directo a la refaccionaria.',
+  ordenResultados: '[PROVISIONAL] Orden: primero las piezas que mejor coinciden con tu búsqueda (número de parte exacto, luego que empieza o que contiene lo que escribiste) y, si coinciden igual, el precio más bajo.',
 } as const;
 // Hasta que existan las secciones legales de refaccionarias, apuntan a los documentos generales.
 export const URL_TERMINOS_REFACCIONARIAS = 'https://mecanixyonkevirtual.com/terminos';
@@ -102,8 +105,9 @@ export function generarSlug(nombre: string, id: string): string {
 export type TopesRefaccionarias = { piezas: number | null };
 export type VigenciaRefaccionarias = { precioPorConfirmarDias: number | null; ocultarBuscadorDias: number | null; ocultarPaginaDias: number | null };
 export type ConfigRefaccionarias = {
-  // habilitado abre el registro; paginaPublica muestra /refaccionarias/[slug] (banderas aparte).
-  habilitado: boolean; paginaPublica: boolean; terminosVersion: string; resumenCambios: string;
+  // habilitado abre el registro; paginaPublica muestra /refaccionarias/[slug]; buscador muestra
+  // "Piezas nuevas" en la portada (banderas aparte).
+  habilitado: boolean; paginaPublica: boolean; buscador: boolean; terminosVersion: string; resumenCambios: string;
   topes: TopesRefaccionarias; vigencia: VigenciaRefaccionarias;
 };
 const enteroPositivo = (v: unknown) => (Number.isInteger(v) && (v as number) > 0 ? (v as number) : null);
@@ -114,6 +118,8 @@ export function leerConfigRefaccionariasDe(datos: Record<string, unknown> | null
   return {
     habilitado: c.habilitado === true,
     paginaPublica: c.paginaPublica === true,
+    // El buscador enlaza a la página pública: sin ella no se enciende.
+    buscador: c.buscador === true && c.paginaPublica === true,
     terminosVersion: typeof c.terminosVersion === 'string' ? c.terminosVersion : '',
     resumenCambios: typeof c.resumenCambios === 'string' ? c.resumenCambios : '',
     topes: { piezas: enteroPositivo(topes.piezas) },
