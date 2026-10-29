@@ -36,9 +36,9 @@ import { TITULO_CON_OTROS_ESTADOS, leerOtrosEstados, partesCuadroMensaje, cuadro
 import AvisarSinAnioExacto from './AvisarSinAnioExacto';
 import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
-import { tarjetaPlanSinCosto, leerConfigPlanes, esPremiumVigente } from '../lib/planes';
+import { leerConfigPlanes, esPremiumVigente } from '../lib/planes';
 import {
-  TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle, planCardStyle, planDescStyle, planNombreStyle, planNotaAzulStyle, planPrecioStyle,
+  TarjetaBasicoYonke, TarjetaCapturaDomicilio, TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle,
 } from './TarjetasPlanes';
 
 // Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
@@ -2435,68 +2435,16 @@ function obtenerEstadoAbierto(horario) {
                 : (tieneVisitasPlanes || limitesPlanes) ? gridPlanesStyle
                   : { display: 'grid', gridTemplateColumns: '1fr', gap: '16px', maxWidth: '360px', margin: '0 auto' }}>
 
-                {/* Plan Gratuito — única oferta pública hoy. Sin precio aparte ("Gratis"): sería
-                    redundante con el nombre del plan y le resta formalidad a la tarjeta. */}
-                <div style={planCardStyle}>
-                  <p style={planNombreStyle}>{tarjetaPlanSinCosto(limitesPlanes).nombre}</p>
-                  <p style={planDescStyle}>
-                    Tu yonke aparece en el buscador de Mecanix y los clientes te contactan
-                    directo por WhatsApp. Incluye:
-                  </p>
-                  <ul style={{ margin: '0 0 16px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {tarjetaPlanSinCosto(limitesPlanes).funciones.map((item) => (
-                      <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
-                        <span style={{ color: '#2E7D32', fontWeight: '700' }}>✓</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <div style={planNotaAzulStyle}>
-                    Actualmente sin costo. Solo dejas la plataforma si tú decides darte de baja.
-                  </div>
-                  <a
-                    href="/panel/registro"
-                    className="mecanix-btn-primary"
-                    style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
-                  >
-                    Registra tu yonke gratis
-                  </a>
-                </div>
+                {/* Plan Básico (o el Gratuito de antes, sin límites): TarjetasPlanes.js, compartida
+                    con /bienvenida. */}
+                <TarjetaBasicoYonke limitesActivos={limitesPlanes} />
 
                 {/* Plan Premium: solo con config/planes.limitesActivos encendido. */}
                 {limitesPlanes && <TarjetaPremiumYonke />}
 
                 {/* Servicio de captura a domicilio — PAGO POR VISITA (no mensualidad, no
                     suscripción), solo en estados con tieneVisitas=true. */}
-                {tieneVisitasPlanes && (
-                  <div style={{ ...planCardStyle, border: '2px dashed #E8720C', backgroundColor: '#FFF8F0' }}>
-                    <p style={planNombreStyle}>Captura a domicilio</p>
-                    <p style={planPrecioStyle}>
-                      $300 <span style={{ fontSize: '13px', fontWeight: '600', color: '#666' }}>/ visita</span>
-                    </p>
-                    <p style={planDescStyle}>
-                      ¿No tienes tiempo de subir tu inventario? Nosotros vamos a tu yonke y lo
-                      capturamos por ti. Lo pides cuando lo necesites — sin mensualidad, sin
-                      compromiso.
-                    </p>
-                    <div style={planNotaAzulStyle}>
-                      Disponible en {estadoPlanesElegido?.nombre || 'Baja California'}.
-                    </div>
-                    <a
-                      href="https://wa.me/5216611034260?text=Hola%2C%20quiero%20agendar%20el%20servicio%20de%20captura%20a%20domicilio%20de%20Mecanix%20Yonke%20Virtual"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mecanix-btn-primary"
-                      style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
-                      onClick={() => registrarEvento('clic_servicio_visitas', {
-                        ubicacion: 'seccion_planes',
-                        plan_actual: 'visitante',
-                      })}
-                    >
-                      Quiero agendar una visita
-                    </a>
-                  </div>
-                )}
+                {tieneVisitasPlanes && <TarjetaCapturaDomicilio disponibleEn={estadoPlanesElegido?.nombre || 'Baja California'} />}
               </div>
             </div>
           </>

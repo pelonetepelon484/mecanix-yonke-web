@@ -1,10 +1,11 @@
-// Tarjetas de planes de la página principal: "Plan Premium" de yonkes (con
-// config/planes.limitesActivos) y los planes de talleres (con config/planes.tarjetasTalleres).
-// La tarjeta del Plan Básico de yonkes y la de Captura a domicilio siguen en HomeClient.js; los
-// estilos de las tarjetas viven aquí y HomeClient los importa, para que todas se vean iguales.
+// Tarjetas de planes de la página principal y de /bienvenida: Plan Básico de yonkes, "Plan Premium"
+// de yonkes (con config/planes.limitesActivos), Captura a domicilio (estados con tieneVisitas) y los
+// planes de talleres (con config/planes.tarjetasTalleres). Los estilos viven aquí para que todas se
+// vean iguales. Con sus valores por defecto quedan exactamente como en la portada; /bienvenida solo
+// cambia la ubicación del evento y la dirección de registro (?desde=bienvenida).
 import {
   FUNCIONES_PLAN_PREMIUM, FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, PRECIO_PREMIUM_TEXTO, URL_QUIERO_PREMIUM,
-  URL_QUIERO_PREMIUM_TALLER,
+  URL_QUIERO_PREMIUM_TALLER, tarjetaPlanSinCosto,
 } from '../lib/planes';
 
 function registrarEvento(nombre, params = {}) {
@@ -12,6 +13,8 @@ function registrarEvento(nombre, params = {}) {
     window.gtag('event', nombre, params);
   }
 }
+
+const URL_CAPTURA_DOMICILIO = 'https://wa.me/5216611034260?text=Hola%2C%20quiero%20agendar%20el%20servicio%20de%20captura%20a%20domicilio%20de%20Mecanix%20Yonke%20Virtual';
 
 function TarjetaPlan({ nombre, precio, funciones, boton, destacada = false }) {
   return (
@@ -32,7 +35,7 @@ function TarjetaPlan({ nombre, precio, funciones, boton, destacada = false }) {
         rel={boton.externo ? 'noopener noreferrer' : undefined}
         className="mecanix-btn-primary"
         style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
-        onClick={boton.evento ? () => registrarEvento(boton.evento.nombre, boton.evento.params) : undefined}
+        onClick={boton.evento ? () => registrarEvento(boton.evento.nombre, boton.evento.params) : boton.onClick}
       >
         {boton.texto}
       </a>
@@ -40,8 +43,74 @@ function TarjetaPlan({ nombre, precio, funciones, boton, destacada = false }) {
   );
 }
 
+// Plan Básico de yonkes (con límites; sin ellos, el "Plan Gratuito" de antes). Sin precio aparte
+// ("Gratis"): sería redundante con el nombre del plan y le resta formalidad a la tarjeta.
+// onRegistro: evento opcional al tocar el botón (en la portada no hay).
+export function TarjetaBasicoYonke({ limitesActivos, hrefRegistro = '/panel/registro', textoRegistro = 'Registra tu yonke gratis', onRegistro }) {
+  const { nombre, funciones } = tarjetaPlanSinCosto(limitesActivos);
+  return (
+    <div style={planCardStyle}>
+      <p style={planNombreStyle}>{nombre}</p>
+      <p style={planDescStyle}>
+        Tu yonke aparece en el buscador de Mecanix y los clientes te contactan
+        directo por WhatsApp. Incluye:
+      </p>
+      <ul style={{ margin: '0 0 16px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {funciones.map((item) => (
+          <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
+            <span style={{ color: '#2E7D32', fontWeight: '700' }}>✓</span>
+            {item}
+          </li>
+        ))}
+      </ul>
+      <div style={planNotaAzulStyle}>
+        Actualmente sin costo. Solo dejas la plataforma si tú decides darte de baja.
+      </div>
+      <a
+        href={hrefRegistro}
+        className="mecanix-btn-primary"
+        style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+        onClick={onRegistro}
+      >
+        {textoRegistro}
+      </a>
+    </div>
+  );
+}
+
+// Servicio de captura a domicilio: PAGO POR VISITA (no mensualidad, no suscripción). Quien la usa
+// decide dónde se ofrece (solo estados con tieneVisitas) y dice en cuáles con disponibleEn.
+export function TarjetaCapturaDomicilio({ disponibleEn, ubicacion = 'seccion_planes' }) {
+  return (
+    <div style={{ ...planCardStyle, border: '2px dashed #E8720C', backgroundColor: '#FFF8F0' }}>
+      <p style={planNombreStyle}>Captura a domicilio</p>
+      <p style={planPrecioStyle}>
+        $300 <span style={{ fontSize: '13px', fontWeight: '600', color: '#666' }}>/ visita</span>
+      </p>
+      <p style={planDescStyle}>
+        ¿No tienes tiempo de subir tu inventario? Nosotros vamos a tu yonke y lo
+        capturamos por ti. Lo pides cuando lo necesites — sin mensualidad, sin
+        compromiso.
+      </p>
+      <div style={planNotaAzulStyle}>
+        Disponible en {disponibleEn}.
+      </div>
+      <a
+        href={URL_CAPTURA_DOMICILIO}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mecanix-btn-primary"
+        style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
+        onClick={() => registrarEvento('clic_servicio_visitas', { ubicacion, plan_actual: 'visitante' })}
+      >
+        Quiero agendar una visita
+      </a>
+    </div>
+  );
+}
+
 // "Plan Premium" de yonkes: mismo WhatsApp y mismo mensaje que el botón "Quiero Premium" del panel.
-export function TarjetaPremiumYonke() {
+export function TarjetaPremiumYonke({ ubicacion = 'seccion_planes' }) {
   return (
     <TarjetaPlan
       destacada
@@ -50,15 +119,17 @@ export function TarjetaPremiumYonke() {
       funciones={FUNCIONES_PLAN_PREMIUM}
       boton={{
         texto: 'Quiero Premium', href: URL_QUIERO_PREMIUM, externo: true,
-        evento: { nombre: 'clic_premium', params: { ubicacion: 'seccion_planes', plan_actual: 'visitante' } },
+        evento: { nombre: 'clic_premium', params: { ubicacion, plan_actual: 'visitante' } },
       }}
     />
   );
 }
 
 // Planes de talleres, debajo de "¿Tienes un taller mecánico?". Quien la usa decide si se muestra
-// (interruptor config/planes.tarjetasTalleres).
-export function TarjetasPlanesTaller() {
+// (interruptor config/planes.tarjetasTalleres). onRegistro: evento opcional del botón de registro.
+export function TarjetasPlanesTaller({
+  ubicacion = 'seccion_planes_talleres', hrefRegistro = '/panel/taller/registro', textoRegistro = 'Registra tu taller gratis', onRegistro,
+}) {
   return (
     <div style={{ marginTop: '32px' }}>
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -71,7 +142,7 @@ export function TarjetasPlanesTaller() {
           nombre="Plan Básico"
           precio="Sin costo"
           funciones={FUNCIONES_TALLER_BASICO}
-          boton={{ texto: 'Registra tu taller gratis', href: '/panel/taller/registro' }}
+          boton={{ texto: textoRegistro, href: hrefRegistro, onClick: onRegistro }}
         />
         <TarjetaPlan
           destacada
@@ -80,7 +151,7 @@ export function TarjetasPlanesTaller() {
           funciones={FUNCIONES_TALLER_PREMIUM}
           boton={{
             texto: 'Quiero Premium', href: URL_QUIERO_PREMIUM_TALLER, externo: true,
-            evento: { nombre: 'clic_premium', params: { ubicacion: 'seccion_planes_talleres', plan_actual: 'visitante' } },
+            evento: { nombre: 'clic_premium', params: { ubicacion, plan_actual: 'visitante' } },
           }}
         />
       </div>
