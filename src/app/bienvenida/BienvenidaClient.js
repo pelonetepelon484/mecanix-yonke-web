@@ -13,9 +13,10 @@ import {
   TITULO_PLANES_YONKE, TITULO_PREGUNTAS, TITULO_PROXIMAMENTE, WHATSAPP_MECANIX, pasosVisibles, preguntasVisibles,
 } from '../../lib/textosBienvenida';
 import {
-  TarjetaBasicoYonke, TarjetaCapturaDomicilio, TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle,
+  TarjetaBasicoYonke, TarjetaCapturaDomicilio, TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle, notaPromoStyle,
 } from '../TarjetasPlanes';
 import { ProximamenteMecanix } from '../EcosistemaMecanix';
+import { textoPromoRegistro } from '../../lib/premiumGratis';
 
 export const REGISTRO_YONKE = '/panel/registro?desde=bienvenida';
 export const REGISTRO_TALLER = '/panel/taller/registro?desde=bienvenida';
@@ -35,7 +36,8 @@ export function listaConY(nombres) {
   return `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`;
 }
 
-export default function BienvenidaClient({ talleres = false, planes, banderas, estadosConVisitas = [], buscadorRefacciones = false }) {
+// mesesPromoTaller: promoción "Premium gratis al registrarte" de config/talleres (null = apagada).
+export default function BienvenidaClient({ talleres = false, planes, banderas, estadosConVisitas = [], buscadorRefacciones = false, mesesPromoTaller = null }) {
   const [tipo, setTipo] = useState('yonke');
   const opciones = ['yonke', ...(talleres ? ['taller'] : []), 'cliente'];
 
@@ -124,6 +126,9 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
               </li>
             ))}
           </ol>
+          {tipo === 'taller' && talleres && mesesPromoTaller && (
+            <p style={{ ...notaPromoStyle, display: 'block', textAlign: 'center' }}>🎁 {textoPromoRegistro(mesesPromoTaller)}</p>
+          )}
           {tipo === 'cliente' && (
             <div style={tarjetaCliente}>
               <p style={{ margin: '0 0 6px', fontSize: '17px', fontWeight: 700 }}>{PRIMEROS_PASOS.tarjetaCliente.titulo}</p>
@@ -148,7 +153,7 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
 
         {tipo === 'taller' && talleres && planes?.tarjetasTalleres === true && (
           <section style={{ marginBottom: '12px' }}>
-            <TarjetasPlanesTaller ubicacion={UBICACION} hrefRegistro={REGISTRO_TALLER} textoRegistro={BOTON_REGISTRO_PLANES.taller} onRegistro={clicRegistro('taller', 'bienvenida_planes')} />
+            <TarjetasPlanesTaller ubicacion={UBICACION} hrefRegistro={REGISTRO_TALLER} textoRegistro={BOTON_REGISTRO_PLANES.taller} onRegistro={clicRegistro('taller', 'bienvenida_planes')} mesesPromo={mesesPromoTaller} />
           </section>
         )}
 

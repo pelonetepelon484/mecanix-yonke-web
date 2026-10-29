@@ -38,8 +38,9 @@ import CampoWhatsappBusqueda from './CampoWhatsappBusqueda';
 import { avisarAlAdmin } from './lib/avisosAdmin/avisarAlAdmin';
 import { leerConfigPlanes, esPremiumVigente } from '../lib/planes';
 import {
-  TarjetaBasicoYonke, TarjetaCapturaDomicilio, TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle,
+  TarjetaBasicoYonke, TarjetaCapturaDomicilio, TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle, notaPromoStyle,
 } from './TarjetasPlanes';
+import { textoPromoRegistro } from '../lib/premiumGratis';
 
 // Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
 // propia foto, una pieza suelta la suya (r.vehiculo es sintético ahí, ver esPiezaSuelta en
@@ -217,7 +218,7 @@ function AvisoCompraSeguraCorto() {
 // textoSeoEstados llega ya armado desde page.js (Server Component) — lee la colección
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
-export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, rangoAnios = null, buscadorRefacciones = false }) {
+export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, rangoAnios = null, buscadorRefacciones = false, mesesPromoTaller = null }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
   // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
@@ -2478,13 +2479,15 @@ function obtenerEstadoAbierto(horario) {
               <p style={{ fontSize: '14px', color: '#555', margin: '0 0 6px', lineHeight: '1.6' }}>
                 Cotiza a tus clientes y busca piezas en los yonkes. Con tecnología Mecanix.
               </p>
+              {/* Promoción de config/talleres (se lee en el servidor, page.js). */}
+              {mesesPromoTaller && <p style={notaPromoStyle}>🎁 {textoPromoRegistro(mesesPromoTaller)}</p>}
               <a href="/panel/taller/registro" style={yonkeCtaButtonStyle}>
                 🆓 Registra tu taller gratis
               </a>
             </div>
 
             {/* Planes de talleres: solo con config/planes.tarjetasTalleres encendido. */}
-            {tarjetasTalleres && <TarjetasPlanesTaller />}
+            {tarjetasTalleres && <TarjetasPlanesTaller mesesPromo={mesesPromoTaller} />}
           </>
         )}
 

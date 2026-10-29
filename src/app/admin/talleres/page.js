@@ -2,14 +2,16 @@
 
 // Talleres: lista (nombre, ciudad, activo, plan y vencimiento del Premium) y asignar o quitar el
 // Premium con su fecha, igual que en la ficha de un yonke (admin/yonke/[id]). Solo admin
-// (admin/layout.js) y las reglas: plan y premiumHasta solo los escribe el admin.
+// (admin/layout.js) y las reglas: plan y premiumHasta solo los escribe el admin (y el usuario de
+// servicio, solo para la promoción de registro). Muestra si el Premium vino de la promoción o del
+// admin, con su vencimiento exacto.
 // Costo: 1 lectura por taller al abrir; 1 escritura por cada "Guardar".
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { estadoPlan, ETIQUETAS_ESTADO_PLAN } from '../../../lib/planes';
-import { cambiosPlan, fechaParaCampo } from './planTaller';
+import { cambiosPlan, fechaParaCampo, origenPremium, planSinCambios } from './planTaller';
 
 function FilaTaller({ taller, onGuardado }) {
   const [plan, setPlan] = useState(taller.plan === 'premium' ? 'premium' : 'freemium');
@@ -18,7 +20,13 @@ function FilaTaller({ taller, onGuardado }) {
   const [mensaje, setMensaje] = useState('');
   const etiqueta = ETIQUETAS_ESTADO_PLAN[estadoPlan({ plan, premiumHasta: premiumHasta ? new Date(`${premiumHasta}T00:00:00`) : null })];
 
+  const origen = origenPremium(taller);
+
   async function guardar() {
+    if (planSinCambios(taller, plan, premiumHasta)) {
+      setMensaje('Sin cambios.');
+      return;
+    }
     setGuardando(true);
     setMensaje('');
     try {
@@ -41,6 +49,11 @@ function FilaTaller({ taller, onGuardado }) {
           <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#666' }}>
             {taller.ciudad || 'Sin ciudad'} · {taller.activo === true ? '✅ Activo' : '⛔ Desactivado'}
           </p>
+          {origen && (
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#1A3C5E' }}>
+              {origen.texto} · <strong>{origen.vence}</strong>
+            </p>
+          )}
         </div>
         <span style={{ backgroundColor: etiqueta.bg, color: etiqueta.color, fontSize: '12px', fontWeight: '700', padding: '4px 10px', borderRadius: '12px' }}>
           {etiqueta.texto}
@@ -110,7 +123,7 @@ export default function AdminTalleresPage() {
         {!error && talleres === null && <p style={{ color: '#666' }}>Cargando...</p>}
         {talleres && talleres.length === 0 && <p style={{ color: '#666' }}>Todavía no hay talleres.</p>}
         {talleres && talleres.map((t) => (
-          <FilaTaller key={`${t.id}-${t.plan}-${fechaParaCampo(t.premiumHasta)}`} taller={t} onGuardado={() => setRecarga((n) => n + 1)} />
+          <FilaTaller key={`${t.id}-${t.plan}-${fechaParaCampo(t.premiumHasta)}-${t.premiumOrigen || ''}`} taller={t} onGuardado={() => setRecarga((n) => n + 1)} />
         ))}
       </div>
     </main>

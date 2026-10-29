@@ -11,6 +11,7 @@ import { aceptarVersion, leerConfigCotizaciones } from '../cotizaciones/datos';
 import { ErrorRegistro, registrarTaller } from '../../../../lib/registrarTaller';
 import { useAuth } from '../../AuthContext';
 import { talleresHabilitados } from '../../../../lib/talleresHabilitados';
+import { pedirPremiumGratis } from '../../../lib/premiumGratis/pedirPremiumGratis';
 
 // Dependencias reales de Firebase para el registro en pasos (ver src/lib/registrarTaller.ts).
 const dependenciasFirebase = {
@@ -84,6 +85,9 @@ export default function RegistroTaller() {
         aceptarVersion: (tallerId) => aceptarVersion(tallerId, config.terminosVersion),
       };
       await registrarTaller(datos, deps);
+      // Promoción "Premium gratis al registrarte" (config/talleres, la decide el servidor). Un
+      // reintento si falla; nunca detiene el registro: sin promoción, el taller entra como Básico.
+      await pedirPremiumGratis({ obtenerToken: () => auth.currentUser?.getIdToken() });
       // El contexto leyó el rol cuando la cuenta todavía no tenía documento: lo volvemos a leer
       // ya con usuarios/{uid} creado, y solo entonces entramos al panel del taller.
       const rol = await recargarRol();

@@ -7,6 +7,7 @@ import {
   FUNCIONES_PLAN_PREMIUM, FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, PRECIO_PREMIUM_TEXTO, URL_QUIERO_PREMIUM,
   URL_QUIERO_PREMIUM_TALLER, tarjetaPlanSinCosto,
 } from '../lib/planes';
+import { textoPromoRegistro } from '../lib/premiumGratis';
 
 function registrarEvento(nombre, params = {}) {
   if (typeof window !== 'undefined' && window.gtag) {
@@ -16,11 +17,12 @@ function registrarEvento(nombre, params = {}) {
 
 const URL_CAPTURA_DOMICILIO = 'https://wa.me/5216611034260?text=Hola%2C%20quiero%20agendar%20el%20servicio%20de%20captura%20a%20domicilio%20de%20Mecanix%20Yonke%20Virtual';
 
-function TarjetaPlan({ nombre, precio, funciones, boton, destacada = false }) {
+function TarjetaPlan({ nombre, precio, funciones, boton, destacada = false, nota = null }) {
   return (
     <div style={destacada ? planPremiumCardStyle : planCardStyle}>
       <p style={planNombreStyle}>{nombre}</p>
       <p style={{ ...planPrecioStyle, fontSize: '18px' }}>{precio}</p>
+      {nota && <p style={notaPromoStyle}>🎁 {nota}</p>}
       <ul style={{ margin: '0 0 16px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {funciones.map((item) => (
           <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
@@ -127,8 +129,10 @@ export function TarjetaPremiumYonke({ ubicacion = 'seccion_planes' }) {
 
 // Planes de talleres, debajo de "¿Tienes un taller mecánico?". Quien la usa decide si se muestra
 // (interruptor config/planes.tarjetasTalleres). onRegistro: evento opcional del botón de registro.
+// mesesPromo: con la promoción de config/talleres encendida, "N meses de Premium gratis al
+// registrarte" en la tarjeta Premium (null = no se muestra).
 export function TarjetasPlanesTaller({
-  ubicacion = 'seccion_planes_talleres', hrefRegistro = '/panel/taller/registro', textoRegistro = 'Registra tu taller gratis', onRegistro,
+  ubicacion = 'seccion_planes_talleres', hrefRegistro = '/panel/taller/registro', textoRegistro = 'Registra tu taller gratis', onRegistro, mesesPromo = null,
 }) {
   return (
     <div style={{ marginTop: '32px' }}>
@@ -149,6 +153,7 @@ export function TarjetasPlanesTaller({
           nombre="Plan Premium"
           precio={PRECIO_PREMIUM_TEXTO}
           funciones={FUNCIONES_TALLER_PREMIUM}
+          nota={mesesPromo ? textoPromoRegistro(mesesPromo) : null}
           boton={{
             texto: 'Quiero Premium', href: URL_QUIERO_PREMIUM_TALLER, externo: true,
             evento: { nombre: 'clic_premium', params: { ubicacion, plan_actual: 'visitante' } },
@@ -172,4 +177,5 @@ export const planPremiumCardStyle = { ...planCardStyle, border: '2px solid #E872
 export const planNombreStyle = { fontSize: '15px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 4px', letterSpacing: '0.3px', textTransform: 'uppercase' };
 export const planPrecioStyle = { fontSize: '22px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' };
 export const planDescStyle = { fontSize: '13px', color: '#666', lineHeight: '1.6', margin: '0 0 16px' };
+export const notaPromoStyle = { display: 'inline-block', backgroundColor: '#FEF3EC', color: '#B4530A', border: '1px solid #F5C9A6', borderRadius: '20px', padding: '4px 12px', fontSize: '13px', fontWeight: '700', margin: '0 0 12px' };
 export const planNotaAzulStyle = { backgroundColor: '#EEF2F7', border: '1.5px dashed #1A3C5E', borderRadius: '10px', padding: '12px 14px', fontSize: '12px', color: '#1A3C5E', lineHeight: '1.5', fontWeight: '600', marginTop: '16px' };
