@@ -4,9 +4,12 @@
 //   "¿Tienes un taller?" en la portada, y "← Ir a Mecanix" dentro del panel.
 //   ecosistema: bloque "Ecosistema de soluciones automotrices" al final de la pestaña cliente
 //   (EcosistemaMecanix.js). Se lee en el servidor (page.js) para que el texto vaya en el HTML inicial.
+//   bienvenida: página /bienvenida (para mandar a yonkes y talleres). Apagada, /bienvenida da 404.
 import { doc, getDoc } from 'firebase/firestore';
 
-export const banderasPortada = (config) => ({ botonPanel: config?.botonPanel === true, ecosistema: config?.ecosistema === true });
+export const banderasPortada = (config) => ({
+  botonPanel: config?.botonPanel === true, ecosistema: config?.ecosistema === true, bienvenida: config?.bienvenida === true,
+});
 
 export async function leerConfigPortada(db) {
   try {

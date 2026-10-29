@@ -44,6 +44,20 @@ export default function EcosistemaMecanix() {
   );
 }
 
+// Solo las de "Próximamente" (para /bienvenida), con su propio título. ocultarRefacciones: con el
+// buscador de piezas nuevas encendido, "Refacciones nuevas" ya no es "próximamente".
+export function ProximamenteMecanix({ titulo: tituloSeccion, ocultarRefacciones = false }) {
+  const tarjetas = TARJETAS_PROXIMAMENTE.filter((t) => !(ocultarRefacciones && t.titulo === 'Refacciones nuevas'));
+  return (
+    <section style={caja} aria-labelledby="proximamente-mecanix">
+      <h2 id="proximamente-mecanix" style={{ ...titulo, marginBottom: '16px' }}>{tituloSeccion}</h2>
+      <ul style={lista}>
+        {tarjetas.map((t) => <Tarjeta key={t.titulo} {...t} proximamente />)}
+      </ul>
+    </section>
+  );
+}
+
 // Mismos valores que ComoFuncionaBuscador (caja, renglón, título y descripción) y que la pastilla
 // pagoTagStyle de HomeClient para "Próximamente". Una columna: se ve igual en celular.
 const caja = { backgroundColor: '#fff', borderRadius: '20px', padding: '24px 20px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' };
