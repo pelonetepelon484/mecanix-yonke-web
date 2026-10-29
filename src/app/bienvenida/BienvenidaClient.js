@@ -3,13 +3,14 @@
 // Pantalla de /bienvenida (page.js decide si existe y le pasa las banderas). Una columna, primero
 // celular. Textos nuevos en lib/textosBienvenida.js; planes, los mismos componentes y textos de la
 // portada (TarjetasPlanes.js, lib/planes.js). Selector "Soy yonke / Soy taller / Soy cliente": cambia
-// los pasos y los planes ("Soy taller" solo con talleres). Eventos de Google Analytics:
-// clic_registro, contacto_mecanix, clic_premium (ubicacion "bienvenida") y bienvenida_selector.
+// los pasos, los planes, las preguntas frecuentes y la llamada final ("Soy taller" solo con
+// talleres). Eventos de Google Analytics: clic_registro, contacto_mecanix, clic_premium (ubicacion
+// "bienvenida") y bienvenida_selector.
 import { useState } from 'react';
 import Link from 'next/link';
 import {
   ASI_FUNCIONA, AVISO_PROVISIONAL, BOTON_REGISTRO_PLANES, HERO, LLAMADA_FINAL, PIE, PREGUNTAS_FRECUENTES, PRIMEROS_PASOS, TEXTOS_APROBADOS,
-  TITULO_PLANES_YONKE, TITULO_PROXIMAMENTE, WHATSAPP_MECANIX, pasosVisibles,
+  TITULO_PLANES_YONKE, TITULO_PREGUNTAS, TITULO_PROXIMAMENTE, WHATSAPP_MECANIX, pasosVisibles, preguntasVisibles,
 } from '../../lib/textosBienvenida';
 import {
   TarjetaBasicoYonke, TarjetaCapturaDomicilio, TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle,
@@ -44,6 +45,11 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
   }
 
   const pasos = pasosVisibles(PRIMEROS_PASOS[tipo], banderas || {});
+  const preguntas = preguntasVisibles(PREGUNTAS_FRECUENTES[tipo], {
+    ...banderas, limitesActivos: planes?.limitesActivos === true, tarjetasTalleres: planes?.tarjetasTalleres === true,
+  });
+  const final = LLAMADA_FINAL[tipo];
+  const registroFinal = { yonke: REGISTRO_YONKE, taller: REGISTRO_TALLER }[tipo];
   const conPremium = planes?.limitesActivos === true;
   const conCaptura = estadosConVisitas.length > 0;
 
@@ -150,25 +156,42 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
           <ProximamenteMecanix titulo={TITULO_PROXIMAMENTE} ocultarRefacciones={buscadorRefacciones} />
         </div>
 
-        {/* Etapa 2: preguntas frecuentes (desplegables) y llamada final. Vacías en
-            lib/textosBienvenida.js, no se muestran. */}
-        {PREGUNTAS_FRECUENTES.length > 0 && (
-          <section style={caja} aria-labelledby="preguntas-frecuentes">
-            <h2 id="preguntas-frecuentes" style={tituloSeccion}>Preguntas frecuentes</h2>
-            {PREGUNTAS_FRECUENTES.map((p) => (
-              <details key={p.pregunta} style={{ borderTop: '1px solid #E3EAF2', padding: '12px 0' }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#1A3C5E', fontSize: '15px' }}>{p.pregunta}</summary>
-                <p style={{ ...descPaso, marginTop: '8px' }}>{p.respuesta}</p>
-              </details>
-            ))}
-          </section>
-        )}
-        {LLAMADA_FINAL && (
-          <section style={{ ...tarjetaCliente, marginTop: '12px' }}>
-            <p style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: 700 }}>{LLAMADA_FINAL.titulo}</p>
-            {LLAMADA_FINAL.texto && <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.5, opacity: 0.9 }}>{LLAMADA_FINAL.texto}</p>}
-          </section>
-        )}
+        <section style={caja} aria-labelledby="preguntas-frecuentes">
+          <h2 id="preguntas-frecuentes" style={tituloSeccion}>{TITULO_PREGUNTAS}</h2>
+          {preguntas.map((p) => (
+            <details key={p.pregunta} style={{ borderTop: '1px solid #E3EAF2', padding: '12px 0' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#1A3C5E', fontSize: '15px' }}>{p.pregunta}</summary>
+              {p.bloques.map((b) => (
+                <div key={b.texto}>
+                  <p style={{ ...descPaso, marginTop: '8px' }}>{b.texto}</p>
+                  {b.lista && (
+                    <ul style={{ margin: '6px 0 0', paddingLeft: '20px' }}>
+                      {b.lista.map((item) => <li key={item} style={{ ...descPaso, margin: '2px 0 0' }}>{item}</li>)}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </details>
+          ))}
+        </section>
+
+        <section style={{ ...tarjetaCliente, marginTop: '12px' }} aria-labelledby="llamada-final">
+          <h2 id="llamada-final" style={{ margin: '0 0 16px', fontSize: '22px', fontWeight: 700 }}>{final.titulo}</h2>
+          {tipo === 'cliente' ? (
+            <Link href="/" style={botonNaranja}>🔍 {final.boton}</Link>
+          ) : (
+            <a href={registroFinal} style={botonNaranja} onClick={clicRegistro(tipo, 'bienvenida_final')}>
+              {tipo === 'yonke' ? '🏪' : '🔧'} {final.boton}
+            </a>
+          )}
+          <a
+            href={WHATSAPP_MECANIX.url} target="_blank" rel="noopener noreferrer"
+            style={{ display: 'block', marginTop: '16px', color: '#fff', fontWeight: 600, fontSize: '14px' }}
+            onClick={() => registrarEvento('contacto_mecanix', { medio: 'whatsapp', ubicacion: 'bienvenida_final' })}
+          >
+            {LLAMADA_FINAL.whatsapp}
+          </a>
+        </section>
 
         <footer style={{ marginTop: '32px', paddingTop: '20px', borderTop: '1px solid #ddd', textAlign: 'center' }}>
           <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#888', fontWeight: 600 }}>{PIE.tecnologia}</p>

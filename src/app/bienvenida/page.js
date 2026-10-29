@@ -33,21 +33,28 @@ export const metadata = {
   twitter: { card: 'summary_large_image', title: META_BIENVENIDA.titulo, description: META_BIENVENIDA.descripcion, images: [IMAGEN_PORTADA] },
 };
 
-// Banderas de config/pedidosClientes que cambian los pasos (mismas reglas que
-// lib/banderaPedidosClientes.js: todas exigen habilitado). Si falla la lectura, apagadas.
-async function banderasPasos() {
+// Un documento de config; si no existe o falla la lectura, {} (todo lo que dependa de él, apagado).
+async function leerConfig(nombre) {
   try {
-    const snap = await getDoc(doc(dbServer, 'config', 'pedidosClientes'));
-    const c = snap.exists() ? snap.data() : {};
-    const consultas = c.habilitado === true;
-    return {
-      consultas, otrosEstados: consultas && c.otrosEstados === true, vehiculosCompletos: consultas && c.inventarioVehiculos === true,
-      formularioAbierto: consultas && c.formularioAbierto === true,
-    };
+    const snap = await getDoc(doc(dbServer, 'config', nombre));
+    return snap.exists() ? snap.data() : {};
   } catch (error) {
-    console.warn('[bienvenida] No se pudo leer config/pedidosClientes; pasos sin búsquedas activas.', error?.code || error?.message);
-    return { consultas: false, otrosEstados: false, vehiculosCompletos: false, formularioAbierto: false };
+    console.warn(`[bienvenida] No se pudo leer config/${nombre}; sus funciones quedan apagadas.`, error?.code || error?.message);
+    return {};
   }
+}
+
+// Banderas que cambian los pasos y las preguntas. Las de config/pedidosClientes siguen las reglas de
+// lib/banderaPedidosClientes.js (todas exigen habilitado); avisos, las de config/notificaciones
+// (habilitado); seguimiento, config/ordenes.seguimientoHabilitado. Solo true exacto.
+async function banderasPasos() {
+  const [c, notificaciones, ordenes] = await Promise.all([leerConfig('pedidosClientes'), leerConfig('notificaciones'), leerConfig('ordenes')]);
+  const consultas = c.habilitado === true;
+  return {
+    consultas, otrosEstados: consultas && c.otrosEstados === true, vehiculosCompletos: consultas && c.inventarioVehiculos === true,
+    formularioAbierto: consultas && c.formularioAbierto === true,
+    avisos: notificaciones.habilitado === true, seguimiento: ordenes.seguimientoHabilitado === true,
+  };
 }
 
 export default async function Bienvenida() {

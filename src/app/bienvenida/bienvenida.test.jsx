@@ -26,8 +26,14 @@ vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('NOT_FOUND
 
 const { default: Bienvenida, metadata } = await import('./page.js');
 const { REGISTRO_TALLER, REGISTRO_YONKE, listaConY } = await import('./BienvenidaClient');
-const { AVISO_PROVISIONAL, HERO, PRIMEROS_PASOS, pasosVisibles } = await import('../../lib/textosBienvenida');
-const { FUNCIONES_PLAN_BASICO, FUNCIONES_TALLER_BASICO, PRECIO_PREMIUM_TEXTO, URL_QUIERO_PREMIUM } = await import('../../lib/planes');
+const {
+  AVISO_PAGO_APROBADO, AVISO_PROVISIONAL, CITA_DATOS_CLIENTES_TALLER, HERO, PRIMEROS_PASOS, pasosVisibles, preguntasVisibles,
+} = await import('../../lib/textosBienvenida');
+const {
+  FUNCIONES_PLAN_BASICO, FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, PRECIO_PREMIUM_TEXTO, URL_QUIERO_PREMIUM,
+} = await import('../../lib/planes');
+const { TEXTO_AVISO_PAGO } = await import('../mi-pedido/[id]/MiPedidoCliente');
+const textosTalleres = (await import('../../lib/textosLegalesTalleres.json')).default;
 
 const gtag = vi.fn();
 beforeEach(() => {
@@ -43,6 +49,11 @@ afterEach(() => { cleanup(); delete window.gtag; });
 
 const pintar = async () => render(await Bienvenida());
 const selector = () => screen.getByRole('group', { name: '¿Quién eres?' });
+// El hero es lo primero; la llamada final repite los mismos botones al final.
+const hero = (nombre) => screen.getAllByRole('link', { name: nombre })[0];
+const final = () => screen.getByRole('region', { name: /Empieza a recibir búsquedas hoy|¿Buscas una pieza\?/ });
+const preguntas = () => within(screen.getByRole('region', { name: 'Preguntas frecuentes' })).queryAllByRole('group').map((d) => d.querySelector('summary').textContent);
+const respuesta = (pregunta) => within(screen.getByRole('region', { name: 'Preguntas frecuentes' })).getByText(pregunta).closest('details').textContent.slice(pregunta.length);
 const eventos = (nombre) => gtag.mock.calls.filter(([, n]) => n === nombre).map(([, , p]) => p);
 
 describe('interruptor y SEO', () => {
@@ -73,10 +84,10 @@ describe('pantalla', () => {
     fireEvent.click(whatsapp);
     expect(eventos('contacto_mecanix')).toEqual([{ medio: 'whatsapp', ubicacion: 'bienvenida_encabezado' }]);
 
-    fireEvent.click(screen.getByRole('link', { name: '🏪 Registrar mi yonke' }));
-    fireEvent.click(screen.getByRole('link', { name: '🔧 Registrar mi taller' }));
-    expect(screen.getByRole('link', { name: '🏪 Registrar mi yonke' })).toHaveAttribute('href', REGISTRO_YONKE);
-    expect(screen.getByRole('link', { name: '🔧 Registrar mi taller' })).toHaveAttribute('href', REGISTRO_TALLER);
+    fireEvent.click(hero('🏪 Registrar mi yonke'));
+    fireEvent.click(hero('🔧 Registrar mi taller'));
+    expect(hero('🏪 Registrar mi yonke')).toHaveAttribute('href', REGISTRO_YONKE);
+    expect(hero('🔧 Registrar mi taller')).toHaveAttribute('href', REGISTRO_TALLER);
     expect(eventos('clic_registro')).toEqual([{ tipo: 'yonke', ubicacion: 'bienvenida_hero' }, { tipo: 'taller', ubicacion: 'bienvenida_hero' }]);
     expect(REGISTRO_YONKE).toBe('/panel/registro?desde=bienvenida');
     expect(REGISTRO_TALLER).toBe('/panel/taller/registro?desde=bienvenida');
@@ -84,8 +95,9 @@ describe('pantalla', () => {
     expect(screen.getByRole('link', { name: 'Términos y Condiciones' })).toHaveAttribute('href', '/terminos');
     expect(screen.getByRole('link', { name: 'Aviso de Privacidad' })).toHaveAttribute('href', '/privacidad');
     expect(screen.getByText('Con tecnología Mecanix')).toBeInTheDocument();
-    // Etapa 2 todavía no.
-    expect(screen.queryByText('Preguntas frecuentes')).not.toBeInTheDocument();
+    // Sin espacios vacíos de la etapa 1: preguntas y llamada final siempre están.
+    expect(screen.getByRole('region', { name: 'Preguntas frecuentes' })).toBeInTheDocument();
+    expect(final()).toBeInTheDocument();
   });
 
   it('sin talleres (variable): ni botón ni "Soy taller"', async () => {
@@ -138,7 +150,8 @@ describe('pantalla', () => {
     expect(eventos('bienvenida_selector')).toEqual([{ tipo: 'taller', origen: 'selector' }]);
     expect(screen.getByText('Haz cotizaciones con PDF')).toBeInTheDocument();
     expect(screen.getByText('Planes para tu taller')).toBeInTheDocument();
-    for (const f of FUNCIONES_TALLER_BASICO) expect(screen.getByText(f)).toBeInTheDocument();
+    // Cada función sale en la tarjeta y en la respuesta "¿Cuánto cuesta?".
+    for (const f of FUNCIONES_TALLER_BASICO) expect(screen.getAllByText(f)).toHaveLength(2);
     expect(screen.getByText('Crea la cuenta de tu taller. Actualmente sin costo.')).toBeInTheDocument();
     expect(screen.queryByText('Planes para tu yonke')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'Registrar mi taller' }));
@@ -166,7 +179,8 @@ describe('pantalla', () => {
     expect(screen.getByText('Revisa las respuestas en tu enlace')).toBeInTheDocument();
     expect(screen.getByText('Buscar no tiene costo para ti')).toBeInTheDocument();
     expect(screen.getByText('No necesitas crear una cuenta para consultar con los yonkes.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Buscar una pieza/ })).toHaveAttribute('href', '/');
+    // En la tarjeta azul y en la llamada final.
+    for (const l of screen.getAllByRole('link', { name: /Buscar una pieza/ })) expect(l).toHaveAttribute('href', '/');
     expect(screen.queryByText('Plan Básico')).not.toBeInTheDocument();
     expect(screen.queryByText('Planes para tu yonke')).not.toBeInTheDocument();
   });
@@ -193,6 +207,8 @@ describe('pantalla', () => {
   it('ningún "gratis" en la página, con cualquier pestaña y todo encendido', async () => {
     docs['config/planes'] = { limitesActivos: true, tarjetasTalleres: true };
     docs['config/pedidosClientes'] = { habilitado: true, otrosEstados: true, inventarioVehiculos: true, formularioAbierto: true };
+    docs['config/notificaciones'] = { habilitado: true };
+    docs['config/ordenes'] = { seguimientoHabilitado: true };
     await pintar();
     for (const o of [/Soy yonke/, /Soy taller/, /Soy cliente/]) {
       fireEvent.click(within(selector()).getByRole('button', { name: o }));
@@ -219,6 +235,110 @@ describe('pantalla', () => {
     buscador = true;
     await pintar();
     expect(within(screen.getByRole('region', { name: 'Próximamente en Mecanix' })).queryByText('Refacciones nuevas')).not.toBeInTheDocument();
+  });
+});
+
+describe('preguntas frecuentes y llamada final', () => {
+  const todo = () => {
+    docs['config/planes'] = { limitesActivos: true, tarjetasTalleres: true };
+    docs['config/pedidosClientes'] = { habilitado: true, otrosEstados: true, inventarioVehiculos: true, formularioAbierto: true };
+    docs['config/notificaciones'] = { habilitado: true };
+    docs['config/ordenes'] = { seguimientoHabilitado: true };
+  };
+  const elegir = (o) => fireEvent.click(within(selector()).getByRole('button', { name: o }));
+
+  it('yonke con todo encendido: sus 6 preguntas (sin comisión) y respuestas completas', async () => {
+    todo();
+    await pintar();
+    expect(preguntas()).toEqual([
+      '¿Cuánto cuesta?', '¿Tengo que subir todo mi inventario?', '¿Quién cierra la venta?', '¿Qué es la insignia Verificado?',
+      '¿Funciona en iPhone?', '¿Los yonkes de otros estados también pueden responder?',
+    ]);
+    expect(respuesta('¿Cuánto cuesta?')).toBe(`Actualmente el plan Básico no tiene costo. El plan Premium cuesta ${PRECIO_PREMIUM_TEXTO} y es opcional.`);
+    expect(respuesta('¿Tengo que subir todo mi inventario?')).toMatch(/30 días en tu inventario\.$/);
+    expect(respuesta('¿Funciona en iPhone?')).toMatch(/solo para Android\.$/);
+    expect(document.body.textContent).not.toMatch(/comisi/i);
+  });
+
+  it('yonke con todo apagado: sin las preguntas ni las frases de funciones apagadas', async () => {
+    await pintar();
+    expect(preguntas()).toEqual(['¿Cuánto cuesta?', '¿Qué es la insignia Verificado?', '¿Funciona en iPhone?']);
+    expect(respuesta('¿Cuánto cuesta?')).toBe('Actualmente el plan Básico no tiene costo.');
+    expect(respuesta('¿Funciona en iPhone?')).toBe('Se usa desde el navegador de cualquier celular y se puede agregar a la pantalla de inicio.');
+  });
+
+  it('taller: planes desde lib/planes.js, cita de los Términos y liga de seguimiento solo encendida', async () => {
+    todo();
+    await pintar();
+    elegir(/Soy taller/);
+    expect(preguntas()).toEqual(['¿Cuánto cuesta?', '¿Mis clientes aparecen en Mecanix?', '¿Cómo pido una pieza a los yonkes?', '¿Qué es la liga de seguimiento?']);
+    const costo = respuesta('¿Cuánto cuesta?');
+    expect(costo).toContain(`Plan Premium, ${PRECIO_PREMIUM_TEXTO}:`);
+    for (const f of [...FUNCIONES_TALLER_BASICO, ...FUNCIONES_TALLER_PREMIUM]) expect(costo).toContain(f);
+    cleanup();
+    docs = { 'config/portada': { bienvenida: true } };
+    await pintar();
+    elegir(/Soy taller/);
+    expect(preguntas()).not.toContain('¿Qué es la liga de seguimiento?');
+    expect(respuesta('¿Cuánto cuesta?')).not.toContain('Premium');
+  });
+
+  it('cliente: costo según búsquedas activas, mensajes solo con formularioAbierto y la advertencia aprobada', async () => {
+    todo();
+    await pintar();
+    elegir(/Soy cliente/);
+    expect(preguntas()).toEqual(['¿Buscar tiene costo?', '¿Cuánto dura mi búsqueda activa?', '¿Me van a mandar mensajes?', '¿Puedo pagar directo en Mecanix?']);
+    expect(respuesta('¿Buscar tiene costo?')).toBe('No. Buscar y consultar con los yonkes no tiene costo para ti y no necesitas crear una cuenta.');
+    expect(respuesta('¿Cuánto dura mi búsqueda activa?')).toBe('5 días.');
+    expect(respuesta('¿Puedo pagar directo en Mecanix?')).toBe(`No. ${AVISO_PAGO_APROBADO}`);
+    cleanup();
+    docs['config/pedidosClientes'] = { habilitado: true };
+    await pintar();
+    elegir(/Soy cliente/);
+    expect(preguntas()).not.toContain('¿Me van a mandar mensajes?');
+    cleanup();
+    docs['config/pedidosClientes'] = {};
+    await pintar();
+    elegir(/Soy cliente/);
+    expect(preguntas()).toEqual(['¿Buscar tiene costo?', '¿Puedo pagar directo en Mecanix?']);
+    expect(respuesta('¿Buscar tiene costo?')).toBe('No. Buscar no tiene costo para ti.');
+  });
+
+  it('textos citados: la advertencia de pago y la cláusula de talleres siguen siendo las aprobadas', () => {
+    expect(TEXTO_AVISO_PAGO).toBe(`🛡️ ${AVISO_PAGO_APROBADO}`);
+    const clausula = textosTalleres.terminos.map((t) => t.texto).find((t) => t?.startsWith(CITA_DATOS_CLIENTES_TALLER[0]));
+    for (const frase of CITA_DATOS_CLIENTES_TALLER) expect(clausula).toContain(frase);
+  });
+
+  it('llamada final por pestaña, con WhatsApp y eventos en bienvenida_final', async () => {
+    await pintar();
+    let f = final();
+    expect(within(f).getByRole('heading', { name: 'Empieza a recibir búsquedas hoy' })).toBeInTheDocument();
+    fireEvent.click(within(f).getByRole('link', { name: /Registrar mi yonke/ }));
+    expect(within(f).getByRole('link', { name: /Registrar mi yonke/ })).toHaveAttribute('href', REGISTRO_YONKE);
+    const whatsapp = within(f).getByRole('link', { name: 'Escríbenos por WhatsApp' });
+    expect(whatsapp).toHaveAttribute('href', `https://wa.me/526611034260?text=${encodeURIComponent('Hola, quiero información de Mecanix')}`);
+    fireEvent.click(whatsapp);
+
+    elegir(/Soy taller/);
+    f = final();
+    fireEvent.click(within(f).getByRole('link', { name: /Registrar mi taller/ }));
+    expect(within(f).getByRole('link', { name: /Registrar mi taller/ })).toHaveAttribute('href', REGISTRO_TALLER);
+
+    elegir(/Soy cliente/);
+    f = final();
+    expect(within(f).getByRole('heading', { name: '¿Buscas una pieza?' })).toBeInTheDocument();
+    expect(within(f).getByRole('link', { name: /Buscar una pieza/ })).toHaveAttribute('href', '/');
+    expect(within(f).queryByRole('link', { name: /Registrar/ })).not.toBeInTheDocument();
+
+    expect(eventos('clic_registro')).toEqual([{ tipo: 'yonke', ubicacion: 'bienvenida_final' }, { tipo: 'taller', ubicacion: 'bienvenida_final' }]);
+    expect(eventos('contacto_mecanix')).toEqual([{ medio: 'whatsapp', ubicacion: 'bienvenida_final' }]);
+  });
+
+  it('preguntasVisibles: "sino" con la función apagada y listas en su propio bloque', () => {
+    const lista = [{ pregunta: 'P', respuesta: [{ texto: 'A', si: 'x', sino: 'B' }, { texto: 'C' }, { texto: 'D', lista: ['1'] }, { texto: 'E' }] }];
+    expect(preguntasVisibles(lista, {})[0].bloques).toEqual([{ texto: 'B C D', lista: ['1'] }, { texto: 'E' }]);
+    expect(preguntasVisibles(lista, { x: true })[0].bloques[0].texto).toBe('A C D');
   });
 });
 
