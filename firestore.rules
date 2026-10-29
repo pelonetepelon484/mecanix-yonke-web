@@ -452,9 +452,11 @@ service cloud.firestore {
     // justo después, en un lote con su entrada del historial.
     match /talleres/{tallerId} {
       // plan / premiumHasta: Premium del taller (mismo esquema que los yonkes, ver premiumVigente).
-      // Solo el ADMIN los escribe: el dueño no los manda al crear ni los cambia al editar.
+      // premiumOrigen: de dónde vino el Premium ('promo' = promoción de registro, 'admin' = asignado
+      // a mano). Los escribe el ADMIN, o el usuario de servicio SOLO para la promoción (ver
+      // promoPremiumGratisOk): el dueño no los manda al crear ni los cambia al editar.
       function tallerValido() {
-        return request.resource.data.keys().hasOnly(['nombre', 'whatsapp', 'ciudad', 'logoUrl', 'ownerUid', 'activo', 'creadoAt', 'aceptacionVersion', 'avisoPrivacidad', 'plan', 'premiumHasta'])
+        return request.resource.data.keys().hasOnly(['nombre', 'whatsapp', 'ciudad', 'logoUrl', 'ownerUid', 'activo', 'creadoAt', 'aceptacionVersion', 'avisoPrivacidad', 'plan', 'premiumHasta', 'premiumOrigen'])
           && request.resource.data.nombre is string
           && request.resource.data.nombre.size() >= 2 && request.resource.data.nombre.size() <= 100
           && request.resource.data.whatsapp is string
@@ -483,7 +485,34 @@ service cloud.firestore {
                     // Un taller nuevo nace sin plan (= Básico).
                     && !('plan' in request.resource.data)
                     && !('premiumHasta' in request.resource.data)
+                    && !('premiumOrigen' in request.resource.data)
                     && tallerValido();
+      // Promoción "Premium gratis al registrarte" (config/talleres): SOLO el usuario de servicio
+      // (ruta /api/talleres/premium-gratis), con la bandera encendida, a un taller que todavía no
+      // tiene plan, dentro de la primera hora desde su creadoAt (hora del servidor), cambiando
+      // únicamente plan, premiumHasta y premiumOrigen. premiumHasta SIEMPRE es una fecha (nunca
+      // vacía = "sin vencimiento"), futura y a más tardar creadoAt + meses x 31 días. Sin
+      // config/talleres, get() falla y se niega (falla cerrada).
+      function promoPremiumGratisOk() {
+        let c = get(/databases/$(database)/documents/config/talleres).data;
+        let meses = c.get('mesesPremiumGratis', 3);
+        let d = request.resource.data;
+        return esServicio()
+          && c.get('premiumGratisHabilitado', false) == true
+          && meses is int && meses >= 1 && meses <= 12
+          && !('plan' in resource.data)
+          && !('premiumHasta' in resource.data)
+          && !('premiumOrigen' in resource.data)
+          && resource.data.creadoAt is timestamp
+          && request.time < resource.data.creadoAt + duration.value(1, 'h')
+          && d.diff(resource.data).affectedKeys().hasOnly(['plan', 'premiumHasta', 'premiumOrigen'])
+          && d.plan == 'premium'
+          && d.premiumOrigen == 'promo'
+          && d.premiumHasta is timestamp
+          && d.premiumHasta > request.time
+          && d.premiumHasta <= resource.data.creadoAt + duration.value(meses * 31, 'd');
+      }
+      // La promoción va al final: el dueño y el admin no pagan la lectura de config/talleres.
       allow update: if esAdmin()
                     || (request.auth != null
                         && resource.data.ownerUid == request.auth.uid
@@ -495,6 +524,7 @@ service cloud.firestore {
                         // Ni su plan (solo el admin)
                         && request.resource.data.get('plan', null) == resource.data.get('plan', null)
                         && request.resource.data.get('premiumHasta', null) == resource.data.get('premiumHasta', null)
+                        && request.resource.data.get('premiumOrigen', null) == resource.data.get('premiumOrigen', null)
                         && tallerValido()
                         && (
                           // Sin cambio de versión aceptada
@@ -502,7 +532,8 @@ service cloud.firestore {
                           // O aceptar la versión vigente, con su entrada en el historial en el mismo lote
                           || (request.resource.data.aceptacionVersion == get(/databases/$(database)/documents/config/cotizaciones).data.terminosVersion
                               && existsAfter(/databases/$(database)/documents/talleres/$(tallerId)/aceptaciones/$(request.resource.data.aceptacionVersion)))
-                        ));
+                        ))
+                    || promoPremiumGratisOk();
       // Dueño: solo borra mientras su usuario no exista (rollback). Admin siempre.
       allow delete: if esAdmin()
                     || (request.auth != null

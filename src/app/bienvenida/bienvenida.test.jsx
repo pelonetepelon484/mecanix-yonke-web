@@ -204,16 +204,47 @@ describe('pantalla', () => {
     expect(screen.queryByText(/mensajes automáticos/)).not.toBeInTheDocument();
   });
 
-  it('ningún "gratis" en la página, con cualquier pestaña y todo encendido', async () => {
+  it('ningún "gratis" en la página, con cualquier pestaña y todo encendido (salvo la promoción de talleres)', async () => {
     docs['config/planes'] = { limitesActivos: true, tarjetasTalleres: true };
     docs['config/pedidosClientes'] = { habilitado: true, otrosEstados: true, inventarioVehiculos: true, formularioAbierto: true };
     docs['config/notificaciones'] = { habilitado: true };
     docs['config/ordenes'] = { seguimientoHabilitado: true };
+    docs['config/talleres'] = { premiumGratisHabilitado: true, mesesPremiumGratis: 3 };
     await pintar();
     for (const o of [/Soy yonke/, /Soy taller/, /Soy cliente/]) {
       fireEvent.click(within(selector()).getByRole('button', { name: o }));
-      expect(document.body.textContent).not.toMatch(/gratis/i);
+      // La única excepción, pedida a propósito: "N meses de Premium gratis al registrarte".
+      expect(document.body.textContent.replaceAll('3 meses de Premium gratis al registrarte', '')).not.toMatch(/gratis/i);
     }
+  });
+
+  it('promoción de talleres (config/talleres): solo en la pestaña de talleres, en los pasos y en la tarjeta Premium', async () => {
+    docs['config/planes'] = { tarjetasTalleres: true };
+    docs['config/talleres'] = { premiumGratisHabilitado: true, mesesPremiumGratis: 3 };
+    await pintar();
+    expect(screen.queryByText(/Premium gratis/)).not.toBeInTheDocument();
+    fireEvent.click(within(selector()).getByRole('button', { name: /Soy taller/ }));
+    expect(screen.getAllByText(/3 meses de Premium gratis al registrarte/)).toHaveLength(2);
+    fireEvent.click(within(selector()).getByRole('button', { name: /Soy cliente/ }));
+    expect(screen.queryByText(/Premium gratis/)).not.toBeInTheDocument();
+  });
+
+  it('promoción apagada, meses inválidos o error al leer: no se anuncia', async () => {
+    docs['config/planes'] = { tarjetasTalleres: true };
+    for (const config of [undefined, { premiumGratisHabilitado: false }, { premiumGratisHabilitado: 'true' }, { premiumGratisHabilitado: true, mesesPremiumGratis: 99 }]) {
+      if (config) docs['config/talleres'] = config; else delete docs['config/talleres'];
+      await pintar();
+      fireEvent.click(within(selector()).getByRole('button', { name: /Soy taller/ }));
+      expect(screen.queryByText(/Premium gratis/)).not.toBeInTheDocument();
+      cleanup();
+    }
+  });
+
+  it('sin talleres habilitados no se anuncia aunque la promoción esté encendida', async () => {
+    talleres = false;
+    docs['config/talleres'] = { premiumGratisHabilitado: true };
+    await pintar();
+    expect(screen.queryByText(/Premium gratis/)).not.toBeInTheDocument();
   });
 
   it('cliente sin búsquedas activas: sin los pasos de consulta ni la frase de la cuenta', async () => {

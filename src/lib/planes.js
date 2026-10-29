@@ -82,7 +82,7 @@ export const URL_QUIERO_PREMIUM = 'https://wa.me/5216611034260?text=Hola%2C%20me
 export const URL_QUIERO_PREMIUM_TALLER = `https://wa.me/5216611034260?text=${encodeURIComponent('Hola, me interesa el Plan Premium de Mecanix para talleres')}`;
 
 // Acepta Timestamp de Firestore, Date, milisegundos o texto de fecha. null si no hay fecha usable.
-function comoFecha(valor) {
+export function comoFecha(valor) {
   if (valor === null || valor === undefined || valor === '') return null;
   if (typeof valor?.toDate === 'function') return valor.toDate();
   if (valor instanceof Date) return valor;

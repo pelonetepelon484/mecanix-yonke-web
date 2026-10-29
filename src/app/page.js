@@ -7,6 +7,7 @@ import { textoConteoRedYonkes } from './lib/conteoRedYonkes';
 import { leerConfigPortada } from '../lib/configPortada';
 import { rangoAniosServer } from './lib/busqueda/configBuscadorServer';
 import { buscadorRefaccionesEncendido } from './lib/refaccionariaPublica';
+import { leerPromoTalleres } from '../lib/premiumGratis';
 
 // Misma cadencia que el caché en memoria de estadosServer.js (10 min) — sin esto, Next.js
 // generaría esta página como estática en el build y el texto SEO de cobertura quedaría
@@ -88,6 +89,9 @@ export default async function Home() {
   // Buscador "Piezas nuevas" (config/refaccionarias.buscador, exige paginaPublica). Misma cadencia;
   // si falla la lectura, apagado.
   const buscadorRefacciones = await buscadorRefaccionesEncendido();
+  // Promoción "Premium gratis al registrarte" de talleres (config/talleres). Misma cadencia; si falla
+  // la lectura, no se anuncia.
+  const mesesPromoTaller = await leerPromoTalleres(dbServer);
 
-  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} ecosistema={ecosistema} rangoAnios={rangoAnios} buscadorRefacciones={buscadorRefacciones} />;
+  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} ecosistema={ecosistema} rangoAnios={rangoAnios} buscadorRefacciones={buscadorRefacciones} mesesPromoTaller={mesesPromoTaller} />;
 }

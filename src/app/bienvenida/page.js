@@ -6,6 +6,7 @@ import { buscadorRefaccionesEncendido } from '../lib/refaccionariaPublica';
 import { leerConfigPortada } from '../../lib/configPortada';
 import { leerConfigPlanes } from '../../lib/planes';
 import { talleresHabilitados } from '../../lib/talleresHabilitados';
+import { leerPromoTalleres } from '../../lib/premiumGratis';
 import { IMAGEN_PORTADA } from '../../lib/imagenPortada';
 import { SITIO_OFICIAL } from '../../lib/sitioOficial';
 import { META_BIENVENIDA } from '../../lib/textosBienvenida';
@@ -61,8 +62,8 @@ export default async function Bienvenida() {
   const { bienvenida } = await leerConfigPortada(dbServer);
   if (!bienvenida) notFound();
 
-  const [planes, banderas, estados, buscadorRefacciones] = await Promise.all([
-    leerConfigPlanes(dbServer), banderasPasos(), obtenerEstadosCombinado(), buscadorRefaccionesEncendido(),
+  const [planes, banderas, estados, buscadorRefacciones, mesesPromoTaller] = await Promise.all([
+    leerConfigPlanes(dbServer), banderasPasos(), obtenerEstadosCombinado(), buscadorRefaccionesEncendido(), leerPromoTalleres(dbServer),
   ]);
   // Captura a domicilio: solo donde hay visitas, igual que la tarjeta de la portada.
   const estadosConVisitas = estados.filter((e) => e.tieneVisitas === true).map((e) => e.nombre).filter(Boolean)
@@ -71,7 +72,7 @@ export default async function Bienvenida() {
   return (
     <BienvenidaClient
       talleres={talleresHabilitados()} planes={planes} banderas={banderas}
-      estadosConVisitas={estadosConVisitas} buscadorRefacciones={buscadorRefacciones}
+      estadosConVisitas={estadosConVisitas} buscadorRefacciones={buscadorRefacciones} mesesPromoTaller={mesesPromoTaller}
     />
   );
 }

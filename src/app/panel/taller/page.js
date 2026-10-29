@@ -14,6 +14,8 @@ import { leerConfigHistorial } from './historial/datos';
 import ServiciosPorVencer from './ServiciosPorVencer';
 import AvisoVersion from './AvisoVersion';
 import { OpcionInstalarApp } from '../AvisoInstalarApp';
+import BannerPremiumGratis from './BannerPremiumGratis';
+import { estadoPromoTaller } from '../../../lib/premiumGratis';
 
 const seccionInstalar = { textAlign: 'left', borderTop: '1px solid #EEE', padding: '16px 0 0', margin: '0 0 20px' };
 const tituloInstalar = { fontSize: '16px', color: '#1A3C5E', margin: '0 0 6px' };
@@ -33,6 +35,8 @@ export default function PanelTaller() {
   const [ordenesHabilitadas, setOrdenesHabilitadas] = useState(false);
   // Historial de servicios: solo con config/historialTaller.habilitado === true (sin el documento, no aparece).
   const [historialHabilitado, setHistorialHabilitado] = useState(false);
+  // Premium gratis de la promoción de registro (del mismo documento del taller, sin lecturas extra).
+  const [promo, setPromo] = useState(null);
 
   useEffect(() => {
     if (!tallerId) return;
@@ -48,6 +52,7 @@ export default function PanelTaller() {
           setNombre(snap.data().nombre || '');
           setVersionAceptada(snap.data().aceptacionVersion ?? '');
           setActivoTaller(snap.data().activo === true);
+          setPromo(estadoPromoTaller(snap.data(), new Date()));
         } else {
           setErrorCarga('No encontramos los datos de tu taller.');
         }
@@ -75,6 +80,7 @@ export default function PanelTaller() {
         <p style={{ fontSize: '13px', color: '#E8720C', letterSpacing: '2px', fontWeight: 'bold', marginBottom: '8px' }}>PANEL DEL TALLER</p>
         <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '0 0 16px' }}>{nombre || 'Tu taller'}</h1>
         {errorCarga && <p role="alert" style={{ color: '#D85A30', fontSize: '13px' }}>{errorCarga}</p>}
+        <BannerPremiumGratis promo={promo} />
         {hayCambios && (
           <div style={{ textAlign: 'left' }}>
             <AvisoVersion
