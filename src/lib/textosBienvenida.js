@@ -46,12 +46,15 @@ export const ASI_FUNCIONA = {
 //   consultas: config/pedidosClientes.habilitado (búsquedas activas, "Consultar con los yonkes").
 //   otrosEstados: config/pedidosClientes.otrosEstados (casilla de otros estados).
 //   vehiculosCompletos: config/pedidosClientes.inventarioVehiculos (vehículo completo 30 días).
+//   formularioAbierto: config/pedidosClientes.formularioAbierto. Sin ella la portada todavía muestra
+//   el campo viejo "Tu WhatsApp (opcional, para avisarte cuando llegue)", así que "Mecanix no manda
+//   mensajes automáticos" no sale.
 export const PRIMEROS_PASOS = {
   titulo: 'Tus primeros pasos',
   tituloCliente: 'Cómo buscar tu pieza',
   opciones: { yonke: '🏪 Soy yonke', taller: '🔧 Soy taller', cliente: '🚗 Soy cliente' },
   yonke: [
-    { titulo: 'Regístrate', desc: 'Crea la cuenta de tu yonke. El registro no tiene costo.' },
+    { titulo: 'Regístrate', desc: 'Crea la cuenta de tu yonke. Actualmente sin costo.' },
     { titulo: 'Instala la app', desc: 'Desde tu panel, agrega Mecanix a la pantalla de inicio de tu celular.' },
     { titulo: 'Activa los avisos (solo Android)', desc: 'Te avisamos en tu celular cuando llega una búsqueda activa o un pedido.' },
     {
@@ -61,7 +64,7 @@ export const PRIMEROS_PASOS = {
     { titulo: 'Sube tu inventario (opcional)', desc: 'Vehículos, motores y piezas sueltas con fotos, para que también te encuentren en el buscador.' },
   ],
   taller: [
-    { titulo: 'Registra tu taller', desc: 'Crea la cuenta de tu taller. El registro no tiene costo.' },
+    { titulo: 'Registra tu taller', desc: 'Crea la cuenta de tu taller. Actualmente sin costo.' },
     { titulo: 'Haz cotizaciones con PDF', desc: 'Cotiza a tus clientes y compárteles el PDF.' },
     { titulo: 'Pide piezas a los yonkes', desc: 'Pide la pieza a los yonkes y compara sus respuestas.' },
     { titulo: 'Con Premium', desc: 'Órdenes de servicio, historial de servicios, recordatorios de mantenimiento y seguimiento de la orden para tu cliente con enlace o código QR.' },
@@ -73,7 +76,10 @@ export const PRIMEROS_PASOS = {
       extra: { si: 'otrosEstados', texto: 'Si dejas marcada la casilla "Quiero buscar también en otros estados", también pueden responderte yonkes Verificados con Envíos Nacionales de otros estados.' },
     },
     { titulo: 'Revisa las respuestas en tu enlace', desc: 'Cada yonke que la tenga responde con su precio. Las ves en tu enlace "Mi búsqueda activa", con la insignia Verificado o la marca "Yonke nuevo, sin verificar".', si: 'consultas' },
-    { titulo: 'Escríbele tú al yonke que prefieras', desc: 'Mecanix no manda mensajes automáticos. Antes de pagar, confirma la pieza directamente con el yonke.' },
+    {
+      titulo: 'Escríbele tú al yonke que prefieras', desc: 'Antes de pagar, confirma la pieza directamente con el yonke.',
+      antes: { si: 'formularioAbierto', texto: 'Mecanix no manda mensajes automáticos.' },
+    },
   ],
   tarjetaCliente: {
     titulo: 'Buscar no tiene costo para ti',
@@ -83,6 +89,9 @@ export const PRIMEROS_PASOS = {
 };
 
 export const TITULO_PLANES_YONKE = 'Planes para tu yonke';
+// Botón de registro de las tarjetas de planes en esta página (en la portada dicen "Registra tu …
+// gratis"; aquí, igual que el hero, sin "gratis").
+export const BOTON_REGISTRO_PLANES = { yonke: 'Registrar mi yonke', taller: 'Registrar mi taller' };
 export const TITULO_PROXIMAMENTE = 'Próximamente en Mecanix';
 
 // Etapa 2 (todavía no): preguntas frecuentes [{ pregunta, respuesta }] y llamada final
@@ -92,13 +101,14 @@ export const LLAMADA_FINAL = null;
 
 export const PIE = { tecnologia: 'Con tecnología Mecanix', terminos: 'Términos y Condiciones', privacidad: 'Aviso de Privacidad' };
 
-// Pasos visibles según las banderas ({ consultas, otrosEstados, vehiculosCompletos }): quita los
-// que dependen de una función apagada y agrega su texto extra solo si la suya está encendida.
+// Pasos visibles según las banderas ({ consultas, otrosEstados, vehiculosCompletos,
+// formularioAbierto }): quita los que dependen de una función apagada y agrega sus frases de antes
+// (antes) o de después (extra) solo si la suya está encendida.
 export function pasosVisibles(pasos, banderas) {
   return pasos
     .filter((p) => !p.si || banderas[p.si] === true)
-    .map(({ titulo, desc, extra }) => ({
+    .map(({ titulo, desc, antes, extra }) => ({
       titulo,
-      desc: extra && banderas[extra.si] === true ? `${desc} ${extra.texto}` : desc,
+      desc: [antes, { texto: desc }, extra].filter((f) => f && (!f.si || banderas[f.si] === true)).map((f) => f.texto).join(' '),
     }));
 }

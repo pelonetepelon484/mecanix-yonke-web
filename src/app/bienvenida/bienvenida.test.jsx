@@ -73,10 +73,10 @@ describe('pantalla', () => {
     fireEvent.click(whatsapp);
     expect(eventos('contacto_mecanix')).toEqual([{ medio: 'whatsapp', ubicacion: 'bienvenida_encabezado' }]);
 
-    fireEvent.click(screen.getByRole('link', { name: /Registrar mi yonke/ }));
-    fireEvent.click(screen.getByRole('link', { name: /Registrar mi taller/ }));
-    expect(screen.getByRole('link', { name: /Registrar mi yonke/ })).toHaveAttribute('href', REGISTRO_YONKE);
-    expect(screen.getByRole('link', { name: /Registrar mi taller/ })).toHaveAttribute('href', REGISTRO_TALLER);
+    fireEvent.click(screen.getByRole('link', { name: '🏪 Registrar mi yonke' }));
+    fireEvent.click(screen.getByRole('link', { name: '🔧 Registrar mi taller' }));
+    expect(screen.getByRole('link', { name: '🏪 Registrar mi yonke' })).toHaveAttribute('href', REGISTRO_YONKE);
+    expect(screen.getByRole('link', { name: '🔧 Registrar mi taller' })).toHaveAttribute('href', REGISTRO_TALLER);
     expect(eventos('clic_registro')).toEqual([{ tipo: 'yonke', ubicacion: 'bienvenida_hero' }, { tipo: 'taller', ubicacion: 'bienvenida_hero' }]);
     expect(REGISTRO_YONKE).toBe('/panel/registro?desde=bienvenida');
     expect(REGISTRO_TALLER).toBe('/panel/taller/registro?desde=bienvenida');
@@ -109,14 +109,14 @@ describe('pantalla', () => {
     for (const f of FUNCIONES_PLAN_BASICO) expect(screen.getAllByText(f).length).toBeGreaterThan(0);
     expect(screen.getByText(PRECIO_PREMIUM_TEXTO)).toBeInTheDocument();
     expect(screen.getByText('Disponible en Baja California.')).toBeInTheDocument();
-    expect(screen.queryByText(/gratis\b/i, { selector: 'p' })).not.toBeInTheDocument();
+    expect(screen.getByText('Crea la cuenta de tu yonke. Actualmente sin costo.')).toBeInTheDocument();
 
     const premium = screen.getByRole('link', { name: 'Quiero Premium' });
     expect(premium).toHaveAttribute('href', URL_QUIERO_PREMIUM);
     fireEvent.click(premium);
-    fireEvent.click(screen.getByRole('link', { name: 'Registra tu yonke gratis' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Registrar mi yonke' }));
     fireEvent.click(screen.getByRole('link', { name: 'Quiero agendar una visita' }));
-    expect(screen.getByRole('link', { name: 'Registra tu yonke gratis' })).toHaveAttribute('href', REGISTRO_YONKE);
+    expect(screen.getByRole('link', { name: 'Registrar mi yonke' })).toHaveAttribute('href', REGISTRO_YONKE);
     expect(eventos('clic_premium')).toEqual([{ ubicacion: 'bienvenida', plan_actual: 'visitante' }]);
     expect(eventos('clic_registro')).toEqual([{ tipo: 'yonke', ubicacion: 'bienvenida_planes' }]);
     expect(eventos('clic_servicio_visitas')).toEqual([{ ubicacion: 'bienvenida', plan_actual: 'visitante' }]);
@@ -139,9 +139,10 @@ describe('pantalla', () => {
     expect(screen.getByText('Haz cotizaciones con PDF')).toBeInTheDocument();
     expect(screen.getByText('Planes para tu taller')).toBeInTheDocument();
     for (const f of FUNCIONES_TALLER_BASICO) expect(screen.getByText(f)).toBeInTheDocument();
+    expect(screen.getByText('Crea la cuenta de tu taller. Actualmente sin costo.')).toBeInTheDocument();
     expect(screen.queryByText('Planes para tu yonke')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('link', { name: 'Registra tu taller gratis' }));
-    expect(screen.getByRole('link', { name: 'Registra tu taller gratis' })).toHaveAttribute('href', REGISTRO_TALLER);
+    fireEvent.click(screen.getByRole('link', { name: 'Registrar mi taller' }));
+    expect(screen.getByRole('link', { name: 'Registrar mi taller' })).toHaveAttribute('href', REGISTRO_TALLER);
     expect(eventos('clic_registro')).toEqual([{ tipo: 'taller', ubicacion: 'bienvenida_planes' }]);
     cleanup();
 
@@ -168,6 +169,35 @@ describe('pantalla', () => {
     expect(screen.getByRole('link', { name: /Buscar una pieza/ })).toHaveAttribute('href', '/');
     expect(screen.queryByText('Plan Básico')).not.toBeInTheDocument();
     expect(screen.queryByText('Planes para tu yonke')).not.toBeInTheDocument();
+  });
+
+  it('"Mecanix no manda mensajes automáticos" solo con formularioAbierto', async () => {
+    docs['config/pedidosClientes'] = { habilitado: true };
+    await pintar();
+    fireEvent.click(within(selector()).getByRole('button', { name: /Soy cliente/ }));
+    expect(screen.getByText('Antes de pagar, confirma la pieza directamente con el yonke.')).toBeInTheDocument();
+    expect(screen.queryByText(/mensajes automáticos/)).not.toBeInTheDocument();
+    cleanup();
+    docs['config/pedidosClientes'] = { habilitado: true, formularioAbierto: true };
+    await pintar();
+    fireEvent.click(within(selector()).getByRole('button', { name: /Soy cliente/ }));
+    expect(screen.getByText('Mecanix no manda mensajes automáticos. Antes de pagar, confirma la pieza directamente con el yonke.')).toBeInTheDocument();
+    cleanup();
+    // formularioAbierto sin habilitado no cuenta (como en la portada).
+    docs['config/pedidosClientes'] = { formularioAbierto: true };
+    await pintar();
+    fireEvent.click(within(selector()).getByRole('button', { name: /Soy cliente/ }));
+    expect(screen.queryByText(/mensajes automáticos/)).not.toBeInTheDocument();
+  });
+
+  it('ningún "gratis" en la página, con cualquier pestaña y todo encendido', async () => {
+    docs['config/planes'] = { limitesActivos: true, tarjetasTalleres: true };
+    docs['config/pedidosClientes'] = { habilitado: true, otrosEstados: true, inventarioVehiculos: true, formularioAbierto: true };
+    await pintar();
+    for (const o of [/Soy yonke/, /Soy taller/, /Soy cliente/]) {
+      fireEvent.click(within(selector()).getByRole('button', { name: o }));
+      expect(document.body.textContent).not.toMatch(/gratis/i);
+    }
   });
 
   it('cliente sin búsquedas activas: sin los pasos de consulta ni la frase de la cuenta', async () => {

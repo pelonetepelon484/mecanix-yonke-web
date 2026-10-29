@@ -46,7 +46,7 @@ function TarjetaPlan({ nombre, precio, funciones, boton, destacada = false }) {
 // Plan Básico de yonkes (con límites; sin ellos, el "Plan Gratuito" de antes). Sin precio aparte
 // ("Gratis"): sería redundante con el nombre del plan y le resta formalidad a la tarjeta.
 // onRegistro: evento opcional al tocar el botón (en la portada no hay).
-export function TarjetaBasicoYonke({ limitesActivos, hrefRegistro = '/panel/registro', onRegistro }) {
+export function TarjetaBasicoYonke({ limitesActivos, hrefRegistro = '/panel/registro', textoRegistro = 'Registra tu yonke gratis', onRegistro }) {
   const { nombre, funciones } = tarjetaPlanSinCosto(limitesActivos);
   return (
     <div style={planCardStyle}>
@@ -72,7 +72,7 @@ export function TarjetaBasicoYonke({ limitesActivos, hrefRegistro = '/panel/regi
         style={{ display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '18px' }}
         onClick={onRegistro}
       >
-        Registra tu yonke gratis
+        {textoRegistro}
       </a>
     </div>
   );
@@ -127,7 +127,9 @@ export function TarjetaPremiumYonke({ ubicacion = 'seccion_planes' }) {
 
 // Planes de talleres, debajo de "¿Tienes un taller mecánico?". Quien la usa decide si se muestra
 // (interruptor config/planes.tarjetasTalleres). onRegistro: evento opcional del botón de registro.
-export function TarjetasPlanesTaller({ ubicacion = 'seccion_planes_talleres', hrefRegistro = '/panel/taller/registro', onRegistro }) {
+export function TarjetasPlanesTaller({
+  ubicacion = 'seccion_planes_talleres', hrefRegistro = '/panel/taller/registro', textoRegistro = 'Registra tu taller gratis', onRegistro,
+}) {
   return (
     <div style={{ marginTop: '32px' }}>
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -140,7 +142,7 @@ export function TarjetasPlanesTaller({ ubicacion = 'seccion_planes_talleres', hr
           nombre="Plan Básico"
           precio="Sin costo"
           funciones={FUNCIONES_TALLER_BASICO}
-          boton={{ texto: 'Registra tu taller gratis', href: hrefRegistro, onClick: onRegistro }}
+          boton={{ texto: textoRegistro, href: hrefRegistro, onClick: onRegistro }}
         />
         <TarjetaPlan
           destacada

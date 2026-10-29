@@ -40,10 +40,13 @@ async function banderasPasos() {
     const snap = await getDoc(doc(dbServer, 'config', 'pedidosClientes'));
     const c = snap.exists() ? snap.data() : {};
     const consultas = c.habilitado === true;
-    return { consultas, otrosEstados: consultas && c.otrosEstados === true, vehiculosCompletos: consultas && c.inventarioVehiculos === true };
+    return {
+      consultas, otrosEstados: consultas && c.otrosEstados === true, vehiculosCompletos: consultas && c.inventarioVehiculos === true,
+      formularioAbierto: consultas && c.formularioAbierto === true,
+    };
   } catch (error) {
     console.warn('[bienvenida] No se pudo leer config/pedidosClientes; pasos sin búsquedas activas.', error?.code || error?.message);
-    return { consultas: false, otrosEstados: false, vehiculosCompletos: false };
+    return { consultas: false, otrosEstados: false, vehiculosCompletos: false, formularioAbierto: false };
   }
 }
 

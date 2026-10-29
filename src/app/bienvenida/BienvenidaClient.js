@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import {
-  ASI_FUNCIONA, AVISO_PROVISIONAL, HERO, LLAMADA_FINAL, PIE, PREGUNTAS_FRECUENTES, PRIMEROS_PASOS, TEXTOS_APROBADOS,
+  ASI_FUNCIONA, AVISO_PROVISIONAL, BOTON_REGISTRO_PLANES, HERO, LLAMADA_FINAL, PIE, PREGUNTAS_FRECUENTES, PRIMEROS_PASOS, TEXTOS_APROBADOS,
   TITULO_PLANES_YONKE, TITULO_PROXIMAMENTE, WHATSAPP_MECANIX, pasosVisibles,
 } from '../../lib/textosBienvenida';
 import {
@@ -133,7 +133,7 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
             <div style={conCaptura && conPremium ? gridTresPlanesStyle
               : (conCaptura || conPremium) ? gridPlanesStyle
                 : { display: 'grid', gridTemplateColumns: '1fr', gap: '16px', maxWidth: '360px', margin: '0 auto' }}>
-              <TarjetaBasicoYonke limitesActivos={conPremium} hrefRegistro={REGISTRO_YONKE} onRegistro={clicRegistro('yonke', 'bienvenida_planes')} />
+              <TarjetaBasicoYonke limitesActivos={conPremium} hrefRegistro={REGISTRO_YONKE} textoRegistro={BOTON_REGISTRO_PLANES.yonke} onRegistro={clicRegistro('yonke', 'bienvenida_planes')} />
               {conPremium && <TarjetaPremiumYonke ubicacion={UBICACION} />}
               {conCaptura && <TarjetaCapturaDomicilio disponibleEn={listaConY(estadosConVisitas)} ubicacion={UBICACION} />}
             </div>
@@ -142,7 +142,7 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
 
         {tipo === 'taller' && talleres && planes?.tarjetasTalleres === true && (
           <section style={{ marginBottom: '12px' }}>
-            <TarjetasPlanesTaller ubicacion={UBICACION} hrefRegistro={REGISTRO_TALLER} onRegistro={clicRegistro('taller', 'bienvenida_planes')} />
+            <TarjetasPlanesTaller ubicacion={UBICACION} hrefRegistro={REGISTRO_TALLER} textoRegistro={BOTON_REGISTRO_PLANES.taller} onRegistro={clicRegistro('taller', 'bienvenida_planes')} />
           </section>
         )}
 
