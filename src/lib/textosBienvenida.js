@@ -3,6 +3,8 @@
 // mismos de la portada). Reglas de redacción: "red de yonkes" sí, "nuestros yonkes" o "nuestra red"
 // no; Mecanix es un "motor de búsqueda de autopartes"; nada de cifras ni promesas nuevas.
 //
+import { FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, PRECIO_PREMIUM_TEXTO } from './planes';
+
 // ⚠️ [PROVISIONAL] Todo lo de este archivo está pendiente de aprobación legal. Mientras
 // TEXTOS_APROBADOS sea false, la página muestra arriba AVISO_PROVISIONAL. Cuando el abogado los
 // apruebe, se reemplazan por los finales y TEXTOS_APROBADOS pasa a true (el aviso desaparece).
@@ -94,16 +96,136 @@ export const TITULO_PLANES_YONKE = 'Planes para tu yonke';
 export const BOTON_REGISTRO_PLANES = { yonke: 'Registrar mi yonke', taller: 'Registrar mi taller' };
 export const TITULO_PROXIMAMENTE = 'Próximamente en Mecanix';
 
-// Etapa 2 (todavía no): preguntas frecuentes [{ pregunta, respuesta }] y llamada final
-// { titulo, texto }. Vacías, la página no muestra esas secciones.
-export const PREGUNTAS_FRECUENTES = [];
-export const LLAMADA_FINAL = null;
+// Preguntas frecuentes por pestaña (etapa 2). Mismas banderas que los pasos, más:
+//   avisos: config/notificaciones.habilitado (avisos en el celular).
+//   seguimiento: config/ordenes.seguimientoHabilitado (liga de seguimiento de órdenes).
+//   limitesActivos y tarjetasTalleres: config/planes, igual que las tarjetas de planes.
+// Una pregunta con "si" no sale con su función apagada. La respuesta son partes: cada una con su
+// propio "si" (y "sino": el texto cuando está apagada); "lista" la cierra con una lista.
+// Precios y funciones de planes salen de lib/planes.js, nunca escritos a mano.
+export const TITULO_PREGUNTAS = 'Preguntas frecuentes';
+
+// Cláusula 1.2 de los Términos para Talleres, citada literal (sin las excepciones del final de la
+// frase, que no cambian lo que se responde aquí). La prueba comprueba que siga apareciendo tal cual
+// en lib/textosLegalesTalleres.json.
+export const CITA_DATOS_CLIENTES_TALLER = [
+  'El Taller es el responsable del tratamiento de los datos personales de sus Clientes que capture en la Plataforma, y decide para qué y cómo se usan.',
+  'Mecanix actúa únicamente como proveedor del servicio de almacenamiento de esos datos, por petición e instrucción del Taller.',
+  'Mecanix no usa esos datos para fines propios',
+];
+
+// Advertencia de pago aprobada (TEXTO_AVISO_PAGO de mi-pedido/[id]/MiPedidoCliente.js), sin el
+// emoji. La prueba comprueba que sea idéntica.
+export const AVISO_PAGO_APROBADO = 'Antes de pagar, confirma la pieza directamente con el yonke. Con yonkes sin verificar, evita pagos por adelantado. Mecanix no participa en la venta ni en el pago.';
+
+export const PREGUNTAS_FRECUENTES = {
+  yonke: [
+    {
+      pregunta: '¿Cuánto cuesta?',
+      respuesta: [
+        { texto: 'Actualmente el plan Básico no tiene costo.' },
+        { si: 'limitesActivos', texto: `El plan Premium cuesta ${PRECIO_PREMIUM_TEXTO} y es opcional.` },
+      ],
+    },
+    {
+      pregunta: '¿Tengo que subir todo mi inventario?', si: 'consultas',
+      respuesta: [
+        { texto: 'No. Puedes empezar solo contestando búsquedas.' },
+        { si: 'vehiculosCompletos', texto: 'Los vehículos completos que confirmes se guardan 30 días en tu inventario.' },
+      ],
+    },
+    {
+      pregunta: '¿Quién cierra la venta?', si: 'consultas',
+      respuesta: [{ texto: 'Tú. El cliente ve tu respuesta con tu precio y te escribe por su cuenta. El pago y la entrega los acuerdas directamente con él.' }],
+    },
+    {
+      pregunta: '¿Qué es la insignia Verificado?',
+      respuesta: [{ texto: 'Es la marca que ven los clientes cuando Mecanix confirmó personalmente que tu yonke es un negocio real. Escríbenos por WhatsApp para solicitarla.' }],
+    },
+    {
+      pregunta: '¿Funciona en iPhone?',
+      respuesta: [
+        { texto: 'Se usa desde el navegador de cualquier celular y se puede agregar a la pantalla de inicio.' },
+        { si: 'avisos', texto: 'Los avisos en tiempo real, por ahora, son solo para Android.' },
+      ],
+    },
+    {
+      pregunta: '¿Los yonkes de otros estados también pueden responder?', si: 'otrosEstados',
+      respuesta: [{ texto: 'Solo los yonkes Verificados con Envíos Nacionales, y únicamente cuando el cliente deja marcada la casilla para buscar también en otros estados.' }],
+    },
+  ],
+  taller: [
+    {
+      pregunta: '¿Cuánto cuesta?',
+      respuesta: [
+        { texto: 'Plan Básico, actualmente sin costo:', lista: FUNCIONES_TALLER_BASICO },
+        { si: 'tarjetasTalleres', texto: `Plan Premium, ${PRECIO_PREMIUM_TEXTO}:`, lista: FUNCIONES_TALLER_PREMIUM },
+      ],
+    },
+    {
+      pregunta: '¿Mis clientes aparecen en Mecanix?',
+      respuesta: [{ texto: `${CITA_DATOS_CLIENTES_TALLER.join(' ')}.` }],
+    },
+    {
+      pregunta: '¿Cómo pido una pieza a los yonkes?',
+      respuesta: [{ texto: 'Publicas el pedido con los datos del vehículo. Los yonkes responden con su precio y tú eliges a quién comprarle.' }],
+    },
+    {
+      pregunta: '¿Qué es la liga de seguimiento?', si: 'seguimiento',
+      respuesta: [{ texto: 'Es un enlace para que tu cliente vea el estado de su unidad en línea. Es una función Premium.' }],
+    },
+  ],
+  cliente: [
+    {
+      pregunta: '¿Buscar tiene costo?',
+      respuesta: [{
+        si: 'consultas',
+        texto: 'No. Buscar y consultar con los yonkes no tiene costo para ti y no necesitas crear una cuenta.',
+        sino: 'No. Buscar no tiene costo para ti.',
+      }],
+    },
+    { pregunta: '¿Cuánto dura mi búsqueda activa?', si: 'consultas', respuesta: [{ texto: '5 días.' }] },
+    {
+      pregunta: '¿Me van a mandar mensajes?', si: 'formularioAbierto',
+      respuesta: [{ texto: 'Mecanix no manda mensajes automáticos. Las respuestas de los yonkes las ves en tu enlace y tú decides con quién hablar.' }],
+    },
+    { pregunta: '¿Puedo pagar directo en Mecanix?', respuesta: [{ texto: `No. ${AVISO_PAGO_APROBADO}` }] },
+  ],
+};
+
+// Llamada final según la pestaña. WhatsApp con el mismo mensaje del encabezado.
+export const LLAMADA_FINAL = {
+  yonke: { titulo: 'Empieza a recibir búsquedas hoy', boton: 'Registrar mi yonke' },
+  taller: { titulo: 'Empieza a recibir búsquedas hoy', boton: 'Registrar mi taller' },
+  cliente: { titulo: '¿Buscas una pieza?', boton: 'Buscar una pieza' },
+  whatsapp: 'Escríbenos por WhatsApp',
+};
 
 export const PIE = { tecnologia: 'Con tecnología Mecanix', terminos: 'Términos y Condiciones', privacidad: 'Aviso de Privacidad' };
 
 // Pasos visibles según las banderas ({ consultas, otrosEstados, vehiculosCompletos,
 // formularioAbierto }): quita los que dependen de una función apagada y agrega sus frases de antes
 // (antes) o de después (extra) solo si la suya está encendida.
+// Preguntas visibles: [{ pregunta, bloques: [{ texto, lista? }] }]. Las partes seguidas sin lista se
+// juntan en un solo párrafo.
+export function preguntasVisibles(preguntas, banderas) {
+  return preguntas
+    .filter((p) => !p.si || banderas[p.si] === true)
+    .map(({ pregunta, respuesta }) => {
+      const bloques = [];
+      let abierto = null;
+      for (const parte of respuesta) {
+        const encendida = !parte.si || banderas[parte.si] === true;
+        const texto = encendida ? parte.texto : parte.sino;
+        if (!texto) continue;
+        if (abierto && !abierto.lista) abierto.texto = `${abierto.texto} ${texto}`;
+        else bloques.push(abierto = { texto });
+        if (encendida && parte.lista) abierto.lista = parte.lista;
+      }
+      return { pregunta, bloques };
+    });
+}
+
 export function pasosVisibles(pasos, banderas) {
   return pasos
     .filter((p) => !p.si || banderas[p.si] === true)
