@@ -173,3 +173,29 @@ describe('alertas de otros estados', () => {
   });
 });
 
+
+describe('respuestas de "Sugerir yonke" (precio a tratar)', () => {
+  it('respuestaParaCliente deja pasar precioATratar y creadoPorAdmin, y nunca un precio inválido', () => {
+    const sugerida = respuestaParaCliente({ yonkeId: 'Y5', yonkeNombre: 'Sugerido', tieneLaPieza: true, precioATratar: true, creadoPorAdmin: true, nota: '', whatsapp: '6645555555' }, null);
+    expect(sugerida).toMatchObject({ precio: null, precioATratar: true, creadoPorAdmin: true });
+    const delYonke = respuestaParaCliente({ yonkeId: 'Y1', yonkeNombre: 'Y', tieneLaPieza: true, precio: 1500 }, null);
+    expect(delYonke).toMatchObject({ precio: 1500, precioATratar: false, creadoPorAdmin: false });
+    for (const precio of [0, -5, Number.NaN]) {
+      expect(respuestaParaCliente({ yonkeId: 'Y1', yonkeNombre: 'Y', tieneLaPieza: true, precio }, null).precio).toBeNull();
+    }
+    // Si no la tiene, no hay "precio a tratar".
+    expect(respuestaParaCliente({ yonkeId: 'Y1', yonkeNombre: 'Y', tieneLaPieza: false, precioATratar: true }, null).precioATratar).toBe(false);
+  });
+
+  it('ordena: con precio (más barato primero), luego "precio a tratar", al final las que no la tienen', () => {
+    const lista = ordenarRespuestas([
+      { tieneLaPieza: false, precio: null, n: 'no' },
+      { tieneLaPieza: true, precio: null, n: 'tratar1' },
+      { tieneLaPieza: true, precio: 900, n: '900' },
+      { tieneLaPieza: true, precio: null, n: 'tratar2' },
+      { tieneLaPieza: true, precio: 300, n: '300' },
+      { tieneLaPieza: true, precio: 0, n: 'cero' },
+    ]);
+    expect(lista.map((x) => x.n)).toEqual(['300', '900', 'tratar1', 'tratar2', 'cero', 'no']);
+  });
+});

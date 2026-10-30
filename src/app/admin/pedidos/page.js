@@ -7,7 +7,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cargarEstados } from '../../lib/estados';
 import { resumenPedidos, estaVencido } from '../../../lib/pedidosClientes';
-import { cambiarBanderaPedidosClientes, contarRespuestas, leerBanderaPedidosClientes, listarPedidosClientes } from './datos';
+import {
+  cambiarBanderaPedidosClientes, contarRespuestas, leerBanderaPedidosClientes, leerBanderasSugerirYonke, listarPedidosClientes,
+} from './datos';
 import PestanaClientes from './PestanaClientes';
 import PestanaTalleres from './PestanaTalleres';
 
@@ -20,6 +22,8 @@ export default function PedidosAdminPage() {
   const [conteos, setConteos] = useState({});
   const [estados, setEstados] = useState([]);
   const [error, setError] = useState('');
+  // "Sugerir yonke" por tipo de pedido (apagado si no se pudo leer).
+  const [sugerir, setSugerir] = useState({ clientes: false, talleres: false });
 
   const cargarPedidos = useCallback(() => listarPedidosClientes()
     .then(async (lista) => {
@@ -39,6 +43,7 @@ export default function PedidosAdminPage() {
   useEffect(() => {
     leerBanderaPedidosClientes().then(setBandera).catch(() => setBandera(false));
     cargarEstados().then(setEstados).catch(() => {});
+    leerBanderasSugerirYonke().then(setSugerir).catch(() => {});
     cargarPedidos();
   }, [cargarPedidos]);
 
@@ -116,8 +121,8 @@ export default function PedidosAdminPage() {
 
         {error && <p role="alert" style={{ color: '#B3261E' }}>{error}</p>}
         {pestana === 'clientes'
-          ? <PestanaClientes pedidos={pedidos} conteos={conteos} estados={estados} onCambio={cargarPedidos} />
-          : <PestanaTalleres estados={estados} />}
+          ? <PestanaClientes pedidos={pedidos} conteos={conteos} estados={estados} onCambio={cargarPedidos} sugerir={sugerir.clientes} />
+          : <PestanaTalleres estados={estados} sugerir={sugerir.talleres} />}
       </div>
     </main>
   );
