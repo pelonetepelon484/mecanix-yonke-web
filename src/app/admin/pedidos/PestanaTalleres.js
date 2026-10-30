@@ -1,12 +1,14 @@
 'use client';
 
-// Pestaña "Pedidos de talleres" (solicitudesPiezas): solo lectura de la lista y sus respuestas,
-// más "Borrar", que las reglas de talleres ya permiten al admin (sin cambiarlas).
+// Pestaña "Pedidos de talleres" (solicitudesPiezas): la lista y sus respuestas, "Borrar", "Quitar
+// respuesta" (salvo la que el taller ya eligió) y, con config/solicitudesPiezas.sugerirYonkeAdmin,
+// "Sugerir yonke" (solo yonkes del mismo estado: los talleres no tienen otros estados).
 import { useCallback, useEffect, useState } from 'react';
 import { borrarSolicitudTaller, leerRespuestasSolicitud, listarSolicitudesTalleres } from './datos';
-import { fecha, pesos } from './PestanaClientes';
+import { fecha } from './PestanaClientes';
+import { RespuestaAdmin, SugerirYonke } from './RespuestasAdmin';
 
-export default function PestanaTalleres({ estados }) {
+export default function PestanaTalleres({ estados, sugerir = false }) {
   const [solicitudes, setSolicitudes] = useState(null);
   const [abierta, setAbierta] = useState(null);
   const [error, setError] = useState('');
@@ -37,17 +39,18 @@ export default function PestanaTalleres({ estados }) {
             </div>
             <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>Creado: {fecha(s.creadoAt)} · Vence: {fecha(s.expiraAt)}</div>
           </button>
-          {abierta === s.id && <DetalleSolicitud solicitud={s} onBorrada={() => { setAbierta(null); cargar(); }} />}
+          {abierta === s.id && <DetalleSolicitud solicitud={s} estados={estados} sugerir={sugerir} onBorrada={() => { setAbierta(null); cargar(); }} />}
         </div>
       ))}
     </div>
   );
 }
 
-function DetalleSolicitud({ solicitud, onBorrada }) {
+function DetalleSolicitud({ solicitud, estados, sugerir, onBorrada }) {
   const [respuestas, setRespuestas] = useState(null);
   const [error, setError] = useState('');
   const [borrando, setBorrando] = useState(false);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let cancelado = false;
@@ -55,7 +58,9 @@ function DetalleSolicitud({ solicitud, onBorrada }) {
       .then((r) => { if (!cancelado) setRespuestas(r); })
       .catch((err) => { console.error(err); if (!cancelado) setError('No pudimos leer las respuestas.'); });
     return () => { cancelado = true; };
-  }, [solicitud.id]);
+  }, [solicitud.id, version]);
+
+  const recargar = () => setVersion((v) => v + 1);
 
   async function borrar() {
     if (!window.confirm('¿Borrar este pedido del taller, sus respuestas y el WhatsApp del taller? Esto no se puede deshacer.')) return;
@@ -78,12 +83,24 @@ function DetalleSolicitud({ solicitud, onBorrada }) {
       {respuestas === null && !error && <p style={{ fontSize: '13px', color: '#555' }}>Cargando...</p>}
       {respuestas?.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Ningún yonke ha respondido.</p>}
       {respuestas?.map((r) => (
-        <div key={r.yonkeId} style={{ fontSize: '13px', padding: '8px 0', borderBottom: '1px solid #F2F2F2' }}>
-          <strong>{r.yonkeNombre}</strong>
-          <div>{r.tieneLaPieza ? `La tiene · ${pesos(r.precio)}` : 'No la tiene'}{r.nota ? ` · ${r.nota}` : ''}</div>
-          <div style={{ color: '#555' }}>WhatsApp del yonke: {r.whatsapp || '—'}</div>
-        </div>
+        <RespuestaAdmin
+          key={r.yonkeId}
+          coleccion="solicitudesPiezas"
+          pedidoId={solicitud.id}
+          r={r}
+          elegida={solicitud.yonkeElegido === r.yonkeId}
+          onQuitada={recargar}
+        />
       ))}
+      {sugerir && solicitud.estadoSolicitud === 'abierta' && respuestas && (
+        <SugerirYonke
+          coleccion="solicitudesPiezas"
+          pedido={solicitud}
+          estados={estados}
+          yaRespondieron={respuestas.map((r) => r.yonkeId)}
+          onHecho={recargar}
+        />
+      )}
       {error && <p role="alert" style={{ color: '#B3261E', fontSize: '13px' }}>{error}</p>}
       <button type="button" onClick={borrar} disabled={borrando}
         style={{ marginTop: '12px', minHeight: '38px', padding: '0 14px', borderRadius: '10px', border: 'none', backgroundColor: '#B3261E', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>

@@ -3,23 +3,21 @@
 // Pestaña "Pedidos de clientes" del panel admin: lista con filtros y, al abrir un pedido, el
 // WhatsApp del cliente (privado/contacto, solo admin), sus respuestas y las acciones.
 import { useEffect, useState } from 'react';
-import { ESTADOS_PEDIDO, estadoVisible } from '../../../lib/pedidosClientes';
+import { ESTADOS_PEDIDO, estaVencido, estadoVisible } from '../../../lib/pedidosClientes';
 import {
   borrarPedidoCliente, cancelarPedidoCliente, cerrarPedidoCliente, leerDetallePedidoCliente, reabrirPedidoCliente,
 } from './datos';
+import { RespuestaAdmin, SugerirYonke } from './RespuestasAdmin';
 
 export function fecha(ts) {
   const f = ts?.toDate ? ts.toDate() : null;
   return f ? f.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 }
 
-export function pesos(n) {
-  return typeof n === 'number' ? `$${n.toLocaleString('es-MX', { maximumFractionDigits: 2 })}` : '';
-}
-
 const COLOR_ESTADO = { abierta: '#2E7D32', vencido: '#8A6D00', cerrada: '#1A3C5E', cancelada: '#B3261E' };
 
-export default function PestanaClientes({ pedidos, conteos, estados, onCambio }) {
+// sugerir: bandera config/pedidosClientes.sugerirYonkeAdmin (ver leerBanderasSugerirYonke).
+export default function PestanaClientes({ pedidos, conteos, estados, onCambio, sugerir = false }) {
   const [filtroEstadoPedido, setFiltroEstadoPedido] = useState('todos');
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [abierto, setAbierto] = useState(null);
@@ -60,7 +58,9 @@ export default function PestanaClientes({ pedidos, conteos, estados, onCambio })
               </div>
               <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>Creado: {fecha(p.creadoAt)} · Vence: {fecha(p.expiraAt)}</div>
             </button>
-            {abierto === p.id && <DetallePedido pedido={p} onCambio={() => { setAbierto(null); onCambio(); }} />}
+            {abierto === p.id && (
+              <DetallePedido pedido={p} estados={estados} sugerir={sugerir} onCambio={() => { setAbierto(null); onCambio(); }} onRespuestas={onCambio} />
+            )}
           </div>
         );
       })}
@@ -68,10 +68,13 @@ export default function PestanaClientes({ pedidos, conteos, estados, onCambio })
   );
 }
 
-function DetallePedido({ pedido, onCambio }) {
+// onRespuestas: tras sugerir o quitar una respuesta se recarga este detalle y los contadores de la
+// lista, sin cerrar el pedido.
+function DetallePedido({ pedido, estados, sugerir, onCambio, onRespuestas }) {
   const [detalle, setDetalle] = useState(null);
   const [error, setError] = useState('');
   const [trabajando, setTrabajando] = useState(false);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let cancelado = false;
@@ -79,7 +82,9 @@ function DetallePedido({ pedido, onCambio }) {
       .then((d) => { if (!cancelado) setDetalle(d); })
       .catch((err) => { console.error(err); if (!cancelado) setError('No pudimos abrir el pedido.'); });
     return () => { cancelado = true; };
-  }, [pedido.id]);
+  }, [pedido.id, version]);
+
+  const recargar = () => { setVersion((v) => v + 1); onRespuestas(); };
 
   async function accion(pregunta, fn) {
     if (!window.confirm(pregunta)) return;
@@ -121,12 +126,18 @@ function DetallePedido({ pedido, onCambio }) {
       <p style={{ margin: '14px 0 6px', fontWeight: 'bold', color: '#1A3C5E' }}>Respuestas ({detalle.respuestas.length})</p>
       {detalle.respuestas.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Ningún yonke ha respondido.</p>}
       {detalle.respuestas.map((r) => (
-        <div key={r.yonkeId} style={{ fontSize: '13px', padding: '8px 0', borderBottom: '1px solid #F2F2F2' }}>
-          <strong>{r.yonkeNombre}</strong> {r.verificado ? '✅ Verificado' : '⚠️ Sin verificar'}
-          <div>{r.tieneLaPieza ? `La tiene · ${pesos(r.precio)}` : 'No la tiene'}{r.nota ? ` · ${r.nota}` : ''}</div>
-          <div style={{ color: '#555' }}>WhatsApp del yonke: {r.whatsapp || '—'}</div>
-        </div>
+        <RespuestaAdmin key={r.yonkeId} coleccion="pedidosClientes" pedidoId={pedido.id} r={r} verificado={r.verificado === true} onQuitada={recargar} />
       ))}
+      {sugerir && pedido.estadoPedido === 'abierta' && !estaVencido(pedido.expiraAt, new Date()) && (
+        <SugerirYonke
+          coleccion="pedidosClientes"
+          pedido={pedido}
+          estados={estados}
+          permitirOtrosEstados={pedido.aceptaOtrosEstados === true}
+          yaRespondieron={detalle.respuestas.map((r) => r.yonkeId)}
+          onHecho={recargar}
+        />
+      )}
 
       {error && <p role="alert" style={{ color: '#B3261E', fontSize: '13px' }}>{error}</p>}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>

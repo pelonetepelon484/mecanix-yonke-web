@@ -27,6 +27,10 @@ const datos = {
   listarSolicitudesTalleres: vi.fn(async () => [{ id: 'S1', pieza: 'Faro', vehiculo: { marca: 'Ford', modelo: 'F-150', anio: 2010 }, tallerNombre: 'Taller Uno', estado: 'sonora', estadoSolicitud: 'abierta', creadoAt: ts(0), expiraAt: ts(DIA) }]),
   leerRespuestasSolicitud: vi.fn(async () => [{ yonkeId: 'Y2', yonkeNombre: 'Yonke Sonora', tieneLaPieza: false, nota: '', whatsapp: '6622222222' }]),
   borrarSolicitudTaller: vi.fn(async () => {}),
+  leerBanderasSugerirYonke: vi.fn(async () => ({ clientes: false, talleres: false })),
+  listarYonkesActivosDeEstado: vi.fn(async () => []),
+  sugerirYonke: vi.fn(async () => {}),
+  quitarRespuesta: vi.fn(async () => {}),
 };
 vi.mock('./datos', () => datos);
 
