@@ -23,6 +23,23 @@ const ESTADOS = [
   { key: 'pieza_sin_vehiculo', label: 'Pieza sin vehículo', color: '#E8720C' },
 ];
 
+// Tarjeta informativa "Solo en otros estados" (alcanceResultado, src/lib/alcanceResultado.js). Esas
+// búsquedas YA están dentro de "Con resultados" (estado ok) o "Sin inventario": no se suman al
+// total. alcanceResultado se guarda desde el 24 oct 2026; los registros de antes no lo traen.
+const ALCANCE_SOLO_OTROS = 'solo_otros_estados';
+const NOTA_SOLO_OTROS = 'Ya incluidas en Con resultados o Sin inventario; no se suman al total. Se cuenta desde el 24 oct 2026.';
+const AVISO_SIN_INDICE = 'Aún no disponible (falta índice en Firestore)';
+const AVISO_ERROR = 'No se pudo cargar';
+
+// Resultado de un conteo de la tarjeta: { valor } o { aviso }. "Todo" (alcanceResultado + corte de
+// fecha) necesita el índice compuesto alcanceResultado + fecha; sin él, Firestore responde
+// failed-precondition.
+function resultadoConteo(r) {
+  if (r.status === 'fulfilled') return { valor: r.value.data().count, aviso: null };
+  console.error('[admin/busquedas] Error contando "Solo en otros estados"', r.reason);
+  return { valor: null, aviso: r.reason?.code === 'failed-precondition' ? AVISO_SIN_INDICE : AVISO_ERROR };
+}
+
 function agruparPorClave(docs, obtenerClave) {
   const mapa = new Map();
   for (const d of docs) {
@@ -73,8 +90,21 @@ export default function AdminBusquedasPage() {
   const [docsFueraDeGiro, setDocsFueraDeGiro] = useState([]);
   const [docsNoInterpretadas, setDocsNoInterpretadas] = useState([]);
   const [exportando, setExportando] = useState(false);
+  // "Solo en otros estados" por vista: null mientras carga. Va aparte de los demás conteos para
+  // que, si falla (p. ej. falta el índice), el resto del panel siga igual.
+  const [soloOtros, setSoloOtros] = useState({ todo: null, mexico: null });
 
   useEffect(() => {
+    async function cargarSoloOtros() {
+      const ref = collection(db, 'busquedas');
+      const [todo, mexico] = await Promise.allSettled([
+        getCountFromServer(query(ref, where('alcanceResultado', '==', ALCANCE_SOLO_OTROS), filtroBusquedasConfiables())),
+        getCountFromServer(query(ref, where('alcanceResultado', '==', ALCANCE_SOLO_OTROS), where('pais', '==', 'MX'))),
+      ]);
+      setSoloOtros({ todo: resultadoConteo(todo), mexico: resultadoConteo(mexico) });
+    }
+    cargarSoloOtros();
+
     async function cargar() {
       try {
         const ref = collection(db, 'busquedas');
@@ -136,6 +166,7 @@ export default function AdminBusquedasPage() {
   const origen = origenPorPais({ totalHistorico, totalMx, totalFueraDeMexico });
   const totalVista = vista === 'mexico' ? totalMx : total;
   const conteosVista = vista === 'mexico' ? conteosMx : conteos;
+  const soloOtrosVista = soloOtros[vista];
   const tablaFueraCatalogo = agruparPorClave(
     filtrarPorVista(docsFueraCatalogo, vista),
     (d) => `${d.marca || '?'} ${d.modelo || ''}`.trim(),
@@ -262,6 +293,12 @@ export default function AdminBusquedasPage() {
                   color={e.color}
                 />
               ))}
+              <MetricaCard
+                label="↗ Solo en otros estados"
+                valor={soloOtrosVista ? (soloOtrosVista.valor ?? '—') : '…'}
+                color="#1565C0"
+                notas={[soloOtrosVista?.aviso, NOTA_SOLO_OTROS]}
+              />
             </div>
 
             <Tabla
@@ -313,7 +350,7 @@ export default function AdminBusquedasPage() {
   );
 }
 
-function MetricaCard({ label, valor, pct, color }) {
+function MetricaCard({ label, valor, pct, color, notas = [] }) {
   return (
     <div style={{
       backgroundColor: '#fff', borderRadius: '12px', padding: '12px 16px',
@@ -323,6 +360,9 @@ function MetricaCard({ label, valor, pct, color }) {
       <p style={{ color: color || '#1A3C5E', fontSize: '22px', fontWeight: '700', margin: 0 }}>
         {valor}{typeof pct === 'number' ? <span style={{ fontSize: '13px', fontWeight: '600', marginLeft: '6px' }}>({pct}%)</span> : null}
       </p>
+      {notas.filter(Boolean).map((n) => (
+        <p key={n} style={{ color: '#888', fontSize: '11px', lineHeight: 1.35, margin: '4px 0 0' }}>{n}</p>
+      ))}
     </div>
   );
 }
