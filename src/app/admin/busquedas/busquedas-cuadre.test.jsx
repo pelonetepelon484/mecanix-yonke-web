@@ -4,7 +4,7 @@
 // las tarjetas de categoría es igual al "Total de búsquedas" en las dos vistas, y ningún
 // porcentaje de "Origen por país" pasa de 100%.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 const CORTE = new Date('2026-09-24T05:53:44.000Z');
@@ -18,7 +18,9 @@ for (const estado of ESTADOS) {
   for (const pais of ['MX', 'MX', 'US', undefined]) {
     for (const fecha of [new Date('2026-09-01'), new Date('2026-10-10'), new Date('2026-10-12')]) {
       if ((n++ % 5) === 0) continue; // que no salgan todos iguales
-      busquedas.push({ estado, ...(pais ? { pais } : {}), fecha });
+      // Una de cada dos "ok" y "sin inventario" fue solo en otros estados (alcanceResultado).
+      const soloOtros = ['ok', 'sin_inventario'].includes(estado) && n % 2 === 0;
+      busquedas.push({ estado, ...(pais ? { pais } : {}), fecha, ...(soloOtros ? { alcanceResultado: 'solo_otros_estados' } : {}) });
     }
   }
 }
@@ -53,6 +55,7 @@ function tarjeta(etiqueta) {
   const [, valor, pct] = texto.match(/^(\d+)(?:\((\d+)%\))?$/);
   return { valor: Number(valor), pct: pct === undefined ? null : Number(pct) };
 }
+const SOLO_OTROS = '↗ Solo en otros estados';
 const sumaCategorias = () => ETIQUETAS.reduce((s, e) => s + tarjeta(e).valor, 0);
 
 describe('cuadre del panel de búsquedas', () => {
@@ -67,6 +70,23 @@ describe('cuadre del panel de búsquedas', () => {
     const totalTodo = busquedas.filter((b) => b.fecha >= CORTE).length;
     expect(tarjeta('Total de búsquedas').valor).toBe(totalTodo);
     expect(sumaCategorias()).toBe(totalTodo);
+  });
+
+  it('"Solo en otros estados": cuenta por vista, sin porcentaje, con su nota, y no cambia el cuadre', async () => {
+    render(<AdminBusquedasPage />);
+    await screen.findByText('Total de búsquedas');
+    const solo = (b) => b.alcanceResultado === 'solo_otros_estados';
+    const mx = busquedas.filter((b) => solo(b) && b.pais === 'MX').length;
+    const todo = busquedas.filter((b) => solo(b) && b.fecha >= CORTE).length;
+    expect(mx).toBeGreaterThan(0);
+    expect(todo).not.toBe(mx);
+    await waitFor(() => expect(tarjeta(SOLO_OTROS)).toEqual({ valor: mx, pct: null }));
+    expect(screen.getByText('Ya incluidas en Con resultados o Sin inventario; no se suman al total. Se cuenta desde el 24 oct 2026.')).toBeInTheDocument();
+    expect(sumaCategorias()).toBe(tarjeta('Total de búsquedas').valor);
+
+    fireEvent.click(screen.getByRole('button', { name: '🌐 Todo' }));
+    expect(tarjeta(SOLO_OTROS)).toEqual({ valor: todo, pct: null });
+    expect(sumaCategorias()).toBe(tarjeta('Total de búsquedas').valor);
   });
 
   it('"Origen por país": las tres suman la base y ningún porcentaje pasa de 100%', async () => {
