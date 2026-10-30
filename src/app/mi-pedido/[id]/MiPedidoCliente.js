@@ -7,12 +7,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { CONSEJOS_ENVIO, DURACION_RECARGA_MS, INTERVALO_RECARGA_MS, MENSAJES_PEDIDO, avisoRespuestaOtroEstado } from '../../../lib/pedidosClientes';
+import { TEXTO_CONFIRMADO_POR_MECANIX, formatoPesos, precioValido, textoPrecioRespuesta } from '../../../lib/respuestasPedido';
 
 export const TEXTO_AVISO_PAGO = '🛡️ Antes de pagar, confirma la pieza directamente con el yonke. Con yonkes sin verificar, evita pagos por adelantado. Mecanix no participa en la venta ni en el pago.';
-
-function pesos(n) {
-  return `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 
 function fecha(iso) {
   return iso ? new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
@@ -20,7 +17,7 @@ function fecha(iso) {
 
 function enlaceWhatsappYonke(r, pedido) {
   const vehiculo = `${pedido.vehiculo.marca} ${pedido.vehiculo.modelo} ${pedido.vehiculo.anio}`;
-  const texto = `Hola, vi en Mecanix que tienes ${pedido.pieza} para ${vehiculo}${r.precio != null ? ` en ${pesos(r.precio)}` : ''}. ¿Sigue disponible?`;
+  const texto = `Hola, vi en Mecanix que tienes ${pedido.pieza} para ${vehiculo}${precioValido(r.precio) ? ` en ${formatoPesos(r.precio)}` : ''}. ¿Sigue disponible?`;
   return `https://wa.me/52${r.whatsapp.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(texto)}`;
 }
 
@@ -114,8 +111,10 @@ export default function MiPedidoCliente() {
           <div key={i} style={{ ...tarjeta, opacity: r.tieneLaPieza ? 1 : 0.6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
               <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{r.yonkeNombre}</p>
-              {r.tieneLaPieza && <p style={{ margin: 0, fontWeight: 'bold', color: '#E8720C', fontSize: '17px' }}>{pesos(r.precio)}</p>}
+              {/* "Precio a tratar" (sugerida por Mecanix o sin precio válido): nunca "$0" ni "$NaN". */}
+              {r.tieneLaPieza && <p style={{ margin: 0, fontWeight: 'bold', color: '#E8720C', fontSize: precioValido(r.precio) ? '17px' : '14px', whiteSpace: 'nowrap' }}>{textoPrecioRespuesta(r)}</p>}
             </div>
+            {r.creadoPorAdmin === true && <p style={etiquetaMecanix}>{TEXTO_CONFIRMADO_POR_MECANIX}</p>}
             <p style={{ margin: '4px 0 0', fontSize: '12px', fontWeight: 'bold', color: r.verificado ? '#2E7D32' : '#8A6D00' }}>
               {r.verificado ? '✅ Verificado' : `⚠️ Yonke nuevo, sin verificar${datos.avisoPago === true ? ' · confirma antes de pagar' : ''}`}
             </p>
@@ -174,3 +173,4 @@ const avisoPago = { backgroundColor: '#FFF9F2', border: '1px solid #F2C9A0', bor
 const tarjeta = { border: '1px solid #EEE', borderRadius: '12px', padding: '12px', marginBottom: '10px' };
 const botonWhatsapp = { display: 'block', marginTop: '10px', padding: '11px', borderRadius: '50px', backgroundColor: '#25D366', color: '#fff', fontWeight: 'bold', fontSize: '14px', textAlign: 'center', textDecoration: 'none' };
 const botonSecundario = { width: '100%', minHeight: '48px', borderRadius: '12px', border: '1px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
+const etiquetaMecanix = { margin: '4px 0 0', display: 'inline-block', fontSize: '11px', fontWeight: 'bold', color: '#1A3C5E', backgroundColor: '#EEF2F6', padding: '1px 8px', borderRadius: '12px' };

@@ -3,6 +3,7 @@
 // modificarlas: mismo vehículo, misma pieza y misma vigencia de 5 días; el pedido del cliente
 // no lleva nota libre. Sin Firestore ni node:crypto aquí: lo usan el navegador y el servidor.
 import { DIAS_VIGENCIA_SOLICITUD, MENSAJES_SOLICITUD, calcularExpiraAtSolicitud, validarSolicitud, type Vehiculo } from './solicitudesPiezas';
+import { precioValido } from './respuestasPedido';
 
 export const DIAS_VIGENCIA_PEDIDO = DIAS_VIGENCIA_SOLICITUD;
 export const calcularExpiraAtPedido = calcularExpiraAtSolicitud;
@@ -100,17 +101,24 @@ export function pedidoPublico(id: string, d: PedidoDoc) {
   };
 }
 
-type RespuestaDoc = { yonkeId: string; yonkeNombre: string; tieneLaPieza: boolean; precio?: number; nota?: string; whatsapp?: string; creadoAt?: unknown };
+type RespuestaDoc = {
+  yonkeId: string; yonkeNombre: string; tieneLaPieza: boolean; precio?: number; nota?: string; whatsapp?: string; creadoAt?: unknown;
+  precioATratar?: boolean; creadoPorAdmin?: boolean;
+};
 
 // Respuesta tal como la ve el cliente. "verificado" y el estado del yonke se toman del yonke en
 // vivo (verificado lo pone el admin). estadoYonke: id del estado (mismo esquema que pedido.estado).
 // Del yonke solo salen datos que ya son públicos en su ficha y en el buscador: Verificado, su estado
 // (yonkes/{id}.estado, el de la insignia 📍) y la insignia de Envíos nacionales.
+// precio: solo un número mayor que 0 (si no, null y la pantalla muestra "Precio a tratar").
+// precioATratar y creadoPorAdmin: respuestas de "Sugerir yonke" (las captura el admin, sin precio).
 export function respuestaParaCliente(r: RespuestaDoc, yonke: { verificado?: unknown; estado?: unknown; enviosNacionales?: unknown } | null | undefined) {
   return {
     yonkeNombre: r.yonkeNombre,
     tieneLaPieza: r.tieneLaPieza === true,
-    precio: r.tieneLaPieza === true && typeof r.precio === 'number' ? r.precio : null,
+    precio: r.tieneLaPieza === true && precioValido(r.precio) ? r.precio as number : null,
+    precioATratar: r.tieneLaPieza === true && r.precioATratar === true,
+    creadoPorAdmin: r.creadoPorAdmin === true,
     nota: typeof r.nota === 'string' ? r.nota : '',
     whatsapp: typeof r.whatsapp === 'string' ? r.whatsapp : '',
     verificado: yonke?.verificado === true,
@@ -151,11 +159,15 @@ export function avisoRespuestaOtroEstado(estadoNombre: string, enviosNacionales:
 // por el abogado, igual que la insignia "📦 Envíos nacionales").
 export const CONSEJOS_ENVIO = '📦 Como no podrás verla en persona: pide fotos o video de la pieza real, confirma el costo del envío y pide el número de guía. Mecanix no vende ni cobra.';
 
-// Primero los que la tienen (más barato primero), luego los que no.
+// Primero los que la tienen: con precio (más barato primero) y después los de "precio a tratar"
+// (o sin precio válido); al final, los que no la tienen.
 export function ordenarRespuestas<T extends { tieneLaPieza: boolean; precio: number | null }>(lista: T[]): T[] {
   return [...lista].sort((a, b) => {
     if (a.tieneLaPieza !== b.tieneLaPieza) return a.tieneLaPieza ? -1 : 1;
-    return (a.precio ?? 0) - (b.precio ?? 0);
+    const conPrecioA = precioValido(a.precio);
+    const conPrecioB = precioValido(b.precio);
+    if (conPrecioA !== conPrecioB) return conPrecioA ? -1 : 1;
+    return conPrecioA ? (a.precio as number) - (b.precio as number) : 0;
   });
 }
 

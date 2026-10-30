@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { cancelarSolicitud, elegirYonke, escucharRespuestas, leerSolicitud, leerWhatsappYonke } from '../datos';
+import { TEXTO_CONFIRMADO_POR_MECANIX, textoPrecioRespuesta } from '../../../../../lib/respuestasPedido';
 
 const seccion = { backgroundColor: '#fff', borderRadius: '14px', padding: '16px', marginBottom: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' };
 const botonGrande = { minHeight: '48px', padding: '0 18px', borderRadius: '12px', border: 'none', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' };
@@ -118,8 +119,14 @@ export default function SolicitudPiezaDetalle() {
           {respuestas.map((r) => (
             <div key={r.yonkeId} style={{ border: '1px solid #EEE', borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
               <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{r.yonkeNombre}</p>
+              {r.creadoPorAdmin === true && (
+                <p style={{ margin: '4px 0 0', display: 'inline-block', fontSize: '11px', fontWeight: 'bold', color: '#1A3C5E', backgroundColor: '#EEF2F6', padding: '1px 8px', borderRadius: '12px' }}>
+                  {TEXTO_CONFIRMADO_POR_MECANIX}
+                </p>
+              )}
+              {/* "Precio a tratar" (sugerida por Mecanix o sin precio válido): nunca "$0" ni "$NaN". */}
               {r.tieneLaPieza ? (
-                <p style={{ margin: '4px 0 0', color: '#2E7D32', fontWeight: 'bold' }}>La tiene — ${Number(r.precio).toLocaleString('es-MX')}</p>
+                <p style={{ margin: '4px 0 0', color: '#2E7D32', fontWeight: 'bold' }}>La tiene — {textoPrecioRespuesta(r)}</p>
               ) : (
                 <p style={{ margin: '4px 0 0', color: '#888' }}>No la tiene</p>
               )}
