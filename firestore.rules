@@ -1329,6 +1329,38 @@ service cloud.firestore {
                       && request.resource.data.whatsapp == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.whatsapp
                       && respuestaValida()
                       && expiraOk();
+        // "Sugerir yonke" (admin): el yonke le confirmó por fuera que TIENE la pieza y el admin
+        // registra la respuesta en su nombre. Bandera config/solicitudesPiezas.sugerirYonkeAdmin
+        // (solo true exacto). Mismo estado del pedido (los talleres no tienen otros estados).
+        // Siempre lleva creadoPorAdmin y el uid del admin; el yonke no puede mandar esos campos
+        // (respuestaValida no los acepta). Una por yonke, igual que siempre.
+        function sugerirYonkeTallerHabilitado() {
+          return solicitudesHabilitadas()
+            && get(/databases/$(database)/documents/config/solicitudesPiezas).data.get('sugerirYonkeAdmin', false) == true;
+        }
+        function respuestaAdminValida() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precio', 'nota', 'whatsapp', 'creadoAt', 'expiraAt', 'creadoPorAdmin', 'creadoPorAdminUid'])
+            && d.yonkeId == yonkeId
+            && d.yonkeNombre is string && d.yonkeNombre.size() >= 1 && d.yonkeNombre.size() <= 100
+            && d.whatsapp is string
+            && d.nota is string && d.nota.size() <= 200
+            && d.creadoAt == request.time
+            && d.tieneLaPieza == true
+            && (d.precio is int || d.precio is float) && d.precio > 0 && d.precio <= 1000000
+            && d.creadoPorAdmin == true
+            && d.creadoPorAdminUid == request.auth.uid;
+        }
+        allow create: if esAdmin()
+                      && sugerirYonkeTallerHabilitado()
+                      && solicitudPadre().estadoSolicitud == 'abierta'
+                      && exists(/databases/$(database)/documents/yonkes/$(yonkeId))
+                      && get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.activo == true
+                      && get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.estado == solicitudPadre().estado
+                      && request.resource.data.yonkeNombre == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.nombre
+                      && request.resource.data.whatsapp == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.whatsapp
+                      && respuestaAdminValida()
+                      && expiraOk();
         allow update: if false;
         allow delete: if esAdmin();
       }
@@ -1535,6 +1567,40 @@ service cloud.firestore {
                       && respuestaPedidoValida()
                       && expiraIgualAlPedido()
                       && respuestaDentroDelLimite(yonkeId);
+        // "Sugerir yonke" (admin): el yonke le confirmó por fuera que TIENE la pieza y el admin
+        // registra la respuesta en su nombre. Bandera config/pedidosClientes.sugerirYonkeAdmin (solo
+        // true exacto). Mismo estado del pedido, u otro estado solo si el cliente lo aceptó
+        // (aceptaOtrosEstados). Sin `dia`: no pasa por el tope diario ni toca respuestasDiarias.
+        // El yonke no puede mandar creadoPorAdmin (respuestaPedidoValida no lo acepta).
+        function sugerirYonkeClienteHabilitado() {
+          return pedidosClientesHabilitados()
+            && get(/databases/$(database)/documents/config/pedidosClientes).data.get('sugerirYonkeAdmin', false) == true;
+        }
+        function respuestaPedidoAdminValida() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precio', 'nota', 'whatsapp', 'creadoAt', 'expiraAt', 'creadoPorAdmin', 'creadoPorAdminUid'])
+            && d.yonkeId == yonkeId
+            && d.yonkeNombre is string && d.yonkeNombre.size() >= 1 && d.yonkeNombre.size() <= 100
+            && d.whatsapp is string
+            && d.nota is string && d.nota.size() <= 200
+            && d.creadoAt == request.time
+            && d.tieneLaPieza == true
+            && (d.precio is int || d.precio is float) && d.precio > 0 && d.precio <= 1000000
+            && d.creadoPorAdmin == true
+            && d.creadoPorAdminUid == request.auth.uid;
+        }
+        allow create: if esAdmin()
+                      && sugerirYonkeClienteHabilitado()
+                      && pedidoPadre().estadoPedido == 'abierta'
+                      && pedidoPadre().expiraAt > request.time
+                      && exists(/databases/$(database)/documents/yonkes/$(yonkeId))
+                      && get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.activo == true
+                      && (get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.estado == pedidoPadre().estado
+                          || pedidoPadre().get('aceptaOtrosEstados', false) == true)
+                      && request.resource.data.yonkeNombre == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.nombre
+                      && request.resource.data.whatsapp == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.whatsapp
+                      && respuestaPedidoAdminValida()
+                      && expiraIgualAlPedido();
         allow update: if false;
         // Admin, al reabrir el pedido en el mismo lote: solo el vencimiento, igual al nuevo del pedido.
         allow update: if esAdmin()
