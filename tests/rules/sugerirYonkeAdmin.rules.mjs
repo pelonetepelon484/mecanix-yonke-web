@@ -8,7 +8,7 @@ import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { Timestamp, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { Timestamp, deleteDoc, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 
 const reglas = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
 let env;
@@ -65,13 +65,13 @@ async function cambiar(ruta, cambios) {
   await env.withSecurityRulesDisabled(async (ctx) => { await updateDoc(doc(ctx.firestore(), ...ruta), cambios); });
 }
 
-// Respuesta sugerida por el admin (o, con otro uid, el mismo intento hecho por alguien más).
-// extra con { campo: undefined } quita ese campo.
+// Respuesta sugerida por el admin (o, con otro uid, el mismo intento hecho por alguien más): siempre
+// "precio a tratar", sin precio. extra con { campo: undefined } quita ese campo.
 async function sugerir(coleccion, pedidoId, yonkeId, { uid = 'adm', ...extra } = {}) {
   const padre = await leer([coleccion, pedidoId]);
   const y = YONKES[yonkeId];
   const cuerpo = {
-    yonkeId, yonkeNombre: y.nombre, whatsapp: y.whatsapp, tieneLaPieza: true, precio: 1500, nota: 'Confirmó por teléfono',
+    yonkeId, yonkeNombre: y.nombre, whatsapp: y.whatsapp, tieneLaPieza: true, precioATratar: true, nota: 'Confirmó por teléfono',
     creadoAt: serverTimestamp(), expiraAt: padre.expiraAt, creadoPorAdmin: true, creadoPorAdminUid: uid, ...extra,
   };
   for (const k of Object.keys(cuerpo)) if (cuerpo[k] === undefined) delete cuerpo[k];
@@ -119,7 +119,7 @@ describe('sugerir yonke: pedidos de talleres (solicitudesPiezas)', () => {
     await assertFails(sugerirTaller('Y3'));
     await assertFails(sugerirTaller('Y2'));
     await assertFails(setDoc(doc(como('adm'), 'solicitudesPiezas', 'S1', 'respuestas', 'NOEXISTE'), {
-      yonkeId: 'NOEXISTE', yonkeNombre: 'Fantasma', whatsapp: '6640000000', tieneLaPieza: true, precio: 100, nota: '',
+      yonkeId: 'NOEXISTE', yonkeNombre: 'Fantasma', whatsapp: '6640000000', tieneLaPieza: true, precioATratar: true, nota: '',
       creadoAt: serverTimestamp(), expiraAt: (await leer(['solicitudesPiezas', 'S1'])).expiraAt, creadoPorAdmin: true, creadoPorAdminUid: 'adm',
     }));
   });
@@ -129,10 +129,12 @@ describe('sugerir yonke: pedidos de talleres (solicitudesPiezas)', () => {
     await assertFails(sugerirTaller('Y1', { whatsapp: '6649999999' }));
   });
 
-  it('NO si "no la tiene", sin precio o con precio 0', async () => {
-    await assertFails(sugerirTaller('Y1', { tieneLaPieza: false, precio: undefined }));
-    await assertFails(sugerirTaller('Y1', { precio: undefined }));
-    await assertFails(sugerirTaller('Y1', { precio: 0 }));
+  it('siempre "precio a tratar": NO con precio (de ningún valor), sin precioATratar o en false, ni si "no la tiene"', async () => {
+    for (const precio of [1500, 0, null]) await assertFails(sugerirTaller('Y1', { precio }));
+    await assertFails(sugerirTaller('Y1', { precioATratar: undefined }));
+    await assertFails(sugerirTaller('Y1', { precioATratar: false }));
+    await assertFails(sugerirTaller('Y1', { precioATratar: undefined, precio: 1500 }));
+    await assertFails(sugerirTaller('Y1', { tieneLaPieza: false }));
   });
 
   it('NO sin las marcas del admin, con otro uid, con `dia` ni con otro vencimiento', async () => {
@@ -147,7 +149,7 @@ describe('sugerir yonke: pedidos de talleres (solicitudesPiezas)', () => {
 
   it('NO duplica: si el yonke ya respondió (o ya se sugirió), no se puede volver a escribir', async () => {
     await assertSucceeds(sugerirTaller('Y1'));
-    await assertFails(sugerirTaller('Y1', { precio: 900 }));
+    await assertFails(sugerirTaller('Y1', { nota: 'Otra vez' }));
   });
 
   it('nadie más puede: ni el taller, ni otro yonke, ni el servicio', async () => {
@@ -156,10 +158,15 @@ describe('sugerir yonke: pedidos de talleres (solicitudesPiezas)', () => {
     await assertFails(sugerirTaller('Y1', { uid: 'svc' }));
   });
 
-  it('el yonke sigue igual: responde sin las marcas, y NO puede mandar creadoPorAdmin', async () => {
-    await assertFails(sugerirTaller('Y1', { uid: 'o1', creadoPorAdminUid: 'o1' }));
-    await assertFails(sugerirTaller('Y1', { uid: 'o1', creadoPorAdminUid: undefined }));
-    await assertSucceeds(sugerirTaller('Y1', { uid: 'o1', creadoPorAdmin: undefined, creadoPorAdminUid: undefined }));
+  it('el yonke sigue igual: responde con precio y sin las marcas; NO puede mandar creadoPorAdmin ni precioATratar', async () => {
+    const delYonke = { uid: 'o1', precio: 1500, precioATratar: undefined, creadoPorAdmin: undefined, creadoPorAdminUid: undefined };
+    await assertFails(sugerirTaller('Y1', { ...delYonke, creadoPorAdmin: true, creadoPorAdminUid: 'o1' }));
+    await assertFails(sugerirTaller('Y1', { ...delYonke, creadoPorAdmin: true }));
+    // Tampoco "precio a tratar": el yonke sigue obligado a poner precio > 0.
+    await assertFails(sugerirTaller('Y1', { ...delYonke, precioATratar: true }));
+    await assertFails(sugerirTaller('Y1', { ...delYonke, precio: undefined, precioATratar: true }));
+    await assertFails(sugerirTaller('Y1', { ...delYonke, precio: undefined }));
+    await assertSucceeds(sugerirTaller('Y1', delYonke));
   });
 
   it('el taller sigue igual: puede elegir al yonke sugerido', async () => {
@@ -210,10 +217,12 @@ describe('sugerir yonke: pedidos de clientes (pedidosClientes)', () => {
     await assertFails(sugerirCliente('P1', 'Y1', { whatsapp: '6649999999' }));
   });
 
-  it('NO si "no la tiene", sin precio o con precio 0', async () => {
-    await assertFails(sugerirCliente('P1', 'Y1', { tieneLaPieza: false, precio: undefined }));
-    await assertFails(sugerirCliente('P1', 'Y1', { precio: undefined }));
-    await assertFails(sugerirCliente('P1', 'Y1', { precio: 0 }));
+  it('siempre "precio a tratar": NO con precio (de ningún valor), sin precioATratar o en false, ni si "no la tiene"', async () => {
+    for (const precio of [1500, 0, null]) await assertFails(sugerirCliente('P1', 'Y1', { precio }));
+    await assertFails(sugerirCliente('P1', 'Y1', { precioATratar: undefined }));
+    await assertFails(sugerirCliente('P1', 'Y1', { precioATratar: false }));
+    await assertFails(sugerirCliente('P1', 'Y1', { precioATratar: undefined, precio: 1500 }));
+    await assertFails(sugerirCliente('P1', 'Y1', { tieneLaPieza: false }));
   });
 
   it('NO sin las marcas del admin, con otro uid, con `dia` ni con otro vencimiento', async () => {
@@ -233,7 +242,7 @@ describe('sugerir yonke: pedidos de clientes (pedidosClientes)', () => {
 
   it('NO duplica: si el yonke ya respondió (o ya se sugirió), no se puede volver a escribir', async () => {
     await assertSucceeds(sugerirCliente('P1', 'Y1'));
-    await assertFails(sugerirCliente('P1', 'Y1', { precio: 900 }));
+    await assertFails(sugerirCliente('P1', 'Y1', { nota: 'Otra vez' }));
   });
 
   it('nadie más puede: ni el servicio, ni un taller, ni otro yonke', async () => {
@@ -242,9 +251,57 @@ describe('sugerir yonke: pedidos de clientes (pedidosClientes)', () => {
     await assertFails(sugerirCliente('P2', 'Y1', { uid: 'o2' }));
   });
 
-  it('el yonke sigue igual: responde sin las marcas, y NO puede mandar creadoPorAdmin', async () => {
-    await assertFails(sugerirCliente('P1', 'Y1', { uid: 'o1', creadoPorAdminUid: 'o1' }));
-    await assertFails(sugerirCliente('P1', 'Y1', { uid: 'o1', creadoPorAdminUid: undefined }));
-    await assertSucceeds(sugerirCliente('P1', 'Y1', { uid: 'o1', creadoPorAdmin: undefined, creadoPorAdminUid: undefined }));
+  it('el yonke sigue igual: responde con precio y sin las marcas; NO puede mandar creadoPorAdmin ni precioATratar', async () => {
+    const delYonke = { uid: 'o1', precio: 1500, precioATratar: undefined, creadoPorAdmin: undefined, creadoPorAdminUid: undefined };
+    await assertFails(sugerirCliente('P1', 'Y1', { ...delYonke, creadoPorAdmin: true, creadoPorAdminUid: 'o1' }));
+    await assertFails(sugerirCliente('P1', 'Y1', { ...delYonke, creadoPorAdmin: true }));
+    // Tampoco "precio a tratar": el yonke sigue obligado a poner precio > 0.
+    await assertFails(sugerirCliente('P1', 'Y1', { ...delYonke, precioATratar: true }));
+    await assertFails(sugerirCliente('P1', 'Y1', { ...delYonke, precio: undefined, precioATratar: true }));
+    await assertFails(sugerirCliente('P1', 'Y1', { ...delYonke, precio: undefined }));
+    await assertSucceeds(sugerirCliente('P1', 'Y1', delYonke));
+  });
+});
+
+// "Quitar respuesta" (etapa 2 del admin): la regla de siempre ya deja al admin borrar respuestas
+// (allow delete: if esAdmin()). Al quitarla, el yonke puede volver a responder o el admin a sugerirlo.
+describe('quitar respuesta: el admin sí; el yonke y el taller no', () => {
+  const rutas = [['solicitudesPiezas', 'S1'], ['pedidosClientes', 'P1']];
+  const delYonke = { uid: 'o1', precio: 1500, precioATratar: undefined, creadoPorAdmin: undefined, creadoPorAdminUid: undefined };
+  const borrarComo = (uid, coleccion, id) => deleteDoc(doc(como(uid), coleccion, id, 'respuestas', 'Y1'));
+
+  it('el admin borra la respuesta del yonke y la sugerida por el admin, en las dos colecciones', async () => {
+    for (const [coleccion, id] of rutas) {
+      await assertSucceeds(sugerir(coleccion, id, 'Y1', delYonke));
+      await assertSucceeds(borrarComo('adm', coleccion, id));
+      await assertSucceeds(sugerir(coleccion, id, 'Y1'));
+      await assertSucceeds(borrarComo('adm', coleccion, id));
+    }
+  });
+
+  it('el admin la borra aunque la bandera esté apagada o el pedido ya no esté abierto', async () => {
+    await sembrar({ configTalleres: { habilitado: true }, configClientes: { habilitado: true } });
+    for (const [coleccion, id] of rutas) {
+      await assertSucceeds(sugerir(coleccion, id, 'Y1', delYonke));
+      await cambiar([coleccion, id], coleccion === 'pedidosClientes' ? { estadoPedido: 'cerrada' } : { estadoSolicitud: 'cancelada' });
+      await assertSucceeds(borrarComo('adm', coleccion, id));
+    }
+  });
+
+  it('el yonke (ni el suyo), otro yonke, el taller y el servicio NO pueden borrar', async () => {
+    for (const [coleccion, id] of rutas) {
+      await assertSucceeds(sugerir(coleccion, id, 'Y1', delYonke));
+      for (const uid of ['o1', 'o2', 't1', 'svc']) await assertFails(borrarComo(uid, coleccion, id));
+    }
+  });
+
+  it('después de quitarla, el yonke puede volver a responder y el admin a sugerirlo', async () => {
+    for (const [coleccion, id] of rutas) {
+      await assertSucceeds(sugerir(coleccion, id, 'Y1'));
+      await assertSucceeds(borrarComo('adm', coleccion, id));
+      await assertSucceeds(sugerir(coleccion, id, 'Y1', delYonke));
+      await assertSucceeds(borrarComo('adm', coleccion, id));
+      await assertSucceeds(sugerir(coleccion, id, 'Y1'));
+    }
   });
 });
