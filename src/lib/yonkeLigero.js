@@ -1,7 +1,7 @@
 // Lógica pura del yonke ligero (registro mínimo que solo contesta búsquedas activas): lo usan el
 // servidor y, más adelante, las pantallas de registro y de entrada. Sin Firestore ni node:crypto.
 import { esIdPedido } from './pedidosClientes';
-import { normalizarWhatsapp } from './whatsapp';
+import { normalizarWhatsapp, whatsappHref } from './whatsapp';
 
 // Dominio del correo interno de la cuenta: nunca recibe correo y el yonke nunca lo ve; solo sirve
 // de nombre de usuario en Firebase Auth. No cambiarlo: las cuentas ya creadas dependen de él.
@@ -37,6 +37,25 @@ export function whatsappDiezDigitos(numero) {
 }
 
 export const correoInterno = (diezDigitos) => `${diezDigitos}@${DOMINIO_CORREO_INTERNO}`;
+
+// Cuenta que entra con WhatsApp: su contraseña no se recupera por correo (ese correo no existe).
+export const esCuentaInterna = (correo) => typeof correo === 'string' && correo.endsWith(`@${DOMINIO_CORREO_INTERNO}`);
+
+// Lo escrito en la pantalla de entrada: un WhatsApp válido, o null si es un correo u otra cosa.
+export const whatsappDeEntrada = (texto) => (typeof texto === 'string' && !texto.includes('@') ? whatsappDiezDigitos(texto) : null);
+
+// Correo con el que se inicia sesión: el interno si escribió su WhatsApp; si no, lo escrito.
+export function correoDeEntrada(texto) {
+  const whatsapp = whatsappDeEntrada(texto);
+  return whatsapp ? correoInterno(whatsapp) : String(texto ?? '').trim();
+}
+
+// "¿Olvidaste tu contraseña?" con WhatsApp: se la restablece el admin. Debe escribir desde ese número.
+export const WHATSAPP_RECUPERAR = '6611034260';
+export const TEXTO_RECUPERAR_WHATSAPP = 'Tu contraseña la restablecemos nosotros. Escríbenos desde el WhatsApp con el que te registraste.';
+export const enlaceRecuperarWhatsapp = (diezDigitos) => whatsappHref(
+  WHATSAPP_RECUPERAR, `Hola, olvidé mi contraseña de Mecanix. Mi yonke está registrado con el WhatsApp ${diezDigitos}.`,
+);
 
 // Nadie se presenta ante los clientes como Mecanix ni aparenta una insignia.
 const soloLetras = (texto) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');

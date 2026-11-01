@@ -8,6 +8,8 @@ import { refContactoPrivado, leerEmailContacto } from '../../../../lib/contactoP
 import { estadoPlan, ETIQUETAS_ESTADO_PLAN } from '../../../../lib/planes';
 import { conFallbackDePermisos } from '../../../../lib/conFallbackDePermisos';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
+import { esCuentaInterna } from '../../../../lib/yonkeLigero';
+import RestablecerPassword from './RestablecerPassword';
 import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../lib/estados';
 import { generarSubdominioUnico } from '../../../lib/generarSubdominio';
@@ -511,13 +513,17 @@ export default function EditarYonkePage() {
               <div key={u.id} style={{ padding: '10px 0', borderBottom: '1px solid #F4F5F5' }}>
                 <span style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>{u.email}</span>
                 <div style={{ display: 'flex', gap: '16px', marginTop: '6px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => reenviarRecuperacion(u)}
-                    disabled={reenviandoId === u.id}
-                    style={{ background: 'none', border: 'none', color: '#1A3C5E', fontWeight: 'bold', fontSize: '13px', cursor: reenviandoId === u.id ? 'wait' : 'pointer', padding: 0 }}
-                  >
-                    {reenviandoId === u.id ? 'Enviando...' : 'Reenviar recuperación'}
-                  </button>
+                  {esCuentaInterna(u.email) ? (
+                    <RestablecerPassword usuarioId={u.id} />
+                  ) : (
+                    <button
+                      onClick={() => reenviarRecuperacion(u)}
+                      disabled={reenviandoId === u.id}
+                      style={{ background: 'none', border: 'none', color: '#1A3C5E', fontWeight: 'bold', fontSize: '13px', cursor: reenviandoId === u.id ? 'wait' : 'pointer', padding: 0 }}
+                    >
+                      {reenviandoId === u.id ? 'Enviando...' : 'Reenviar recuperación'}
+                    </button>
+                  )}
                   <button
                     onClick={() => revocarAcceso(u)}
                     disabled={revocandoId === u.id}

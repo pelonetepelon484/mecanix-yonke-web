@@ -30,10 +30,10 @@ export function leerCredenciales(env = process.env) {
 const base64url = (texto) => Buffer.from(texto).toString('base64url');
 
 // JWT de la cuenta de servicio para pedir el permiso de acceso (vale 1 hora).
-export function firmarJwt({ clientEmail, privateKey }, ahoraMs) {
+export function firmarJwt({ clientEmail, privateKey }, ahoraMs, alcance = ALCANCE) {
   const iat = Math.floor(ahoraMs / 1000);
   const encabezado = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-  const datos = base64url(JSON.stringify({ iss: clientEmail, scope: ALCANCE, aud: URL_TOKEN, iat, exp: iat + 3600 }));
+  const datos = base64url(JSON.stringify({ iss: clientEmail, scope: alcance, aud: URL_TOKEN, iat, exp: iat + 3600 }));
   const firma = createSign('RSA-SHA256').update(`${encabezado}.${datos}`).sign(privateKey).toString('base64url');
   return `${encabezado}.${datos}.${firma}`;
 }

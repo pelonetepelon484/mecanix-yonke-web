@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_POR_DIA, MAX_POR_IP_DIA, MENSAJES_LIGERO, configLigeros, correoInterno, nombreReservado, numerosDeYonkes, validarRegistroLigero, whatsappDiezDigitos,
+  MAX_POR_DIA, MAX_POR_IP_DIA, MENSAJES_LIGERO, configLigeros, correoDeEntrada, correoInterno, enlaceRecuperarWhatsapp, esCuentaInterna, nombreReservado,
+  numerosDeYonkes, validarRegistroLigero, whatsappDeEntrada, whatsappDiezDigitos,
 } from './yonkeLigero';
 
 const ID = 'Pedido00000000000007';
@@ -63,5 +64,29 @@ describe('números de los yonkes existentes', () => {
   it('normaliza WhatsApp y teléfono en formato libre, e ignora lo inválido', () => {
     const n = numerosDeYonkes([{ whatsapp: '664 123 4567', telefono: '+52 664 999 8877' }, { telefono: 'sin número' }, {}]);
     expect([...n].sort()).toEqual(['6641234567', '6649998877']);
+  });
+});
+
+describe('pantalla de entrada', () => {
+  it('un WhatsApp en cualquier formato entra con su correo interno', () => {
+    for (const t of ['6641234567', ' 664 123 4567 ', '+52 664 123 4567']) expect(correoDeEntrada(t)).toBe('6641234567@yonkes.mecanixyonkevirtual.com');
+  });
+  it('un correo sigue igual, sin espacios alrededor', () => {
+    expect(correoDeEntrada('  Yonke@Correo.mx ')).toBe('Yonke@Correo.mx');
+    expect(whatsappDeEntrada('6641234567@correo.mx')).toBeNull();
+  });
+  it('lo que no es número válido se deja tal cual, para que Firebase lo rechace', () => {
+    expect(correoDeEntrada('12345')).toBe('12345');
+    expect(whatsappDeEntrada('12345')).toBeNull();
+    expect(correoDeEntrada(undefined)).toBe('');
+  });
+  it('cuentas internas: solo con el dominio exacto', () => {
+    expect(esCuentaInterna('6641234567@yonkes.mecanixyonkevirtual.com')).toBe(true);
+    for (const c of ['a@b.mx', 'x@mecanixyonkevirtual.com', 'x@yonkes.mecanixyonkevirtual.com.mx', '', null]) expect(esCuentaInterna(c)).toBe(false);
+  });
+  it('enlace de recuperar: a tu WhatsApp, con el número del yonke', () => {
+    const enlace = enlaceRecuperarWhatsapp('6641234567');
+    expect(enlace.startsWith('https://wa.me/526611034260?text=')).toBe(true);
+    expect(decodeURIComponent(enlace)).toContain('6641234567');
   });
 });
