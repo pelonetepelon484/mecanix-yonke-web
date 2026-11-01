@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { estaVencido } from '../../../lib/pedidosClientes';
 import { MENSAJES_LIGERO, configLigeros, correoInterno, numerosDeYonkes, validarRegistroLigero } from '../../../lib/yonkeLigero';
 
-// POST /api/yonkes/registro-ligero  { nombre, whatsapp, password, pedidoId, aceptaTerminos }
+// POST /api/yonkes/registro-ligero  { nombre, whatsapp, password, pedidoId, aceptaTerminos, aceptaPrivacidad, declaraAutorizacion }
 // Alta del yonke ligero desde una búsqueda activa. El navegador nunca escribe en Firestore: con
 // config/yonkesLigeros.habilitado, el servidor revisa los límites, toma el estado de la alerta y
 // crea la cuenta y, en una sola transacción, ficha, historial de aceptación, usuario y huella del

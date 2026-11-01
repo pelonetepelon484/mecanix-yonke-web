@@ -62,7 +62,7 @@ function llenarYRegistrar(nombre = 'Yonke Nuevo') {
   escribir('tucorreo@ejemplo.com', 'yonke@ejemplo.com');
   escribir('••••••••', 'secreto1', 0);
   escribir('••••••••', 'secreto1', 1);
-  fireEvent.click(screen.getByRole('checkbox'));
+  screen.getAllByRole('checkbox').forEach((c) => fireEvent.click(c));
   fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta gratis' }));
 }
 

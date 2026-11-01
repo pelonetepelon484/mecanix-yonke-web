@@ -1,4 +1,5 @@
 import { doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { CONSTANCIA_AUTORIZACION, CONSTANCIA_PRIVACIDAD, DECLARACION_COMPLETO, idConstancia } from '../../lib/constanciasLegales';
 import { VERSION_LEGAL } from '../../lib/versionesLegales';
 
 // Reaceptación de los Términos generales por los yonkes. La fuente de verdad es
@@ -33,10 +34,17 @@ export async function aceptarTerminosYonke(db, yonkeId, version) {
   await lote.commit();
 }
 
-// Registro: ficha nueva (con aceptacionLegal) + su entrada del historial en un solo guardado.
+// Registro: ficha nueva (con aceptacionLegal), su entrada del historial y las constancias del Aviso
+// y de la declaración, en un solo guardado.
 export async function crearYonkeConAceptacion(db, yonkeRef, datosYonke, version) {
   const lote = writeBatch(db);
   lote.set(yonkeRef, { ...datosYonke, aceptacionLegal: { version, fecha: serverTimestamp() } });
   lote.set(doc(db, 'yonkes', yonkeRef.id, 'aceptaciones', version), { version, fecha: serverTimestamp() });
+  lote.set(doc(db, 'yonkes', yonkeRef.id, 'constancias', idConstancia(CONSTANCIA_PRIVACIDAD, version)), {
+    tipo: CONSTANCIA_PRIVACIDAD, version, fecha: serverTimestamp(),
+  });
+  lote.set(doc(db, 'yonkes', yonkeRef.id, 'constancias', idConstancia(CONSTANCIA_AUTORIZACION, version)), {
+    tipo: CONSTANCIA_AUTORIZACION, version, fecha: serverTimestamp(), texto: DECLARACION_COMPLETO,
+  });
   await lote.commit();
 }

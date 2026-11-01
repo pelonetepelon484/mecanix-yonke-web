@@ -1884,6 +1884,30 @@ service cloud.firestore {
                     || (request.auth != null
                         && resource.data.ownerUid == request.auth.uid
                         && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
+      // Constancias del Aviso de Privacidad y de la declaración de autorización ({tipo}_{versión}),
+      // escritas junto con aceptacionLegal (misma versión y misma hora del servidor). Lista cerrada.
+      // Nadie las modifica; solo el admin las borra.
+      match /constancias/{constanciaId} {
+        function constanciaValida() {
+          let d = request.resource.data;
+          let aceptacion = getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.aceptacionLegal;
+          return d.version == aceptacion.version
+            && d.fecha == request.time
+            && aceptacion.fecha == request.time
+            && constanciaId == d.tipo + '_' + d.version
+            && ((d.tipo == 'privacidad' && d.keys().hasOnly(['tipo', 'version', 'fecha']))
+                || (d.tipo == 'autorizacion' && d.keys().hasOnly(['tipo', 'version', 'fecha', 'texto'])
+                    && d.texto is string && d.texto.size() >= 1 && d.texto.size() <= 500));
+        }
+        allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
+        allow create: if request.auth != null
+                      && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.ownerUid == request.auth.uid
+                      && constanciaValida();
+        allow create: if esServicio()
+                      && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.tipoRegistro == 'ligero'
+                      && constanciaValida();
+        allow delete: if esAdmin();
+      }
       // Historial de aceptaciones: una entrada por versión, escrita junto con aceptacionLegal (misma
       // versión y misma hora del servidor). Nadie la modifica; solo el admin la borra.
       match /aceptaciones/{version} {

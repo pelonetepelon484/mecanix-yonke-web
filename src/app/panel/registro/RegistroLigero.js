@@ -8,7 +8,8 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
-import { URL_PRIVACIDAD, URL_TERMINOS } from '../../../lib/versionesLegales';
+import { DECLARACION_LIGERO } from '../../../lib/constanciasLegales';
+import CasillasLegales, { CASILLAS_VACIAS } from './CasillasLegales';
 import { MENSAJES_LIGERO, NOMBRE_MAX, PASSWORD_MAX, PASSWORD_MIN, RUTA_LIGERO, TEXTO_AVISO_NUMERO, correoInterno, validarRegistroLigero, whatsappDiezDigitos } from '../../../lib/yonkeLigero';
 
 export const TEXTO_BOTON_LIGERO = 'Crear cuenta y responder';
@@ -23,7 +24,7 @@ export default function RegistroLigero({ pedido }) {
   const [whatsapp, setWhatsapp] = useState('');
   const [password, setPassword] = useState('');
   const [verPassword, setVerPassword] = useState(false);
-  const [aceptaLegal, setAceptaLegal] = useState(false);
+  const [casillas, setCasillas] = useState(CASILLAS_VACIAS);
   const [otroEstado, setOtroEstado] = useState(false);
   const [registrando, setRegistrando] = useState(false);
   const [error, setError] = useState('');
@@ -36,7 +37,7 @@ export default function RegistroLigero({ pedido }) {
   async function registrar() {
     setError('');
     setMotivo('');
-    const { error: invalido, datos } = validarRegistroLigero({ nombre, whatsapp, password, aceptaTerminos: aceptaLegal, pedidoId: pedido.id });
+    const { error: invalido, datos } = validarRegistroLigero({ nombre, whatsapp, password, aceptaTerminos: casillas.terminos, aceptaPrivacidad: casillas.privacidad, declaraAutorizacion: casillas.autorizacion, pedidoId: pedido.id });
     if (invalido) {
       setError(invalido);
       return;
@@ -46,7 +47,7 @@ export default function RegistroLigero({ pedido }) {
       const res = await fetch('/api/yonkes/registro-ligero', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: datos.nombre, whatsapp: datos.whatsapp, password: datos.password, pedidoId: datos.pedidoId, aceptaTerminos: true }),
+        body: JSON.stringify({ nombre: datos.nombre, whatsapp: datos.whatsapp, password: datos.password, pedidoId: datos.pedidoId, aceptaTerminos: true, aceptaPrivacidad: true, declaraAutorizacion: true }),
       });
       const respuesta = await res.json().catch(() => null);
       if (!res.ok || !respuesta?.ok) {
@@ -117,18 +118,7 @@ export default function RegistroLigero({ pedido }) {
         <button type="button" onClick={() => setOtroEstado(true)} style={{ ...enlaceDiscreto, textAlign: 'left', margin: '2px 0 0' }}>Estoy en otro estado</button>
       </div>
 
-      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', margin: '4px 0 14px', cursor: 'pointer' }}>
-        <input
-          type="checkbox" checked={aceptaLegal} onChange={(e) => setAceptaLegal(e.target.checked)}
-          style={{ marginTop: '3px', width: '16px', height: '16px', accentColor: '#E8720C', cursor: 'pointer', flexShrink: 0 }}
-        />
-        <span style={{ fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
-          He leído y acepto los{' '}
-          <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Términos y Condiciones</a>
-          {' '}y el{' '}
-          <a href={URL_PRIVACIDAD} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Aviso de Privacidad</a>.
-        </span>
-      </label>
+      <CasillasLegales valores={casillas} onChange={setCasillas} declaracion={DECLARACION_LIGERO} />
 
       {error && (
         <div role="alert" style={cajaError}>

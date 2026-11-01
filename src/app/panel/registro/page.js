@@ -6,7 +6,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
-import { URL_TERMINOS, URL_PRIVACIDAD } from '../../../lib/versionesLegales';
+import { DECLARACION_COMPLETO, MENSAJE_FALTAN_CASILLAS } from '../../../lib/constanciasLegales';
 import { leerTerminosYonkes, versionParaAceptar, crearYonkeConAceptacion } from '../terminosYonke';
 import { leerLimitesActivos } from '../../../lib/planes';
 import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
@@ -14,6 +14,7 @@ import { esIdPedido } from '../../../lib/pedidosClientes';
 import { avisarAlAdmin } from '../../lib/avisosAdmin/avisarAlAdmin';
 import { useAuth } from '../AuthContext';
 import { TEXTO_REGISTRO_ALERTAS } from '../../../lib/alertasRecientes';
+import CasillasLegales, { CASILLAS_VACIAS, casillasCompletas } from './CasillasLegales';
 import RegistroLigero from './RegistroLigero';
 
 const CIUDADES_BC = [
@@ -77,7 +78,7 @@ function RegistroCompleto() {
   const [direccion, setDireccion] = useState('');
   const [estados, setEstados] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [estado, setEstado] = useState(ESTADO_DEFAULT);
-  const [aceptaLegal, setAceptaLegal] = useState(false);
+  const [casillas, setCasillas] = useState(CASILLAS_VACIAS);
   // config/planes.limitesActivos: con el interruptor apagado, los textos de siempre ("Plan Gratuito").
   const [limitesPlanes, setLimitesPlanes] = useState(false);
   useEffect(() => {
@@ -144,8 +145,8 @@ function RegistroCompleto() {
       setError('Las contraseñas no coinciden');
       return;
     }
-    if (!aceptaLegal) {
-      setError('Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para registrarte');
+    if (!casillasCompletas(casillas)) {
+      setError(MENSAJE_FALTAN_CASILLAS);
       return;
     }
 
@@ -411,20 +412,7 @@ function RegistroCompleto() {
           />
         </div>
 
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', margin: '4px 0 14px', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={aceptaLegal}
-            onChange={(e) => setAceptaLegal(e.target.checked)}
-            style={{ marginTop: '3px', width: '16px', height: '16px', accentColor: '#E8720C', cursor: 'pointer', flexShrink: 0 }}
-          />
-          <span style={{ fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
-            He leído y acepto los{' '}
-            <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Términos y Condiciones</a>
-            {' '}y el{' '}
-            <a href={URL_PRIVACIDAD} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Aviso de Privacidad</a>.
-          </span>
-        </label>
+        <CasillasLegales valores={casillas} onChange={setCasillas} declaracion={DECLARACION_COMPLETO} />
 
         {error && (
           <div style={errorStyle}>
