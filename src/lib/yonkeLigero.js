@@ -42,6 +42,18 @@ export const correoInterno = (diezDigitos) => `${diezDigitos}@${DOMINIO_CORREO_I
 // Cuenta que entra con WhatsApp: su contraseña no se recupera por correo (ese correo no existe).
 export const esCuentaInterna = (correo) => typeof correo === 'string' && correo.endsWith(`@${DOMINIO_CORREO_INTERNO}`);
 
+// Yonke de registro ligero: sin inventario ni ficha pública. No cuenta en la portada ni en el buscador
+// y vuelve a contar al completar su registro (tipoRegistro 'completo'). Los demás no traen el campo.
+export const esRegistroLigero = (yonke) => yonke?.tipoRegistro === 'ligero';
+
+// 10 dígitos de una cuenta interna, o null.
+export function whatsappDeCuentaInterna(correo) {
+  if (!esCuentaInterna(correo)) return null;
+  const local = correo.slice(0, correo.indexOf('@'));
+  return /^[0-9]{10}$/.test(local) ? local : null;
+}
+
+
 // Lo escrito en la pantalla de entrada: un WhatsApp válido, o null si es un correo u otra cosa.
 export const whatsappDeEntrada = (texto) => (typeof texto === 'string' && !texto.includes('@') ? whatsappDiezDigitos(texto) : null);
 

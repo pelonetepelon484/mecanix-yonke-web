@@ -25,8 +25,7 @@ export function generarContrasenaTemporal(elegir = randomInt) {
   return Array.from({ length: LARGO_TEMPORAL }, () => ALFABETO[elegir(ALFABETO.length)]).join('');
 }
 
-// Lanza si Google no confirma el cambio: quien llama nunca muestra una contraseña que no sirve.
-export async function cambiarPassword(credenciales, uid, password, { fetchFn = fetch, ahora = () => Date.now(), proyecto = firebaseConfig.projectId } = {}) {
+async function permisoDeAcceso(credenciales, fetchFn, ahora) {
   const permiso = await fetchFn(URL_TOKEN, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -34,7 +33,12 @@ export async function cambiarPassword(credenciales, uid, password, { fetchFn = f
     signal: AbortSignal.timeout(TIEMPO_MAXIMO_MS),
   });
   if (!permiso.ok) throw new Error(`No se obtuvo el permiso de Google (HTTP ${permiso.status})`);
-  const { access_token: acceso } = await permiso.json();
+  return (await permiso.json()).access_token;
+}
+
+// Lanza si Google no confirma el cambio: quien llama nunca muestra una contraseña que no sirve.
+export async function cambiarPassword(credenciales, uid, password, { fetchFn = fetch, ahora = () => Date.now(), proyecto = firebaseConfig.projectId } = {}) {
+  const acceso = await permisoDeAcceso(credenciales, fetchFn, ahora);
   const res = await fetchFn(`https://identitytoolkit.googleapis.com/v1/projects/${encodeURIComponent(proyecto)}/accounts:update`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${acceso}`, 'Content-Type': 'application/json' },
@@ -42,4 +46,19 @@ export async function cambiarPassword(credenciales, uid, password, { fetchFn = f
     signal: AbortSignal.timeout(TIEMPO_MAXIMO_MS),
   });
   if (!res.ok) throw new Error(`Google rechazó el cambio de contraseña (HTTP ${res.status})`);
+}
+
+// Borra la cuenta. Si ya no existe, no es error. Lanza si Google no lo confirma.
+export async function borrarCuenta(credenciales, uid, { fetchFn = fetch, ahora = () => Date.now(), proyecto = firebaseConfig.projectId } = {}) {
+  const acceso = await permisoDeAcceso(credenciales, fetchFn, ahora);
+  const res = await fetchFn(`https://identitytoolkit.googleapis.com/v1/projects/${encodeURIComponent(proyecto)}/accounts:delete`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${acceso}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ localId: uid }),
+    signal: AbortSignal.timeout(TIEMPO_MAXIMO_MS),
+  });
+  if (res.ok) return;
+  const cuerpo = await res.json().catch(() => null);
+  if (cuerpo?.error?.message === 'USER_NOT_FOUND') return;
+  throw new Error(`Google rechazó borrar la cuenta (HTTP ${res.status})`);
 }

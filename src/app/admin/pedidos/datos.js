@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { calcularExpiraAtPedido } from '../../../lib/pedidosClientes';
+import { esRegistroLigero } from '../../../lib/yonkeLigero';
 import { actualizarResumenAlertas } from '../../lib/pedidosClientes/resumenAlertas';
 
 export const LIMITE_LISTA = 300;
@@ -127,9 +128,11 @@ export async function leerBanderasSugerirYonke() {
 }
 
 // Yonkes activos de UN estado (dos igualdades: sin índice compuesto). Nunca se leen todos.
-export async function listarYonkesActivosDeEstado(estado) {
+// sinLigeros: pedidos de talleres, que un yonke ligero no ve ni puede atender.
+export async function listarYonkesActivosDeEstado(estado, { sinLigeros = false } = {}) {
   const snap = await getDocs(query(collection(db, 'yonkes'), where('estado', '==', estado), where('activo', '==', true)));
   return snap.docs
+    .filter((d) => !(sinLigeros && esRegistroLigero(d.data())))
     .map((d) => ({ id: d.id, nombre: d.data().nombre, whatsapp: d.data().whatsapp, estado: d.data().estado }))
     .filter((y) => typeof y.nombre === 'string' && y.nombre !== '' && typeof y.whatsapp === 'string');
 }

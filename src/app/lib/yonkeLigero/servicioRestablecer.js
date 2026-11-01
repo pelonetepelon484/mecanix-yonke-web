@@ -1,8 +1,9 @@
 import { contar, obtenerDbServicio } from '../pedidosClientes/servicio';
-import { leerComoUsuario, uidDeToken } from '../avisosAdmin/identidadUsuario';
+import { borrarComoUsuario, leerComoUsuario, uidDeToken } from '../avisosAdmin/identidadUsuario';
 import { notificarAdmin } from '../notificarAdmin';
 import { claveLimite } from '../../../lib/pedidosClientesServidor';
-import { cambiarPassword, generarContrasenaTemporal, leerCredencialesAuth } from './authAdmin';
+import { borrarCuenta, cambiarPassword, generarContrasenaTemporal, leerCredencialesAuth } from './authAdmin';
+import { crearManejadorLiberar } from './liberar';
 import { crearManejadorRestablecer } from './restablecer';
 
 // Solo servidor. Dependencias reales de "Restablecer contraseña" del admin.
@@ -15,4 +16,14 @@ export function manejadorRestablecer() {
     });
   }
   return manejador;
+}
+
+let manejadorDeLiberar = null;
+export function manejadorLiberar() {
+  if (!manejadorDeLiberar) {
+    manejadorDeLiberar = crearManejadorLiberar({
+      uidDeToken, leerComoUsuario, borrarComoUsuario, credenciales: leerCredencialesAuth, borrarCuenta, claveLimite, notificar: notificarAdmin,
+    });
+  }
+  return manejadorDeLiberar;
 }

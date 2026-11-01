@@ -1,6 +1,6 @@
 import { generateKeyPairSync, createVerify } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { LARGO_TEMPORAL, cambiarPassword, generarContrasenaTemporal, leerCredencialesAuth } from './authAdmin';
+import { LARGO_TEMPORAL, borrarCuenta, cambiarPassword, generarContrasenaTemporal, leerCredencialesAuth } from './authAdmin';
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -58,5 +58,20 @@ describe('cambiarPassword', () => {
     const error = await cambiarPassword(credenciales, 'u', 'clave-x', { fetchFn: rechazo, proyecto: 'p' }).catch((e) => e);
     expect(error.message).toContain('400');
     expect(error.message).not.toContain('clave-x');
+  });
+});
+
+describe('borrarCuenta', () => {
+  const conGoogle = (final) => vi.fn(async (url) => (String(url).includes('oauth2') ? respuesta(true, 200, { access_token: 'permiso' }) : final));
+  it('borra esa cuenta', async () => {
+    const fetchFn = conGoogle(respuesta(true, 200));
+    await borrarCuenta(credenciales, 'uidL', { fetchFn, proyecto: 'mi-proyecto' });
+    const [url, opciones] = fetchFn.mock.calls[1];
+    expect(url).toBe('https://identitytoolkit.googleapis.com/v1/projects/mi-proyecto/accounts:delete');
+    expect(JSON.parse(opciones.body)).toEqual({ localId: 'uidL' });
+  });
+  it('si ya no existe no es error; otro rechazo sí', async () => {
+    await expect(borrarCuenta(credenciales, 'u', { fetchFn: conGoogle(respuesta(false, 400, { error: { message: 'USER_NOT_FOUND' } })), proyecto: 'p' })).resolves.toBeUndefined();
+    await expect(borrarCuenta(credenciales, 'u', { fetchFn: conGoogle(respuesta(false, 403, {})), proyecto: 'p' })).rejects.toThrow('403');
   });
 });

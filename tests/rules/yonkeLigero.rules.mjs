@@ -381,6 +381,14 @@ describe('yonke ligero: completar el registro, solo el servidor', () => {
   });
 });
 
+describe('liberar un número', () => {
+  it('solo el admin quita la huella: ni el servicio, ni el propio yonke', async () => {
+    await sinReglas((db) => setDoc(doc(db, 'pedidosClientesLimite', 'ligeroWa_abc_unico'), { count: 1, actualizado: new Date(), expiraEn: en5Dias() }));
+    for (const uid of ['svc', 'l1', 'c1']) await assertFails(deleteDoc(doc(como(uid), 'pedidosClientesLimite', 'ligeroWa_abc_unico')));
+    await assertSucceeds(deleteDoc(doc(como('adm'), 'pedidosClientesLimite', 'ligeroWa_abc_unico')));
+  });
+});
+
 describe('los demás siguen igual', () => {
   it('un yonke completo responde con su tope de 50 y sin las reglas del ligero', async () => {
     await contadorEn('Y1', 40);

@@ -12,6 +12,8 @@ import YonkeActividadBadge from '../lib/YonkeActividadBadge';
 import { ventaPublicaParaEscribir } from '../../lib/ventaPublicaRef';
 import { refContactoPrivado } from '../../lib/contactoPrivado';
 import { estadoPlan, ETIQUETAS_ESTADO_PLAN } from '../../lib/planes';
+import { esCuentaInterna, esRegistroLigero } from '../../lib/yonkeLigero';
+import { liberarNumero } from './liberarNumero';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -50,6 +52,7 @@ export default function AdminPage() {
   const [busqueda, setBusqueda] = useState('');
   const [estadosDisponibles, setEstadosDisponibles] = useState([{ id: ESTADO_DEFAULT, nombre: 'Baja California' }]);
   const [estadoFiltro, setEstadoFiltro] = useState('todos');
+  const [tipoFiltro, setTipoFiltro] = useState('todos'); // todos | ligeros | completos
   const [regenerandoCatalogo, setRegenerandoCatalogo] = useState(false);
   const [migrando, setMigrando] = useState(null); // null | 'ventasPublicas' | 'emails'
   const [modalPremiumVisible, setModalPremiumVisible] = useState(false);
@@ -277,9 +280,24 @@ export default function AdminPage() {
       }
     }
 
+    // Cuentas que entran con WhatsApp: el servidor borra la cuenta y la huella ANTES de borrar su
+    // usuario (necesita leerlo), para que ese número se pueda volver a registrar.
+    const cuentasBorradas = new Set();
+    try {
+      const snap = await getDocs(query(collection(db, 'usuarios'), where('yonkeId', '==', yonke.id)));
+      for (const u of snap.docs.filter((d) => esCuentaInterna(d.data().email))) {
+        const { huella, cuenta } = await liberarNumero(u.id);
+        if (cuenta) cuentasBorradas.add(u.id);
+        pasos.push({ nombre: 'Número de WhatsApp liberado', ok: huella && cuenta, detalle: huella && cuenta ? '' : 'Falta la llave de Google o falló: revisa la cuenta en Firebase Authentication' });
+      }
+    } catch (e) {
+      console.error(e);
+      pasos.push({ nombre: 'Número de WhatsApp liberado', ok: false, detalle: e.message });
+    }
+
     try {
       const docs = await borrarPorYonkeId('usuarios', yonke.id);
-      docs.forEach((d) => emailsAuth.push(d.email || d.id));
+      docs.filter((d) => !cuentasBorradas.has(d.id)).forEach((d) => emailsAuth.push(d.email || d.id));
       pasos.push({ nombre: 'Accesos de usuario (Firestore)', ok: true, detalle: `${docs.length} cuenta(s)` });
     } catch (e) {
       console.error(e);
@@ -395,10 +413,12 @@ export default function AdminPage() {
     router.push('/panel');
   }
 
+  const totalLigeros = yonkes.filter(esRegistroLigero).length;
   const yonkesFiltrados = yonkes.filter(y =>
     (y.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
       y.ciudad?.toLowerCase().includes(busqueda.toLowerCase())) &&
-    (estadoFiltro === 'todos' || estadoDeYonke(y) === estadoFiltro)
+    (estadoFiltro === 'todos' || estadoDeYonke(y) === estadoFiltro) &&
+    (tipoFiltro === 'todos' || esRegistroLigero(y) === (tipoFiltro === 'ligeros'))
   );
 
   return (
@@ -553,6 +573,18 @@ export default function AdminPage() {
           ))}
         </select>
 
+        {/* Registro ligero (solo contesta búsquedas activas) o completo */}
+        <select
+          aria-label="Filtrar por tipo de registro"
+          value={tipoFiltro}
+          onChange={(e) => setTipoFiltro(e.target.value)}
+          style={{ ...inputStyle, cursor: 'pointer' }}
+        >
+          <option value="todos">Todos los registros</option>
+          <option value="ligeros">Ligeros ({totalLigeros})</option>
+          <option value="completos">Completos</option>
+        </select>
+
         {/* Búsqueda */}
         <input
           type="text"
@@ -605,6 +637,11 @@ export default function AdminPage() {
                     }}>
                       {y.activo ? '✓ Activo' : '✗ Inactivo'}
                     </span>
+                    {esRegistroLigero(y) && (
+                      <span style={{ backgroundColor: '#FFF4E8', color: '#8A4B00', fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px' }}>
+                        ⚡ Ligero
+                      </span>
+                    )}
                     {y.plan === 'premium' && (() => {
                       const estado = obtenerEstadoPremium(y.premiumHasta);
                       if (!estado) {

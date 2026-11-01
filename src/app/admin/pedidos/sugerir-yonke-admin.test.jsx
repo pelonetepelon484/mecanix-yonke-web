@@ -97,7 +97,7 @@ describe('Sugerir yonke: pedidos de clientes', () => {
     await abrir('Alternador');
     fireEvent.click(await screen.findByRole('button', { name: 'Sugerir yonke' }));
     const grupo = await screen.findByRole('radiogroup', { name: 'Yonkes' });
-    expect(datos.listarYonkesActivosDeEstado).toHaveBeenCalledWith('baja-california');
+    expect(datos.listarYonkesActivosDeEstado).toHaveBeenCalledWith('baja-california', { sinLigeros: false });
     expect(within(grupo).queryByText('El Güero')).not.toBeInTheDocument(); // ya respondió
     expect(within(grupo).getByText('Autopartes Ñandú')).toBeInTheDocument();
     // Sin otros estados (el pedido no los acepta) y sin campo de precio.
@@ -138,7 +138,7 @@ describe('Sugerir yonke: pedidos de clientes', () => {
     expect(screen.queryByLabelText('Estado de los yonkes')).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Mostrar también otros estados'));
     fireEvent.change(screen.getByLabelText('Estado de los yonkes'), { target: { value: 'sonora' } });
-    await waitFor(() => expect(datos.listarYonkesActivosDeEstado).toHaveBeenCalledWith('sonora'));
+    await waitFor(() => expect(datos.listarYonkesActivosDeEstado).toHaveBeenCalledWith('sonora', { sinLigeros: false }));
     expect(await screen.findByText(/Yonke Sonora · Sonora/)).toBeInTheDocument();
   });
 
@@ -175,7 +175,7 @@ describe('Sugerir yonke: pedidos de talleres', () => {
     fireEvent.click((await screen.findAllByText('Faro'))[0]);
     fireEvent.click(await screen.findByRole('button', { name: 'Sugerir yonke' }));
     await screen.findByText(/No hay yonkes activos sin responder en Sonora/); // Y2 ya respondió
-    expect(datos.listarYonkesActivosDeEstado).toHaveBeenCalledWith('sonora');
+    expect(datos.listarYonkesActivosDeEstado).toHaveBeenCalledWith('sonora', { sinLigeros: true });
     expect(screen.queryByLabelText('Mostrar también otros estados')).not.toBeInTheDocument();
   });
 

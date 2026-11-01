@@ -8,7 +8,7 @@ import { refContactoPrivado, leerEmailContacto } from '../../../../lib/contactoP
 import { estadoPlan, ETIQUETAS_ESTADO_PLAN } from '../../../../lib/planes';
 import { conFallbackDePermisos } from '../../../../lib/conFallbackDePermisos';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
-import { esCuentaInterna } from '../../../../lib/yonkeLigero';
+import { esCuentaInterna, esRegistroLigero, whatsappDiezDigitos } from '../../../../lib/yonkeLigero';
 import RestablecerPassword from './RestablecerPassword';
 import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../lib/estados';
@@ -94,6 +94,8 @@ export default function EditarYonkePage() {
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
   const [plan, setPlan] = useState('freemium');
+  // Registro ligero: sin insignias ni plan, y aquí solo se editan nombre, WhatsApp y activo.
+  const [ligero, setLigero] = useState(false);
   const [premiumHasta, setPremiumHasta] = useState('');
   const [activo, setActivo] = useState(true);
   const [verificado, setVerificado] = useState(false);
@@ -233,6 +235,7 @@ export default function EditarYonkePage() {
         setWhatsapp(data.whatsapp || '');
         setEmail(await leerEmailContacto(db, id, data));
         setPlan(data.plan || 'freemium');
+        setLigero(esRegistroLigero(data));
         if (data.premiumHasta) {
           const fecha = data.premiumHasta?.toDate ? data.premiumHasta.toDate() : new Date(data.premiumHasta);
           setPremiumHasta(formatearFechaInput(fecha));
@@ -343,7 +346,27 @@ export default function EditarYonkePage() {
     }
   }
 
+  // Yonke ligero: no tiene ciudad ni dirección, y sus demás datos los pone él al completar su registro.
+  async function guardarLigero() {
+    const numero = whatsappDiezDigitos(whatsapp);
+    if (!nombre.trim() || !numero) {
+      alert('Llena el nombre y un WhatsApp a 10 dígitos'); return;
+    }
+    setGuardando(true);
+    try {
+      await updateDoc(doc(db, 'yonkes', id), { nombre: nombre.trim(), whatsapp: numero, activo });
+      alert('✅ Yonke actualizado correctamente');
+      router.push('/admin');
+    } catch (error) {
+      console.error(error);
+      alert('No se pudo guardar');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   async function guardar() {
+    if (ligero) { await guardarLigero(); return; }
     const ciudadFinal = esBC ? ciudad : ciudadLibre.trim();
     if (!nombre || !direccion || !ciudadFinal || !telefono) {
       alert('Llena nombre, ciudad, dirección y teléfono'); return;
@@ -500,6 +523,12 @@ export default function EditarYonkePage() {
           </div>
         )}
 
+        {ligero && (
+          <p role="note" style={{ backgroundColor: '#FFF4E8', border: '1px solid #E8720C', borderRadius: '10px', padding: '12px', fontSize: '13px', color: '#7A4A12', margin: '0 0 16px' }}>
+            ⚡ Yonke de registro ligero: solo contesta búsquedas activas de su estado. Aquí solo se guardan nombre, WhatsApp y si está activo; no lleva insignias ni plan. Para liberar su número, elimínalo desde la lista de yonkes.
+          </p>
+        )}
+
         {/* Accesos / Usuarios */}
         <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Accesos / Usuarios</h2>
@@ -573,6 +602,8 @@ export default function EditarYonkePage() {
         {/* Plan y estado */}
         <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Plan y estado</h2>
+          {!ligero && (
+          <>
           {(() => {
             // Según lo que está en pantalla (plan y fecha elegidos), con la misma función del panel.
             const etiqueta = ETIQUETAS_ESTADO_PLAN[estadoPlan({ plan, premiumHasta: premiumHasta ? new Date(`${premiumHasta}T00:00:00`) : null })];
@@ -609,6 +640,9 @@ export default function EditarYonkePage() {
             </>
           )}
 
+          </>
+          )}
+
           <p style={labelStyle}>Estado</p>
           <div style={{ display: 'flex', gap: '10px' }}>
             {[true, false].map(v => (
@@ -624,6 +658,8 @@ export default function EditarYonkePage() {
             ))}
           </div>
 
+          {!ligero && (
+          <>
           <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
             <input
               type="checkbox"
@@ -731,6 +767,8 @@ export default function EditarYonkePage() {
             Desmárcalo para apagarlo sin borrar su configuración — por ejemplo, si dejó de pagar.
             Quien entre a su subdominio será redirigido al sitio principal.
           </p>
+          </>
+          )}
         </div>
 
         {/* Métodos de pago */}

@@ -41,6 +41,7 @@ import {
   TarjetaBasicoYonke, TarjetaCapturaDomicilio, TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle, notaPromoStyle,
 } from './TarjetasPlanes';
 import { textoPromoRegistro } from '../lib/premiumGratis';
+import { esRegistroLigero } from '../lib/yonkeLigero';
 
 // Qué foto mostrar en la miniatura de una tarjeta de resultado -- un motor/transmisión muestra su
 // propia foto, una pieza suelta la suya (r.vehiculo es sintético ahí, ver esPiezaSuelta en
@@ -452,7 +453,8 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   // estados" (ver botonBuscarTodosLosEstados más abajo) para reintentar sin el filtro
   // geográfico del cliente, sin tener que tocar el selector real.
   function filtrarPorEstadoYCiudad(yonkesSnap, forzarTodos = false) {
-    let docs = yonkesSnap.docs;
+    // Los de registro ligero no tienen inventario: ni se consultan ni cuentan como yonkes del estado.
+    let docs = yonkesSnap.docs.filter((d) => !esRegistroLigero(d.data()));
     if (forzarTodos) return { docs, sinYonkesEnEseEstado: false };
     if (estadoBusqueda && estadoBusqueda !== 'todos') {
       docs = docs.filter(d => estadoDeYonke(d.data()) === estadoBusqueda);

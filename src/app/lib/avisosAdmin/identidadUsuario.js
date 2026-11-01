@@ -45,6 +45,20 @@ export function camposDesdeRest(campos) {
   return Object.fromEntries(Object.entries(campos ?? {}).map(([k, v]) => [k, desdeRest(v)]));
 }
 
+// Borra un documento "como el usuario": las mismas reglas deciden. true si quedó borrado (o no existía).
+export async function borrarComoUsuario(idToken, ruta, fetchFn = fetch) {
+  const segmentos = String(ruta).split('/');
+  if (segmentos.length % 2 !== 0 || !segmentos.every((s) => /^[A-Za-z0-9_-]{1,128}$/.test(s))) return false;
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents/${segmentos.join('/')}`;
+    const r = await fetchFn(url, { method: 'DELETE', headers: { Authorization: `Bearer ${idToken}` }, signal: AbortSignal.timeout(TIEMPO_MAXIMO_MS) });
+    return r.ok;
+  } catch (error) {
+    console.error('[avisosAdmin] No se pudo borrar como el usuario', { message: error?.message });
+    return false;
+  }
+}
+
 // ruta: 'coleccion/id' (o más segmentos). Cada segmento se valida para no armar rutas raras.
 export async function leerComoUsuario(idToken, ruta, fetchFn = fetch) {
   const segmentos = String(ruta).split('/');
