@@ -149,7 +149,7 @@ export function crearManejadoresAvisos(deps) {
     if (!db) return sinAviso('noDisponible', 503);
     if (!(await primeraVez(db, 'avisoRegistro', usuario.yonkeId))) return sinAviso('repetido');
 
-    return enviar(`🏪 Nuevo yonke registrado en Mecanix!\n\nNombre: ${texto(yonke.nombre, 200)}\nCiudad: ${texto(yonke.ciudad, 100)}\nTeléfono: ${texto(yonke.telefono, 30)}\nCorreo: ${texto(usuario.email, 200)}\n\nRevisa Firebase para activarlo.`);
+    return enviar(`🏪 Nuevo yonke registrado en Mecanix!\n\nNombre: ${texto(yonke.nombre, 200)}\nCiudad: ${texto(yonke.ciudad, 100)}\nTeléfono: ${texto(yonke.telefono, 30)}\nCorreo: ${texto(usuario.email, 200)}\n\nYa está activo.`);
   }
 
   // POST /api/pedido-entrega-inmediata  { yonkeId, pieza, marca, modelo, anio }  (sin sesión)

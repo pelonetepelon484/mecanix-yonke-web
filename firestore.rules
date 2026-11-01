@@ -1715,16 +1715,32 @@ service cloud.firestore {
               && brandingDe(request.resource.data).diff(brandingDe(resource.data)).affectedKeys()
                    .difference(['logoUrl'].toSet()).size() > 0);
       }
+      // Alta propia: exactamente lo que escribe panel/registro (aceptacionLegal, opcional, lo revisa
+      // la cláusula de términos). Nace activo, básico y sin nada que ponga el admin: verificado,
+      // enviosNacionales, subdominio, premiumHasta y demás quedan fuera por la lista cerrada.
+      function altaPropiaValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['nombre', 'direccion', 'estado', 'ciudad', 'telefono', 'whatsapp', 'metodosPago', 'plan', 'activo', 'fechaRegistro', 'ownerUid', 'aceptacionLegal'])
+          && d.keys().hasAll(['nombre', 'direccion', 'estado', 'ciudad', 'telefono', 'whatsapp', 'metodosPago', 'plan', 'activo', 'fechaRegistro', 'ownerUid'])
+          && d.ownerUid == request.auth.uid
+          && d.nombre is string && d.nombre.size() >= 1 && d.nombre.size() <= 100
+          && d.direccion is string && d.direccion.size() >= 1 && d.direccion.size() <= 300
+          && d.estado is string && d.estado.size() >= 1 && d.estado.size() <= 60
+          && d.ciudad is string && d.ciudad.size() >= 1 && d.ciudad.size() <= 100
+          && d.telefono is string && d.telefono.size() >= 1 && d.telefono.size() <= 40
+          && d.whatsapp is string && d.whatsapp.size() >= 1 && d.whatsapp.size() <= 40
+          && d.metodosPago is list && d.metodosPago.size() == 0
+          && d.plan == 'freemium'
+          && d.activo == true
+          && d.fechaRegistro is timestamp;
+      }
       allow read: if true;
       // Alta: admin, o un usuario que se registra y queda como dueño (ownerUid = su uid).
       // Un usuario que ya tiene cuenta de rol (yonke o taller) no puede crear yonkes nuevos.
       allow create: if esAdmin()
                     || (request.auth != null
                         && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-                        && request.resource.data.ownerUid == request.auth.uid
-                        // se registra solo como básico y sin fecha de Premium (eso lo pone el admin)
-                        && request.resource.data.get('plan', 'freemium') == 'freemium'
-                        && !('premiumHasta' in request.resource.data)
+                        && altaPropiaValida()
                         // con config/terminosYonkes, se registra aceptando la versión vigente
                         && (!exists(terminosYonkesRef()) || aceptacionVigenteEnEsteGuardado()));
       allow update: if esAdmin()

@@ -34,8 +34,6 @@ vi.mock('firebase/firestore', () => ({
 }));
 vi.mock('../../lib/firebase', () => ({ auth: {}, db: {} }));
 vi.mock('../../lib/estados', () => ({ ESTADO_DEFAULT: 'baja-california', cargarEstados: async () => [{ id: 'baja-california', nombre: 'Baja California' }] }));
-vi.mock('../../lib/generarSubdominio', () => ({ generarSubdominioUnico: async () => 'yonke-nuevo' }));
-vi.mock('../../lib/subirLogoYonke', () => ({ subirLogoYonke: async () => null, validarArchivoLogo: () => null }));
 
 const { default: Registro } = await import('./page.js');
 const { VERSION_LEGAL } = await import('../../../lib/versionesLegales');

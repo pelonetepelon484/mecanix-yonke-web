@@ -5,10 +5,16 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, updateDoc, getDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, setDoc, updateDoc, getDoc, deleteDoc, deleteField, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore';
 
 const reglas = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
 let env;
+
+// Lo que escribe el registro (src/app/panel/registro/page.js) al crear la ficha.
+const altaDeFormulario = (ownerUid) => ({
+  nombre: 'Nuevo', direccion: 'Calle 2', estado: 'baja-california', ciudad: 'tijuana', telefono: '6640000000', whatsapp: '6640000000',
+  metodosPago: [], plan: 'freemium', activo: true, fechaRegistro: new Date(), ownerUid,
+});
 
 // Datos de prueba: un yonke con dueño (registrado solo), un yonke viejo sin ownerUid,
 // y un dueño con yonke ya registrado.
@@ -50,15 +56,16 @@ describe('cuenta nueva que intenta reclamar un yonke ajeno', () => {
   });
   it('no puede crear un yonke sin ownerUid', async () => {
     await sembrar();
-    await assertFails(setDoc(doc(como('x8'), 'yonkes', 'Y8'), { nombre: 'Sin dueño' }));
+    const { ownerUid, ...sinDueno } = altaDeFormulario('x8');
+    await assertFails(setDoc(doc(como(ownerUid), 'yonkes', 'Y8'), sinDueno));
   });
   it('no puede crear un yonke con ownerUid de otra persona', async () => {
     await sembrar();
-    await assertFails(setDoc(doc(como('x7'), 'yonkes', 'Y7'), { nombre: 'Ajeno', ownerUid: 'o1' }));
+    await assertFails(setDoc(doc(como('x7'), 'yonkes', 'Y7'), altaDeFormulario('o1')));
   });
   it('una cuenta que ya tiene usuario (yonke) no puede crear otro yonke', async () => {
     await sembrar();
-    await assertFails(setDoc(doc(como('o1'), 'yonkes', 'Y10'), { nombre: 'Otro yonke', ownerUid: 'o1' }));
+    await assertFails(setDoc(doc(como('o1'), 'yonkes', 'Y10'), altaDeFormulario('o1')));
   });
   it('no puede poner ownerUid en un yonke viejo que ya existe', async () => {
     await sembrar();
@@ -84,8 +91,7 @@ describe('registro normal de yonke (mismo orden que el código)', () => {
   it('la versión de respaldo del yonke (sin aceptacionLegal) también pasa', async () => {
     await sembrar();
     await assertSucceeds(setDoc(doc(como('o6'), 'yonkes', 'Y6'), {
-      nombre: 'Nuevo', direccion: 'Calle 2', telefono: '6640000000', metodosPago: [], plan: 'freemium', activo: true,
-      fechaRegistro: new Date(), ownerUid: 'o6',
+      ...altaDeFormulario('o6'),
     }));
     await assertSucceeds(setDoc(doc(como('o6'), 'usuarios', 'o6'), {
       rol: 'yonke', yonkeId: 'Y6', email: 'o6@prueba.mx', fechaRegistro: new Date(),
@@ -93,7 +99,7 @@ describe('registro normal de yonke (mismo orden que el código)', () => {
   });
   it('un usuario de yonke no puede agregar campos extra al usuario', async () => {
     await sembrar();
-    await assertSucceeds(setDoc(doc(como('o7'), 'yonkes', 'Y7'), { nombre: 'Nuevo', ownerUid: 'o7' }));
+    await assertSucceeds(setDoc(doc(como('o7'), 'yonkes', 'Y7'), altaDeFormulario('o7')));
     await assertFails(setDoc(doc(como('o7'), 'usuarios', 'o7'), {
       rol: 'yonke', yonkeId: 'Y7', email: 'o7@prueba.mx', fechaRegistro: new Date(), admin: true,
     }));
@@ -138,7 +144,7 @@ describe('dueño de un yonke', () => {
   });
   it('puede borrar su yonke mientras aún no tenga usuario (rollback)', async () => {
     await sembrar();
-    await assertSucceeds(setDoc(doc(como('o3'), 'yonkes', 'Y3'), { nombre: 'Rollback', ownerUid: 'o3' }));
+    await assertSucceeds(setDoc(doc(como('o3'), 'yonkes', 'Y3'), altaDeFormulario('o3')));
     await assertSucceeds(deleteDoc(doc(como('o3'), 'yonkes', 'Y3')));
   });
 });
@@ -207,7 +213,7 @@ describe('admin: crear y revocar accesos', () => {
 describe('plan y vencimiento de Premium: solo el admin', () => {
   const fecha = (iso = '2030-01-01') => Timestamp.fromDate(new Date(`${iso}T00:00:00`));
   const registro = (uid, yonkeId, extra) => setDoc(doc(como(uid), 'yonkes', yonkeId), {
-    nombre: 'Nuevo', activo: true, fechaRegistro: new Date(), ownerUid: uid, ...extra,
+    ...altaDeFormulario(uid), ...extra,
   });
   const ponerPremiumSinReglas = (hasta) => env.withSecurityRulesDisabled((ctx) =>
     updateDoc(doc(ctx.firestore(), 'yonkes', 'Y1'), { plan: 'premium', premiumHasta: hasta }));
@@ -257,5 +263,140 @@ describe('plan y vencimiento de Premium: solo el admin', () => {
   it('el admin puede crear un yonke ya premium', async () => {
     await sembrar();
     await assertSucceeds(setDoc(doc(como('adm'), 'yonkes', 'Y11'), { nombre: 'Admin', plan: 'premium', premiumHasta: fecha() }));
+  });
+});
+
+// Alta propia (altaPropiaValida en ../../firestore.rules): solo la lista exacta de campos del
+// registro, con su tipo y tamaño. Nada de lo que pone el admin. Los yonkes existentes y el admin no cambian.
+describe('alta propia de un yonke: lista cerrada de campos', () => {
+  // extra con { campo: undefined } quita ese campo.
+  const alta = (uid, extra = {}) => {
+    const datos = { ...altaDeFormulario(uid), ...extra };
+    for (const k of Object.keys(datos)) if (datos[k] === undefined) delete datos[k];
+    return datos;
+  };
+  const crear = (uid, id, extra) => setDoc(doc(como(uid), 'yonkes', id), alta(uid, extra));
+  // Igual que crearYonkeConAceptacion() en src/app/panel/terminosYonke.js.
+  const crearConLote = (uid, id, version) => {
+    const db = como(uid);
+    const lote = writeBatch(db);
+    lote.set(doc(db, 'yonkes', id), alta(uid, { aceptacionLegal: { version, fecha: serverTimestamp() } }));
+    lote.set(doc(db, 'yonkes', id, 'aceptaciones', version), { version, fecha: serverTimestamp() });
+    return lote.commit();
+  };
+  const sembrarAlta = async ({ terminos = null } = {}) => {
+    await sembrar();
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'yonkes', 'VIEJO'), {
+        nombre: 'Viejo', activo: true, ownerUid: 'v1', plan: 'freemium', whatsapp: '1', telefono: '1', direccion: 'x', estado: 'sonora', ciudad: 'hermosillo',
+      });
+      await setDoc(doc(db, 'usuarios', 'v1'), { rol: 'yonke', yonkeId: 'VIEJO', email: 'v1@prueba.mx', fechaRegistro: new Date() });
+      if (terminos) await setDoc(doc(db, 'config', 'terminosYonkes'), { version: terminos });
+    });
+  };
+  const registrado = async () => {
+    await assertSucceeds(crearConLote('a1', 'A1', '2026-10-26'));
+    await assertSucceeds(reclamo('a1', 'A1'));
+  };
+
+  it('el registro actual pasa: lote con historial y después el usuario', async () => {
+    await sembrarAlta();
+    await registrado();
+  });
+  it('pasan los respaldos del registro, con y sin aceptacionLegal', async () => {
+    await sembrarAlta();
+    await assertSucceeds(addDoc(collection(como('a2'), 'yonkes'), alta('a2', { aceptacionLegal: { version: 'v', fecha: serverTimestamp() } })));
+    await assertSucceeds(addDoc(collection(como('a3'), 'yonkes'), alta('a3')));
+  });
+  it('pasa otro estado con ciudad de texto libre, y el rollback borra su ficha', async () => {
+    await sembrarAlta();
+    await assertSucceeds(crear('a4', 'A4', { estado: 'jalisco', ciudad: 'Guadalajara' }));
+    await assertSucceeds(deleteDoc(doc(como('a4'), 'yonkes', 'A4')));
+  });
+  it('pasan nombre de 100 y dirección de 300 caracteres', async () => {
+    await sembrarAlta();
+    await assertSucceeds(crear('a5', 'A5', { nombre: 'n'.repeat(100), direccion: 'd'.repeat(300) }));
+  });
+
+  it('NO con campos que pone el admin ni con campos desconocidos', async () => {
+    await sembrarAlta();
+    for (const [campo, valor] of [
+      ['verificado', true], ['enviosNacionales', true], ['subdominio', 'marca'], ['subdominioActivo', true], ['premiumHasta', new Date('2030-01-01')],
+      ['entregaInmediata', true], ['capturaADomicilio', true], ['ultimaVisitaCaptura', new Date()], ['verAlertasOtrosEstados', true],
+      ['logoUrl', 'x'], ['branding', {}], ['campoInventado', 1],
+    ]) await assertFails(crear(`b${campo}`, `B${campo}`, { [campo]: valor }));
+  });
+  it('NO con otro plan, sin nacer activo ni con métodos de pago', async () => {
+    await sembrarAlta();
+    await assertFails(crear('b1', 'B1', { plan: 'premium' }));
+    await assertFails(crear('b2', 'B2', { activo: false }));
+    await assertFails(crear('b3', 'B3', { activo: 'true' }));
+    await assertFails(crear('b4', 'B4', { metodosPago: ['x'] }));
+  });
+
+  it('NO solo con ownerUid, ni solo con nombre y ownerUid', async () => {
+    await sembrarAlta();
+    await assertFails(setDoc(doc(como('c0'), 'yonkes', 'C0'), { ownerUid: 'c0' }));
+    await assertFails(setDoc(doc(como('c9'), 'yonkes', 'C9'), { nombre: 'X', ownerUid: 'c9' }));
+  });
+  it('NO si falta cualquier campo obligatorio', async () => {
+    await sembrarAlta();
+    for (const campo of ['nombre', 'direccion', 'estado', 'ciudad', 'telefono', 'whatsapp', 'metodosPago', 'plan', 'activo', 'fechaRegistro', 'ownerUid']) {
+      await assertFails(crear(`c${campo}`, `C${campo}`, { [campo]: undefined }));
+    }
+  });
+  it('NO con campos vacíos, de otro tipo o demasiado largos', async () => {
+    await sembrarAlta();
+    for (const [campo, valor] of [
+      ['nombre', ''], ['nombre', 123], ['direccion', ''], ['estado', ''], ['ciudad', ''], ['telefono', ''], ['telefono', 664],
+      ['nombre', 'n'.repeat(101)], ['direccion', 'd'.repeat(301)],
+    ]) await assertFails(crear('c1', 'C1', { [campo]: valor }));
+  });
+  it('NO con dueño ajeno, sin sesión, ni si ya tiene usuario', async () => {
+    await sembrarAlta();
+    await registrado();
+    await assertFails(setDoc(doc(como('c2'), 'yonkes', 'C2'), alta('otro')));
+    await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), 'yonkes', 'C3'), alta('x')));
+    await assertFails(crear('a1', 'C4'));
+  });
+
+  it('un yonke existente sigue editando lo suyo: perfil, logo, tema y actividad', async () => {
+    await sembrarAlta();
+    const ref = doc(como('v1'), 'yonkes', 'VIEJO');
+    await assertSucceeds(updateDoc(ref, { nombre: 'Nuevo nombre' }));
+    await assertSucceeds(updateDoc(ref, { nombre: 'P', direccion: 'D', telefono: '2', whatsapp: '2', metodosPago: ['Efectivo'], horario: {} }));
+    await assertSucceeds(updateDoc(ref, { logoUrl: 'https://x', 'branding.logoUrl': 'https://x' }));
+    await assertSucceeds(updateDoc(ref, { 'branding.colorPrimario': '#000', 'branding.colorAcento': '#111' }));
+    await assertSucceeds(updateDoc(ref, { ultimaActividadAt: new Date() }));
+  });
+  it('un yonke recién registrado edita su perfil', async () => {
+    await sembrarAlta();
+    await registrado();
+    await assertSucceeds(updateDoc(doc(como('a1'), 'yonkes', 'A1'), { direccion: 'Otra', telefono: '3' }));
+  });
+  it('un yonke existente sigue sin poder cambiar lo protegido', async () => {
+    await sembrarAlta();
+    for (const cambio of [{ verificado: true }, { enviosNacionales: true }, { subdominio: 's' }, { plan: 'premium' }, { activo: false }]) {
+      await assertFails(updateDoc(doc(como('v1'), 'yonkes', 'VIEJO'), cambio));
+    }
+  });
+  it('el admin sigue creando con cualquier campo y editando verificado', async () => {
+    await sembrarAlta();
+    await assertSucceeds(setDoc(doc(como('adm'), 'yonkes', 'AD'), { nombre: 'A', verificado: true, enviosNacionales: true, plan: 'premium', activo: false }));
+    await assertSucceeds(updateDoc(doc(como('adm'), 'yonkes', 'VIEJO'), { verificado: true }));
+  });
+  it('el guardado de subdominio y branding del formulario viejo sigue rechazado', async () => {
+    await sembrarAlta();
+    await registrado();
+    await assertFails(setDoc(doc(como('a1'), 'yonkes', 'A1'), { subdominio: 's', subdominioActivo: true, branding: {} }, { merge: true }));
+  });
+
+  it('con config/terminosYonkes: solo con la versión vigente y su aceptación', async () => {
+    await sembrarAlta({ terminos: 'V2' });
+    await assertSucceeds(crearConLote('e1', 'E1', 'V2'));
+    await assertSucceeds(reclamo('e1', 'E1'));
+    await assertFails(crearConLote('e2', 'E2', 'V1'));
+    await assertFails(crear('e3', 'E3'));
   });
 });
