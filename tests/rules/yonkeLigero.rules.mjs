@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
-  Timestamp, collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, writeBatch,
+  Timestamp, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 
 const reglas = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
@@ -281,6 +281,37 @@ describe('yonke ligero: alta, solo el servidor', () => {
     await assertFails(alta('c1', 'N2'));
     await assertFails(alta('n3', 'N3', { usuario: { rol: 'yonke' } }));
     await assertFails(alta('n4', 'N4', { usuario: { rol: 'admin' } }));
+  });
+});
+
+// Igual que guardar() en src/app/lib/yonkeLigero/servicio.js.
+function guardarDelServidor(uid, id, huella, { correo = `${uid}@interno.mx` } = {}) {
+  const db = como('svc');
+  const refHuella = doc(db, 'pedidosClientesLimite', huella);
+  return runTransaction(db, async (t) => {
+    if ((await t.get(refHuella)).exists()) return 'yaUsada';
+    t.set(doc(db, 'yonkes', id), { ...fichaLigera(uid), fechaRegistro: serverTimestamp(), aceptacionLegal: { version: VERSION, fecha: serverTimestamp() } });
+    t.set(doc(db, 'yonkes', id, 'aceptaciones', VERSION), { version: VERSION, fecha: serverTimestamp() });
+    t.set(doc(db, 'usuarios', uid), { rol: 'yonkeLigero', yonkeId: id, email: correo, fechaRegistro: serverTimestamp() });
+    t.set(refHuella, { count: 1, actualizado: new Date(), expiraEn: Timestamp.fromMillis(Date.now() + DIA) });
+    return 'ok';
+  });
+}
+
+describe('yonke ligero: la transacción del servidor contra las reglas', () => {
+  it('guarda todo junto, y el ligero recién creado ya puede responder', async () => {
+    assert.equal(await assertSucceeds(guardarDelServidor('n1', 'N1', 'ligeroWa_abc_unico')), 'ok');
+    await assertSucceeds(responder('n1', 'N1', 'P1'));
+  });
+  it('con la huella ya usada no escribe nada', async () => {
+    await assertSucceeds(guardarDelServidor('n1', 'N1', 'ligeroWa_abc_unico'));
+    assert.equal(await assertSucceeds(guardarDelServidor('n2', 'N2', 'ligeroWa_abc_unico')), 'yaUsada');
+    assert.equal(await sinReglas(async (db) => (await getDoc(doc(db, 'yonkes', 'N2'))).exists()), false);
+  });
+  it('NO con la bandera apagada: la transacción completa falla', async () => {
+    await sembrar({ ligeros: { habilitado: false } });
+    await assertFails(guardarDelServidor('n1', 'N1', 'ligeroWa_abc_unico'));
+    assert.equal(await sinReglas(async (db) => (await getDoc(doc(db, 'pedidosClientesLimite', 'ligeroWa_abc_unico'))).exists()), false);
   });
 });
 
