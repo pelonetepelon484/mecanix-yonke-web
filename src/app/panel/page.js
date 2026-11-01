@@ -8,6 +8,7 @@ import { auth, db } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 import { enviarRecuperacionPassword } from '../lib/passwordReset';
 import { talleresHabilitados } from '../../lib/talleresHabilitados';
+import { esIdPedido } from '../../lib/pedidosClientes';
 import { TEXTO_RECUPERAR_WHATSAPP, correoDeEntrada, enlaceRecuperarWhatsapp, whatsappDeEntrada } from '../../lib/yonkeLigero';
 
 // Mismos textos que la app (LoginScreen.js en mecanix-yonke-virtual2) para que la
@@ -56,10 +57,11 @@ export default function PanelLogin() {
       router.push('/panel/taller');
     } else if (userRole === 'refaccionaria') {
       router.push('/panel/refaccionaria');
-    } else if (userRole === 'yonkeLigero') {
-      router.push('/panel/reservaciones');
     } else {
-      router.push('/panel/inventario');
+      // Viene de una búsqueda activa (?pedido={id}): directo a contestarla. El ligero siempre a Pedidos.
+      const pedido = new URLSearchParams(window.location.search).get('pedido');
+      if (esIdPedido(pedido)) router.push(`/panel/reservaciones?pedido=${pedido}`);
+      else router.push(userRole === 'yonkeLigero' ? '/panel/reservaciones' : '/panel/inventario');
     }
   }
 

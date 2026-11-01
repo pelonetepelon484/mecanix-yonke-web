@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
 import { URL_TERMINOS, URL_PRIVACIDAD } from '../../../lib/versionesLegales';
@@ -14,6 +14,7 @@ import { esIdPedido } from '../../../lib/pedidosClientes';
 import { avisarAlAdmin } from '../../lib/avisosAdmin/avisarAlAdmin';
 import { useAuth } from '../AuthContext';
 import { TEXTO_REGISTRO_ALERTAS } from '../../../lib/alertasRecientes';
+import RegistroLigero from './RegistroLigero';
 
 const CIUDADES_BC = [
   { key: 'tijuana', label: 'Tijuana' },
@@ -27,7 +28,46 @@ const CIUDADES_BC = [
 
 // La dirección no cambia mientras se llena el registro: no hace falta escucharla.
 const sinSuscripcion = () => () => {};
-export default function RegistroYonke() {
+
+// Bandera y alerta para decidir la pantalla. Cualquier falla lleva al registro completo.
+async function leerAlertaParaLigero(id) {
+  try {
+    const config = await getDoc(doc(db, 'config', 'yonkesLigeros'));
+    if (!config.exists() || config.data().habilitado !== true) return null;
+    const res = await fetch(`/api/pedidos-abiertos?pedido=${id}`);
+    const data = await res.json();
+    return res.ok && data?.ok && data.pedido ? data.pedido : null;
+  } catch (error) {
+    console.error('No se pudo revisar el registro ligero', error);
+    return null;
+  }
+}
+
+// Con config/yonkesLigeros.habilitado y una búsqueda activa abierta (?pedido={id}), el registro
+// ligero. En cualquier otro caso (apagada, alerta vencida, sin alerta o ?completo=1), el de siempre.
+export default function PaginaRegistroYonke() {
+  // null en el servidor: se decide en el navegador, sin mostrar un instante el formulario largo.
+  const busqueda = useSyncExternalStore(sinSuscripcion, () => window.location.search, () => null);
+  const params = busqueda === null ? null : new URLSearchParams(busqueda);
+  const pedidoParam = params?.get('pedido');
+  const idPedido = esIdPedido(pedidoParam) && params.get('completo') !== '1' ? pedidoParam : null;
+  const [alerta, setAlerta] = useState({ id: null, pedido: null });
+
+  useEffect(() => {
+    if (!idPedido) return undefined;
+    let vigente = true;
+    leerAlertaParaLigero(idPedido).then((pedido) => { if (vigente) setAlerta({ id: idPedido, pedido }); });
+    return () => { vigente = false; };
+  }, [idPedido]);
+
+  if (busqueda === null || (idPedido && alerta.id !== idPedido)) {
+    return <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '48px 16px', textAlign: 'center', color: '#555' }}>Cargando...</main>;
+  }
+  if (idPedido && alerta.pedido) return <RegistroLigero pedido={alerta.pedido} />;
+  return <RegistroCompleto />;
+}
+
+function RegistroCompleto() {
   const router = useRouter();
   // Para volver a leer la cuenta al terminar: Firebase avisa la sesión nueva antes de que exista
   // usuarios/{uid}, y sin esto el panel no sabría qué yonke es (Pedidos no abriría la alerta).
@@ -399,7 +439,7 @@ export default function RegistroYonke() {
         <p style={{ textAlign: 'center', fontSize: '13px', color: '#888', marginTop: '16px' }}>
           ¿Ya tienes cuenta?{' '}
           <span
-            onClick={() => router.push('/panel')}
+            onClick={() => router.push(pedidoId.current ? `/panel?pedido=${pedidoId.current}` : '/panel')}
             style={{ color: '#E8720C', fontWeight: 'bold', cursor: 'pointer' }}
           >
             Iniciar sesión

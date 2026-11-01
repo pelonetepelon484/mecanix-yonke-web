@@ -76,6 +76,33 @@ describe('entrar', () => {
   });
 });
 
+describe('llega desde una búsqueda activa (?pedido=)', () => {
+  const ID = 'Pedido00000000000007';
+  afterEach(() => { window.history.replaceState(null, '', '/'); });
+  it('yonke y ligero van a contestarla', () => {
+    window.history.replaceState(null, '', `/panel?pedido=${ID}`);
+    for (const userRole of ['yonke', 'yonkeLigero']) {
+      sesion = { user: { uid: 'u' }, userRole, loading: false };
+      render(<PanelLogin />);
+      expect(push).toHaveBeenCalledWith(`/panel/reservaciones?pedido=${ID}`);
+      push.mockClear();
+      cleanup();
+    }
+  });
+  it('un id raro se ignora; admin y taller van a lo suyo', () => {
+    window.history.replaceState(null, '', '/panel?pedido=../raro');
+    sesion = { user: { uid: 'u' }, userRole: 'yonke', loading: false };
+    render(<PanelLogin />);
+    expect(push).toHaveBeenCalledWith('/panel/inventario');
+    cleanup();
+    push.mockClear();
+    window.history.replaceState(null, '', `/panel?pedido=${ID}`);
+    sesion = { user: { uid: 'a' }, userRole: 'admin', loading: false };
+    render(<PanelLogin />);
+    expect(push).toHaveBeenCalledWith('/admin');
+  });
+});
+
 describe('olvidé mi contraseña', () => {
   const abrir = () => fireEvent.click(screen.getByRole('button', { name: '¿Olvidaste tu contraseña?' }));
 
