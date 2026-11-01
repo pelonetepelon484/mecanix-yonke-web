@@ -178,6 +178,8 @@ describe('aviso de "nuevo yonke registrado" (yonke recién registrado, con sesi�
     expect(mensaje).toContain('Ciudad: Tijuana');
     expect(mensaje).toContain('Teléfono: 6641234567');
     expect(mensaje).toContain('Correo: yonke@ejemplo.com');
+    expect(mensaje).toContain('Ya está activo.');
+    expect(mensaje).not.toContain('Revisa Firebase');
     expect(mensaje).not.toContain('FALSO');
     const otra = await m.registroYonke(peticion({ token: 'pase-yonke-nuevo' }));
     expect(await otra.json()).toEqual({ ok: true, avisado: false, motivo: 'repetido' });

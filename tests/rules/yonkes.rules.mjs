@@ -10,6 +10,12 @@ import { doc, setDoc, updateDoc, getDoc, deleteDoc, deleteField, serverTimestamp
 const reglas = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
 let env;
 
+// Lo que escribe el registro (src/app/panel/registro/page.js) al crear la ficha.
+const altaDeFormulario = (ownerUid) => ({
+  nombre: 'Nuevo', direccion: 'Calle 2', estado: 'baja-california', ciudad: 'tijuana', telefono: '6640000000', whatsapp: '6640000000',
+  metodosPago: [], plan: 'freemium', activo: true, fechaRegistro: new Date(), ownerUid,
+});
+
 // Datos de prueba: un yonke con dueño (registrado solo), un yonke viejo sin ownerUid,
 // y un dueño con yonke ya registrado.
 async function sembrar() {
@@ -50,15 +56,16 @@ describe('cuenta nueva que intenta reclamar un yonke ajeno', () => {
   });
   it('no puede crear un yonke sin ownerUid', async () => {
     await sembrar();
-    await assertFails(setDoc(doc(como('x8'), 'yonkes', 'Y8'), { nombre: 'Sin dueño' }));
+    const { ownerUid, ...sinDueno } = altaDeFormulario('x8');
+    await assertFails(setDoc(doc(como(ownerUid), 'yonkes', 'Y8'), sinDueno));
   });
   it('no puede crear un yonke con ownerUid de otra persona', async () => {
     await sembrar();
-    await assertFails(setDoc(doc(como('x7'), 'yonkes', 'Y7'), { nombre: 'Ajeno', ownerUid: 'o1' }));
+    await assertFails(setDoc(doc(como('x7'), 'yonkes', 'Y7'), altaDeFormulario('o1')));
   });
   it('una cuenta que ya tiene usuario (yonke) no puede crear otro yonke', async () => {
     await sembrar();
-    await assertFails(setDoc(doc(como('o1'), 'yonkes', 'Y10'), { nombre: 'Otro yonke', ownerUid: 'o1' }));
+    await assertFails(setDoc(doc(como('o1'), 'yonkes', 'Y10'), altaDeFormulario('o1')));
   });
   it('no puede poner ownerUid en un yonke viejo que ya existe', async () => {
     await sembrar();
@@ -84,8 +91,7 @@ describe('registro normal de yonke (mismo orden que el código)', () => {
   it('la versión de respaldo del yonke (sin aceptacionLegal) también pasa', async () => {
     await sembrar();
     await assertSucceeds(setDoc(doc(como('o6'), 'yonkes', 'Y6'), {
-      nombre: 'Nuevo', direccion: 'Calle 2', telefono: '6640000000', metodosPago: [], plan: 'freemium', activo: true,
-      fechaRegistro: new Date(), ownerUid: 'o6',
+      ...altaDeFormulario('o6'),
     }));
     await assertSucceeds(setDoc(doc(como('o6'), 'usuarios', 'o6'), {
       rol: 'yonke', yonkeId: 'Y6', email: 'o6@prueba.mx', fechaRegistro: new Date(),
@@ -93,7 +99,7 @@ describe('registro normal de yonke (mismo orden que el código)', () => {
   });
   it('un usuario de yonke no puede agregar campos extra al usuario', async () => {
     await sembrar();
-    await assertSucceeds(setDoc(doc(como('o7'), 'yonkes', 'Y7'), { nombre: 'Nuevo', ownerUid: 'o7' }));
+    await assertSucceeds(setDoc(doc(como('o7'), 'yonkes', 'Y7'), altaDeFormulario('o7')));
     await assertFails(setDoc(doc(como('o7'), 'usuarios', 'o7'), {
       rol: 'yonke', yonkeId: 'Y7', email: 'o7@prueba.mx', fechaRegistro: new Date(), admin: true,
     }));
@@ -138,7 +144,7 @@ describe('dueño de un yonke', () => {
   });
   it('puede borrar su yonke mientras aún no tenga usuario (rollback)', async () => {
     await sembrar();
-    await assertSucceeds(setDoc(doc(como('o3'), 'yonkes', 'Y3'), { nombre: 'Rollback', ownerUid: 'o3' }));
+    await assertSucceeds(setDoc(doc(como('o3'), 'yonkes', 'Y3'), altaDeFormulario('o3')));
     await assertSucceeds(deleteDoc(doc(como('o3'), 'yonkes', 'Y3')));
   });
 });
@@ -207,7 +213,7 @@ describe('admin: crear y revocar accesos', () => {
 describe('plan y vencimiento de Premium: solo el admin', () => {
   const fecha = (iso = '2030-01-01') => Timestamp.fromDate(new Date(`${iso}T00:00:00`));
   const registro = (uid, yonkeId, extra) => setDoc(doc(como(uid), 'yonkes', yonkeId), {
-    nombre: 'Nuevo', activo: true, fechaRegistro: new Date(), ownerUid: uid, ...extra,
+    ...altaDeFormulario(uid), ...extra,
   });
   const ponerPremiumSinReglas = (hasta) => env.withSecurityRulesDisabled((ctx) =>
     updateDoc(doc(ctx.firestore(), 'yonkes', 'Y1'), { plan: 'premium', premiumHasta: hasta }));

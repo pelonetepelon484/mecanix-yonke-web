@@ -37,8 +37,6 @@ vi.mock('firebase/firestore', () => ({
 }));
 vi.mock('../../lib/firebase', () => ({ auth: {}, db: {} }));
 vi.mock('../../lib/estados', () => ({ ESTADO_DEFAULT: 'baja-california', cargarEstados: async () => [{ id: 'baja-california', nombre: 'Baja California' }] }));
-vi.mock('../../lib/generarSubdominio', () => ({ generarSubdominioUnico: async () => 'yonke-nuevo' }));
-vi.mock('../../lib/subirLogoYonke', () => ({ subirLogoYonke: async () => null, validarArchivoLogo: () => null }));
 
 const { default: Registro } = await import('./page.js');
 const { TEXTO_REGISTRO_ALERTAS } = await import('../../../lib/alertasRecientes');
@@ -56,9 +54,9 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); window.history.replaceState(null, '', '/'); });
 
-function llenarYRegistrar() {
+function llenarYRegistrar(nombre = 'Yonke Nuevo') {
   const escribir = (placeholder, valor, i = 0) => fireEvent.change(screen.getAllByPlaceholderText(placeholder)[i], { target: { value: valor } });
-  escribir('Ej. Yonke El Tigre', 'Yonke Nuevo');
+  escribir('Ej. Yonke El Tigre', nombre);
   escribir('Calle, colonia, referencias', 'Calle 1');
   escribir('664 000 0000', '6641234567');
   escribir('tucorreo@ejemplo.com', 'yonke@ejemplo.com');
@@ -67,6 +65,32 @@ function llenarYRegistrar() {
   fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta gratis' }));
 }
+
+describe('registro: solo lo que aceptan las reglas al crear un yonke', () => {
+  it('no pide logo ni tema, y la ficha lleva exactamente los campos permitidos (nada de subdominio ni branding)', async () => {
+    window.history.replaceState(null, '', '/panel/registro');
+    render(<Registro />);
+    expect(screen.queryByText('Logo de tu negocio (opcional)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Estilo de tu página')).not.toBeInTheDocument();
+    llenarYRegistrar();
+    await waitFor(() => expect(escrituras.some(([ruta]) => ruta === 'usuarios/uidY1')).toBe(true));
+    await screen.findByText('¡Registro exitoso!');
+    const fichas = escrituras.filter(([ruta]) => ruta === 'yonkes/Y1');
+    expect(fichas).toHaveLength(1);
+    expect(Object.keys(fichas[0][1]).sort()).toEqual([
+      'aceptacionLegal', 'activo', 'ciudad', 'direccion', 'estado', 'fechaRegistro', 'metodosPago', 'nombre', 'ownerUid', 'plan', 'telefono', 'whatsapp',
+    ]);
+    expect(fichas[0][1]).toMatchObject({ plan: 'freemium', activo: true, metodosPago: [], ownerUid: 'uidY1', whatsapp: '6641234567' });
+  });
+
+  it('un campo obligatorio con puros espacios se detiene antes de crear la cuenta', async () => {
+    window.history.replaceState(null, '', '/panel/registro');
+    render(<Registro />);
+    llenarYRegistrar('   ');
+    expect(await screen.findByText('Llena todos los campos obligatorios')).toBeInTheDocument();
+    expect(escrituras).toEqual([]);
+  });
+});
 
 describe('registro desde las alertas de la portada', () => {
   it('sin ?desde=alertas no sale el mensaje', async () => {
