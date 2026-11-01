@@ -6,6 +6,7 @@ import { otrosEstadosSinResultadosServer, scrollOtrosEstadosServer } from './con
 import {
   consultarInventarioEnYonkes, consultarInventarioVehiculoEnYonkes, consultarMotoresTransmisionesEnYonkes,
 } from './consultarInventario';
+import { esRegistroLigero } from '../../../lib/yonkeLigero';
 
 // Resultados de OTROS estados cuando no hay nada en el del cliente (config/buscador.
 // otrosEstadosSinResultados, solo true exacto). Solo cuando el cliente eligió un estado: con
@@ -48,7 +49,7 @@ export function yonkesElegiblesOtrosEstados(yonkesDocs, estadoCliente, max = MAX
   return yonkesDocs
     .filter((d) => {
       const y = d.data();
-      return y.activo === true && y.verificado === true && estadoDeYonke(y) !== estadoCliente;
+      return y.activo === true && y.verificado === true && !esRegistroLigero(y) && estadoDeYonke(y) !== estadoCliente;
     })
     // Con Envíos nacionales primero, luego Premium vigente; entre iguales, el orden de siempre.
     .map((d, i) => ({ d, i, envios: d.data().enviosNacionales === true, premium: esPremiumVigente(d.data()) }))

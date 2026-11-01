@@ -8,6 +8,7 @@ import { leerConfigPortada } from '../lib/configPortada';
 import { rangoAniosServer } from './lib/busqueda/configBuscadorServer';
 import { buscadorRefaccionesEncendido } from './lib/refaccionariaPublica';
 import { leerPromoTalleres } from '../lib/premiumGratis';
+import { esRegistroLigero } from '../lib/yonkeLigero';
 
 // Misma cadencia que el caché en memoria de estadosServer.js (10 min) — sin esto, Next.js
 // generaría esta página como estática en el build y el texto SEO de cobertura quedaría
@@ -42,8 +43,10 @@ const obtenerCobertura = cache(async function obtenerCobertura() {
     obtenerEstadosCombinado(),
     getDocs(collection(dbServer, 'yonkes')),
   ]);
-  const estadosConYonkes = new Set(yonkesSnap.docs.map((d) => estadoDeYonke(d.data())));
-  return { estadosConCobertura: estados.filter((e) => estadosConYonkes.has(e.id)), totalYonkes: yonkesSnap.size };
+  // Los de registro ligero no tienen inventario: no son cobertura ni cuentan como afiliados.
+  const yonkes = yonkesSnap.docs.map((d) => d.data()).filter((y) => !esRegistroLigero(y));
+  const estadosConYonkes = new Set(yonkes.map(estadoDeYonke));
+  return { estadosConCobertura: estados.filter((e) => estadosConYonkes.has(e.id)), totalYonkes: yonkes.length };
 });
 
 // Nada de "title" aquí a propósito: se deja heredar el default rico en keywords de layout.js.

@@ -11,6 +11,7 @@ import { toMillis } from '../../../lib/inventoryStatus';
 import { elegirPiezaParaPrecio, esPrecioValido } from '../../../lib/precio';
 import { aniosCercanos, aniosCercanosAnteriores, ordenarPorCercania } from '../../../lib/rangoAnios';
 import { buscarVehiculosAlerta } from '../buscarVehiculosAlerta';
+import { esRegistroLigero } from '../../../lib/yonkeLigero';
 
 // Un modelo REAL y conocido (ej. Volkswagen Atlas, Dodge Stratus) que nadie ha registrado nunca
 // en vivo no debe verse igual que un texto que no se entendió en absoluto — antes, ambos casos
@@ -36,7 +37,10 @@ function existeEnCatalogoEstatico(marca, modelo) {
 // estado específico, se filtra por estadoDeYonke() (ausente = Baja California, ver lib/estados.js)
 // y se marca `sinYonkesEnEstado` cuando ese estado no tiene NINGÚN yonke — distinto de "tiene
 // yonkes pero ninguno con esta pieza/vehículo", que sigue el pipeline normal de niveles.
-function filtrarPorEstado(yonkesDocsTodos, estado) {
+function filtrarPorEstado(yonkesDocsConLigeros, estado) {
+  // Los de registro ligero no tienen inventario: ni se consultan (cuidan la cuota de Firestore) ni
+  // cuentan para decir que un estado tiene yonkes.
+  const yonkesDocsTodos = yonkesDocsConLigeros.filter((d) => !esRegistroLigero(d.data()));
   if (!estado || estado === 'todos') {
     return { yonkesDocs: yonkesDocsTodos, sinYonkesEnEstado: false };
   }

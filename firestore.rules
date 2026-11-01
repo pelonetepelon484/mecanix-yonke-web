@@ -12,6 +12,28 @@ service cloud.firestore {
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'yonke' &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId == yonkeId;
     }
+    // ---------- Yonke ligero (rol 'yonkeLigero') ----------
+    // Registro mínimo que SOLO contesta búsquedas activas de clientes de su estado. Su rol es otro a
+    // propósito: todo lo que pide rol 'yonke' (inventario, ventas, ficha, Demanda, talleres, Storage)
+    // le queda cerrado sin más, y solo se le abre lo que aparece con este nombre en estas reglas.
+    function esYonkeLigero(yonkeId) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'yonkeLigero' &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.yonkeId == yonkeId;
+    }
+    function yonkesLigerosHabilitados() {
+      return exists(/databases/$(database)/documents/config/yonkesLigeros)
+        && get(/databases/$(database)/documents/config/yonkesLigeros).data.get('habilitado', false) == true;
+    }
+    function ligeroActivoDeEseEstado(estado) {
+      let usuario = /databases/$(database)/documents/usuarios/$(request.auth.uid);
+      return request.auth != null
+        && exists(usuario)
+        && get(usuario).data.rol == 'yonkeLigero'
+        && get(/databases/$(database)/documents/yonkes/$(get(usuario).data.yonkeId)).data.activo == true
+        && get(/databases/$(database)/documents/yonkes/$(get(usuario).data.yonkeId)).data.estado == estado;
+    }
     // ---------- Términos vigentes de yonkes (config/terminosYonkes) ----------
     // Si config/terminosYonkes NO existe, no se exige nada (así se apaga la exigencia). Si existe,
     // la versión aceptada del yonke (aceptacionLegal.version) debe ser su campo version. Un yonke
@@ -270,6 +292,23 @@ service cloud.firestore {
                         && request.resource.data.keys().hasOnly(['rol', 'refaccionariaId', 'email', 'fechaRegistro'])
                         && request.resource.data.refaccionariaId is string
                         && get(/databases/$(database)/documents/refaccionarias/$(request.resource.data.refaccionariaId)).data.ownerUid == request.auth.uid);
+      // Yonke ligero: solo el servidor lo da de alta, en el mismo guardado que su ficha.
+      allow create: if esServicio()
+                    && request.resource.data.keys().hasOnly(['rol', 'yonkeId', 'email', 'fechaRegistro'])
+                    && request.resource.data.keys().hasAll(['rol', 'yonkeId', 'email', 'fechaRegistro'])
+                    && request.resource.data.rol == 'yonkeLigero'
+                    && request.resource.data.yonkeId is string
+                    && request.resource.data.email is string
+                    && request.resource.data.fechaRegistro == request.time
+                    && getAfter(/databases/$(database)/documents/yonkes/$(request.resource.data.yonkeId)).data.ownerUid == userId
+                    && getAfter(/databases/$(database)/documents/yonkes/$(request.resource.data.yonkeId)).data.tipoRegistro == 'ligero';
+      // "Completar mi registro": solo el servidor pasa de ligero a yonke, junto con su ficha ya completa.
+      allow update: if esServicio()
+                    && resource.data.rol == 'yonkeLigero'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rol'])
+                    && request.resource.data.rol == 'yonke'
+                    && getAfter(/databases/$(database)/documents/yonkes/$(resource.data.yonkeId)).data.ownerUid == userId
+                    && getAfter(/databases/$(database)/documents/yonkes/$(resource.data.yonkeId)).data.tipoRegistro == 'completo';
       allow update: if esAdmin();
       allow delete: if esAdmin();
     }
@@ -1502,6 +1541,8 @@ service cloud.firestore {
                       && resource.data.aceptaOtrosEstados == true
                       && otrosEstadosHabilitados()
                       && yonkeConEnvioAOtrosEstados());
+      // Yonke ligero: solo las abiertas de su propio estado.
+      allow read: if resource.data.estadoPedido == 'abierta' && ligeroActivoDeEseEstado(resource.data.estado);
       allow create: if esServicio() && pedidosClientesHabilitados() && pedidoClienteValido();
       // El admin puede dar de baja un pedido (spam) o reabrirlo; nada más cambia.
       allow update: if esAdmin()
@@ -1555,6 +1596,19 @@ service cloud.firestore {
             && request.resource.data.expiraAt <= padre + duration.value(5, 'm');
         }
 
+        // Yonke ligero: tope propio (config/pedidosClientes.limiteRespuestasLigero). Sin ese campo no
+        // responde: falla cerrada. Siempre con `dia` y su contador en el mismo guardado; Premium no aplica.
+        function respuestaLigeraDentroDelLimite(yonkeId) {
+          let limite = get(/databases/$(database)/documents/config/pedidosClientes).data.get('limiteRespuestasLigero', null);
+          let dia = request.resource.data.get('dia', null);
+          return limite is int && limite >= 1
+            && diaTijuanaValido(dia)
+            && getAfter(contadorRespuestas(yonkeId, dia)).data.count <= limite
+            && ((!exists(contadorRespuestas(yonkeId, dia)) && getAfter(contadorRespuestas(yonkeId, dia)).data.count == 1)
+                || (exists(contadorRespuestas(yonkeId, dia))
+                    && getAfter(contadorRespuestas(yonkeId, dia)).data.count == get(contadorRespuestas(yonkeId, dia)).data.count + 1));
+        }
+        allow read: if esYonkeLigero(yonkeId);
         allow read: if esAdmin() || esServicio() || esDuenoDelYonke(yonkeId);
         allow create: if pedidosClientesHabilitados()
                       && esDuenoDelYonke(yonkeId)
@@ -1569,6 +1623,16 @@ service cloud.firestore {
                       && respuestaPedidoValida()
                       && expiraIgualAlPedido()
                       && respuestaDentroDelLimite(yonkeId);
+        allow create: if pedidosClientesHabilitados()
+                      && esYonkeLigero(yonkeId)
+                      && ligeroActivoDeEseEstado(pedidoPadre().estado)
+                      && pedidoPadre().estadoPedido == 'abierta'
+                      && pedidoPadre().expiraAt > request.time
+                      && request.resource.data.yonkeNombre == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.nombre
+                      && request.resource.data.whatsapp == get(/databases/$(database)/documents/yonkes/$(yonkeId)).data.whatsapp
+                      && respuestaPedidoValida()
+                      && expiraIgualAlPedido()
+                      && respuestaLigeraDentroDelLimite(yonkeId);
         // "Sugerir yonke" (admin): el yonke le confirmó por fuera que TIENE la pieza y el admin
         // registra la respuesta en su nombre. Bandera config/pedidosClientes.sugerirYonkeAdmin (solo
         // true exacto). Mismo estado del pedido, u otro estado solo si el cliente lo aceptó
@@ -1687,6 +1751,12 @@ service cloud.firestore {
       }
       allow read, delete: if esAdmin() || esServicio() || esDuenoDelYonke(resource.data.yonkeId);
       allow create: if esDuenoDelYonke(request.resource.data.yonkeId) && dispositivoValido();
+      // Yonke ligero: sus avisos de búsquedas activas, igual que un dueño.
+      allow read, delete: if esYonkeLigero(resource.data.yonkeId);
+      allow create: if esYonkeLigero(request.resource.data.yonkeId) && dispositivoValido();
+      allow update: if esYonkeLigero(resource.data.yonkeId)
+                    && request.resource.data.yonkeId == resource.data.yonkeId
+                    && dispositivoValido();
       // Volver a activar en el mismo dispositivo (Firebase puede renovar el token): mismo dueño.
       allow update: if esDuenoDelYonke(resource.data.yonkeId)
                     && request.resource.data.yonkeId == resource.data.yonkeId
@@ -1770,6 +1840,45 @@ service cloud.firestore {
                                 && terminosYonkesVigentes(resource.data)))
                         // Plan: con límites activos, lo de la página propia y lo fiscal pide Premium vigente
                         && (premiumSiHaceFalta(resource.data) || !cambiaAlgoPremium()));
+      // Yonke ligero. Alta: solo el servidor, con la bandera config/yonkesLigeros.habilitado, sin
+      // ciudad ni nada de lo que pone el admin, y siempre con su aceptación en el mismo guardado.
+      function altaLigeraValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['nombre', 'whatsapp', 'estado', 'tipoRegistro', 'plan', 'activo', 'fechaRegistro', 'ownerUid', 'aceptacionLegal'])
+          && d.keys().hasAll(['nombre', 'whatsapp', 'estado', 'tipoRegistro', 'plan', 'activo', 'fechaRegistro', 'ownerUid', 'aceptacionLegal'])
+          && d.tipoRegistro == 'ligero'
+          && d.nombre is string && d.nombre.size() >= 1 && d.nombre.size() <= 100
+          && d.whatsapp is string && d.whatsapp.matches('^[0-9]{10}$')
+          && d.estado is string && d.estado.size() >= 1 && d.estado.size() <= 60
+          && d.plan == 'freemium'
+          && d.activo == true
+          && d.fechaRegistro == request.time
+          && d.ownerUid is string && d.ownerUid.size() >= 1
+          && !exists(/databases/$(database)/documents/usuarios/$(d.ownerUid))
+          && d.aceptacionLegal.keys().hasOnly(['version', 'fecha'])
+          && d.aceptacionLegal.version is string
+          && d.aceptacionLegal.fecha == request.time
+          && existsAfter(/databases/$(database)/documents/yonkes/$(yonkeId)/aceptaciones/$(d.aceptacionLegal.version))
+          && (!exists(terminosYonkesRef()) || aceptacionVigenteEnEsteGuardado());
+      }
+      allow create: if esServicio() && yonkesLigerosHabilitados() && altaLigeraValida();
+      // "Completar mi registro": solo el servidor, y solo agrega los datos del negocio. Conserva el
+      // mismo id, así que sus respuestas y su contador del día siguen ahí. No depende de la bandera.
+      function completarLigeroValido() {
+        let d = request.resource.data;
+        return resource.data.get('tipoRegistro', '') == 'ligero'
+          && d.diff(resource.data).affectedKeys().hasOnly(['tipoRegistro', 'direccion', 'ciudad', 'telefono', 'metodosPago'])
+          && d.tipoRegistro == 'completo'
+          && d.direccion is string && d.direccion.size() >= 1 && d.direccion.size() <= 300
+          && d.ciudad is string && d.ciudad.size() >= 1 && d.ciudad.size() <= 100
+          && d.telefono is string && d.telefono.size() >= 1 && d.telefono.size() <= 40
+          && d.metodosPago is list && d.metodosPago.size() == 0;
+      }
+      allow update: if esServicio() && completarLigeroValido();
+      // Términos nuevos: lo único de su ficha que el yonke ligero puede cambiar.
+      allow update: if esYonkeLigero(yonkeId)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['aceptacionLegal'])
+                    && aceptacionVigenteEnEsteGuardado();
       // Dueño que se registró: puede borrar su yonke solo mientras su usuario no exista (rollback)
       allow delete: if esAdmin()
                     || (request.auth != null
@@ -1788,6 +1897,14 @@ service cloud.firestore {
                       && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.aceptacionLegal.version == version
                       && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.aceptacionLegal.fecha == request.time
                       && (!exists(terminosYonkesRef()) || version == get(terminosYonkesRef()).data.version);
+        // Alta del yonke ligero: el servidor guarda la entrada junto con la ficha.
+        allow create: if esServicio()
+                      && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.tipoRegistro == 'ligero'
+                      && request.resource.data.keys().hasOnly(['version', 'fecha'])
+                      && request.resource.data.version == version
+                      && request.resource.data.fecha == request.time
+                      && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.aceptacionLegal.version == version
+                      && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.aceptacionLegal.fecha == request.time;
         allow update: if false;
         allow delete: if esAdmin();
       }
@@ -1928,6 +2045,16 @@ service cloud.firestore {
                       && diaTijuanaValido(dia)
                       && request.resource.data.keys().hasOnly(['count'])
                       && request.resource.data.count == resource.data.count + 1;
+        // Yonke ligero: mismo contador; solo sube de 1 en 1.
+        allow read: if esYonkeLigero(yonkeId);
+        allow create: if esYonkeLigero(yonkeId)
+                      && diaTijuanaValido(dia)
+                      && request.resource.data.keys().hasOnly(['count'])
+                      && request.resource.data.count == 1;
+        allow update: if esYonkeLigero(yonkeId)
+                      && diaTijuanaValido(dia)
+                      && request.resource.data.keys().hasOnly(['count'])
+                      && request.resource.data.count == resource.data.count + 1;
         allow delete: if esAdmin();
       }
       // Datos privados del yonke (hoy: privado/contacto con su correo, ver src/lib/contactoPrivado.js).
@@ -1935,6 +2062,13 @@ service cloud.firestore {
       // son otras rutas, con sus propias reglas.)
       match /privado/{docId} {
         allow read, write: if esAdmin();
+        // Correo opcional al completar el registro de un yonke ligero: solo el servidor.
+        allow create: if esServicio()
+                      && docId == 'contacto'
+                      && request.resource.data.keys().hasOnly(['email'])
+                      && request.resource.data.email is string
+                      && request.resource.data.email.size() >= 3 && request.resource.data.email.size() <= 254
+                      && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.tipoRegistro == 'completo';
       }
       // ---------- NUEVO: contador de toques al botón de WhatsApp ----------
       match /contactosVehiculo/{docId} {

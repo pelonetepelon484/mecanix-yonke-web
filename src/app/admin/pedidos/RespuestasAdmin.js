@@ -63,11 +63,11 @@ export function SugerirYonke({ coleccion, pedido, estados, permitirOtrosEstados 
   useEffect(() => {
     if (!abierto) return;
     let cancelado = false;
-    listarYonkesActivosDeEstado(estado)
+    listarYonkesActivosDeEstado(estado, { sinLigeros: coleccion === 'solicitudesPiezas' })
       .then((lista) => { if (!cancelado) setYonkes(lista); })
       .catch((err) => { console.error(err); if (!cancelado) { setYonkes([]); setError('No pudimos cargar los yonkes.'); } });
     return () => { cancelado = true; };
-  }, [abierto, estado]);
+  }, [abierto, estado, coleccion]);
 
   const nombreEstado = (id) => estados.find((e) => e.id === id)?.nombre || id;
   const texto = sinAcentos(busqueda.trim());

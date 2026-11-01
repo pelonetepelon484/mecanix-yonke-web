@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 import { enviarRecuperacionPassword } from '../lib/passwordReset';
 import { talleresHabilitados } from '../../lib/talleresHabilitados';
+import { esIdPedido } from '../../lib/pedidosClientes';
+import { RUTA_LIGERO, TEXTO_RECUPERAR_WHATSAPP, correoDeEntrada, enlaceRecuperarWhatsapp, whatsappDeEntrada } from '../../lib/yonkeLigero';
 
 // Mismos textos que la app (LoginScreen.js en mecanix-yonke-virtual2) para que la
 // experiencia de recuperación de contraseña sea idéntica en web y app.
@@ -33,6 +36,18 @@ export default function PanelLogin() {
   const [modalRecuperarVisible, setModalRecuperarVisible] = useState(false);
   const [emailRecuperar, setEmailRecuperar] = useState('');
   const [enviandoRecuperacion, setEnviandoRecuperacion] = useState(false);
+  // config/yonkesLigeros.habilitado: los textos dicen "WhatsApp". Entrar con el número funciona
+  // siempre; apagada, la pantalla es la de siempre.
+  const [conWhatsapp, setConWhatsapp] = useState(false);
+
+  useEffect(() => {
+    let vigente = true;
+    (async () => {
+      const snap = await getDoc(doc(db, 'config', 'yonkesLigeros'));
+      if (vigente) setConWhatsapp(snap.exists() && snap.data().habilitado === true);
+    })().catch(() => {});
+    return () => { vigente = false; };
+  }, []);
 
   // Redirigir según rol cuando ya hay sesión
   if (!loading && user) {
@@ -43,26 +58,32 @@ export default function PanelLogin() {
     } else if (userRole === 'refaccionaria') {
       router.push('/panel/refaccionaria');
     } else {
-      router.push('/panel/inventario');
+      // Viene de una búsqueda activa (?pedido={id}): directo a contestarla. El ligero, a su panel.
+      const pedido = new URLSearchParams(window.location.search).get('pedido');
+      const inicio = userRole === 'yonkeLigero' ? RUTA_LIGERO : '/panel/reservaciones';
+      if (esIdPedido(pedido)) router.push(`${inicio}?pedido=${pedido}`);
+      else router.push(userRole === 'yonkeLigero' ? RUTA_LIGERO : '/panel/inventario');
     }
   }
 
   async function handleLogin() {
     if (!email || !password) {
-      setError('Llena correo y contraseña');
+      setError(conWhatsapp ? 'Llena correo o WhatsApp y contraseña' : 'Llena correo y contraseña');
       return;
     }
     setEntrando(true);
     setError('');
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      await signInWithEmailAndPassword(auth, correoDeEntrada(email), password);
       // La redirección la maneja el useEffect de arriba
     } catch (err) {
-      setError('Correo o contraseña incorrectos');
+      setError(whatsappDeEntrada(email) ? 'WhatsApp o contraseña incorrectos' : 'Correo o contraseña incorrectos');
     } finally {
       setEntrando(false);
     }
   }
+
+  const whatsappRecuperar = whatsappDeEntrada(emailRecuperar);
 
   function abrirRecuperar() {
     setEmailRecuperar(email);
@@ -94,8 +115,8 @@ export default function PanelLogin() {
 
         <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
           <input
-            type="email"
-            placeholder="Correo electrónico"
+            type={conWhatsapp ? 'text' : 'email'}
+            placeholder={conWhatsapp ? 'Correo o WhatsApp' : 'Correo electrónico'}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={inputStyle}
@@ -153,12 +174,14 @@ export default function PanelLogin() {
           <div style={modalStyle}>
             <p style={modalTitleStyle}>Recuperar contraseña</p>
             <p style={modalSubStyle}>
-              Escribe tu correo y te enviaremos un enlace para establecer una contraseña nueva.
+              {whatsappRecuperar
+                ? TEXTO_RECUPERAR_WHATSAPP
+                : 'Escribe tu correo y te enviaremos un enlace para establecer una contraseña nueva.'}
             </p>
 
             <input
-              type="email"
-              placeholder="Correo electrónico"
+              type={conWhatsapp || whatsappRecuperar ? 'text' : 'email'}
+              placeholder={conWhatsapp ? 'Correo o WhatsApp' : 'Correo electrónico'}
               value={emailRecuperar}
               onChange={(e) => setEmailRecuperar(e.target.value)}
               style={inputStyle}
@@ -171,13 +194,24 @@ export default function PanelLogin() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={enviarRecuperacion}
-                disabled={enviandoRecuperacion}
-                style={{ ...modalEnviarStyle, opacity: enviandoRecuperacion ? 0.6 : 1, cursor: enviandoRecuperacion ? 'wait' : 'pointer' }}
-              >
-                {enviandoRecuperacion ? 'Enviando...' : 'Enviar'}
-              </button>
+              {whatsappRecuperar ? (
+                <a
+                  href={enlaceRecuperarWhatsapp(whatsappRecuperar)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ ...modalEnviarStyle, textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}
+                >
+                  Escribir por WhatsApp
+                </a>
+              ) : (
+                <button
+                  onClick={enviarRecuperacion}
+                  disabled={enviandoRecuperacion}
+                  style={{ ...modalEnviarStyle, opacity: enviandoRecuperacion ? 0.6 : 1, cursor: enviandoRecuperacion ? 'wait' : 'pointer' }}
+                >
+                  {enviandoRecuperacion ? 'Enviando...' : 'Enviar'}
+                </button>
+              )}
             </div>
           </div>
         </div>

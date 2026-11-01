@@ -144,6 +144,22 @@ describe('Demanda', () => {
 });
 
 describe('Mi negocio', () => {
+  it('cuenta con WhatsApp: el número no se edita y puede cambiar su contraseña', async () => {
+    fichaYonke = { ...fichaYonke, whatsapp: '6641234567' };
+    useAuthMock.mockReturnValue(sesion({ user: { uid: 'o1', email: '6641234567@yonkes.mecanixyonkevirtual.com' } }));
+    render(<Perfil />);
+    expect(await screen.findByText(/Con este número entras a tu cuenta/)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('6641234567', { selector: 'input:disabled' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cambiar contraseña' })).toBeInTheDocument();
+  });
+  it('cuenta con correo normal: igual que siempre', async () => {
+    fichaYonke = { ...fichaYonke, whatsapp: '6641234567' };
+    useAuthMock.mockReturnValue(sesion({ user: { uid: 'o1', email: 'yonke@correo.mx' } }));
+    render(<Perfil />);
+    expect(await screen.findByDisplayValue('6641234567')).toBeEnabled();
+    expect(screen.queryByText(/Con este número entras/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cambiar contraseña' })).not.toBeInTheDocument();
+  });
   it('encendido + Básico: página propia y datos fiscales con candado; logo, garantía y negocio igual', async () => {
     useAuthMock.mockReturnValue(basicoEncendido());
     render(<Perfil />);

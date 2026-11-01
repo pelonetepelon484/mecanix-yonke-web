@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
   const [tallerId, setTallerId] = useState(null);
   const [refaccionariaId, setRefaccionariaId] = useState(null);
   const [yonkePlan, setYonkePlan] = useState(null);
-  // Solo para el dueño (rol 'yonke'): { requerida, version, resumenCambios, aceptada } según
+  // Solo para el dueño (rol 'yonke' o 'yonkeLigero'): { requerida, version, resumenCambios, aceptada } según
   // config/terminosYonkes. null = no aplica o no se pudo leer (las reglas deciden igual).
   const [terminosYonke, setTerminosYonke] = useState(null);
   // Límites del plan (config/planes.limitesActivos) y si el yonke es "Premium vigente". Con el
@@ -60,7 +60,7 @@ export function AuthProvider({ children }) {
       const yonkeRef = doc(db, 'yonkes', data.yonkeId);
       const [yonkeSnap, terminos, limites] = await Promise.all([
         getDoc(yonkeRef),
-        data.rol === 'yonke' ? leerTerminosYonkes(db).catch(() => null) : null,
+        data.rol === 'yonke' || data.rol === 'yonkeLigero' ? leerTerminosYonkes(db).catch(() => null) : null,
         data.rol === 'yonke' ? leerLimitesActivos(db) : false,
       ]);
       setLimitesActivos(limites);
@@ -124,8 +124,10 @@ export function AuthProvider({ children }) {
   const marcarTerminosAceptados = useCallback(() => {
     setTerminosYonke((t) => (t ? { ...t, aceptada: true } : t));
   }, []);
+  // Registro mínimo: solo contesta búsquedas activas en /panel/ligero.
+  const esLigero = userRole === 'yonkeLigero';
   // false solo para un yonke dueño con términos exigidos y sin aceptar (admin y demás: true).
-  const puedeEditarYonke = !(userRole === 'yonke' && terminosYonke?.requerida && !terminosYonke.aceptada);
+  const puedeEditarYonke = !((userRole === 'yonke' || esLigero) && terminosYonke?.requerida && !terminosYonke.aceptada);
   // true solo para un yonke dueño con los límites encendidos y sin Premium vigente.
   const soloBasico = userRole === 'yonke' && limitesActivos && !premiumVigente;
 
@@ -133,7 +135,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, userRole, yonkeId, tallerId, refaccionariaId, yonkePlan, loading, rolListo, recargarRol,
       terminosYonke, puedeEditarYonke, marcarTerminosAceptados,
-      limitesActivos, premiumVigente, soloBasico,
+      limitesActivos, premiumVigente, soloBasico, esLigero,
     }}>
       {children}
     </AuthContext.Provider>
