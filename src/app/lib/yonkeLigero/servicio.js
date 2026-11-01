@@ -8,6 +8,7 @@ import { obtenerEstadosCombinado } from '../busqueda/estadosServer';
 import { notificarAdmin } from '../notificarAdmin';
 import { contar, leerPedido, obtenerDbServicio } from '../pedidosClientes/servicio';
 import { claveLimite } from '../../../lib/pedidosClientesServidor';
+import { CONSTANCIA_AUTORIZACION, CONSTANCIA_PRIVACIDAD, DECLARACION_LIGERO, idConstancia } from '../../../lib/constanciasLegales';
 import { VERSION_LEGAL } from '../../../lib/versionesLegales';
 import { crearManejadorRegistroLigero } from './manejadores';
 
@@ -57,7 +58,7 @@ async function crearCuenta(correo, password) {
 }
 
 // Una sola transacción: si la huella ya existe -> 'yaUsada' (no se escribe nada); si no, ficha,
-// historial, usuario y huella. La huella usa el formato de los contadores de pedidosClientesLimite.
+// historial, constancias, usuario y huella. La huella usa el formato de los contadores de pedidosClientesLimite.
 async function guardar(db, { uid, nombre, whatsapp, estado, correo, version, huella, vidaHuellaMs }) {
   const refHuella = doc(db, 'pedidosClientesLimite', huella);
   const refYonke = doc(collection(db, 'yonkes'));
@@ -68,6 +69,12 @@ async function guardar(db, { uid, nombre, whatsapp, estado, correo, version, hue
       aceptacionLegal: { version, fecha: serverTimestamp() },
     });
     t.set(doc(db, 'yonkes', refYonke.id, 'aceptaciones', version), { version, fecha: serverTimestamp() });
+    t.set(doc(db, 'yonkes', refYonke.id, 'constancias', idConstancia(CONSTANCIA_PRIVACIDAD, version)), {
+      tipo: CONSTANCIA_PRIVACIDAD, version, fecha: serverTimestamp(),
+    });
+    t.set(doc(db, 'yonkes', refYonke.id, 'constancias', idConstancia(CONSTANCIA_AUTORIZACION, version)), {
+      tipo: CONSTANCIA_AUTORIZACION, version, fecha: serverTimestamp(), texto: DECLARACION_LIGERO,
+    });
     t.set(doc(db, 'usuarios', uid), { rol: 'yonkeLigero', yonkeId: refYonke.id, email: correo, fechaRegistro: serverTimestamp() });
     const ahora = new Date();
     t.set(refHuella, { count: 1, actualizado: ahora, expiraEn: Timestamp.fromMillis(ahora.getTime() + vidaHuellaMs) });

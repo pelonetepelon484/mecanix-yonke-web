@@ -316,6 +316,8 @@ function guardarDelServidor(uid, id, huella, { correo = `${uid}@interno.mx` } = 
     if ((await t.get(refHuella)).exists()) return 'yaUsada';
     t.set(doc(db, 'yonkes', id), { ...fichaLigera(uid), fechaRegistro: serverTimestamp(), aceptacionLegal: { version: VERSION, fecha: serverTimestamp() } });
     t.set(doc(db, 'yonkes', id, 'aceptaciones', VERSION), { version: VERSION, fecha: serverTimestamp() });
+    t.set(doc(db, 'yonkes', id, 'constancias', `privacidad_${VERSION}`), { tipo: 'privacidad', version: VERSION, fecha: serverTimestamp() });
+    t.set(doc(db, 'yonkes', id, 'constancias', `autorizacion_${VERSION}`), { tipo: 'autorizacion', version: VERSION, fecha: serverTimestamp(), texto: 'Declaro que estoy autorizado.' });
     t.set(doc(db, 'usuarios', uid), { rol: 'yonkeLigero', yonkeId: id, email: correo, fechaRegistro: serverTimestamp() });
     t.set(refHuella, { count: 1, actualizado: new Date(), expiraEn: Timestamp.fromMillis(Date.now() + DIA) });
     return 'ok';

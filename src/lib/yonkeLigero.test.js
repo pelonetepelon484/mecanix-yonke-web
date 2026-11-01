@@ -5,7 +5,7 @@ import {
 } from './yonkeLigero';
 
 const ID = 'Pedido00000000000007';
-const bien = (extra = {}) => ({ nombre: '  Yonke   El Tigre ', whatsapp: '664 123 4567', password: 'secreto12', aceptaTerminos: true, pedidoId: ID, ...extra });
+const bien = (extra = {}) => ({ nombre: '  Yonke   El Tigre ', whatsapp: '664 123 4567', password: 'secreto12', aceptaTerminos: true, aceptaPrivacidad: true, declaraAutorizacion: true, pedidoId: ID, ...extra });
 
 describe('WhatsApp del yonke ligero', () => {
   it('queda en 10 dígitos con cualquier formato', () => {
@@ -46,6 +46,8 @@ describe('validarRegistroLigero', () => {
     expect(validarRegistroLigero(bien({ password: '1234567' })).error).toBe(MENSAJES_LIGERO.password);
     expect(validarRegistroLigero(bien({ password: 'x'.repeat(129) })).error).toBe(MENSAJES_LIGERO.password);
     expect(validarRegistroLigero(bien({ aceptaTerminos: 'true' })).error).toBe(MENSAJES_LIGERO.terminos);
+    expect(validarRegistroLigero(bien({ aceptaPrivacidad: false })).error).toBe(MENSAJES_LIGERO.terminos);
+    expect(validarRegistroLigero(bien({ declaraAutorizacion: undefined })).error).toBe(MENSAJES_LIGERO.terminos);
     expect(validarRegistroLigero(bien({ pedidoId: 'corto' })).error).toBe(MENSAJES_LIGERO.alerta);
     expect(validarRegistroLigero(null).error).toBe(MENSAJES_LIGERO.nombre);
   });

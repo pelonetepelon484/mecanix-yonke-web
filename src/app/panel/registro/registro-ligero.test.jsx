@@ -48,7 +48,7 @@ function llenar({ nombre = 'Yonke Tigre', whatsapp = '664 123 4567', password = 
   fireEvent.change(screen.getByLabelText('Nombre de tu yonke'), { target: { value: nombre } });
   fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: whatsapp } });
   fireEvent.change(screen.getByLabelText(/^Contraseña/), { target: { value: password } });
-  if (casilla) fireEvent.click(screen.getByRole('checkbox'));
+  if (casilla) screen.getAllByRole('checkbox').forEach((c) => fireEvent.click(c));
 }
 const enviar = () => fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta y responder' }));
 const cuerpoEnviado = () => JSON.parse(fetch.mock.calls.find(([r]) => String(r).startsWith('/api/yonkes'))[1].body);
@@ -105,9 +105,23 @@ describe('registrarse', () => {
     llenar();
     enviar();
     await waitFor(() => expect(replace).toHaveBeenCalledWith(`/panel/ligero?pedido=${ID}`));
-    expect(cuerpoEnviado()).toEqual({ nombre: 'Yonke Tigre', whatsapp: '6641234567', password: 'secreto123', pedidoId: ID, aceptaTerminos: true });
+    expect(cuerpoEnviado()).toEqual({ nombre: 'Yonke Tigre', whatsapp: '6641234567', password: 'secreto123', pedidoId: ID, aceptaTerminos: true, aceptaPrivacidad: true, declaraAutorizacion: true });
     expect(entrar).toHaveBeenCalledWith('auth', INTERNO, 'secreto123');
     expect(orden).toEqual(['servidor', 'entrar', 'recargarRol']);
+  });
+  it('tres casillas sin marcar y con la declaración del abogado; faltando una, no se manda nada', async () => {
+    render(<Registro />);
+    await screen.findByRole('button', { name: 'Crear cuenta y responder' });
+    const casillas = screen.getAllByRole('checkbox');
+    expect(casillas).toHaveLength(3);
+    casillas.forEach((c) => expect(c).not.toBeChecked());
+    expect(screen.getByText(/utilizar el número de WhatsApp proporcionado, tanto para acceder a Mecanix/)).toBeInTheDocument();
+    llenar({ casilla: false });
+    fireEvent.click(casillas[0]);
+    fireEvent.click(casillas[1]);
+    enviar();
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Debes aceptar/);
+    expect(orden).toEqual([]);
   });
   it('repite el número en grande, y solo si es válido', async () => {
     render(<Registro />);
@@ -132,7 +146,7 @@ describe('registrarse', () => {
     enviar();
     expect((await screen.findByRole('alert')).textContent).toMatch(/WhatsApp a 10 dígitos/);
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    fireEvent.click(screen.getByRole('checkbox'));
+    screen.getAllByRole('checkbox').forEach((c) => fireEvent.click(c));
     enviar();
     expect((await screen.findByRole('alert')).textContent).toMatch(/Debes aceptar/);
     expect(orden).toEqual([]);

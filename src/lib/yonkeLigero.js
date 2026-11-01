@@ -1,5 +1,6 @@
 // Lógica pura del yonke ligero (registro mínimo que solo contesta búsquedas activas): lo usan el
 // servidor y, más adelante, las pantallas de registro y de entrada. Sin Firestore ni node:crypto.
+import { MENSAJE_FALTAN_CASILLAS } from './constanciasLegales';
 import { isCiudadValida } from '../app/lib/ciudades';
 import { esIdPedido } from './pedidosClientes';
 import { normalizarWhatsapp, whatsappHref } from './whatsapp';
@@ -22,7 +23,7 @@ export const MENSAJES_LIGERO = {
   nombreReservado: 'Ese nombre no se puede usar. Escribe el nombre de tu yonke.',
   whatsapp: 'Escribe tu WhatsApp a 10 dígitos.',
   password: `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres.`,
-  terminos: 'Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para registrarte.',
+  terminos: MENSAJE_FALTAN_CASILLAS,
   alerta: 'Esta búsqueda activa ya no está disponible.',
   limite: 'Se alcanzó el límite de registros por hoy. Intenta mañana.',
   yaRegistrado: 'Este WhatsApp ya está registrado. Inicia sesión o escríbenos para ayudarte.',
@@ -132,7 +133,7 @@ export function validarRegistroLigero(cuerpo) {
   if (!whatsapp) return { error: MENSAJES_LIGERO.whatsapp };
   const password = cuerpo?.password;
   if (typeof password !== 'string' || password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) return { error: MENSAJES_LIGERO.password };
-  if (cuerpo?.aceptaTerminos !== true) return { error: MENSAJES_LIGERO.terminos };
+  if (cuerpo?.aceptaTerminos !== true || cuerpo?.aceptaPrivacidad !== true || cuerpo?.declaraAutorizacion !== true) return { error: MENSAJES_LIGERO.terminos };
   if (!esIdPedido(cuerpo?.pedidoId)) return { error: MENSAJES_LIGERO.alerta };
   return { datos: { nombre, whatsapp, password, pedidoId: cuerpo.pedidoId } };
 }

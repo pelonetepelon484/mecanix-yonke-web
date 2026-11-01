@@ -57,7 +57,7 @@ function llenarYRegistrar() {
   escribir('tucorreo@ejemplo.com', 'yonke@ejemplo.com');
   escribir('••••••••', 'secreto1', 0);
   escribir('••••••••', 'secreto1', 1);
-  fireEvent.click(screen.getByRole('checkbox'));
+  screen.getAllByRole('checkbox').forEach((c) => fireEvent.click(c));
   fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta gratis' }));
 }
 
@@ -91,6 +91,22 @@ describe('registro de yonke: aceptación de Términos', () => {
     const ficha = escrituras.find(([ruta]) => ruta === 'yonkes/Y1')[1];
     expect(ficha.aceptacionLegal).toEqual({ version: VERSION_LEGAL, fecha: 'HORA_SERVIDOR' });
     expect(escrituras.find(([ruta]) => ruta === `yonkes/Y1/aceptaciones/${VERSION_LEGAL}`)[1]).toEqual({ version: VERSION_LEGAL, fecha: 'HORA_SERVIDOR' });
+  });
+  it('guarda las constancias del Aviso y de la declaración en el mismo guardado', async () => {
+    llenarYRegistrar();
+    expect(await screen.findByText('¡Registro exitoso!')).toBeInTheDocument();
+    expect(escrituras.find(([ruta]) => ruta === `yonkes/Y1/constancias/privacidad_${VERSION_LEGAL}`)[1]).toEqual({ tipo: 'privacidad', version: VERSION_LEGAL, fecha: 'HORA_SERVIDOR' });
+    expect(escrituras.find(([ruta]) => ruta === `yonkes/Y1/constancias/autorizacion_${VERSION_LEGAL}`)[1]).toEqual({
+      tipo: 'autorizacion', version: VERSION_LEGAL, fecha: 'HORA_SERVIDOR',
+      texto: 'Declaro que estoy autorizado para registrar este negocio y utilizar los números de contacto proporcionados, tanto para acceder a Mecanix como para recibir contactos de clientes interesados en las piezas que ofrezca el yonke.',
+    });
+  });
+  it('muestra tres casillas, ninguna marcada', async () => {
+    render(<Registro />);
+    await screen.findByRole('button', { name: 'Crear cuenta gratis' });
+    const casillas = screen.getAllByRole('checkbox');
+    expect(casillas).toHaveLength(3);
+    casillas.forEach((c) => expect(c).not.toBeChecked());
   });
   it('con config/terminosYonkes: usa SU versión (la que exigen las reglas), no VERSION_LEGAL', async () => {
     configTerminos = { version: '2099-01-01', resumenCambios: 'x' };

@@ -35,7 +35,7 @@ function crearFalsos(cambios = {}) {
 }
 const peticion = (cuerpo = {}, ip = '1.1.1.1') => new Request('https://x.mx/api/yonkes/registro-ligero', {
   method: 'POST', headers: { 'x-forwarded-for': ip },
-  body: typeof cuerpo === 'string' ? cuerpo : JSON.stringify({ nombre: 'Yonke Tigre', whatsapp: '664 123 4567', password: CONTRASENA, aceptaTerminos: true, pedidoId: ID, ...cuerpo }),
+  body: typeof cuerpo === 'string' ? cuerpo : JSON.stringify({ nombre: 'Yonke Tigre', whatsapp: '664 123 4567', password: CONTRASENA, aceptaTerminos: true, aceptaPrivacidad: true, declaraAutorizacion: true, pedidoId: ID, ...cuerpo }),
 });
 
 beforeEach(() => { vi.restoreAllMocks(); });
@@ -96,7 +96,7 @@ describe('datos', () => {
   it('cuerpo roto o dato inválido: 400, sin gastar contadores', async () => {
     const f = crearFalsos();
     expect((await f.m(peticion('{no es json'))).status).toBe(400);
-    for (const malo of [{ whatsapp: '123' }, { password: 'corta' }, { aceptaTerminos: false }, { nombre: 'Yonke Mecanix' }, { pedidoId: 'x' }]) {
+    for (const malo of [{ whatsapp: '123' }, { password: 'corta' }, { aceptaTerminos: false }, { aceptaPrivacidad: false }, { declaraAutorizacion: false }, { nombre: 'Yonke Mecanix' }, { pedidoId: 'x' }]) {
       expect((await f.m(peticion(malo))).status).toBe(400);
     }
     expect(f.deps.contar).not.toHaveBeenCalled();
