@@ -1,5 +1,6 @@
 // Lógica pura del yonke ligero (registro mínimo que solo contesta búsquedas activas): lo usan el
 // servidor y, más adelante, las pantallas de registro y de entrada. Sin Firestore ni node:crypto.
+import { isCiudadValida } from '../app/lib/ciudades';
 import { esIdPedido } from './pedidosClientes';
 import { normalizarWhatsapp, whatsappHref } from './whatsapp';
 
@@ -78,6 +79,35 @@ export const TEXTO_SIN_BUSQUEDAS = 'Por ahora no hay búsquedas activas en tu es
 export const TEXTO_COMPLETAR = 'Completar mi registro';
 export const RUTA_LIGERO = '/panel/ligero';
 export const RUTA_COMPLETAR = '/panel/ligero/completar';
+
+// "Completar mi registro": ciudad (de la lista en Baja California; texto libre en los demás),
+// dirección, teléfono y correo opcional, que es solo de contacto: sigue entrando con su WhatsApp.
+export const ESTADO_CON_CIUDADES = 'baja-california';
+export const DIRECCION_MAX = 300;
+export const CIUDAD_MAX = 100;
+export const TELEFONO_MAX = 40;
+export const CORREO_MAX = 254;
+export const MENSAJES_COMPLETAR = {
+  noDisponible: 'No pudimos completar tu registro. Intenta de nuevo.',
+  ciudad: 'Elige tu ciudad.',
+  direccion: 'Escribe la dirección de tu yonke.',
+  telefono: 'Escribe un teléfono a 10 dígitos.',
+  correo: 'El correo no es válido.',
+};
+const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export function validarCompletarRegistro(cuerpo, estado) {
+  const texto = (v) => (typeof v === 'string' ? v.trim() : '');
+  const ciudad = texto(cuerpo?.ciudad);
+  const direccion = texto(cuerpo?.direccion);
+  const telefono = texto(cuerpo?.telefono);
+  const correo = texto(cuerpo?.correo);
+  const ciudadBien = estado === ESTADO_CON_CIUDADES ? isCiudadValida(ciudad) : ciudad.length >= 1 && ciudad.length <= CIUDAD_MAX;
+  if (!ciudadBien) return { error: MENSAJES_COMPLETAR.ciudad };
+  if (direccion.length < 1 || direccion.length > DIRECCION_MAX) return { error: MENSAJES_COMPLETAR.direccion };
+  if (telefono.length > TELEFONO_MAX || !normalizarWhatsapp(telefono)) return { error: MENSAJES_COMPLETAR.telefono };
+  if (correo && (correo.length > CORREO_MAX || !CORREO_VALIDO.test(correo))) return { error: MENSAJES_COMPLETAR.correo };
+  return { datos: { ciudad, direccion, telefono, correo } };
+}
 
 // Datos que manda el navegador. Devuelve { error } o { datos } ya limpios. El estado NUNCA se toma
 // de aquí: sale de la alerta.

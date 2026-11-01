@@ -512,6 +512,9 @@ export default function EditarYonkePage() {
             usuarios.map((u) => (
               <div key={u.id} style={{ padding: '10px 0', borderBottom: '1px solid #F4F5F5' }}>
                 <span style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>{u.email}</span>
+                {esCuentaInterna(u.email) && (
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#8A6D00' }}>Entra con su WhatsApp. Si cambias aquí el número, seguirá entrando con el anterior.</p>
+                )}
                 <div style={{ display: 'flex', gap: '16px', marginTop: '6px', flexWrap: 'wrap' }}>
                   {esCuentaInterna(u.email) ? (
                     <RestablecerPassword usuarioId={u.id} />

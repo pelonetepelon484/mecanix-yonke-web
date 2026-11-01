@@ -21,6 +21,8 @@ import { sanearFondoUrl } from '../../../lib/fondoTenant';
 import { sanearSobreNosotros } from '../../../lib/sobreNosotros';
 import { GARANTIA_DIAS_DEFAULT, GARANTIA_QUE_CUBRE_DEFAULT, GARANTIA_QUE_NO_CUBRE_DEFAULT } from '../../lib/garantiaDefault';
 import { normalizarWhatsapp } from '../../../lib/whatsapp';
+import { esCuentaInterna } from '../../../lib/yonkeLigero';
+import CambiarPassword from '../ligero/CambiarPassword';
 import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 import { IVA_PORCENTAJE_DEFAULT, IVA_RETENIDO_PORCENTAJE_DEFAULT, ISR_PORCENTAJE_DEFAULT, INCLUIR_AVISO_FACTURA_DEFAULT } from '../../lib/fiscalReciclajeDefault';
 
@@ -57,6 +59,8 @@ const HORARIO_DEFAULT = {
 export default function PerfilPanel() {
   const router = useRouter();
   const { user, yonkeId, loading, soloBasico } = useAuth();
+  // Yonke que empezó con el registro ligero: entra con su WhatsApp y no recupera contraseña por correo.
+  const entraConWhatsapp = esCuentaInterna(user?.email);
 
   const [nombre, setNombre] = useState('');
   const [direccion, setDireccion] = useState('');
@@ -559,10 +563,12 @@ export default function PerfilPanel() {
           <input
             type="tel"
             value={whatsapp}
+            disabled={entraConWhatsapp}
             onChange={(e) => setWhatsapp(e.target.value)}
             placeholder="664 000 0000 (si no lo llenas, se usa el teléfono)"
             style={{ ...inputStyle, borderColor: whatsapp.trim() && !normalizarWhatsapp(whatsapp) ? '#C0392B' : '#ddd' }}
           />
+          {entraConWhatsapp && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#888' }}>Con este número entras a tu cuenta. Para cambiarlo, escríbenos.</p>}
           {whatsapp.trim() && !normalizarWhatsapp(whatsapp) && (
             <p style={{ fontSize: '12px', color: '#C0392B', margin: '-4px 0 12px' }}>
               Ese número no se ve válido — usa 10 dígitos (con o sin espacios/guiones). Mientras no sea válido, los botones de WhatsApp de tu página no se mostrarán.
@@ -656,6 +662,7 @@ export default function PerfilPanel() {
         <button onClick={guardarPerfil} disabled={guardando} style={saveButtonStyle}>
           {guardando ? 'Guardando...' : 'Guardar cambios'}
         </button>
+        {entraConWhatsapp && <CambiarPassword />}
         </BloqueoTerminos>
       </div>
 
