@@ -110,7 +110,7 @@ type RespuestaDoc = {
 // vivo (verificado lo pone el admin). estadoYonke: id del estado (mismo esquema que pedido.estado).
 // Del yonke solo salen datos que ya son públicos en su ficha y en el buscador: Verificado, su estado
 // (yonkes/{id}.estado, el de la insignia 📍) y la insignia de Envíos nacionales.
-// precio: solo un número mayor que 0 (si no, null y la pantalla muestra "Precio a tratar").
+// precio: solo un número mayor que 0 (si no, null y la pantalla muestra "Precio no informado").
 // precioATratar y creadoPorAdmin: respuestas de "Sugerir yonke" (las captura el admin, sin precio).
 export function respuestaParaCliente(r: RespuestaDoc, yonke: { verificado?: unknown; estado?: unknown; enviosNacionales?: unknown } | null | undefined) {
   return {

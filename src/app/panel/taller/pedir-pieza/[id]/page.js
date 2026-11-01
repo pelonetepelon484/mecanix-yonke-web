@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { cancelarSolicitud, elegirYonke, escucharRespuestas, leerSolicitud, leerWhatsappYonke } from '../datos';
-import { TEXTO_CONFIRMADO_POR_MECANIX, textoPrecioRespuesta } from '../../../../../lib/respuestasPedido';
+import { TEXTO_CONFIRMACION_REGISTRADA, TEXTO_EXPLICA_CONFIRMACION, TEXTO_EXPLICA_PRECIO, precioValido, textoPrecioRespuesta } from '../../../../../lib/respuestasPedido';
 
 const seccion = { backgroundColor: '#fff', borderRadius: '14px', padding: '16px', marginBottom: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.05)' };
 const botonGrande = { minHeight: '48px', padding: '0 18px', borderRadius: '12px', border: 'none', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' };
@@ -120,16 +120,20 @@ export default function SolicitudPiezaDetalle() {
             <div key={r.yonkeId} style={{ border: '1px solid #EEE', borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
               <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{r.yonkeNombre}</p>
               {r.creadoPorAdmin === true && (
-                <p style={{ margin: '4px 0 0', display: 'inline-block', fontSize: '11px', fontWeight: 'bold', color: '#1A3C5E', backgroundColor: '#EEF2F6', padding: '1px 8px', borderRadius: '12px' }}>
-                  {TEXTO_CONFIRMADO_POR_MECANIX}
-                </p>
+                <>
+                  <p style={{ margin: '4px 0 0', display: 'inline-block', fontSize: '11px', fontWeight: 'bold', color: '#1A3C5E', backgroundColor: '#EEF2F6', padding: '1px 8px', borderRadius: '12px' }}>
+                    {TEXTO_CONFIRMACION_REGISTRADA}
+                  </p>
+                  <p style={{ margin: '4px 0 0', color: '#888', fontSize: '12px' }}>{TEXTO_EXPLICA_CONFIRMACION}</p>
+                </>
               )}
-              {/* "Precio a tratar" (sugerida por Mecanix o sin precio válido): nunca "$0" ni "$NaN". */}
+              {/* "Precio no informado" (sugerida por Mecanix o sin precio válido): nunca "$0" ni "$NaN". */}
               {r.tieneLaPieza ? (
                 <p style={{ margin: '4px 0 0', color: '#2E7D32', fontWeight: 'bold' }}>La tiene — {textoPrecioRespuesta(r)}</p>
               ) : (
                 <p style={{ margin: '4px 0 0', color: '#888' }}>No la tiene</p>
               )}
+              {r.tieneLaPieza && !precioValido(r.precio) && <p style={{ margin: '4px 0 0', color: '#888', fontSize: '12px' }}>{TEXTO_EXPLICA_PRECIO}</p>}
               {r.nota && <p style={{ margin: '4px 0 0', color: '#888', fontSize: '13px' }}>{r.nota}</p>}
               {abierta && r.tieneLaPieza && (
                 <button type="button" disabled={procesando} onClick={() => elegir(r.yonkeId)} style={{ ...botonGrande, marginTop: '10px', backgroundColor: '#E8720C', color: '#fff' }}>

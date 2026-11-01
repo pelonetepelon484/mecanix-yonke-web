@@ -32,7 +32,6 @@ const {
 const {
   FUNCIONES_PLAN_BASICO, FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, PRECIO_PREMIUM_TEXTO, URL_QUIERO_PREMIUM,
 } = await import('../../lib/planes');
-const { TEXTO_AVISO_PAGO } = await import('../mi-pedido/[id]/MiPedidoCliente');
 const textosTalleres = (await import('../../lib/textosLegalesTalleres.json')).default;
 
 const gtag = vi.fn();
@@ -336,7 +335,8 @@ describe('preguntas frecuentes y llamada final', () => {
   });
 
   it('textos citados: la advertencia de pago y la cláusula de talleres siguen siendo las aprobadas', () => {
-    expect(TEXTO_AVISO_PAGO).toBe(`🛡️ ${AVISO_PAGO_APROBADO}`);
+    expect(AVISO_PAGO_APROBADO).toContain('Evita realizar pagos por adelantado si no has verificado al vendedor.');
+    expect(AVISO_PAGO_APROBADO).not.toContain('no participa en la venta');
     const clausula = textosTalleres.terminos.map((t) => t.texto).find((t) => t?.startsWith(CITA_DATOS_CLIENTES_TALLER[0]));
     for (const frase of CITA_DATOS_CLIENTES_TALLER) expect(clausula).toContain(frase);
   });

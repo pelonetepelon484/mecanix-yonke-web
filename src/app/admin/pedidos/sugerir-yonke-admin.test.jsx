@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // /admin/pedidos: "Sugerir yonke" (con su bandera, pedido abierto, yonkes activos sin responder por
-// estado, sin precio: "Precio a tratar") y "Quitar respuesta" (sin bandera; bloqueado si el taller ya
+// estado, sin precio: "Precio no informado") y "Quitar respuesta" (sin bandera; bloqueado si el taller ya
 // eligió esa respuesta), en las dos pestañas.
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
@@ -103,7 +103,7 @@ describe('Sugerir yonke: pedidos de clientes', () => {
     // Sin otros estados (el pedido no los acepta) y sin campo de precio.
     expect(screen.queryByLabelText('Mostrar también otros estados')).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
-    expect(screen.getByText('Precio a tratar')).toBeInTheDocument();
+    expect(screen.getByText('Precio no informado')).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Buscar yonke por nombre'), { target: { value: 'nandu' } });
     expect(within(grupo).queryByText('Yonke Otay')).not.toBeInTheDocument();
@@ -142,12 +142,12 @@ describe('Sugerir yonke: pedidos de clientes', () => {
     expect(await screen.findByText(/Yonke Sonora · Sonora/)).toBeInTheDocument();
   });
 
-  it('respuesta sugerida: marca "Sugerida por admin" y "Precio a tratar" (nunca un precio vacío)', async () => {
+  it('respuesta sugerida: marca "Sugerida por admin" y "Precio no informado" (nunca un precio vacío)', async () => {
     respuestasCliente = [{ yonkeId: 'Y5', yonkeNombre: 'Autopartes Ñandú', tieneLaPieza: true, precioATratar: true, creadoPorAdmin: true, nota: '', whatsapp: '6645555555', verificado: false }];
     render(<PedidosAdminPage />);
     await abrir('Alternador');
     expect(await screen.findByText('🤝 Sugerida por admin')).toBeInTheDocument();
-    expect(screen.getByText('La tiene · Precio a tratar')).toBeInTheDocument();
+    expect(screen.getByText('La tiene · Precio no informado')).toBeInTheDocument();
   });
 
   it('quitar respuesta: confirma, la quita y recarga el detalle', async () => {

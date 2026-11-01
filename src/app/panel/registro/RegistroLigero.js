@@ -9,7 +9,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../../../lib/versionesLegales';
-import { MENSAJES_LIGERO, NOMBRE_MAX, PASSWORD_MAX, PASSWORD_MIN, RUTA_LIGERO, correoInterno, validarRegistroLigero, whatsappDiezDigitos } from '../../../lib/yonkeLigero';
+import { MENSAJES_LIGERO, NOMBRE_MAX, PASSWORD_MAX, PASSWORD_MIN, RUTA_LIGERO, TEXTO_AVISO_NUMERO, correoInterno, validarRegistroLigero, whatsappDiezDigitos } from '../../../lib/yonkeLigero';
 
 export const TEXTO_BOTON_LIGERO = 'Crear cuenta y responder';
 export const textoOtroEstado = (estadoNombre) => `Esta búsqueda es solo para yonkes de ${estadoNombre}. Para contestar búsquedas de tu estado, haz tu registro y elige dónde está tu yonke.`;
@@ -102,6 +102,7 @@ export default function RegistroLigero({ pedido }) {
         <label htmlFor="ligero-whatsapp" style={etiqueta}>Tu WhatsApp</label>
         <input id="ligero-whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="664 000 0000" maxLength={20} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} style={campo} />
         {numero && <p style={{ margin: '0 0 10px', fontSize: '18px', fontWeight: 'bold', color: '#1A3C5E', textAlign: 'center' }}>{formatoWhatsapp(numero)}</p>}
+        <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#555', lineHeight: '1.5' }}>{TEXTO_AVISO_NUMERO}</p>
 
         <label htmlFor="ligero-password" style={etiqueta}>Contraseña (mínimo {PASSWORD_MIN} caracteres)</label>
         <div style={{ position: 'relative' }}>

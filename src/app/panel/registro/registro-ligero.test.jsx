@@ -59,6 +59,8 @@ describe('qué pantalla sale', () => {
     expect(await screen.findByRole('button', { name: 'Crear cuenta y responder' })).toBeInTheDocument();
     expect(screen.getByText(/Alternador · Nissan Sentra 2005/)).toBeInTheDocument();
     expect(screen.getByText('📍 Mi yonke está en Sonora')).toBeInTheDocument();
+    expect(screen.getByText(/Mecanix no verifica este número mediante un código/)).toBeInTheDocument();
+    expect(screen.getByText(/podrá mostrarse a los clientes que reciban tus respuestas/)).toBeInTheDocument();
     expect(screen.queryByText(FORMULARIO_LARGO)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Correo/)).not.toBeInTheDocument();
   });
