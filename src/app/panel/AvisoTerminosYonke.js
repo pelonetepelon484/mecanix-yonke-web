@@ -8,17 +8,17 @@ import { PALABRA_ACEPTAR, esAceptacionEscrita } from './taller/AvisoVersion';
 import { aceptarTerminosYonke, TEXTO_BLOQUEO_TERMINOS_YONKE } from './terminosYonke';
 
 // Aviso de reaceptación de los Términos generales, arriba de todo el panel del yonke. Se muestra
-// solo al dueño (rol 'yonke') cuando existe config/terminosYonkes y su versión aceptada no es la
+// solo al dueño (rol 'yonke' o 'yonkeLigero') cuando existe config/terminosYonkes y su versión aceptada no es la
 // vigente. El texto de los cambios sale de config/terminosYonkes.resumenCambios (no del código).
 // Aceptación ESCRITA, igual que en talleres: la palabra ACEPTO, en mayúsculas o minúsculas y con
 // o sin espacios al inicio o al final; cualquier otra cosa deja el botón desactivado.
 export default function AvisoTerminosYonke() {
-  const { userRole, yonkeId, terminosYonke, puedeEditarYonke, marcarTerminosAceptados } = useAuth();
+  const { userRole, esLigero, yonkeId, terminosYonke, puedeEditarYonke, marcarTerminosAceptados } = useAuth();
   const [escrito, setEscrito] = useState('');
   const [aceptando, setAceptando] = useState(false);
   const [error, setError] = useState('');
 
-  if (userRole !== 'yonke' || !yonkeId || puedeEditarYonke || !terminosYonke?.version) return null;
+  if ((userRole !== 'yonke' && !esLigero) || !yonkeId || puedeEditarYonke || !terminosYonke?.version) return null;
   const puedeAceptar = esAceptacionEscrita(escrito) && !aceptando;
 
   async function aceptar() {

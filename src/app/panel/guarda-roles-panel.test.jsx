@@ -28,6 +28,37 @@ afterEach(() => cleanup());
 const conRol = (userRole) => ({ user: { uid: 'u' }, userRole, loading: false, rolListo: true });
 
 describe('guarda del panel por rol', () => {
+  it('yonke ligero fuera de su sección: a /panel/ligero, sin mostrar la pantalla', () => {
+    estadoAuth = conRol('yonkeLigero');
+    for (const ruta of ['/panel/inventario', '/panel/reservaciones', '/panel/ventas', '/panel/perfil', '/panel/demanda', '/panel/reciclaje', '/panel/registro', '/panel/taller']) {
+      pathnameActual = ruta;
+      render(<PanelLayoutCliente><p>pantalla</p></PanelLayoutCliente>);
+      expect(screen.queryByText('pantalla')).not.toBeInTheDocument();
+      cleanup();
+    }
+    expect(replaceMock).toHaveBeenCalledTimes(8);
+    expect(replaceMock).toHaveBeenCalledWith('/panel/ligero');
+  });
+  it('yonke ligero: en su sección ve su pantalla, y si llegó con una alerta no la pierde', () => {
+    estadoAuth = conRol('yonkeLigero');
+    pathnameActual = '/panel/ligero/completar';
+    render(<PanelLayoutCliente><p>pantalla</p></PanelLayoutCliente>);
+    expect(screen.getByText('pantalla')).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
+    cleanup();
+    window.history.replaceState(null, '', '/panel/reservaciones?pedido=Pedido00000000000007');
+    pathnameActual = '/panel/reservaciones';
+    render(<PanelLayoutCliente><p>pantalla</p></PanelLayoutCliente>);
+    expect(replaceMock).toHaveBeenCalledWith('/panel/ligero?pedido=Pedido00000000000007');
+    window.history.replaceState(null, '', '/');
+  });
+  it('un yonke completo no se va de su panel', () => {
+    estadoAuth = conRol('yonke');
+    pathnameActual = '/panel/inventario';
+    render(<PanelLayoutCliente><p>pantalla</p></PanelLayoutCliente>);
+    expect(screen.getByText('pantalla')).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
   it('refaccionaria fuera de su sección: a /panel/refaccionaria, sin mostrar la pantalla de yonke', () => {
     estadoAuth = conRol('refaccionaria');
     for (const ruta of ['/panel/inventario', '/panel/reservaciones', '/panel/taller']) {

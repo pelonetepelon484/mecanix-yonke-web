@@ -102,7 +102,7 @@ describe('registrarse', () => {
     await screen.findByRole('button', { name: 'Crear cuenta y responder' });
     llenar();
     enviar();
-    await waitFor(() => expect(replace).toHaveBeenCalledWith(`/panel/reservaciones?pedido=${ID}`));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith(`/panel/ligero?pedido=${ID}`));
     expect(cuerpoEnviado()).toEqual({ nombre: 'Yonke Tigre', whatsapp: '6641234567', password: 'secreto123', pedidoId: ID, aceptaTerminos: true });
     expect(entrar).toHaveBeenCalledWith('auth', INTERNO, 'secreto123');
     expect(orden).toEqual(['servidor', 'entrar', 'recargarRol']);

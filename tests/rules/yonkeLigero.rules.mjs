@@ -146,6 +146,30 @@ describe('yonke ligero: lo único que puede hacer', () => {
 });
 
 describe('yonke ligero: tope diario', () => {
+  // Igual que responderPedido() con limite (src/app/panel/pedidosClientesDatos.js): lee el contador
+  // y guarda respuesta y contador en una transacción.
+  const responderComoLaPantalla = async (pedidoId) => {
+    const db = como('l1');
+    const padre = await sinReglas(async (d) => (await getDoc(doc(d, 'pedidosClientes', pedidoId))).data());
+    const contadorRef = doc(db, 'yonkes', 'YL', 'respuestasDiarias', HOY);
+    return runTransaction(db, async (t) => {
+      const snap = await t.get(contadorRef);
+      const n = snap.exists() ? snap.data().count : 0;
+      t.set(doc(db, 'pedidosClientes', pedidoId, 'respuestas', 'YL'), {
+        yonkeId: 'YL', yonkeNombre: 'Yonke Ligero', whatsapp: '6641111111', tieneLaPieza: true, nota: '', precio: 1500,
+        creadoAt: serverTimestamp(), expiraAt: padre.expiraAt, dia: HOY,
+      });
+      t.set(contadorRef, { count: n + 1 });
+    });
+  };
+  it('la transacción real de la pantalla pasa, desde cero y con contador, y la 16 no', async () => {
+    await assertSucceeds(responderComoLaPantalla('P1'));
+    await contadorEn('YL', 14);
+    await pedido('P2');
+    await assertSucceeds(responderComoLaPantalla('P2'));
+    await pedido('P3');
+    await assertFails(responderComoLaPantalla('P3'));
+  });
   it('responde hasta 15, una por una, y la 16 se rechaza', async () => {
     for (let i = 1; i <= 15; i++) {
       await pedido(`T${i}`);

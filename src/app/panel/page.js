@@ -9,7 +9,7 @@ import { useAuth } from './AuthContext';
 import { enviarRecuperacionPassword } from '../lib/passwordReset';
 import { talleresHabilitados } from '../../lib/talleresHabilitados';
 import { esIdPedido } from '../../lib/pedidosClientes';
-import { TEXTO_RECUPERAR_WHATSAPP, correoDeEntrada, enlaceRecuperarWhatsapp, whatsappDeEntrada } from '../../lib/yonkeLigero';
+import { RUTA_LIGERO, TEXTO_RECUPERAR_WHATSAPP, correoDeEntrada, enlaceRecuperarWhatsapp, whatsappDeEntrada } from '../../lib/yonkeLigero';
 
 // Mismos textos que la app (LoginScreen.js en mecanix-yonke-virtual2) para que la
 // experiencia de recuperación de contraseña sea idéntica en web y app.
@@ -58,10 +58,11 @@ export default function PanelLogin() {
     } else if (userRole === 'refaccionaria') {
       router.push('/panel/refaccionaria');
     } else {
-      // Viene de una búsqueda activa (?pedido={id}): directo a contestarla. El ligero siempre a Pedidos.
+      // Viene de una búsqueda activa (?pedido={id}): directo a contestarla. El ligero, a su panel.
       const pedido = new URLSearchParams(window.location.search).get('pedido');
-      if (esIdPedido(pedido)) router.push(`/panel/reservaciones?pedido=${pedido}`);
-      else router.push(userRole === 'yonkeLigero' ? '/panel/reservaciones' : '/panel/inventario');
+      const inicio = userRole === 'yonkeLigero' ? RUTA_LIGERO : '/panel/reservaciones';
+      if (esIdPedido(pedido)) router.push(`${inicio}?pedido=${pedido}`);
+      else router.push(userRole === 'yonkeLigero' ? RUTA_LIGERO : '/panel/inventario');
     }
   }
 

@@ -6,14 +6,14 @@ import { activarAvisos, apagarAvisos, avisosHabilitados, navegadorCompatible, re
 
 // "Activar avisos" / "Apagar avisos" del panel del yonke (en Pedidos y en Mi negocio). No aparece
 // si la función está apagada (config/notificaciones), si el navegador no es compatible (por ahora
-// solo Android) o si quien entra no es un yonke. No depende de los términos ni del plan.
+// solo Android) o si quien entra no es un yonke (completo o ligero). No depende de los términos ni del plan.
 export default function BotonAvisos() {
-  const { userRole, yonkeId } = useAuth();
+  const { userRole, esLigero, yonkeId } = useAuth();
   const [estado, setEstado] = useState('oculto'); // oculto | apagado | activo | ocupado
   const [mensaje, setMensaje] = useState('');
 
   useEffect(() => {
-    if (userRole !== 'yonke' || !yonkeId || !navegadorCompatible()) return undefined;
+    if ((userRole !== 'yonke' && !esLigero) || !yonkeId || !navegadorCompatible()) return undefined;
     let vigente = true;
     avisosHabilitados().then(async (habilitado) => {
       if (!vigente || !habilitado) return;
@@ -21,7 +21,7 @@ export default function BotonAvisos() {
       if (vigente) setEstado(activo ? 'activo' : 'apagado');
     });
     return () => { vigente = false; };
-  }, [userRole, yonkeId]);
+  }, [userRole, esLigero, yonkeId]);
 
   if (estado === 'oculto') return null;
 

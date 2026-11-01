@@ -11,11 +11,13 @@ import AvisoInstalarApp from './AvisoInstalarApp';
 import AvisoTerminosYonke from './AvisoTerminosYonke';
 import { ConteoPedidosProvider } from './ConteoPedidos';
 import EnlaceIrAMecanix from './EnlaceIrAMecanix';
+import { esIdPedido } from '../../lib/pedidosClientes';
+import { RUTA_LIGERO } from '../../lib/yonkeLigero';
 
-// Una cuenta de taller solo puede estar en /panel/taller, y una de refaccionaria solo en
-// /panel/refaccionaria: si intentan abrir el panel de yonkes (u otro), las mandamos a su pantalla.
-// Yonke y admin no pasan por aquí.
-const SECCION_DEL_ROL = { taller: '/panel/taller', refaccionaria: '/panel/refaccionaria' };
+// Una cuenta de taller solo puede estar en /panel/taller, una de refaccionaria solo en
+// /panel/refaccionaria y un yonke ligero solo en /panel/ligero: si intentan abrir el panel de yonkes
+// (u otro), las mandamos a su pantalla. Yonke y admin no pasan por aquí.
+const SECCION_DEL_ROL = { taller: '/panel/taller', refaccionaria: '/panel/refaccionaria', yonkeLigero: RUTA_LIGERO };
 function GuardaTaller({ children }) {
   const { loading, userRole } = useAuth();
   const pathname = usePathname();
@@ -24,8 +26,11 @@ function GuardaTaller({ children }) {
   const debeIrse = !loading && Boolean(seccion) && !pathname.startsWith(seccion);
 
   useEffect(() => {
-    if (debeIrse) router.replace(seccion);
-  }, [debeIrse, seccion]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!debeIrse) return;
+    // El ligero que llega con una búsqueda activa (?pedido={id}) no la pierde.
+    const pedido = new URLSearchParams(window.location.search).get('pedido');
+    router.replace(userRole === 'yonkeLigero' && esIdPedido(pedido) ? `${seccion}?pedido=${pedido}` : seccion);
+  }, [debeIrse, seccion, userRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (debeIrse) return null;
   return <>{children}</>;

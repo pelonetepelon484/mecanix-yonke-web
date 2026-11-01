@@ -12,6 +12,8 @@
 // alertas por día (día de Tijuana); al llegar sigue viéndolas pero no puede responder. Con
 // config/pedidosClientes.inventarioVehiculos, tras "La tengo" se pregunta si tiene el vehículo
 // completo (ver VehiculosCompletosYonke y lib/vehiculosAlerta.ts).
+// `ligero` (panel /panel/ligero): tope propio (config/pedidosClientes.limiteRespuestasLigero), sin
+// Premium, sin otros estados y sin inventario; siempre dice cuántas respuestas le quedan.
 import { useEffect, useRef, useState } from 'react';
 import { MENSAJES_RESPUESTA, NOTA_MAX, PRECIO_MAX, validarRespuesta } from '../../lib/solicitudesPiezas';
 import { esIdPedido, puedeVerOtrosEstados } from '../../lib/pedidosClientes';
@@ -27,6 +29,9 @@ import { BotonQuieroPremium } from './CandadoPremium';
 import { cargarEstados } from '../lib/estados';
 import { useAuth } from './AuthContext';
 import { MensajeBloqueoTerminos } from './BloqueoTerminos';
+import {
+  RUTA_COMPLETAR, TEXTO_COMPLETAR, TEXTO_LIGERO_SIN_TOPE, TEXTO_SIN_BUSQUEDAS, limiteRespuestasLigero, respuestasRestantes, textoRestantes, textoTopeLigero,
+} from '../../lib/yonkeLigero';
 
 function fechaCorta(ts) {
   return ts?.toDate ? ts.toDate().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
@@ -37,7 +42,7 @@ export const TEXTO_YONKE_DESACTIVADO = 'Tu yonke está desactivado. Escríbenos 
 
 export const TEXTO_INTERRUPTOR_OTROS_ESTADOS = 'Ver también búsquedas activas de otros estados con envío';
 
-export default function PedidosClientesYonke({ yonkeId }) {
+export default function PedidosClientesYonke({ yonkeId, ligero = false }) {
   // Sin términos vigentes el interruptor se ve pero no se cambia; responder alertas sí se puede.
   const { puedeEditarYonke, premiumVigente } = useAuth();
   const sinTerminos = puedeEditarYonke === false;
@@ -51,18 +56,24 @@ export default function PedidosClientesYonke({ yonkeId }) {
   const [abierto, setAbierto] = useState(null); // pedido que se está respondiendo
   const [aviso, setAviso] = useState('');
   const [respuestasHoy, setRespuestasHoy] = useState(0);
+  // Ligero: "te quedan N" y "no hay búsquedas" solo con el dato real, nunca mientras carga.
+  const [hoyLeido, setHoyLeido] = useState(false);
+  const [listaLeida, setListaLeida] = useState(false);
   const [preguntaVehiculo, setPreguntaVehiculo] = useState(null); // pedido tras "La tengo"
   const [preguntaOtroIgual, setPreguntaOtroIgual] = useState(null); // { pedido, vendidas, unidades }
   // ?pedido={id} de la dirección: se resuelve una sola vez, con la primera lista de pedidos.
   const pedidoBuscado = useRef(null);
 
   const habilitado = config?.habilitado === true;
-  const puedeOtros = puedeVerOtrosEstados(config, estadoActivo);
+  const puedeOtros = !ligero && puedeVerOtrosEstados(config, estadoActivo);
   const conOtros = puedeOtros && verOtros;
   // Límite diario: solo plan Básico y solo si config/pedidosClientes.limiteRespuestasDiarias existe.
-  const limite = premiumVigente ? null : limiteRespuestasDiarias(config);
-  const sinRespuestasHoy = llegoAlLimite(respuestasHoy, limite, premiumVigente);
-  const conInventario = inventarioVehiculosActivo(config);
+  const limiteBasico = limiteRespuestasDiarias(config);
+  const limite = ligero ? limiteRespuestasLigero(config) : (premiumVigente ? null : limiteBasico);
+  // Ligero: sin su tope configurado las reglas no lo dejan responder; el Premium no le quita el tope.
+  const ligeroSinTope = ligero && limite === null;
+  const sinRespuestasHoy = ligeroSinTope || llegoAlLimite(respuestasHoy, limite, !ligero && premiumVigente);
+  const conInventario = !ligero && inventarioVehiculosActivo(config);
 
   // Sin config/pedidosClientes (función apagada), esta sección no hace NINGUNA otra lectura.
   useEffect(() => {
@@ -98,7 +109,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
   useEffect(() => {
     if (!yonkeId || !habilitado || limite === null) return;
     let cancelado = false;
-    leerRespuestasHoy(yonkeId).then((n) => { if (!cancelado) setRespuestasHoy(n); }).catch(() => {});
+    leerRespuestasHoy(yonkeId).then((n) => { if (!cancelado) { setRespuestasHoy(n); setHoyLeido(true); } }).catch(() => {});
     return () => { cancelado = true; };
   }, [yonkeId, habilitado, limite]);
 
@@ -147,6 +158,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
       const ya = Object.fromEntries(lista.map((p, i) => [p.id, marcas[i] !== null]));
       setRespondidos(ya);
       setAbiertos(lista);
+      setListaLeida(true);
 
       const id = pedidoBuscado.current;
       if (!id) return;
@@ -186,7 +198,7 @@ export default function PedidosClientesYonke({ yonkeId }) {
   const pendientes = abiertos.filter((p) => !respondidos[p.id]);
 
   if (!habilitado) return null;
-  if (!aviso && !preguntaVehiculo && !preguntaOtroIgual && !puedeOtros && (!estadoActivo?.activo || pendientes.length === 0)) return null;
+  if (!ligero && !aviso && !preguntaVehiculo && !preguntaOtroIgual && !puedeOtros && (!estadoActivo?.activo || pendientes.length === 0)) return null;
 
   return (
     <div style={{ marginBottom: '16px' }}>
@@ -214,13 +226,32 @@ export default function PedidosClientesYonke({ yonkeId }) {
       )}
       {puedeOtros && sinTerminos && <MensajeBloqueoTerminos />}
 
+      {ligero && estadoActivo && !estadoActivo.activo && <p style={{ ...seccion, color: '#555', fontSize: '14px' }}>{TEXTO_YONKE_DESACTIVADO}</p>}
+      {ligero && !ligeroSinTope && hoyLeido && estadoActivo?.activo && (
+        <p role="status" style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E' }}>
+          {textoRestantes(respuestasRestantes(limite, respuestasHoy))}
+        </p>
+      )}
+      {ligero && listaLeida && estadoActivo?.activo && pendientes.length === 0 && <p style={{ ...seccion, color: '#555', fontSize: '14px' }}>{TEXTO_SIN_BUSQUEDAS}</p>}
+
       {estadoActivo?.activo && pendientes.length > 0 && (
         <div style={seccion}>
           <p style={titulo}>🙋 Búsquedas activas de clientes ({pendientes.length})</p>
           {sinRespuestasHoy && (
             <div role="note" style={avisoLimite}>
-              <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#1A3C5E', fontWeight: 'bold' }}>{MENSAJES_VEHICULO_ALERTA.limiteAlcanzado}</p>
-              <BotonQuieroPremium ubicacion="limite_respuestas_alertas" compacto />
+              {ligero ? (
+                <>
+                  <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#1A3C5E', fontWeight: 'bold' }}>
+                    {ligeroSinTope ? TEXTO_LIGERO_SIN_TOPE : textoTopeLigero(limite, limiteBasico)}
+                  </p>
+                  {!ligeroSinTope && <a href={RUTA_COMPLETAR} style={{ ...botonResponder, display: 'block', textAlign: 'center', textDecoration: 'none' }}>{TEXTO_COMPLETAR}</a>}
+                </>
+              ) : (
+                <>
+                  <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#1A3C5E', fontWeight: 'bold' }}>{MENSAJES_VEHICULO_ALERTA.limiteAlcanzado}</p>
+                  <BotonQuieroPremium ubicacion="limite_respuestas_alertas" compacto />
+                </>
+              )}
             </div>
           )}
           {pendientes.map((p) => (

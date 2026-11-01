@@ -64,10 +64,10 @@ describe('entrar', () => {
     llenar('a@b.mx', 'Correo o WhatsApp');
     expect(await screen.findByText('Correo o contraseña incorrectos')).toBeInTheDocument();
   });
-  it('con sesión: el ligero va a Pedidos y el yonke a Inventario', async () => {
+  it('con sesión: el ligero va a su panel y el yonke a Inventario', async () => {
     sesion = { user: { uid: 'l' }, userRole: 'yonkeLigero', loading: false };
     render(<PanelLogin />);
-    expect(push).toHaveBeenCalledWith('/panel/reservaciones');
+    expect(push).toHaveBeenCalledWith('/panel/ligero');
     push.mockClear();
     cleanup();
     sesion = { user: { uid: 'y' }, userRole: 'yonke', loading: false };
@@ -79,12 +79,12 @@ describe('entrar', () => {
 describe('llega desde una búsqueda activa (?pedido=)', () => {
   const ID = 'Pedido00000000000007';
   afterEach(() => { window.history.replaceState(null, '', '/'); });
-  it('yonke y ligero van a contestarla', () => {
+  it('yonke y ligero van a contestarla, cada quien en su panel', () => {
     window.history.replaceState(null, '', `/panel?pedido=${ID}`);
-    for (const userRole of ['yonke', 'yonkeLigero']) {
+    for (const [userRole, ruta] of [['yonke', '/panel/reservaciones'], ['yonkeLigero', '/panel/ligero']]) {
       sesion = { user: { uid: 'u' }, userRole, loading: false };
       render(<PanelLogin />);
-      expect(push).toHaveBeenCalledWith(`/panel/reservaciones?pedido=${ID}`);
+      expect(push).toHaveBeenCalledWith(`${ruta}?pedido=${ID}`);
       push.mockClear();
       cleanup();
     }

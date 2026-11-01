@@ -9,7 +9,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useAuth } from '../AuthContext';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../../../lib/versionesLegales';
-import { MENSAJES_LIGERO, NOMBRE_MAX, PASSWORD_MAX, PASSWORD_MIN, correoInterno, validarRegistroLigero, whatsappDiezDigitos } from '../../../lib/yonkeLigero';
+import { MENSAJES_LIGERO, NOMBRE_MAX, PASSWORD_MAX, PASSWORD_MIN, RUTA_LIGERO, correoInterno, validarRegistroLigero, whatsappDiezDigitos } from '../../../lib/yonkeLigero';
 
 export const TEXTO_BOTON_LIGERO = 'Crear cuenta y responder';
 export const textoOtroEstado = (estadoNombre) => `Esta búsqueda es solo para yonkes de ${estadoNombre}. Para contestar búsquedas de tu estado, haz tu registro y elige dónde está tu yonke.`;
@@ -67,7 +67,7 @@ export default function RegistroLigero({ pedido }) {
     try {
       await signInWithEmailAndPassword(auth, correoInterno(datos.whatsapp), datos.password);
       await recargarRol?.();
-      router.replace(`/panel/reservaciones?pedido=${pedido.id}`);
+      router.replace(`${RUTA_LIGERO}?pedido=${pedido.id}`);
     } catch (err) {
       console.error(err);
       router.replace(rutaEntrar);

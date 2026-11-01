@@ -64,6 +64,21 @@ export function nombreReservado(nombre) {
   return letras.includes('mecanix') || letras.includes('verificad');
 }
 
+// Tope diario: config/pedidosClientes.limiteRespuestasLigero, entero de 1 en adelante. Sin él las
+// reglas no dejan responder.
+export function limiteRespuestasLigero(config) {
+  const v = config?.limiteRespuestasLigero;
+  return Number.isInteger(v) && v >= 1 ? v : null;
+}
+export const respuestasRestantes = (limite, usadas) => Math.max(0, limite - usadas);
+export const textoRestantes = (n) => `Te quedan ${n} respuesta${n === 1 ? '' : 's'} hoy`;
+export const textoTopeLigero = (limite, limiteCompleto) => `Llegaste a tus ${limite} respuestas de hoy. Completa tu registro${limiteCompleto ? ` y responde hasta ${limiteCompleto} al día` : ' para responder más al día'}.`;
+export const TEXTO_LIGERO_SIN_TOPE = 'Por ahora no se pueden responder búsquedas. Intenta más tarde.';
+export const TEXTO_SIN_BUSQUEDAS = 'Por ahora no hay búsquedas activas en tu estado.';
+export const TEXTO_COMPLETAR = 'Completar mi registro';
+export const RUTA_LIGERO = '/panel/ligero';
+export const RUTA_COMPLETAR = '/panel/ligero/completar';
+
 // Datos que manda el navegador. Devuelve { error } o { datos } ya limpios. El estado NUNCA se toma
 // de aquí: sale de la alerta.
 export function validarRegistroLigero(cuerpo) {
