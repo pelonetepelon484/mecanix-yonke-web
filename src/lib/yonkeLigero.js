@@ -65,7 +65,7 @@ export function correoDeEntrada(texto) {
 
 // "¿Olvidaste tu contraseña?" con WhatsApp: se la restablece el admin. Debe escribir desde ese número.
 export const WHATSAPP_RECUPERAR = '6611034260';
-export const TEXTO_RECUPERAR_WHATSAPP = 'Tu contraseña la restablecemos nosotros. Escríbenos desde el WhatsApp con el que te registraste.';
+export const TEXTO_RECUPERAR_WHATSAPP = 'Tu contraseña la restablecemos nosotros. Escríbenos desde el WhatsApp registrado en tu cuenta. Por seguridad, podremos solicitar información adicional para comprobar que estás autorizado para administrar el yonke.';
 export const enlaceRecuperarWhatsapp = (diezDigitos) => whatsappHref(
   WHATSAPP_RECUPERAR, `Hola, olvidé mi contraseña de Mecanix. Mi yonke está registrado con el WhatsApp ${diezDigitos}.`,
 );
@@ -86,6 +86,7 @@ export function limiteRespuestasLigero(config) {
 export const respuestasRestantes = (limite, usadas) => Math.max(0, limite - usadas);
 export const textoRestantes = (n) => `Te quedan ${n} respuesta${n === 1 ? '' : 's'} hoy`;
 export const textoTopeLigero = (limite, limiteCompleto) => `Llegaste a tus ${limite} respuestas de hoy. Completa tu registro${limiteCompleto ? ` y responde hasta ${limiteCompleto} al día` : ' para responder más al día'}.`;
+export const TEXTO_AVISO_NUMERO = 'Importante: Mecanix no verifica este número mediante un código al momento del registro. Registra únicamente un número de WhatsApp que controles o para cuyo uso tengas autorización. Este número podrá mostrarse a los clientes que reciban tus respuestas para que puedan contactarte.';
 export const TEXTO_LIGERO_SIN_TOPE = 'Por ahora no se pueden responder búsquedas. Intenta más tarde.';
 export const TEXTO_SIN_BUSQUEDAS = 'Por ahora no hay búsquedas activas en tu estado.';
 export const TEXTO_COMPLETAR = 'Completar mi registro';

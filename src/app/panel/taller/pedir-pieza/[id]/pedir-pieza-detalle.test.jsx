@@ -86,24 +86,24 @@ describe('Detalle de un pedido de pieza (taller)', () => {
 });
 
 describe('Detalle de un pedido de pieza (taller): precio a tratar', () => {
-  it('sugerida por Mecanix: "Precio a tratar", la etiqueta, y se puede elegir', async () => {
+  it('sugerida por Mecanix: "Precio no informado", la etiqueta, y se puede elegir', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     solicitudActual = solicitud();
     respuestasActuales = [{ yonkeId: 'Y5', yonkeNombre: 'Yonke Sugerido', tieneLaPieza: true, precioATratar: true, creadoPorAdmin: true, nota: '' }];
     render(<SolicitudPiezaDetalle />);
-    expect(await screen.findByText('La tiene — Precio a tratar')).toBeInTheDocument();
-    expect(screen.getByText('Confirmado por Mecanix')).toBeInTheDocument();
+    expect(await screen.findByText('La tiene — Precio no informado')).toBeInTheDocument();
+    expect(screen.getByText('Confirmación del yonke registrada por Mecanix')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/NaN|\$0\b/);
     fireEvent.click(screen.getByText('Elegir'));
     await waitFor(() => expect(elegirYonke).toHaveBeenCalledWith('S1', 'Y5'));
   });
 
-  it('respuesta del yonke sin precio válido (por cualquier motivo): "Precio a tratar", nunca "$NaN"', async () => {
+  it('respuesta del yonke sin precio válido (por cualquier motivo): "Precio no informado", nunca "$NaN"', async () => {
     solicitudActual = solicitud();
     respuestasActuales = [{ yonkeId: 'Y1', yonkeNombre: 'Yonke Uno', tieneLaPieza: true, nota: '' }];
     render(<SolicitudPiezaDetalle />);
-    expect(await screen.findByText('La tiene — Precio a tratar')).toBeInTheDocument();
-    expect(screen.queryByText('Confirmado por Mecanix')).not.toBeInTheDocument();
+    expect(await screen.findByText('La tiene — Precio no informado')).toBeInTheDocument();
+    expect(screen.queryByText('Confirmación del yonke registrada por Mecanix')).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/NaN/);
   });
 });

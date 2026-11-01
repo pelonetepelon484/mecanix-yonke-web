@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // /mi-pedido: respuestas de "Sugerir yonke" (las captura Mecanix, sin precio) muestran "Precio a
-// tratar" y "Confirmado por Mecanix"; ninguna respuesta que la tiene muestra "$0" ni "$NaN".
+// tratar" y "Confirmación del yonke registrada por Mecanix"; ninguna respuesta que la tiene muestra "$0" ni "$NaN".
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -27,11 +27,13 @@ function conRespuestas(respuestas) {
 }
 
 describe('/mi-pedido: precio a tratar', () => {
-  it('sugerida por Mecanix: "Precio a tratar", la etiqueta y WhatsApp sin precio', async () => {
+  it('sugerida por Mecanix: "Precio no informado", la etiqueta y WhatsApp sin precio', async () => {
     conRespuestas([{ ...base, yonkeNombre: 'Yonke Sugerido', whatsapp: '6645555555', precio: null, precioATratar: true, creadoPorAdmin: true }]);
     render(<MiPedidoCliente />);
-    expect(await screen.findByText('Precio a tratar')).toBeInTheDocument();
-    expect(screen.getByText('Confirmado por Mecanix')).toBeInTheDocument();
+    expect(await screen.findByText('Precio no informado')).toBeInTheDocument();
+    expect(screen.getByText('Confirmación del yonke registrada por Mecanix')).toBeInTheDocument();
+    expect(screen.getByText('Mecanix registró la confirmación que el yonke comunicó para esta búsqueda. Mecanix no inspeccionó físicamente la pieza ni garantiza su disponibilidad posterior, condición o compatibilidad.')).toBeInTheDocument();
+    expect(screen.getByText('Solicita directamente al yonke el precio final de la pieza, incluyendo los costos de envío y cualquier cargo adicional, antes de realizar el pago.')).toBeInTheDocument();
     const enlace = screen.getByRole('link', { name: /Escribirle por WhatsApp/ });
     const texto = decodeURIComponent(enlace.getAttribute('href'));
     expect(texto).toContain('vi en Mecanix que tienes Alternador para Nissan Sentra 2005. ¿Sigue disponible?');
@@ -46,8 +48,10 @@ describe('/mi-pedido: precio a tratar', () => {
     ]);
     render(<MiPedidoCliente />);
     expect(await screen.findByText('$1,500')).toBeInTheDocument();
-    expect(screen.getAllByText('Precio a tratar')).toHaveLength(2);
+    expect(screen.getAllByText('Precio no informado')).toHaveLength(2);
+    expect(screen.getAllByText('Solicita directamente al yonke el precio final de la pieza, incluyendo los costos de envío y cualquier cargo adicional, antes de realizar el pago.')).toHaveLength(2);
     expect(document.body.textContent).not.toMatch(/\$0\b|NaN/);
-    expect(screen.queryByText('Confirmado por Mecanix')).not.toBeInTheDocument();
+    expect(screen.queryByText('Confirmación del yonke registrada por Mecanix')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mecanix registró la confirmación que el yonke comunicó para esta búsqueda. Mecanix no inspeccionó físicamente la pieza ni garantiza su disponibilidad posterior, condición o compatibilidad.')).not.toBeInTheDocument();
   });
 });

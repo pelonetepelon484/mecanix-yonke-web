@@ -40,7 +40,12 @@ describe('página del cliente con las respuestas de los yonkes', () => {
     global.fetch = vi.fn(async () => respuestaDe({ avisoPago: true }));
     render(<MiPedidoCliente />);
     expect(await screen.findByText(TEXTO_AVISO_PAGO)).toBeInTheDocument();
-    expect(TEXTO_AVISO_PAGO).toBe('🛡️ Antes de pagar, confirma la pieza directamente con el yonke. Con yonkes sin verificar, evita pagos por adelantado. Mecanix no participa en la venta ni en el pago.');
+    expect(TEXTO_AVISO_PAGO).toBe('🛡️ Antes de pagar, confirma directamente con el yonke:');
+    for (const punto of ['Que la pieza siga disponible.', 'Su estado y compatibilidad.', 'El precio total y el costo de envío.', 'Las condiciones de garantía y entrega.']) {
+      expect(screen.getByText(punto)).toBeInTheDocument();
+    }
+    expect(screen.getByText('Evita realizar pagos por adelantado si no has verificado al vendedor.')).toBeInTheDocument();
+    expect(screen.getByText('Mecanix facilita el contacto entre clientes y yonkes. No es el vendedor, no recibe ni procesa los pagos y no inspecciona físicamente las piezas.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ver consejos de compra segura →' })).toHaveAttribute('href', '/compra-segura');
     expect(screen.getByText('⚠️ Yonke nuevo, sin verificar · confirma antes de pagar')).toBeInTheDocument();
     expect(screen.getByText('✅ Verificado')).toBeInTheDocument();

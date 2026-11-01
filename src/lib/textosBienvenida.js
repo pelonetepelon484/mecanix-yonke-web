@@ -4,6 +4,7 @@
 // no; Mecanix es un "motor de búsqueda de autopartes"; nada de cifras ni promesas nuevas.
 //
 import { FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, PRECIO_PREMIUM_TEXTO } from './planes';
+import { AVISO_PAGO_ADELANTADO, AVISO_PAGO_MECANIX } from './respuestasPedido';
 
 // ⚠️ [PROVISIONAL] Todo lo de este archivo está pendiente de aprobación legal. Mientras
 // TEXTOS_APROBADOS sea false, la página muestra arriba AVISO_PROVISIONAL. Cuando el abogado los
@@ -114,9 +115,8 @@ export const CITA_DATOS_CLIENTES_TALLER = [
   'Mecanix no usa esos datos para fines propios',
 ];
 
-// Advertencia de pago aprobada (TEXTO_AVISO_PAGO de mi-pedido/[id]/MiPedidoCliente.js), sin el
-// emoji. La prueba comprueba que sea idéntica.
-export const AVISO_PAGO_APROBADO = 'Antes de pagar, confirma la pieza directamente con el yonke. Con yonkes sin verificar, evita pagos por adelantado. Mecanix no participa en la venta ni en el pago.';
+// Advertencia de pago de /mi-pedido (lib/respuestasPedido.js), en una sola respuesta.
+export const AVISO_PAGO_APROBADO = `Antes de pagar, confirma directamente con el yonke que la pieza siga disponible, su estado y compatibilidad, el precio total y el costo de envío, y las condiciones de garantía y entrega. ${AVISO_PAGO_ADELANTADO} ${AVISO_PAGO_MECANIX}`;
 
 export const PREGUNTAS_FRECUENTES = {
   yonke: [

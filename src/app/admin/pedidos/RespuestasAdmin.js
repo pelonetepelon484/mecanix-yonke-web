@@ -1,13 +1,13 @@
 'use client';
 
 // Piezas compartidas de las dos pestañas de /admin/pedidos (clientes y talleres):
-// - RespuestaAdmin: una respuesta con su precio (o "Precio a tratar"), la marca de las sugeridas
+// - RespuestaAdmin: una respuesta con su precio (o "Precio no informado"), la marca de las sugeridas
 //   por el admin y "Quitar respuesta" (no depende de la bandera; bloqueado si el taller ya la eligió).
 // - SugerirYonke: el admin registra la respuesta de un yonke que le confirmó por fuera que tiene la
 //   pieza. Sin campo de precio: siempre "precio a tratar". Solo yonkes activos que no han respondido,
 //   leídos por estado (nunca todos).
 import { useEffect, useState } from 'react';
-import { TEXTO_PRECIO_A_TRATAR, TEXTO_SUGERIDA_POR_ADMIN, textoPrecioRespuesta } from '../../../lib/respuestasPedido';
+import { TEXTO_PRECIO_NO_INFORMADO, TEXTO_SUGERIDA_POR_ADMIN, textoPrecioRespuesta } from '../../../lib/respuestasPedido';
 import { listarYonkesActivosDeEstado, quitarRespuesta, sugerirYonke } from './datos';
 
 export const TEXTO_ELEGIDA_NO_SE_QUITA = 'Respuesta elegida por el taller: no se puede quitar';
@@ -155,7 +155,7 @@ export function SugerirYonke({ coleccion, pedido, estados, permitirOtrosEstados 
           ))}
         </div>
       )}
-      <p style={{ margin: '0 0 8px', fontSize: '13px' }}>Precio: <strong>{TEXTO_PRECIO_A_TRATAR}</strong></p>
+      <p style={{ margin: '0 0 8px', fontSize: '13px' }}>Precio: <strong>{TEXTO_PRECIO_NO_INFORMADO}</strong></p>
       {error && <p role="alert" style={{ margin: '0 0 8px', color: '#B3261E', fontSize: '13px' }}>{error}</p>}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button type="button" disabled={!elegido || guardando} onClick={guardar} style={{ ...botonChico('#2E7D32'), opacity: !elegido || guardando ? 0.6 : 1 }}>

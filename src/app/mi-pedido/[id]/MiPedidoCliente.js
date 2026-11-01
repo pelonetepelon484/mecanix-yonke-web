@@ -7,9 +7,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { CONSEJOS_ENVIO, DURACION_RECARGA_MS, INTERVALO_RECARGA_MS, MENSAJES_PEDIDO, avisoRespuestaOtroEstado } from '../../../lib/pedidosClientes';
-import { TEXTO_CONFIRMADO_POR_MECANIX, formatoPesos, precioValido, textoPrecioRespuesta } from '../../../lib/respuestasPedido';
+import { AVISO_PAGO_ADELANTADO, AVISO_PAGO_MECANIX, AVISO_PAGO_PUNTOS, AVISO_PAGO_TITULO, TEXTO_CONFIRMACION_REGISTRADA, TEXTO_EXPLICA_CONFIRMACION, TEXTO_EXPLICA_PRECIO, formatoPesos, precioValido, textoPrecioRespuesta } from '../../../lib/respuestasPedido';
 
-export const TEXTO_AVISO_PAGO = '🛡️ Antes de pagar, confirma la pieza directamente con el yonke. Con yonkes sin verificar, evita pagos por adelantado. Mecanix no participa en la venta ni en el pago.';
+export const TEXTO_AVISO_PAGO = `🛡️ ${AVISO_PAGO_TITULO}`;
 
 function fecha(iso) {
   return iso ? new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
@@ -98,6 +98,11 @@ export default function MiPedidoCliente() {
         {datos.avisoPago === true && (
           <div role="note" style={avisoPago}>
             <p style={{ margin: 0 }}>{TEXTO_AVISO_PAGO}</p>
+            <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+              {AVISO_PAGO_PUNTOS.map((punto) => <li key={punto}>{punto}</li>)}
+            </ul>
+            <p style={{ margin: '0 0 4px' }}>{AVISO_PAGO_ADELANTADO}</p>
+            <p style={{ margin: 0 }}>{AVISO_PAGO_MECANIX}</p>
             <a href="/compra-segura" style={{ display: 'inline-block', marginTop: '6px', color: '#1A3C5E', fontWeight: 'bold' }}>Ver consejos de compra segura →</a>
           </div>
         )}
@@ -111,10 +116,16 @@ export default function MiPedidoCliente() {
           <div key={i} style={{ ...tarjeta, opacity: r.tieneLaPieza ? 1 : 0.6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
               <p style={{ margin: 0, fontWeight: 'bold', color: '#1A3C5E' }}>{r.yonkeNombre}</p>
-              {/* "Precio a tratar" (sugerida por Mecanix o sin precio válido): nunca "$0" ni "$NaN". */}
+              {/* "Precio no informado" (sugerida por Mecanix o sin precio válido): nunca "$0" ni "$NaN". */}
               {r.tieneLaPieza && <p style={{ margin: 0, fontWeight: 'bold', color: '#E8720C', fontSize: precioValido(r.precio) ? '17px' : '14px', whiteSpace: 'nowrap' }}>{textoPrecioRespuesta(r)}</p>}
             </div>
-            {r.creadoPorAdmin === true && <p style={etiquetaMecanix}>{TEXTO_CONFIRMADO_POR_MECANIX}</p>}
+            {r.creadoPorAdmin === true && (
+              <>
+                <p style={etiquetaMecanix}>{TEXTO_CONFIRMACION_REGISTRADA}</p>
+                <p style={explicacion}>{TEXTO_EXPLICA_CONFIRMACION}</p>
+              </>
+            )}
+            {r.tieneLaPieza && !precioValido(r.precio) && <p style={explicacion}>{TEXTO_EXPLICA_PRECIO}</p>}
             <p style={{ margin: '4px 0 0', fontSize: '12px', fontWeight: 'bold', color: r.verificado ? '#2E7D32' : '#8A6D00' }}>
               {r.verificado ? '✅ Verificado' : `⚠️ Yonke nuevo, sin verificar${datos.avisoPago === true ? ' · confirma antes de pagar' : ''}`}
             </p>
@@ -173,4 +184,5 @@ const avisoPago = { backgroundColor: '#FFF9F2', border: '1px solid #F2C9A0', bor
 const tarjeta = { border: '1px solid #EEE', borderRadius: '12px', padding: '12px', marginBottom: '10px' };
 const botonWhatsapp = { display: 'block', marginTop: '10px', padding: '11px', borderRadius: '50px', backgroundColor: '#25D366', color: '#fff', fontWeight: 'bold', fontSize: '14px', textAlign: 'center', textDecoration: 'none' };
 const botonSecundario = { width: '100%', minHeight: '48px', borderRadius: '12px', border: '1px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
+const explicacion = { margin: '4px 0 0', fontSize: '12px', color: '#555', lineHeight: '1.4' };
 const etiquetaMecanix = { margin: '4px 0 0', display: 'inline-block', fontSize: '11px', fontWeight: 'bold', color: '#1A3C5E', backgroundColor: '#EEF2F6', padding: '1px 8px', borderRadius: '12px' };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TEXTO_PRECIO_A_TRATAR, formatoPesos, precioValido, textoPrecioRespuesta } from './respuestasPedido';
+import { TEXTO_PRECIO_NO_INFORMADO, formatoPesos, precioValido, textoPrecioRespuesta } from './respuestasPedido';
 
 describe('precio de una respuesta', () => {
   it('solo un número finito mayor que 0 es precio válido', () => {
@@ -14,12 +14,12 @@ describe('precio de una respuesta', () => {
     expect(formatoPesos(99.999)).toBe('$100');
   });
 
-  it('la tiene con precio: el precio; precio a tratar o sin precio válido: "Precio a tratar" (nunca $0 ni $NaN)', () => {
+  it('la tiene con precio: el precio; precio no informado o sin precio válido: "Precio no informado" (nunca $0 ni $NaN)', () => {
     expect(textoPrecioRespuesta({ tieneLaPieza: true, precio: 2500 })).toBe('$2,500');
-    expect(textoPrecioRespuesta({ tieneLaPieza: true, precioATratar: true })).toBe(TEXTO_PRECIO_A_TRATAR);
+    expect(textoPrecioRespuesta({ tieneLaPieza: true, precioATratar: true })).toBe(TEXTO_PRECIO_NO_INFORMADO);
     for (const precio of [undefined, null, 0, NaN, '']) {
       const texto = textoPrecioRespuesta({ tieneLaPieza: true, precio });
-      expect(texto).toBe(TEXTO_PRECIO_A_TRATAR);
+      expect(texto).toBe(TEXTO_PRECIO_NO_INFORMADO);
       expect(texto).not.toMatch(/\$0|NaN/);
     }
   });
