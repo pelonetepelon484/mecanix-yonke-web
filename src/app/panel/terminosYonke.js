@@ -26,11 +26,18 @@ export const versionParaAceptar = (terminos) => (terminos?.existe ? terminos.ver
 export const terminosAceptados = (datosYonke, terminos) =>
   !terminos?.existe || datosYonke?.aceptacionLegal?.version === terminos.version;
 
-// Aviso ACEPTO: historial + aceptacionLegal en un solo guardado, con la hora del servidor.
-export async function aceptarTerminosYonke(db, yonkeId, version) {
+// Aviso ACEPTO: historial, aceptacionLegal y las constancias del Aviso y de la declaración en un
+// solo guardado, con la hora del servidor.
+export async function aceptarTerminosYonke(db, yonkeId, version, declaracion) {
   const lote = writeBatch(db);
   lote.set(doc(db, 'yonkes', yonkeId, 'aceptaciones', version), { version, fecha: serverTimestamp() });
   lote.update(doc(db, 'yonkes', yonkeId), { aceptacionLegal: { version, fecha: serverTimestamp() } });
+  lote.set(doc(db, 'yonkes', yonkeId, 'constancias', idConstancia(CONSTANCIA_PRIVACIDAD, version)), {
+    tipo: CONSTANCIA_PRIVACIDAD, version, fecha: serverTimestamp(),
+  });
+  lote.set(doc(db, 'yonkes', yonkeId, 'constancias', idConstancia(CONSTANCIA_AUTORIZACION, version)), {
+    tipo: CONSTANCIA_AUTORIZACION, version, fecha: serverTimestamp(), texto: declaracion,
+  });
   await lote.commit();
 }
 

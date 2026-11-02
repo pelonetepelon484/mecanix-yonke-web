@@ -300,6 +300,37 @@ describe('aceptar los términos (aviso ACEPTO)', () => {
     lote.update(doc(db, 'yonkes', 'Y1'), { aceptacionLegal: { version: VIGENTE, fecha: serverTimestamp() }, nombre: 'Colado' });
     await assertFails(lote.commit());
   });
+  // Mismo guardado que la pantalla al reaceptar: historial, ficha y las dos constancias.
+  const aceptarConConstancias = (uid, yonkeId, { constancias = ['privacidad', 'autorizacion'], version = VIGENTE } = {}) => {
+    const db = como(uid);
+    const lote = writeBatch(db);
+    lote.set(doc(db, 'yonkes', yonkeId, 'aceptaciones', version), { version, fecha: serverTimestamp() });
+    lote.update(doc(db, 'yonkes', yonkeId), { aceptacionLegal: { version, fecha: serverTimestamp() } });
+    for (const tipo of constancias) {
+      lote.set(doc(db, 'yonkes', yonkeId, 'constancias', `${tipo}_${version}`), { tipo, version, fecha: serverTimestamp(), ...(tipo === 'autorizacion' ? { texto: 'Declaro que estoy autorizado.' } : {}) });
+    }
+    return lote.commit();
+  };
+  it('reacepta con las dos constancias en el mismo guardado', async () => {
+    await sembrar();
+    await assertSucceeds(aceptarConConstancias('o1', 'Y1'));
+  });
+  it('también el yonke que dio de alta el admin, sin ownerUid', async () => {
+    await sembrar();
+    await assertSucceeds(aceptarConConstancias('o2', 'Y2'));
+  });
+  it('también el ligero, con la lista cerrada de su ficha', async () => {
+    await sembrar();
+    await sinReglas(async (db) => {
+      await setDoc(doc(db, 'usuarios', 'l1'), { rol: 'yonkeLigero', yonkeId: 'YL', email: 'l1@prueba.mx' });
+      await setDoc(doc(db, 'yonkes', 'YL'), { nombre: 'Ligero', whatsapp: '6643333333', estado: 'sonora', tipoRegistro: 'ligero', activo: true, ownerUid: 'l1', aceptacionLegal: { version: VIEJA, fecha: new Date() } });
+    });
+    await assertSucceeds(aceptarConConstancias('l1', 'YL'));
+  });
+  it('nadie guarda constancias en la ficha de otro al aceptar', async () => {
+    await sembrar();
+    await assertFails(aceptarConConstancias('o2', 'Y1'));
+  });
   it('nadie acepta por otro yonke', async () => {
     await sembrar();
     await assertFails(aceptar('o2', 'Y1'));

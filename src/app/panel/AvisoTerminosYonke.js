@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { db } from '../lib/firebase';
 import { useAuth } from './AuthContext';
+import { DECLARACION_COMPLETO, DECLARACION_LIGERO } from '../../lib/constanciasLegales';
 import { URL_TERMINOS } from '../../lib/versionesLegales';
+import CasillasLegales, { CASILLAS_VACIAS } from './registro/CasillasLegales';
 import { PALABRA_ACEPTAR, esAceptacionEscrita } from './taller/AvisoVersion';
 import { aceptarTerminosYonke, TEXTO_BLOQUEO_TERMINOS_YONKE } from './terminosYonke';
 
@@ -11,22 +13,26 @@ import { aceptarTerminosYonke, TEXTO_BLOQUEO_TERMINOS_YONKE } from './terminosYo
 // solo al dueño (rol 'yonke' o 'yonkeLigero') cuando existe config/terminosYonkes y su versión aceptada no es la
 // vigente. El texto de los cambios sale de config/terminosYonkes.resumenCambios (no del código).
 // Aceptación ESCRITA, igual que en talleres: la palabra ACEPTO, en mayúsculas o minúsculas y con
-// o sin espacios al inicio o al final; cualquier otra cosa deja el botón desactivado.
+// o sin espacios al inicio o al final; cualquier otra cosa deja el botón desactivado. El Aviso de
+// Privacidad y la declaración llevan su propia casilla, sin marcar.
 export default function AvisoTerminosYonke() {
   const { userRole, esLigero, yonkeId, terminosYonke, puedeEditarYonke, marcarTerminosAceptados } = useAuth();
   const [escrito, setEscrito] = useState('');
+  const [casillas, setCasillas] = useState(CASILLAS_VACIAS);
   const [aceptando, setAceptando] = useState(false);
   const [error, setError] = useState('');
 
   if ((userRole !== 'yonke' && !esLigero) || !yonkeId || puedeEditarYonke || !terminosYonke?.version) return null;
-  const puedeAceptar = esAceptacionEscrita(escrito) && !aceptando;
+  const declaracion = esLigero ? DECLARACION_LIGERO : DECLARACION_COMPLETO;
+  const completo = esAceptacionEscrita(escrito) && casillas.privacidad && casillas.autorizacion;
+  const puedeAceptar = completo && !aceptando;
 
   async function aceptar() {
-    if (!esAceptacionEscrita(escrito)) return;
+    if (!completo) return;
     setError('');
     setAceptando(true);
     try {
-      await aceptarTerminosYonke(db, yonkeId, terminosYonke.version);
+      await aceptarTerminosYonke(db, yonkeId, terminosYonke.version, declaracion);
       marcarTerminosAceptados();
     } catch (err) {
       console.error(err);
@@ -47,6 +53,7 @@ export default function AvisoTerminosYonke() {
           <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={{ color: '#E8720C', fontWeight: 'bold' }}>Leer el texto completo</a>
         </p>
         <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#666' }}>{TEXTO_BLOQUEO_TERMINOS_YONKE}</p>
+        <CasillasLegales valores={casillas} onChange={setCasillas} declaracion={declaracion} conTerminos={false} />
         <label htmlFor="aceptar-terminos-yonke" style={{ display: 'block', fontSize: '14px', color: '#1A3C5E', fontWeight: 'bold', margin: '0 0 6px' }}>
           Para aceptar, escribe la palabra {PALABRA_ACEPTAR}
         </label>

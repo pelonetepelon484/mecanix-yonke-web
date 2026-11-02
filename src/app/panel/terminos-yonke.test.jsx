@@ -37,6 +37,7 @@ vi.mock('./AuthContext', () => ({ useAuth: () => useAuthMock() }));
 
 const { terminosAceptados, versionParaAceptar, leerTerminosYonkes, TEXTO_BLOQUEO_TERMINOS_YONKE } = await import('./terminosYonke');
 const { VERSION_LEGAL } = await import('../../lib/versionesLegales');
+const { DECLARACION_COMPLETO, DECLARACION_LIGERO } = await import('../../lib/constanciasLegales');
 const { default: AvisoTerminosYonke } = await import('./AvisoTerminosYonke');
 const { BloqueoTerminos } = await import('./BloqueoTerminos');
 const { default: Inventario } = await import('./inventario/page.js');
@@ -76,6 +77,11 @@ describe('cálculo de "aceptado" (config/terminosYonkes)', () => {
   });
 });
 
+const marcarCasillas = () => {
+  fireEvent.click(screen.getByRole('checkbox', { name: /Aviso de Privacidad/ }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /Declaro que estoy autorizado/ }));
+};
+
 describe('aviso ACEPTO arriba del panel', () => {
   it('muestra el resumen de cambios del documento y el mensaje de solo lectura', () => {
     useAuthMock.mockReturnValue(sesionYonke());
@@ -86,6 +92,7 @@ describe('aviso ACEPTO arriba del panel', () => {
   it('el botón solo se activa con ACEPTO (mayúsculas o minúsculas, con espacios a los lados)', () => {
     useAuthMock.mockReturnValue(sesionYonke());
     render(<AvisoTerminosYonke />);
+    marcarCasillas();
     const campo = screen.getByLabelText('Para aceptar, escribe la palabra ACEPTO');
     const boton = screen.getByRole('button', { name: 'Acepto los términos vigentes' });
     expect(boton).toBeDisabled();
@@ -98,16 +105,42 @@ describe('aviso ACEPTO arriba del panel', () => {
       expect(boton).toBeEnabled();
     }
   });
-  it('al aceptar guarda historial + aceptacionLegal con la versión del documento y desbloquea', async () => {
+  it('sin las dos casillas no se activa, y ninguna viene marcada', () => {
+    useAuthMock.mockReturnValue(sesionYonke());
+    render(<AvisoTerminosYonke />);
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2); // los Términos se aceptan con ACEPTO
+    screen.getAllByRole('checkbox').forEach((c) => expect(c).not.toBeChecked());
+    fireEvent.change(screen.getByLabelText('Para aceptar, escribe la palabra ACEPTO'), { target: { value: 'ACEPTO' } });
+    const boton = screen.getByRole('button', { name: 'Acepto los términos vigentes' });
+    expect(boton).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Aviso de Privacidad/ }));
+    expect(boton).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Declaro que estoy autorizado/ }));
+    expect(boton).toBeEnabled();
+  });
+  it('al aceptar guarda historial, aceptacionLegal y las dos constancias, y desbloquea', async () => {
     const sesion = sesionYonke();
     useAuthMock.mockReturnValue(sesion);
     render(<AvisoTerminosYonke />);
+    marcarCasillas();
     fireEvent.change(screen.getByLabelText('Para aceptar, escribe la palabra ACEPTO'), { target: { value: ' acepto ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Acepto los términos vigentes' }));
     await waitFor(() => expect(sesion.marcarTerminosAceptados).toHaveBeenCalled());
     expect(lote.set).toHaveBeenCalledWith('yonkes/Y1/aceptaciones/2026-11-01', { version: '2026-11-01', fecha: 'HORA_SERVIDOR' });
     expect(lote.update).toHaveBeenCalledWith('yonkes/Y1', { aceptacionLegal: { version: '2026-11-01', fecha: 'HORA_SERVIDOR' } });
+    expect(lote.set).toHaveBeenCalledWith('yonkes/Y1/constancias/privacidad_2026-11-01', { tipo: 'privacidad', version: '2026-11-01', fecha: 'HORA_SERVIDOR' });
+    expect(lote.set).toHaveBeenCalledWith('yonkes/Y1/constancias/autorizacion_2026-11-01', { tipo: 'autorizacion', version: '2026-11-01', fecha: 'HORA_SERVIDOR', texto: DECLARACION_COMPLETO });
     expect(lote.commit).toHaveBeenCalledTimes(1);
+  });
+  it('el ligero guarda su propia declaración', async () => {
+    const sesion = sesionYonke({ userRole: 'yonkeLigero', esLigero: true });
+    useAuthMock.mockReturnValue(sesion);
+    render(<AvisoTerminosYonke />);
+    marcarCasillas();
+    fireEvent.change(screen.getByLabelText('Para aceptar, escribe la palabra ACEPTO'), { target: { value: 'ACEPTO' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Acepto los términos vigentes' }));
+    await waitFor(() => expect(sesion.marcarTerminosAceptados).toHaveBeenCalled());
+    expect(lote.set).toHaveBeenCalledWith('yonkes/Y1/constancias/autorizacion_2026-11-01', expect.objectContaining({ texto: DECLARACION_LIGERO }));
   });
   it('si falla, avisa y no desbloquea', async () => {
     const sesion = sesionYonke();
@@ -115,6 +148,7 @@ describe('aviso ACEPTO arriba del panel', () => {
     lote.commit.mockRejectedValueOnce(Object.assign(new Error('x'), { code: 'permission-denied' }));
     vi.spyOn(console, 'error').mockImplementation(() => {});
     render(<AvisoTerminosYonke />);
+    marcarCasillas();
     fireEvent.change(screen.getByLabelText('Para aceptar, escribe la palabra ACEPTO'), { target: { value: 'ACEPTO' } });
     fireEvent.click(screen.getByRole('button', { name: 'Acepto los términos vigentes' }));
     expect(await screen.findByText('No pudimos registrar tu aceptación. Intenta de nuevo.')).toBeInTheDocument();
