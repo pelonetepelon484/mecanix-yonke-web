@@ -114,6 +114,14 @@ describe('Pedidos de clientes (lado del yonke)', () => {
     expect(screen.queryByText(/todavía/)).not.toBeInTheDocument();
   });
 
+  it('ligero desactivado que llega con ?pedido={id}: el mensaje sale una sola vez', async () => {
+    leerYonkeEstadoActivo.mockImplementation(async () => ({ estado: 'baja-california', activo: false, nombre: 'Yonke Prueba', whatsapp: '6641234567' }));
+    window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
+    render(<PedidosClientesYonke yonkeId="Y1" ligero />);
+    await screen.findByRole('status');
+    expect(screen.getAllByText('Tu yonke está desactivado. Escríbenos para revisarlo.')).toHaveLength(1);
+  });
+
   it('con ?pedido={id} que ya venció, lo dice claro', async () => {
     window.history.replaceState(null, '', `/panel/reservaciones?pedido=${ID}`);
     global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({ ok: false }) }));

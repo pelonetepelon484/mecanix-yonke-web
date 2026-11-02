@@ -226,7 +226,7 @@ export default function PedidosClientesYonke({ yonkeId, ligero = false }) {
       )}
       {puedeOtros && sinTerminos && <MensajeBloqueoTerminos />}
 
-      {ligero && estadoActivo && !estadoActivo.activo && <p style={{ ...seccion, color: '#555', fontSize: '14px' }}>{TEXTO_YONKE_DESACTIVADO}</p>}
+      {ligero && estadoActivo && !estadoActivo.activo && aviso !== TEXTO_YONKE_DESACTIVADO && <p style={{ ...seccion, color: '#555', fontSize: '14px' }}>{TEXTO_YONKE_DESACTIVADO}</p>}
       {ligero && !ligeroSinTope && hoyLeido && estadoActivo?.activo && (
         <p role="status" style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 'bold', color: '#1A3C5E' }}>
           {textoRestantes(respuestasRestantes(limite, respuestasHoy))}
