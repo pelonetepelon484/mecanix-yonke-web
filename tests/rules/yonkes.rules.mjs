@@ -16,6 +16,17 @@ const altaDeFormulario = (ownerUid) => ({
   metodosPago: [], plan: 'freemium', activo: true, fechaRegistro: new Date(), ownerUid,
 });
 
+// Igual que crearYonkeConAceptacion() en src/app/panel/terminosYonke.js: ficha, historial y las dos constancias.
+function altaEnLote(comoUid, id, datos, version = '2026-10-26') {
+  const db = como(comoUid);
+  const lote = writeBatch(db);
+  lote.set(doc(db, 'yonkes', id), { ...datos, aceptacionLegal: { version, fecha: serverTimestamp() } });
+  lote.set(doc(db, 'yonkes', id, 'aceptaciones', version), { version, fecha: serverTimestamp() });
+  lote.set(doc(db, 'yonkes', id, 'constancias', `privacidad_${version}`), { tipo: 'privacidad', version, fecha: serverTimestamp() });
+  lote.set(doc(db, 'yonkes', id, 'constancias', `autorizacion_${version}`), { tipo: 'autorizacion', version, fecha: serverTimestamp(), texto: 'Declaro que estoy autorizado.' });
+  return lote.commit();
+}
+
 // Datos de prueba: un yonke con dueño (registrado solo), un yonke viejo sin ownerUid,
 // y un dueño con yonke ya registrado.
 async function sembrar() {
@@ -57,15 +68,15 @@ describe('cuenta nueva que intenta reclamar un yonke ajeno', () => {
   it('no puede crear un yonke sin ownerUid', async () => {
     await sembrar();
     const { ownerUid, ...sinDueno } = altaDeFormulario('x8');
-    await assertFails(setDoc(doc(como(ownerUid), 'yonkes', 'Y8'), sinDueno));
+    await assertFails(altaEnLote(ownerUid, 'Y8', sinDueno));
   });
   it('no puede crear un yonke con ownerUid de otra persona', async () => {
     await sembrar();
-    await assertFails(setDoc(doc(como('x7'), 'yonkes', 'Y7'), altaDeFormulario('o1')));
+    await assertFails(altaEnLote('x7', 'Y7', altaDeFormulario('o1')));
   });
   it('una cuenta que ya tiene usuario (yonke) no puede crear otro yonke', async () => {
     await sembrar();
-    await assertFails(setDoc(doc(como('o1'), 'yonkes', 'Y10'), altaDeFormulario('o1')));
+    await assertFails(altaEnLote('o1', 'Y10', altaDeFormulario('o1')));
   });
   it('no puede poner ownerUid en un yonke viejo que ya existe', async () => {
     await sembrar();
@@ -77,29 +88,15 @@ describe('registro normal de yonke (mismo orden que el código)', () => {
   it('crea el yonke con ownerUid propio y luego su usuario de yonke', async () => {
     await sembrar();
     const db = como('o5');
-    // Lo que escribe src/app/panel/registro/page.js: datosYonke (+ aceptacionLegal en la 1ª versión)
-    await assertSucceeds(setDoc(doc(db, 'yonkes', 'Y5'), {
-      nombre: 'Nuevo', direccion: 'Calle 1', estado: 'baja-california', ciudad: 'tijuana',
-      telefono: '6641234567', whatsapp: '6641234567', metodosPago: [], plan: 'freemium', activo: true,
-      fechaRegistro: new Date(), ownerUid: 'o5',
-      aceptacionLegal: { version: 'x', fecha: new Date() },
-    }));
+    // Lo que escribe src/app/panel/registro/page.js: el lote completo y después el usuario.
+    await assertSucceeds(altaEnLote('o5', 'Y5', altaDeFormulario('o5')));
     await assertSucceeds(setDoc(doc(db, 'usuarios', 'o5'), {
       rol: 'yonke', yonkeId: 'Y5', email: 'o5@prueba.mx', fechaRegistro: new Date(),
     }));
   });
-  it('la versión de respaldo del yonke (sin aceptacionLegal) también pasa', async () => {
-    await sembrar();
-    await assertSucceeds(setDoc(doc(como('o6'), 'yonkes', 'Y6'), {
-      ...altaDeFormulario('o6'),
-    }));
-    await assertSucceeds(setDoc(doc(como('o6'), 'usuarios', 'o6'), {
-      rol: 'yonke', yonkeId: 'Y6', email: 'o6@prueba.mx', fechaRegistro: new Date(),
-    }));
-  });
   it('un usuario de yonke no puede agregar campos extra al usuario', async () => {
     await sembrar();
-    await assertSucceeds(setDoc(doc(como('o7'), 'yonkes', 'Y7'), altaDeFormulario('o7')));
+    await assertSucceeds(altaEnLote('o7', 'Y7', altaDeFormulario('o7')));
     await assertFails(setDoc(doc(como('o7'), 'usuarios', 'o7'), {
       rol: 'yonke', yonkeId: 'Y7', email: 'o7@prueba.mx', fechaRegistro: new Date(), admin: true,
     }));
@@ -144,7 +141,7 @@ describe('dueño de un yonke', () => {
   });
   it('puede borrar su yonke mientras aún no tenga usuario (rollback)', async () => {
     await sembrar();
-    await assertSucceeds(setDoc(doc(como('o3'), 'yonkes', 'Y3'), altaDeFormulario('o3')));
+    await assertSucceeds(altaEnLote('o3', 'Y3', altaDeFormulario('o3')));
     await assertSucceeds(deleteDoc(doc(como('o3'), 'yonkes', 'Y3')));
   });
 });
@@ -212,9 +209,7 @@ describe('admin: crear y revocar accesos', () => {
 
 describe('plan y vencimiento de Premium: solo el admin', () => {
   const fecha = (iso = '2030-01-01') => Timestamp.fromDate(new Date(`${iso}T00:00:00`));
-  const registro = (uid, yonkeId, extra) => setDoc(doc(como(uid), 'yonkes', yonkeId), {
-    ...altaDeFormulario(uid), ...extra,
-  });
+  const registro = (uid, yonkeId, extra) => altaEnLote(uid, yonkeId, { ...altaDeFormulario(uid), ...extra });
   const ponerPremiumSinReglas = (hasta) => env.withSecurityRulesDisabled((ctx) =>
     updateDoc(doc(ctx.firestore(), 'yonkes', 'Y1'), { plan: 'premium', premiumHasta: hasta }));
 
@@ -275,15 +270,8 @@ describe('alta propia de un yonke: lista cerrada de campos', () => {
     for (const k of Object.keys(datos)) if (datos[k] === undefined) delete datos[k];
     return datos;
   };
-  const crear = (uid, id, extra) => setDoc(doc(como(uid), 'yonkes', id), alta(uid, extra));
-  // Igual que crearYonkeConAceptacion() en src/app/panel/terminosYonke.js.
-  const crearConLote = (uid, id, version) => {
-    const db = como(uid);
-    const lote = writeBatch(db);
-    lote.set(doc(db, 'yonkes', id), alta(uid, { aceptacionLegal: { version, fecha: serverTimestamp() } }));
-    lote.set(doc(db, 'yonkes', id, 'aceptaciones', version), { version, fecha: serverTimestamp() });
-    return lote.commit();
-  };
+  const crear = (uid, id, extra) => altaEnLote(uid, id, alta(uid, extra));
+  const crearConLote = (uid, id, version) => altaEnLote(uid, id, alta(uid), version);
   const sembrarAlta = async ({ terminos = null } = {}) => {
     await sembrar();
     await env.withSecurityRulesDisabled(async (ctx) => {
@@ -304,10 +292,10 @@ describe('alta propia de un yonke: lista cerrada de campos', () => {
     await sembrarAlta();
     await registrado();
   });
-  it('pasan los respaldos del registro, con y sin aceptacionLegal', async () => {
+  it('NO sin el lote completo: ni sin aceptacionLegal ni sin constancias', async () => {
     await sembrarAlta();
-    await assertSucceeds(addDoc(collection(como('a2'), 'yonkes'), alta('a2', { aceptacionLegal: { version: 'v', fecha: serverTimestamp() } })));
-    await assertSucceeds(addDoc(collection(como('a3'), 'yonkes'), alta('a3')));
+    await assertFails(addDoc(collection(como('a2'), 'yonkes'), alta('a2', { aceptacionLegal: { version: 'v', fecha: serverTimestamp() } })));
+    await assertFails(addDoc(collection(como('a3'), 'yonkes'), alta('a3')));
   });
   it('pasa otro estado con ciudad de texto libre, y el rollback borra su ficha', async () => {
     await sembrarAlta();

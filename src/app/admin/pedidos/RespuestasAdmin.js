@@ -3,15 +3,15 @@
 // Piezas compartidas de las dos pestañas de /admin/pedidos (clientes y talleres):
 // - RespuestaAdmin: una respuesta con su precio (o "Precio no informado"), la marca de las sugeridas
 //   por el admin y "Quitar respuesta" (no depende de la bandera; bloqueado si el taller ya la eligió).
-// - SugerirYonke: el admin registra la respuesta de un yonke que le confirmó por fuera que tiene la
-//   pieza. Sin campo de precio: siempre "precio a tratar". Solo yonkes activos que no han respondido,
-//   leídos por estado (nunca todos).
+// - SugerirYonke: el admin registra la respuesta de un yonke que le confirmó por escrito que tiene la
+//   pieza y lo autorizó, con la evidencia de esa autorización. Sin campo de precio: siempre "precio a
+//   tratar". Solo yonkes activos que no han respondido, leídos por estado (nunca todos).
 import { useEffect, useState } from 'react';
+import { MAX_MENSAJE_EVIDENCIA, MEDIOS_AUTORIZACION, TEXTO_AUTORIZA_SUGERENCIA, evidenciaCompleta } from '../../../lib/evidenciaSugerir';
 import { TEXTO_PRECIO_NO_INFORMADO, TEXTO_SUGERIDA_POR_ADMIN, textoPrecioRespuesta } from '../../../lib/respuestasPedido';
 import { listarYonkesActivosDeEstado, quitarRespuesta, sugerirYonke } from './datos';
 
 export const TEXTO_ELEGIDA_NO_SE_QUITA = 'Respuesta elegida por el taller: no se puede quitar';
-export const TEXTO_CONFIRMA_SUGERENCIA = 'Confirmo que este yonke me confirmó que tiene la pieza';
 
 export function RespuestaAdmin({ coleccion, pedidoId, r, verificado = null, elegida = false, onQuitada }) {
   const [quitando, setQuitando] = useState(false);
@@ -48,6 +48,7 @@ export function RespuestaAdmin({ coleccion, pedidoId, r, verificado = null, eleg
   );
 }
 
+const AUTORIZACION_VACIA = { medio: '', recibido: '', mensaje: '', autorizacionConfirmada: false };
 const sinAcentos = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 export function SugerirYonke({ coleccion, pedido, estados, permitirOtrosEstados = false, yaRespondieron, onHecho }) {
@@ -57,6 +58,7 @@ export function SugerirYonke({ coleccion, pedido, estados, permitirOtrosEstados 
   const [yonkes, setYonkes] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const [elegidoId, setElegidoId] = useState('');
+  const [autorizacion, setAutorizacion] = useState(AUTORIZACION_VACIA);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
@@ -76,6 +78,8 @@ export function SugerirYonke({ coleccion, pedido, estados, permitirOtrosEstados 
     .filter((y) => texto === '' || sinAcentos(y.nombre).includes(texto))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   const elegido = visibles.find((y) => y.id === elegidoId) || null;
+  const evidencia = evidenciaCompleta(autorizacion);
+  const cambiarAutorizacion = (cambios) => setAutorizacion((a) => ({ ...a, ...cambios }));
 
   // Otro estado: la lista se vuelve a leer (y se suelta el yonke elegido).
   function cambiarEstado(nuevo) {
@@ -91,16 +95,16 @@ export function SugerirYonke({ coleccion, pedido, estados, permitirOtrosEstados 
     cambiarEstado(pedido.estado);
     setYonkes(null);
     setBusqueda('');
+    setAutorizacion(AUTORIZACION_VACIA);
     setError('');
   }
 
   async function guardar() {
-    if (!elegido) return;
-    if (!window.confirm(`${elegido.nombre}\n\n${TEXTO_CONFIRMA_SUGERENCIA}.`)) return;
+    if (!elegido || !evidencia) return;
     setGuardando(true);
     setError('');
     try {
-      await sugerirYonke(coleccion, pedido.id, elegido);
+      await sugerirYonke(coleccion, pedido.id, elegido, evidencia);
       cerrar();
       onHecho();
     } catch (err) {
@@ -156,9 +160,39 @@ export function SugerirYonke({ coleccion, pedido, estados, permitirOtrosEstados 
         </div>
       )}
       <p style={{ margin: '0 0 8px', fontSize: '13px' }}>Precio: <strong>{TEXTO_PRECIO_NO_INFORMADO}</strong></p>
+      <p style={{ margin: '0 0 8px', fontWeight: 'bold', color: '#1A3C5E', fontSize: '13px' }}>Autorización del yonke</p>
+      <label style={etiquetaCampo}>
+        Medio por el que la recibiste
+        <select value={autorizacion.medio} onChange={(e) => cambiarAutorizacion({ medio: e.target.value })} style={campo}>
+          <option value="">Elige el medio</option>
+          {MEDIOS_AUTORIZACION.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+        </select>
+      </label>
+      <label style={etiquetaCampo}>
+        Fecha y hora en que la recibiste
+        <input type="datetime-local" value={autorizacion.recibido} onChange={(e) => cambiarAutorizacion({ recibido: e.target.value })} style={campo} />
+      </label>
+      <label style={etiquetaCampo}>
+        Mensaje del yonke (pégalo completo)
+        <textarea
+          rows={4}
+          maxLength={MAX_MENSAJE_EVIDENCIA}
+          value={autorizacion.mensaje}
+          onChange={(e) => cambiarAutorizacion({ mensaje: e.target.value })}
+          style={{ ...campo, padding: '8px 10px', resize: 'vertical' }}
+        />
+      </label>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '13px', marginBottom: '8px' }}>
+        <input
+          type="checkbox"
+          checked={autorizacion.autorizacionConfirmada}
+          onChange={(e) => cambiarAutorizacion({ autorizacionConfirmada: e.target.checked })}
+        />
+        {TEXTO_AUTORIZA_SUGERENCIA}
+      </label>
       {error && <p role="alert" style={{ margin: '0 0 8px', color: '#B3261E', fontSize: '13px' }}>{error}</p>}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        <button type="button" disabled={!elegido || guardando} onClick={guardar} style={{ ...botonChico('#2E7D32'), opacity: !elegido || guardando ? 0.6 : 1 }}>
+        <button type="button" disabled={!elegido || !evidencia || guardando} onClick={guardar} style={{ ...botonChico('#2E7D32'), opacity: !elegido || !evidencia || guardando ? 0.6 : 1 }}>
           Guardar sugerencia
         </button>
         <button type="button" disabled={guardando} onClick={cerrar} style={botonChico('#888')}>Cerrar sin guardar</button>
@@ -168,6 +202,7 @@ export function SugerirYonke({ coleccion, pedido, estados, permitirOtrosEstados 
 }
 
 const etiqueta = { marginLeft: '6px', display: 'inline-block', backgroundColor: '#FFF3E0', color: '#8A4B00', fontSize: '11px', fontWeight: 'bold', padding: '1px 8px', borderRadius: '12px' };
+const etiquetaCampo = { display: 'block', fontSize: '13px', color: '#555' };
 const campo = { display: 'block', width: '100%', boxSizing: 'border-box', minHeight: '40px', borderRadius: '10px', border: '1px solid #CCC', padding: '0 10px', backgroundColor: '#fff', marginBottom: '8px', fontSize: '14px' };
 function botonChico(color) {
   return { marginTop: '6px', minHeight: '34px', padding: '0 12px', borderRadius: '10px', border: 'none', backgroundColor: color, color: '#fff', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' };

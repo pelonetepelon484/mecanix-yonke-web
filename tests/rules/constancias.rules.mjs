@@ -47,8 +47,10 @@ describe('constancias del registro', () => {
   it('el alta guarda las dos constancias junto con la ficha', async () => {
     await assertSucceeds(alta('nuevo', 'N1'));
   });
-  it('sigue aceptando el alta sin constancias mientras se publica el código', async () => {
-    await assertSucceeds(alta('nuevo', 'N1', { constancias: [] }));
+  it('rechaza el alta sin alguna de las dos constancias', async () => {
+    await assertFails(alta('a', 'A', { constancias: [] }));
+    await assertFails(alta('b', 'B', { constancias: [['privacidad', privacidad()]] }));
+    await assertFails(alta('c', 'C', { constancias: [['autorizacion', autorizacion()]] }));
   });
   it('rechaza campos de más, tipo desconocido, id que no coincide, otra versión y hora del navegador', async () => {
     await assertFails(alta('a', 'A', { constancias: [['privacidad', privacidad({ extra: 1 })]] }));
