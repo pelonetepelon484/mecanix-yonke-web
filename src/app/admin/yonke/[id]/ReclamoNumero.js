@@ -76,7 +76,7 @@ export default function ReclamoNumero({ yonkeId, onDesactivado }) {
 
   return (
     <div style={{ fontSize: '13px', color: '#333' }}>
-      <ol style={{ margin: '0 0 10px', paddingLeft: '20px', lineHeight: '1.5' }}>
+      <ol style={{ margin: '0 0 10px', paddingLeft: '20px', lineHeight: '1.5', listStyleType: 'decimal' }}>
         {PASOS.map((paso) => <li key={paso}>{paso}</li>)}
       </ol>
       {respuestas === null ? (
