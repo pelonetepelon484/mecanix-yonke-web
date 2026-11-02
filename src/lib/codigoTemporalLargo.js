@@ -1,0 +1,1 @@
+export const LARGO_CODIGO_TEMPORAL = 12;

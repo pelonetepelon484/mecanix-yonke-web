@@ -1,7 +1,7 @@
 'use client';
 
-// Cambiar contraseña del yonke ligero. Pide la actual (también sirve la temporal que le dio el
-// admin): así nadie la cambia en un celular prestado o con la sesión abierta.
+// Cambiar contraseña del yonke ligero. Pide la actual: así nadie la cambia en un celular prestado o
+// con la sesión abierta.
 import { useState } from 'react';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';

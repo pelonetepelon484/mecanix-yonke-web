@@ -1,9 +1,10 @@
 'use client';
 
 // Cuentas que entran con WhatsApp: su correo interno no recibe correos, así que el admin restablece
-// la contraseña desde aquí. La temporal se muestra una sola vez, y solo vive en esta pantalla.
+// la contraseña desde aquí. El código temporal se muestra una sola vez, y solo vive en esta pantalla.
 import { useState } from 'react';
 import { auth } from '../../../lib/firebase';
+import { HORAS_CODIGO, mensajeCodigoTemporal } from '../../../../lib/codigoTemporal';
 
 const MENSAJES = {
   noConfigurado: 'Falta configurar la llave en Vercel.',
@@ -18,7 +19,7 @@ export default function RestablecerPassword({ usuarioId }) {
   const [copiada, setCopiada] = useState(false);
 
   async function restablecer() {
-    if (!window.confirm('¿Restablecer la contraseña de esta cuenta?\n\nHazlo solo si te escribió desde el WhatsApp registrado. Su contraseña actual dejará de servir.')) return;
+    if (!window.confirm('¿Restablecer la contraseña de esta cuenta?\n\nHazlo solo si te escribió desde el WhatsApp registrado. Su contraseña actual dejará de servir y se cerrarán sus sesiones.')) return;
     setTrabajando(true);
     setError('');
     setTemporal('');
@@ -43,7 +44,7 @@ export default function RestablecerPassword({ usuarioId }) {
 
   async function copiar() {
     try {
-      await navigator.clipboard.writeText(temporal);
+      await navigator.clipboard.writeText(mensajeCodigoTemporal(temporal));
       setCopiada(true);
     } catch {
       setError('No se pudo copiar. Selecciona el texto y cópialo a mano.');
@@ -61,10 +62,10 @@ export default function RestablecerPassword({ usuarioId }) {
       </button>
       {temporal && (
         <div style={{ marginTop: '8px', padding: '10px', borderRadius: '8px', backgroundColor: '#FFF8E1', border: '1px solid #FFD54F' }}>
-          <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#555' }}>Contraseña temporal. Se muestra solo esta vez: mándasela por WhatsApp a ese mismo número.</p>
+          <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#555' }}>Código temporal, válido {HORAS_CODIGO} horas y un solo uso. Se muestra solo esta vez: mándalo por WhatsApp a ese mismo número.</p>
           <code style={{ display: 'block', fontSize: '16px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px', wordBreak: 'break-all' }}>{temporal}</code>
           <button onClick={copiar} style={{ minHeight: '34px', padding: '0 12px', borderRadius: '8px', border: 'none', backgroundColor: '#1A3C5E', color: '#fff', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-            {copiada ? 'Copiada' : 'Copiar'}
+            {copiada ? 'Mensaje copiado' : 'Copiar mensaje'}
           </button>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { generateKeyPairSync, createVerify } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { LARGO_TEMPORAL, borrarCuenta, cambiarPassword, generarContrasenaTemporal, leerCredencialesAuth } from './authAdmin';
+import { LARGO_CODIGO_TEMPORAL } from '../../../lib/codigoTemporalLargo';
+import { borrarCuenta, cambiarPassword, generarBloqueo, generarCodigoTemporal, leerCredencialesAuth } from './authAdmin';
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -20,16 +21,20 @@ describe('credenciales', () => {
   });
 });
 
-describe('contraseña temporal', () => {
+describe('código temporal', () => {
   it('12 caracteres, sin los que se confunden, y distinta cada vez', () => {
     const vistas = new Set();
     for (let i = 0; i < 200; i++) {
-      const t = generarContrasenaTemporal();
-      expect(t).toHaveLength(LARGO_TEMPORAL);
+      const t = generarCodigoTemporal();
+      expect(t).toHaveLength(LARGO_CODIGO_TEMPORAL);
       expect(t).not.toMatch(/[0O1lI]/);
       vistas.add(t);
     }
     expect(vistas.size).toBe(200);
+  });
+  it('el bloqueo es largo y distinto cada vez', () => {
+    expect(generarBloqueo().length).toBeGreaterThanOrEqual(43);
+    expect(generarBloqueo()).not.toBe(generarBloqueo());
   });
 });
 
@@ -49,7 +54,7 @@ describe('cambiarPassword', () => {
     const [url, opciones] = fetchFn.mock.calls[1];
     expect(url).toBe('https://identitytoolkit.googleapis.com/v1/projects/mi-proyecto/accounts:update');
     expect(opciones.headers.Authorization).toBe('Bearer permiso');
-    expect(JSON.parse(opciones.body)).toEqual({ localId: 'uidL', password: 'nueva-clave' });
+    expect(JSON.parse(opciones.body)).toEqual({ localId: 'uidL', password: 'nueva-clave', validSince: '1000' });
   });
   it('lanza si Google no da permiso o rechaza el cambio, sin decir la contraseña', async () => {
     const sinPermiso = vi.fn(async () => respuesta(false, 403));

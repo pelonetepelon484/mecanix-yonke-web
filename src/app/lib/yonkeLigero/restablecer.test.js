@@ -5,8 +5,10 @@ import { MAX_RESTABLECER_DIA, crearManejadorRestablecer } from './restablecer';
 const INTERNO = '6641234567@yonkes.mecanixyonkevirtual.com';
 const PASES = { 'pase-admin': 'uidAdmin', 'pase-yonke': 'uidY', 'pase-taller': 'uidT' };
 const TEMPORAL = 'Temporal-Secreta-99';
+const BLOQUEO = 'bloqueo-que-nadie-conoce';
 
 function crearFalsos(cambios = {}) {
+  const deshacer = vi.fn(async () => {});
   const docs = {
     'usuarios/uidAdmin': { rol: 'admin', email: INTERNO }, // ni con correo interno se toca a un admin
     'usuarios/uidY': { rol: 'yonke', yonkeId: 'Y9', email: 'real@correo.mx' },
@@ -24,25 +26,38 @@ function crearFalsos(cambios = {}) {
     contar: vi.fn(async () => true),
     claveLimite,
     generarTemporal: vi.fn(() => TEMPORAL),
+    generarBloqueo: vi.fn(() => BLOQUEO),
+    hashCodigo: vi.fn((c) => `hash-${c}`),
+    guardarCodigo: vi.fn(async () => deshacer),
     cambiarPassword: vi.fn(async () => {}),
     notificar: vi.fn(async () => {}),
     ahora: () => new Date('2026-11-01T18:00:00Z'),
     ...cambios,
   };
-  return { deps, m: crearManejadorRestablecer(deps) };
+  return { deps, deshacer, m: crearManejadorRestablecer(deps) };
 }
 const peticion = ({ token = 'pase-admin', cuerpo = { usuarioId: 'uidL' } } = {}) => new Request('https://x.mx/api/admin/restablecer-password', {
   method: 'POST', headers: token ? { authorization: `Bearer ${token}` } : {}, body: typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo),
 });
 
 describe('restablecer contraseña', () => {
-  it('el admin la cambia y recibe la temporal una vez', async () => {
+  it('el admin recibe el código una vez; la contraseña queda en una que nadie conoce', async () => {
     const f = crearFalsos();
     const r = await f.m(peticion());
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({ ok: true, temporal: TEMPORAL });
-    expect(f.deps.cambiarPassword).toHaveBeenCalledWith({ clientEmail: 'c', privateKey: 'k' }, 'uidL', TEMPORAL);
+    expect(f.deps.cambiarPassword).toHaveBeenCalledWith({ clientEmail: 'c', privateKey: 'k' }, 'uidL', BLOQUEO);
     expect(r.headers.get('Cache-Control')).toBe('no-store');
+  });
+  it('guarda solo el hash, 24 horas, por WhatsApp, con el admin que lo generó', async () => {
+    const f = crearFalsos();
+    await f.m(peticion());
+    const [, guardado] = f.deps.guardarCodigo.mock.calls[0];
+    expect(guardado).toEqual({
+      clave: claveLimite('codigoWa', '6641234567', 'unico'), uid: 'uidL', yonkeId: 'YL', adminUid: 'uidAdmin',
+      codigoHash: `hash-${TEMPORAL}`, expiraAt: new Date('2026-11-02T18:00:00Z'),
+    });
+    expect(JSON.stringify(guardado)).not.toContain(`"${TEMPORAL}"`);
   });
   it('un yonke ya completo que entra con WhatsApp también', async () => {
     expect((await crearFalsos().m(peticion({ cuerpo: { usuarioId: 'uidC' } }))).status).toBe(200);
@@ -104,12 +119,13 @@ describe('fallas', () => {
     expect((await g.m(peticion())).status).toBe(503);
     expect(g.deps.cambiarPassword).not.toHaveBeenCalled();
   });
-  it('si Google falla, nunca muestra una contraseña que no sirve ni avisa', async () => {
+  it('si Google falla, deshace el código y no lo muestra ni avisa', async () => {
     const consola = vi.spyOn(console, 'error').mockImplementation(() => {});
     const f = crearFalsos({ cambiarPassword: vi.fn(async () => { throw new Error('HTTP 403'); }) });
     const r = await f.m(peticion());
     expect(r.status).toBe(503);
     expect(await r.text()).not.toContain(TEMPORAL);
+    expect(f.deshacer).toHaveBeenCalled();
     expect(f.deps.notificar).not.toHaveBeenCalled();
     expect(JSON.stringify(consola.mock.calls)).not.toContain(TEMPORAL);
     consola.mockRestore();
