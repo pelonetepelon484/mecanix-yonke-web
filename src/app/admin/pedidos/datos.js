@@ -9,6 +9,7 @@ import {
   updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
+import { calcularExpiraEvidencia, textoBusquedaEvidencia } from '../../../lib/evidenciaSugerir';
 import { calcularExpiraAtPedido } from '../../../lib/pedidosClientes';
 import { esRegistroLigero } from '../../../lib/yonkeLigero';
 import { actualizarResumenAlertas } from '../../lib/pedidosClientes/resumenAlertas';
@@ -139,21 +140,51 @@ export async function listarYonkesActivosDeEstado(estado, { sinLigeros = false }
 
 // Respuesta en nombre del yonke, con los campos que exigen las reglas: siempre "precio a tratar"
 // (sin precio), sin `dia` (no pasa por el tope diario ni toca respuestasDiarias) y sin inventario
-// automático. El vencimiento se lee del pedido en este momento (por si se reabrió).
-export async function sugerirYonke(coleccion, pedidoId, yonke) {
+// automático. El vencimiento se lee del pedido en este momento (por si se reabrió). La evidencia de
+// la autorización entra en el mismo lote: sin ella, no hay respuesta.
+export async function sugerirYonke(coleccion, pedidoId, yonke, evidencia) {
   const padre = await getDoc(doc(db, coleccion, pedidoId));
   if (!padre.exists()) throw new Error('El pedido ya no existe.');
-  await setDoc(doc(db, coleccion, pedidoId, 'respuestas', yonke.id), {
+  const adminUid = auth.currentUser?.uid ?? '';
+  const refEvidencia = doc(collection(db, 'evidenciasSugerir'));
+  const lote = writeBatch(db);
+  lote.set(doc(db, coleccion, pedidoId, 'respuestas', yonke.id), {
     yonkeId: yonke.id, yonkeNombre: yonke.nombre, whatsapp: yonke.whatsapp,
     tieneLaPieza: true, precioATratar: true, nota: '',
-    creadoPorAdmin: true, creadoPorAdminUid: auth.currentUser?.uid ?? '',
+    creadoPorAdmin: true, creadoPorAdminUid: adminUid, evidenciaId: refEvidencia.id,
     creadoAt: serverTimestamp(), expiraAt: padre.data().expiraAt,
   });
+  lote.set(refEvidencia, {
+    coleccion, pedidoId, busqueda: textoBusquedaEvidencia(padre.data()),
+    yonkeId: yonke.id, yonkeNombre: yonke.nombre, yonkeWhatsapp: yonke.whatsapp,
+    medio: evidencia.medio, mensaje: evidencia.mensaje, recibidoAt: Timestamp.fromDate(evidencia.recibidoAt),
+    autorizacionConfirmada: true, adminUid, adminEmail: auth.currentUser?.email ?? '',
+    creadoAt: serverTimestamp(), expiraAt: Timestamp.fromDate(calcularExpiraEvidencia(new Date())),
+  });
+  await lote.commit();
 }
 
 // Quita una respuesta (de yonke o sugerida). El contador diario del yonke no se toca.
 export function quitarRespuesta(coleccion, pedidoId, yonkeId) {
   return deleteDoc(doc(db, coleccion, pedidoId, 'respuestas', yonkeId));
+}
+
+// ---------- Evidencias de "Sugerir yonke" (/admin/evidencias) ----------
+export async function listarEvidencias() {
+  const snap = await getDocs(query(collection(db, 'evidenciasSugerir'), orderBy('creadoAt', 'desc'), limit(LIMITE_LISTA)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// Reclamación dentro del plazo: sin expiraAt, el borrado automático ya no la alcanza.
+export function conservarEvidencia(id, motivo) {
+  return updateDoc(doc(db, 'evidenciasSugerir', id), {
+    expiraAt: deleteField(), conservadaAt: serverTimestamp(), conservadaPorUid: auth.currentUser?.uid ?? '', motivoConservacion: motivo,
+  });
+}
+
+// Solo las conservadas, cuando la reclamación ya se atendió (las reglas rechazan las demás).
+export function borrarEvidenciaConservada(id) {
+  return deleteDoc(doc(db, 'evidenciasSugerir', id));
 }
 
 async function borrarConSubcolecciones(coleccion, id) {

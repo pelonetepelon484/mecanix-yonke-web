@@ -34,6 +34,61 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/yonkes/$(get(usuario).data.yonkeId)).data.activo == true
         && get(/databases/$(database)/documents/yonkes/$(get(usuario).data.yonkeId)).data.estado == estado;
     }
+    // ---------- Evidencia de "Sugerir yonke" (evidenciasSugerir) ----------
+    // Autorización del yonke, guardada en el mismo lote que la respuesta. Vive aparte del pedido porque
+    // este se borra a los 5 días y la evidencia dura 30 (expiraAt, política TTL). Solo el admin la lee.
+    function evidenciaDeEstaRespuesta(evidenciaId, coleccion, pedidoId, yonkeId) {
+      let e = getAfter(/databases/$(database)/documents/evidenciasSugerir/$(evidenciaId)).data;
+      return evidenciaId is string
+        && e.coleccion == coleccion
+        && e.pedidoId == pedidoId
+        && e.yonkeId == yonkeId;
+    }
+    match /evidenciasSugerir/{evidenciaId} {
+      function evidenciaValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['coleccion', 'pedidoId', 'busqueda', 'yonkeId', 'yonkeNombre', 'yonkeWhatsapp', 'medio', 'mensaje', 'recibidoAt', 'autorizacionConfirmada', 'adminUid', 'adminEmail', 'creadoAt', 'expiraAt'])
+          && d.keys().hasAll(['coleccion', 'pedidoId', 'busqueda', 'yonkeId', 'yonkeNombre', 'yonkeWhatsapp', 'medio', 'mensaje', 'recibidoAt', 'autorizacionConfirmada', 'adminUid', 'adminEmail', 'creadoAt', 'expiraAt'])
+          && d.coleccion in ['pedidosClientes', 'solicitudesPiezas']
+          && d.pedidoId is string && d.pedidoId.size() >= 1
+          && d.yonkeId is string && d.yonkeId.size() >= 1
+          && d.busqueda is string && d.busqueda.size() >= 1 && d.busqueda.size() <= 300
+          && d.medio in ['whatsapp', 'sms', 'correo', 'otro']
+          && d.mensaje is string && d.mensaje.size() >= 1 && d.mensaje.size() <= 2000
+          && d.recibidoAt is timestamp && d.recibidoAt <= request.time
+          && d.autorizacionConfirmada == true
+          && d.adminUid == request.auth.uid
+          && d.adminEmail == request.auth.token.get('email', '')
+          && d.creadoAt == request.time
+          && d.expiraAt is timestamp
+          && d.expiraAt >= request.time + duration.value(30, 'd') - duration.value(5, 'm')
+          && d.expiraAt <= request.time + duration.value(30, 'd') + duration.value(5, 'm');
+      }
+      function respuestaDeEstaEvidencia() {
+        let d = request.resource.data;
+        let r = getAfter(/databases/$(database)/documents/$(d.coleccion)/$(d.pedidoId)/respuestas/$(d.yonkeId)).data;
+        return r.evidenciaId == evidenciaId
+          && r.creadoPorAdmin == true
+          && r.creadoPorAdminUid == request.auth.uid
+          && r.yonkeNombre == d.yonkeNombre
+          && r.whatsapp == d.yonkeWhatsapp;
+      }
+      // Reclamación dentro del plazo: quita expiraAt (el borrado automático ya no aplica) y deja motivo.
+      function conservacionValida() {
+        let d = request.resource.data;
+        return resource.data.expiraAt > request.time
+          && d.diff(resource.data).affectedKeys().hasOnly(['expiraAt', 'conservadaAt', 'conservadaPorUid', 'motivoConservacion'])
+          && !('expiraAt' in d)
+          && d.conservadaAt == request.time
+          && d.conservadaPorUid == request.auth.uid
+          && d.motivoConservacion is string && d.motivoConservacion.size() >= 1 && d.motivoConservacion.size() <= 500;
+      }
+      allow read: if esAdmin();
+      allow create: if esAdmin() && evidenciaValida() && respuestaDeEstaEvidencia();
+      allow update: if esAdmin() && conservacionValida();
+      // Solo las conservadas por reclamación, ya atendida. Las demás las borra la política TTL.
+      allow delete: if esAdmin() && !('expiraAt' in resource.data);
+    }
     // ---------- Términos vigentes de yonkes (config/terminosYonkes) ----------
     // Si config/terminosYonkes NO existe, no se exige nada (así se apaga la exigencia). Si existe,
     // la versión aceptada del yonke (aceptacionLegal.version) debe ser su campo version. Un yonke
@@ -1379,7 +1434,7 @@ service cloud.firestore {
         }
         function respuestaAdminValida() {
           let d = request.resource.data;
-          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precioATratar', 'nota', 'whatsapp', 'creadoAt', 'expiraAt', 'creadoPorAdmin', 'creadoPorAdminUid'])
+          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precioATratar', 'nota', 'whatsapp', 'creadoAt', 'expiraAt', 'creadoPorAdmin', 'creadoPorAdminUid', 'evidenciaId'])
             && d.yonkeId == yonkeId
             && d.yonkeNombre is string && d.yonkeNombre.size() >= 1 && d.yonkeNombre.size() <= 100
             && d.whatsapp is string
@@ -1390,7 +1445,8 @@ service cloud.firestore {
             // el campo precio (no está en el hasOnly de arriba, con ningún valor).
             && d.precioATratar == true
             && d.creadoPorAdmin == true
-            && d.creadoPorAdminUid == request.auth.uid;
+            && d.creadoPorAdminUid == request.auth.uid
+            && (!('evidenciaId' in d) || evidenciaDeEstaRespuesta(d.evidenciaId, 'solicitudesPiezas', solicitudId, yonkeId));
         }
         allow create: if esAdmin()
                       && sugerirYonkeTallerHabilitado()
@@ -1644,7 +1700,7 @@ service cloud.firestore {
         }
         function respuestaPedidoAdminValida() {
           let d = request.resource.data;
-          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precioATratar', 'nota', 'whatsapp', 'creadoAt', 'expiraAt', 'creadoPorAdmin', 'creadoPorAdminUid'])
+          return d.keys().hasOnly(['yonkeId', 'yonkeNombre', 'tieneLaPieza', 'precioATratar', 'nota', 'whatsapp', 'creadoAt', 'expiraAt', 'creadoPorAdmin', 'creadoPorAdminUid', 'evidenciaId'])
             && d.yonkeId == yonkeId
             && d.yonkeNombre is string && d.yonkeNombre.size() >= 1 && d.yonkeNombre.size() <= 100
             && d.whatsapp is string
@@ -1655,7 +1711,8 @@ service cloud.firestore {
             // el campo precio (no está en el hasOnly de arriba, con ningún valor).
             && d.precioATratar == true
             && d.creadoPorAdmin == true
-            && d.creadoPorAdminUid == request.auth.uid;
+            && d.creadoPorAdminUid == request.auth.uid
+            && (!('evidenciaId' in d) || evidenciaDeEstaRespuesta(d.evidenciaId, 'pedidosClientes', pedidoId, yonkeId));
         }
         allow create: if esAdmin()
                       && sugerirYonkeClienteHabilitado()
@@ -1804,6 +1861,12 @@ service cloud.firestore {
           && d.activo == true
           && d.fechaRegistro is timestamp;
       }
+      // Las dos constancias legales (Aviso de Privacidad y declaración) van en el mismo guardado del alta.
+      function constanciasDelAlta() {
+        let v = request.resource.data.aceptacionLegal.version;
+        return existsAfter(/databases/$(database)/documents/yonkes/$(yonkeId)/constancias/$('privacidad_' + v))
+          && existsAfter(/databases/$(database)/documents/yonkes/$(yonkeId)/constancias/$('autorizacion_' + v));
+      }
       allow read: if true;
       // Alta: admin, o un usuario que se registra y queda como dueño (ownerUid = su uid).
       // Un usuario que ya tiene cuenta de rol (yonke o taller) no puede crear yonkes nuevos.
@@ -1811,6 +1874,7 @@ service cloud.firestore {
                     || (request.auth != null
                         && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
                         && altaPropiaValida()
+                        && constanciasDelAlta()
                         // con config/terminosYonkes, se registra aceptando la versión vigente
                         && (!exists(terminosYonkesRef()) || aceptacionVigenteEnEsteGuardado()));
       allow update: if esAdmin()
@@ -1861,7 +1925,7 @@ service cloud.firestore {
           && existsAfter(/databases/$(database)/documents/yonkes/$(yonkeId)/aceptaciones/$(d.aceptacionLegal.version))
           && (!exists(terminosYonkesRef()) || aceptacionVigenteEnEsteGuardado());
       }
-      allow create: if esServicio() && yonkesLigerosHabilitados() && altaLigeraValida();
+      allow create: if esServicio() && yonkesLigerosHabilitados() && altaLigeraValida() && constanciasDelAlta();
       // "Completar mi registro": solo el servidor, y solo agrega los datos del negocio. Conserva el
       // mismo id, así que sus respuestas y su contador del día siguen ahí. No depende de la bandera.
       function completarLigeroValido() {

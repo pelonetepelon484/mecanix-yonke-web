@@ -3,13 +3,12 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { ESTADO_DEFAULT, cargarEstados } from '../../lib/estados';
 import { DECLARACION_COMPLETO, MENSAJE_FALTAN_CASILLAS } from '../../../lib/constanciasLegales';
 import { leerTerminosYonkes, versionParaAceptar, crearYonkeConAceptacion } from '../terminosYonke';
 import { leerLimitesActivos } from '../../../lib/planes';
-import { conFallbackDePermisos } from '../../../lib/conFallbackDePermisos';
 import { esIdPedido } from '../../../lib/pedidosClientes';
 import { avisarAlAdmin } from '../../lib/avisosAdmin/avisarAlAdmin';
 import { useAuth } from '../AuthContext';
@@ -180,19 +179,8 @@ function RegistroCompleto() {
       // historial (yonkes/{id}/aceptaciones/{versión}) en el mismo guardado. Si las reglas de
       // Firestore aún no conocen el historial, se guarda como antes (solo aceptacionLegal) y, si
       // tampoco ese campo, sin él: el registro no se bloquea mientras se publican las reglas.
-      const yonkeRef = await conFallbackDePermisos(
-        async () => {
-          const ref = doc(collection(db, 'yonkes'));
-          await crearYonkeConAceptacion(db, ref, datosYonke, versionAceptada);
-          return ref;
-        },
-        () => conFallbackDePermisos(
-          () => addDoc(collection(db, 'yonkes'), { ...datosYonke, aceptacionLegal: { version: versionAceptada, fecha: serverTimestamp() } }),
-          () => addDoc(collection(db, 'yonkes'), datosYonke),
-          'registro de yonke + aceptacionLegal',
-        ),
-        'registro de yonke + historial de aceptación',
-      );
+      const yonkeRef = doc(collection(db, 'yonkes'));
+      await crearYonkeConAceptacion(db, yonkeRef, datosYonke, versionAceptada);
 
       // 3. Crear documento del usuario en Firestore
       await setDoc(doc(db, 'usuarios', uid), {

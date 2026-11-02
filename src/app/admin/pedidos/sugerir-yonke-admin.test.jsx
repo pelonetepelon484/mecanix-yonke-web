@@ -70,6 +70,12 @@ beforeEach(() => {
 afterEach(() => { cleanup(); Object.values(datos).forEach((f) => f.mockClear()); });
 
 const abrir = async (pieza) => fireEvent.click(await screen.findByText(pieza));
+const llenarAutorizacion = () => {
+  fireEvent.change(screen.getByLabelText('Medio por el que la recibiste'), { target: { value: 'whatsapp' } });
+  fireEvent.change(screen.getByLabelText('Fecha y hora en que la recibiste'), { target: { value: '2026-10-30T10:30' } });
+  fireEvent.change(screen.getByLabelText('Mensaje del yonke (pégalo completo)'), { target: { value: '  Sí la tengo y autorizo.  ' } });
+  fireEvent.click(screen.getByLabelText(/Confirmo que el yonke me autorizó por escrito/));
+};
 const aTalleres = async () => fireEvent.click(await screen.findByRole('tab', { name: 'Pedidos de talleres' }));
 
 describe('Sugerir yonke: pedidos de clientes', () => {
@@ -109,25 +115,35 @@ describe('Sugerir yonke: pedidos de clientes', () => {
     expect(within(grupo).queryByText('Yonke Otay')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Guardar sugerencia' })).toBeDisabled();
     fireEvent.click(within(grupo).getByRole('radio'));
+    expect(screen.getByRole('button', { name: 'Guardar sugerencia' })).toBeDisabled(); // falta la autorización
+    llenarAutorizacion();
     datos.leerDetallePedidoCliente.mockClear();
     fireEvent.click(screen.getByRole('button', { name: 'Guardar sugerencia' }));
 
-    await waitFor(() => expect(datos.sugerirYonke).toHaveBeenCalledWith('pedidosClientes', 'A', YONKES['baja-california'][1]));
-    const aviso = window.confirm.mock.calls.at(-1)[0];
-    expect(aviso).toContain('Autopartes Ñandú');
-    expect(aviso).toContain('Confirmo que este yonke me confirmó que tiene la pieza');
+    await waitFor(() => expect(datos.sugerirYonke).toHaveBeenCalledWith('pedidosClientes', 'A', YONKES['baja-california'][1], {
+      medio: 'whatsapp', mensaje: 'Sí la tengo y autorizo.', recibidoAt: new Date('2026-10-30T10:30'),
+    }));
     await waitFor(() => expect(datos.leerDetallePedidoCliente).toHaveBeenCalledWith('A'));
   });
 
-  it('si el admin no confirma, no guarda', async () => {
-    window.confirm = vi.fn(() => false);
+  it('sin la casilla de autorización, no deja guardar', async () => {
     render(<PedidosAdminPage />);
     await abrir('Alternador');
     fireEvent.click(await screen.findByRole('button', { name: 'Sugerir yonke' }));
     fireEvent.click(within(await screen.findByRole('radiogroup', { name: 'Yonkes' })).getAllByRole('radio')[0]);
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar sugerencia' }));
-    expect(window.confirm).toHaveBeenCalled();
+    llenarAutorizacion();
+    fireEvent.click(screen.getByLabelText(/Confirmo que el yonke me autorizó por escrito/));
+    expect(screen.getByRole('button', { name: 'Guardar sugerencia' })).toBeDisabled();
     expect(datos.sugerirYonke).not.toHaveBeenCalled();
+  });
+
+  it('solo ofrece medios escritos', async () => {
+    render(<PedidosAdminPage />);
+    await abrir('Alternador');
+    fireEvent.click(await screen.findByRole('button', { name: 'Sugerir yonke' }));
+    await screen.findByRole('radiogroup', { name: 'Yonkes' });
+    const medios = within(screen.getByLabelText('Medio por el que la recibiste')).getAllByRole('option').map((o) => o.value);
+    expect(medios).toEqual(['', 'whatsapp', 'sms', 'correo', 'otro']);
   });
 
   it('con aceptaOtrosEstados: "Mostrar también otros estados" deja elegir otro estado (consulta solo ese)', async () => {

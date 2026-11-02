@@ -80,7 +80,7 @@ async function responder(uid, yonkeId, pedidoId, { n = 1, cuerpo = {}, sinContad
 const contadorEn = (yonkeId, count) => sinReglas((db) => setDoc(doc(db, 'yonkes', yonkeId, 'respuestasDiarias', HOY), { count }));
 
 // Alta del servidor: ficha, historial y usuario en un solo guardado.
-function alta(uid, id, { ficha = {}, usuario = {}, historial = true, comoUid = 'svc' } = {}) {
+function alta(uid, id, { ficha = {}, usuario = {}, historial = true, constancias = true, comoUid = 'svc' } = {}) {
   const db = como(comoUid);
   const version = ficha.aceptacionLegal?.version ?? VERSION;
   const lote = writeBatch(db);
@@ -90,6 +90,10 @@ function alta(uid, id, { ficha = {}, usuario = {}, historial = true, comoUid = '
   for (const k of Object.keys(datos)) if (datos[k] === undefined) delete datos[k];
   lote.set(doc(db, 'yonkes', id), datos);
   if (historial) lote.set(doc(db, 'yonkes', id, 'aceptaciones', version), { version, fecha: serverTimestamp() });
+  if (constancias) {
+    lote.set(doc(db, 'yonkes', id, 'constancias', `privacidad_${version}`), { tipo: 'privacidad', version, fecha: serverTimestamp() });
+    lote.set(doc(db, 'yonkes', id, 'constancias', `autorizacion_${version}`), { tipo: 'autorizacion', version, fecha: serverTimestamp(), texto: 'Declaro que estoy autorizado.' });
+  }
   lote.set(doc(db, 'usuarios', uid), { rol: 'yonkeLigero', yonkeId: id, email: `${uid}@interno.mx`, fechaRegistro: serverTimestamp(), ...usuario });
   return lote.commit();
 }
@@ -280,6 +284,9 @@ describe('yonke ligero: alta, solo el servidor', () => {
     await sinReglas((db) => setDoc(doc(db, 'config', 'terminosYonkes'), { version: 'V2' }));
     await assertFails(alta('n1', 'N1'));
     await assertSucceeds(alta('n2', 'N2', { ficha: { aceptacionLegal: { version: 'V2', fecha: serverTimestamp() } } }));
+  });
+  it('NO sin las constancias', async () => {
+    await assertFails(alta('n1', 'N1', { constancias: false }));
   });
   it('NO con la bandera apagada, ausente o de texto', async () => {
     for (const ligeros of [{ habilitado: false }, null, { habilitado: 'true' }]) {

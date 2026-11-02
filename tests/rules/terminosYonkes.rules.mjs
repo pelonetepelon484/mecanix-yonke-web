@@ -94,6 +94,10 @@ function registrar(uid, yonkeId, version = VIGENTE, { historial = true, conAcept
   if (conAceptacion) ficha.aceptacionLegal = { version, fecha: serverTimestamp() };
   lote.set(doc(db, 'yonkes', yonkeId), ficha);
   if (historial) lote.set(doc(db, 'yonkes', yonkeId, 'aceptaciones', version), { version, fecha: serverTimestamp() });
+  if (conAceptacion) {
+    lote.set(doc(db, 'yonkes', yonkeId, 'constancias', `privacidad_${version}`), { tipo: 'privacidad', version, fecha: serverTimestamp() });
+    lote.set(doc(db, 'yonkes', yonkeId, 'constancias', `autorizacion_${version}`), { tipo: 'autorizacion', version, fecha: serverTimestamp(), texto: 'Declaro que estoy autorizado.' });
+  }
   return lote.commit();
 }
 
@@ -155,10 +159,10 @@ describe('sin config/terminosYonkes no se exige nada', () => {
     await assertSucceeds(updateDoc(doc(como('o2'), 'yonkes', 'Y2'), { nombre: 'Editado' }));
     await assertSucceeds(setDoc(doc(como('o2'), 'yonkes', 'Y2', 'vehiculos', 'V9'), { marca: 'Ford' }));
   });
-  it('el registro de hoy (con o sin aceptacionLegal) sigue pasando', async () => {
+  it('el registro siempre lleva aceptacionLegal y constancias', async () => {
     await sembrar({ config: false });
     await assertSucceeds(registrar('n1', 'N1', VIEJA, { historial: false }));
-    await assertSucceeds(registrar('n2', 'N2', VIEJA, { historial: false, conAceptacion: false }));
+    await assertFails(registrar('n2', 'N2', VIEJA, { historial: false, conAceptacion: false }));
   });
   it('el registro nuevo (ficha + historial en un lote) también pasa', async () => {
     await sembrar({ config: false });
