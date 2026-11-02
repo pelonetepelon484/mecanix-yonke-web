@@ -34,9 +34,11 @@ describe('botón "Restablecer contraseña"', () => {
     expect(url).toBe('/api/admin/restablecer-password');
     expect(opciones.headers.Authorization).toBe('Bearer pase-admin');
     expect(JSON.parse(opciones.body)).toEqual({ usuarioId: 'uidL' });
-    fireEvent.click(screen.getByRole('button', { name: 'Copiar' }));
-    await waitFor(() => expect(escribir).toHaveBeenCalledWith('abcDEF234567'));
-    expect(await screen.findByRole('button', { name: 'Copiada' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Copiar mensaje' }));
+    await waitFor(() => expect(escribir).toHaveBeenCalled());
+    expect(escribir.mock.calls[0][0]).toContain('abcDEF234567');
+    expect(escribir.mock.calls[0][0]).toContain('/panel/codigo-temporal');
+    expect(await screen.findByRole('button', { name: 'Mensaje copiado' })).toBeInTheDocument();
   });
   it('cada error tiene su mensaje y nunca muestra una contraseña', async () => {
     for (const [motivo, texto] of [['noConfigurado', /llave en Vercel/], ['limite', /máximo/], ['otro', /La contraseña no cambió/]]) {
@@ -44,7 +46,7 @@ describe('botón "Restablecer contraseña"', () => {
       render(<RestablecerPassword usuarioId="uidL" />);
       pulsar();
       expect(await screen.findByRole('alert')).toHaveTextContent(texto);
-      expect(screen.queryByRole('button', { name: 'Copiar' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Copiar mensaje' })).not.toBeInTheDocument();
       cleanup();
     }
   });

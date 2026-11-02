@@ -1,4 +1,5 @@
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
+import { LARGO_CODIGO_TEMPORAL } from '../../../lib/codigoTemporalLargo';
 import { firebaseConfig } from '../firebaseConfig';
 import { firmarJwt, normalizarLlave } from '../avisosPush/fcm';
 
@@ -20,10 +21,12 @@ export function leerCredencialesAuth(env = process.env) {
 
 // Sin letras ni números que se confundan al copiarlos a mano (0/O, 1/l/I).
 const ALFABETO = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
-export const LARGO_TEMPORAL = 12;
-export function generarContrasenaTemporal(elegir = randomInt) {
-  return Array.from({ length: LARGO_TEMPORAL }, () => ALFABETO[elegir(ALFABETO.length)]).join('');
+export function generarCodigoTemporal(elegir = randomInt) {
+  return Array.from({ length: LARGO_CODIGO_TEMPORAL }, () => ALFABETO[elegir(ALFABETO.length)]).join('');
 }
+
+// Contraseña que nadie conoce: deja sin efecto la anterior mientras el yonke usa su código.
+export const generarBloqueo = () => randomBytes(32).toString('base64url');
 
 async function permisoDeAcceso(credenciales, fetchFn, ahora) {
   const permiso = await fetchFn(URL_TOKEN, {
@@ -36,13 +39,14 @@ async function permisoDeAcceso(credenciales, fetchFn, ahora) {
   return (await permiso.json()).access_token;
 }
 
-// Lanza si Google no confirma el cambio: quien llama nunca muestra una contraseña que no sirve.
+// validSince cierra las sesiones abiertas. Lanza si Google no confirma el cambio: quien llama nunca
+// muestra un código que no sirve.
 export async function cambiarPassword(credenciales, uid, password, { fetchFn = fetch, ahora = () => Date.now(), proyecto = firebaseConfig.projectId } = {}) {
   const acceso = await permisoDeAcceso(credenciales, fetchFn, ahora);
   const res = await fetchFn(`https://identitytoolkit.googleapis.com/v1/projects/${encodeURIComponent(proyecto)}/accounts:update`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${acceso}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ localId: uid, password }),
+    body: JSON.stringify({ localId: uid, password, validSince: String(Math.floor(ahora() / 1000)) }),
     signal: AbortSignal.timeout(TIEMPO_MAXIMO_MS),
   });
   if (!res.ok) throw new Error(`Google rechazó el cambio de contraseña (HTTP ${res.status})`);

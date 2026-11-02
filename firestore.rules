@@ -1775,6 +1775,21 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
+    // ---------- Códigos temporales de acceso (cuentas con WhatsApp) ----------
+    // Solo el hash del código, con vencimiento corto. Únicamente el servidor los toca: ni el admin ni
+    // el dueño pueden leerlos. Se borran al usarse; los no usados, por la política TTL de expiraAt.
+    match /codigosTemporales/{clave} {
+      allow read: if esServicio();
+      allow create, update: if esServicio()
+                            && request.resource.data.keys().hasOnly(['uid', 'codigoHash', 'expiraAt', 'creadoAt'])
+                            && request.resource.data.uid is string && request.resource.data.uid.size() >= 1
+                            && request.resource.data.codigoHash is string && request.resource.data.codigoHash.matches('^[0-9a-f]{64}$')
+                            && request.resource.data.expiraAt is timestamp
+                            && request.resource.data.expiraAt <= request.time + duration.value(25, 'h')
+                            && request.resource.data.creadoAt == request.time;
+      allow delete: if esServicio() || esAdmin();
+    }
+
     // ---------- Resumen público de alertas (publico/alertasRecientes) ----------
     // Las ~30 alertas abiertas más recientes con SOLO pieza, vehículo, estado y fechas (nunca el
     // WhatsApp del cliente). No se lee desde el navegador: lo escriben el usuario de servicio (al
@@ -1948,6 +1963,15 @@ service cloud.firestore {
                     || (request.auth != null
                         && resource.data.ownerUid == request.auth.uid
                         && !exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)));
+      // Quién generó cada código temporal y cuándo. Lo escribe el servidor; solo el admin lo lee o borra.
+      match /restablecimientos/{registroId} {
+        allow read: if esAdmin();
+        allow create: if esServicio()
+                      && request.resource.data.keys().hasOnly(['adminUid', 'fecha'])
+                      && request.resource.data.adminUid is string && request.resource.data.adminUid.size() >= 1
+                      && request.resource.data.fecha == request.time;
+        allow delete: if esServicio() || esAdmin();
+      }
       // Constancias del Aviso de Privacidad y de la declaración de autorización ({tipo}_{versión}),
       // escritas junto con aceptacionLegal (misma versión y misma hora del servidor). Lista cerrada.
       // Nadie las modifica; solo el admin las borra.

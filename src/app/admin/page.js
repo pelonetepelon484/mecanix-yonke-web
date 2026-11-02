@@ -271,6 +271,7 @@ export default function AdminPage() {
       ['vehiculosAlerta', 'Vehículos completos de alertas'],
       ['respuestasDiarias', 'Contador de respuestas a alertas'],
       ['constancias', 'Constancias legales'],
+      ['restablecimientos', 'Registro de restablecimientos'],
     ]) {
       try {
         const n = await borrarSubcoleccionCompleta(collection(db, 'yonkes', yonke.id, sub));

@@ -9,6 +9,7 @@ import { useAuth } from './AuthContext';
 import { enviarRecuperacionPassword } from '../lib/passwordReset';
 import { talleresHabilitados } from '../../lib/talleresHabilitados';
 import { esIdPedido } from '../../lib/pedidosClientes';
+import { RUTA_CODIGO_TEMPORAL } from '../../lib/codigoTemporal';
 import { RUTA_LIGERO, TEXTO_RECUPERAR_WHATSAPP, correoDeEntrada, enlaceRecuperarWhatsapp, whatsappDeEntrada } from '../../lib/yonkeLigero';
 
 // Mismos textos que la app (LoginScreen.js en mecanix-yonke-virtual2) para que la
@@ -145,6 +146,13 @@ export default function PanelLogin() {
               ¿Olvidaste tu contraseña?
             </button>
           </div>
+          {conWhatsapp && (
+            <div style={{ textAlign: 'center', marginTop: '8px' }}>
+              <button onClick={() => router.push(RUTA_CODIGO_TEMPORAL)} style={olvideButtonStyle}>
+                Tengo un código temporal
+              </button>
+            </div>
+          )}
 
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
             <p style={{ fontSize: '13px', color: '#888', marginBottom: '10px' }}>
