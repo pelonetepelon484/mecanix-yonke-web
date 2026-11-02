@@ -11,6 +11,7 @@ import {
 import { auth, db } from '../../lib/firebase';
 import { calcularExpiraEvidencia, textoBusquedaEvidencia } from '../../../lib/evidenciaSugerir';
 import { calcularExpiraAtPedido } from '../../../lib/pedidosClientes';
+import { MOTIVO_CONSERVAR_RECLAMO, MOTIVO_NUMERO_AJENO } from '../../../lib/retiroRespuestas';
 import { esRegistroLigero } from '../../../lib/yonkeLigero';
 import { actualizarResumenAlertas } from '../../lib/pedidosClientes/resumenAlertas';
 
@@ -164,9 +165,54 @@ export async function sugerirYonke(coleccion, pedidoId, yonke, evidencia) {
   await lote.commit();
 }
 
-// Quita una respuesta (de yonke o sugerida). El contador diario del yonke no se toca.
-export function quitarRespuesta(coleccion, pedidoId, yonkeId) {
-  return deleteDoc(doc(db, coleccion, pedidoId, 'respuestas', yonkeId));
+// Quita una respuesta (de yonke o sugerida) y deja el registro del motivo en el mismo lote. Si es un
+// número ajeno, conserva su evidencia: el reclamo la saca del borrado automático. El contador diario
+// del yonke no se toca.
+export async function quitarRespuesta(coleccion, pedidoId, respuesta, motivo) {
+  const lote = writeBatch(db);
+  lote.delete(doc(db, coleccion, pedidoId, 'respuestas', respuesta.yonkeId));
+  lote.set(doc(collection(db, 'retirosRespuestas')), {
+    coleccion, pedidoId, yonkeId: respuesta.yonkeId, yonkeNombre: respuesta.yonkeNombre, motivo,
+    adminUid: auth.currentUser?.uid ?? '', adminEmail: auth.currentUser?.email ?? '',
+    fecha: serverTimestamp(), expiraAt: Timestamp.fromDate(calcularExpiraEvidencia(new Date())),
+  });
+  if (motivo === MOTIVO_NUMERO_AJENO && respuesta.evidenciaId) {
+    const evidencia = await getDoc(doc(db, 'evidenciasSugerir', respuesta.evidenciaId));
+    if (evidencia.exists() && evidencia.data().expiraAt?.toDate() > new Date()) {
+      lote.update(evidencia.ref, datosConservacion(MOTIVO_CONSERVAR_RECLAMO));
+    }
+  }
+  await lote.commit();
+}
+
+// WhatsApp de quien hizo la búsqueda, para avisarle a mano: el cliente o el taller.
+export async function leerWhatsappSolicitante(coleccion, pedido) {
+  const snap = await getDoc(coleccion === 'pedidosClientes'
+    ? doc(db, 'pedidosClientes', pedido.id, 'privado', 'contacto')
+    : doc(db, 'talleres', pedido.tallerId));
+  if (!snap.exists()) return null;
+  return (coleccion === 'pedidosClientes' ? snap.data().clienteWhatsapp : snap.data().whatsapp) || null;
+}
+
+// ---------- Reclamo de número ajeno (/admin/yonke/{id}) ----------
+// Respuestas de un yonke en búsquedas sin vencer. Una lectura por búsqueda, sin índice nuevo: lee
+// el documento respuestas/{yonkeId}. También las de búsquedas cerradas: el enlace las sigue mostrando.
+export async function buscarRespuestasDeYonke(yonkeId) {
+  const [clientes, talleres] = await Promise.all([listarPedidosClientes(), listarSolicitudesTalleres()]);
+  const ahora = new Date();
+  const vigentes = [
+    ...clientes.map((pedido) => ({ coleccion: 'pedidosClientes', pedido })),
+    ...talleres.map((pedido) => ({ coleccion: 'solicitudesPiezas', pedido })),
+  ].filter(({ pedido }) => pedido.expiraAt?.toDate() > ahora);
+  const encontradas = await Promise.all(vigentes.map(async (item) => {
+    const snap = await getDoc(doc(db, item.coleccion, item.pedido.id, 'respuestas', yonkeId));
+    return snap.exists() ? { ...item, respuesta: { yonkeId, ...snap.data() } } : null;
+  }));
+  return encontradas.filter(Boolean);
+}
+
+export function desactivarYonke(yonkeId) {
+  return updateDoc(doc(db, 'yonkes', yonkeId), { activo: false });
 }
 
 // ---------- Evidencias de "Sugerir yonke" (/admin/evidencias) ----------
@@ -176,10 +222,11 @@ export async function listarEvidencias() {
 }
 
 // Reclamación dentro del plazo: sin expiraAt, el borrado automático ya no la alcanza.
+const datosConservacion = (motivo) => ({
+  expiraAt: deleteField(), conservadaAt: serverTimestamp(), conservadaPorUid: auth.currentUser?.uid ?? '', motivoConservacion: motivo,
+});
 export function conservarEvidencia(id, motivo) {
-  return updateDoc(doc(db, 'evidenciasSugerir', id), {
-    expiraAt: deleteField(), conservadaAt: serverTimestamp(), conservadaPorUid: auth.currentUser?.uid ?? '', motivoConservacion: motivo,
-  });
+  return updateDoc(doc(db, 'evidenciasSugerir', id), datosConservacion(motivo));
 }
 
 // Solo las conservadas, cuando la reclamación ya se atendió (las reglas rechazan las demás).

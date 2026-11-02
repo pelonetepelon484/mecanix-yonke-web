@@ -251,6 +251,8 @@ export function crearManejadores(deps) {
         respuestas: ordenarRespuestas(respuestas.map((r) => conEstado(respuestaParaCliente(r, yonkes[r.yonkeId])))),
         // Advertencia "Antes de pagar…" arriba de las respuestas (solo con su bandera).
         ...((await avisoPagoHabilitado(db)) ? { avisoPago: true } : {}),
+        // Aviso de respuesta retirada: sin nombre ni motivo, el enlace puede estar compartido.
+        ...((await deps.tieneRetiros(db, id)) ? { respuestaRetirada: true } : {}),
       });
     } catch (error) {
       console.error('[pedidosClientes] No se pudo leer el pedido', { code: error?.code, message: error?.message });

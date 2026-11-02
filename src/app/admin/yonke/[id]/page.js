@@ -9,6 +9,7 @@ import { estadoPlan, ETIQUETAS_ESTADO_PLAN } from '../../../../lib/planes';
 import { conFallbackDePermisos } from '../../../../lib/conFallbackDePermisos';
 import { enviarRecuperacionPassword } from '../../../lib/passwordReset';
 import { esCuentaInterna, esRegistroLigero, whatsappDiezDigitos } from '../../../../lib/yonkeLigero';
+import ReclamoNumero from './ReclamoNumero';
 import RestablecerPassword from './RestablecerPassword';
 import { crearUsuarioYonkeSinDeslogear } from '../../../lib/crearUsuarioYonke';
 import { ESTADO_DEFAULT, cargarEstados } from '../../../lib/estados';
@@ -528,6 +529,11 @@ export default function EditarYonkePage() {
             ⚡ Yonke de registro ligero: solo contesta búsquedas activas de su estado. Aquí solo se guardan nombre, WhatsApp y si está activo; no lleva insignias ni plan. Para liberar su número, elimínalo desde la lista de yonkes.
           </p>
         )}
+
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Reclamo de número</h2>
+          <ReclamoNumero yonkeId={id} onDesactivado={() => setActivo(false)} />
+        </div>
 
         {/* Accesos / Usuarios */}
         <div style={sectionStyle}>

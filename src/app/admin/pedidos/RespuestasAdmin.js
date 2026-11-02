@@ -2,18 +2,23 @@
 
 // Piezas compartidas de las dos pestañas de /admin/pedidos (clientes y talleres):
 // - RespuestaAdmin: una respuesta con su precio (o "Precio no informado"), la marca de las sugeridas
-//   por el admin y "Quitar respuesta" (no depende de la bandera; bloqueado si el taller ya la eligió).
+//   por el admin y "Quitar respuesta" con su motivo (no depende de la bandera; bloqueado si el taller
+//   ya la eligió).
+// - AvisosRetiro: mensajes de WhatsApp listos para avisar de una respuesta retirada.
 // - SugerirYonke: el admin registra la respuesta de un yonke que le confirmó por escrito que tiene la
 //   pieza y lo autorizó, con la evidencia de esa autorización. Sin campo de precio: siempre "precio a
 //   tratar". Solo yonkes activos que no han respondido, leídos por estado (nunca todos).
 import { useEffect, useState } from 'react';
 import { MAX_MENSAJE_EVIDENCIA, MEDIOS_AUTORIZACION, TEXTO_AUTORIZA_SUGERENCIA, evidenciaCompleta } from '../../../lib/evidenciaSugerir';
 import { TEXTO_PRECIO_NO_INFORMADO, TEXTO_SUGERIDA_POR_ADMIN, textoPrecioRespuesta } from '../../../lib/respuestasPedido';
-import { listarYonkesActivosDeEstado, quitarRespuesta, sugerirYonke } from './datos';
+import { MOTIVOS_RETIRO, enlaceWhatsapp, mensajeRetiroSolicitante, mensajeRetiroYonke, nombreMotivo, seAvisaAlYonke } from '../../../lib/retiroRespuestas';
+import { leerWhatsappSolicitante, listarYonkesActivosDeEstado, quitarRespuesta, sugerirYonke } from './datos';
 
 export const TEXTO_ELEGIDA_NO_SE_QUITA = 'Respuesta elegida por el taller: no se puede quitar';
 
 export function RespuestaAdmin({ coleccion, pedidoId, r, verificado = null, elegida = false, onQuitada }) {
+  const [abierto, setAbierto] = useState(false);
+  const [motivo, setMotivo] = useState('');
   const [quitando, setQuitando] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,8 +27,8 @@ export function RespuestaAdmin({ coleccion, pedidoId, r, verificado = null, eleg
     setQuitando(true);
     setError('');
     try {
-      await quitarRespuesta(coleccion, pedidoId, r.yonkeId);
-      onQuitada();
+      await quitarRespuesta(coleccion, pedidoId, r, motivo);
+      onQuitada({ yonkeId: r.yonkeId, yonkeNombre: r.yonkeNombre, whatsapp: r.whatsapp, motivo });
     } catch (err) {
       console.error(err);
       setError('No se pudo quitar la respuesta. Revisa tu conexión y tus permisos de admin.');
@@ -40,13 +45,55 @@ export function RespuestaAdmin({ coleccion, pedidoId, r, verificado = null, eleg
       <div style={{ color: '#555' }}>WhatsApp del yonke: {r.whatsapp || '—'}</div>
       {elegida ? (
         <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#2E7D32' }}>{TEXTO_ELEGIDA_NO_SE_QUITA}</p>
+      ) : abierto ? (
+        <div style={{ marginTop: '6px' }}>
+          <label style={{ display: 'block', fontSize: '12px', color: '#555' }}>
+            Motivo
+            <select value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ display: 'block', marginTop: '2px', minHeight: '34px', borderRadius: '8px', border: '1px solid #CCC' }}>
+              <option value="">Elige el motivo</option>
+              {MOTIVOS_RETIRO.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+            </select>
+          </label>
+          <button type="button" disabled={quitando || !motivo} onClick={quitar} style={botonChico('#B3261E')}>Confirmar y quitar</button>
+        </div>
       ) : (
-        <button type="button" disabled={quitando} onClick={quitar} style={botonChico('#B3261E')}>Quitar respuesta</button>
+        <button type="button" onClick={() => setAbierto(true)} style={botonChico('#B3261E')}>Quitar respuesta</button>
       )}
       {error && <p role="alert" style={{ margin: '4px 0 0', color: '#B3261E', fontSize: '12px' }}>{error}</p>}
     </div>
   );
 }
+
+// Después de retirar: un botón por aviso, que abre WhatsApp con el texto listo. Lo manda el admin.
+export function AvisosRetiro({ coleccion, pedido, retiro }) {
+  const [solicitante, setSolicitante] = useState(undefined);
+
+  useEffect(() => {
+    let cancelado = false;
+    leerWhatsappSolicitante(coleccion, pedido)
+      .then((numero) => { if (!cancelado) setSolicitante(numero); })
+      .catch((err) => { console.error(err); if (!cancelado) setSolicitante(null); });
+    return () => { cancelado = true; };
+  }, [coleccion, pedido]);
+
+  const quien = coleccion === 'pedidosClientes' ? 'cliente' : 'taller';
+  const aSolicitante = solicitante ? enlaceWhatsapp(solicitante, mensajeRetiroSolicitante(pedido)) : null;
+  const aYonke = seAvisaAlYonke(retiro.motivo) ? enlaceWhatsapp(retiro.whatsapp, mensajeRetiroYonke(pedido, retiro.motivo)) : null;
+
+  return (
+    <div role="status" style={{ margin: '8px 0', padding: '10px', borderRadius: '8px', backgroundColor: '#FFF8E1', border: '1px solid #FFD54F', fontSize: '13px' }}>
+      <p style={{ margin: '0 0 6px' }}>Respuesta de <strong>{retiro.yonkeNombre}</strong> retirada · {nombreMotivo(retiro.motivo)}</p>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {aSolicitante && <a href={aSolicitante} target="_blank" rel="noopener noreferrer" style={enlaceAviso}>Avisar al {quien}</a>}
+        {aYonke && <a href={aYonke} target="_blank" rel="noopener noreferrer" style={enlaceAviso}>Avisar al yonke</a>}
+      </div>
+      {solicitante === null && <p style={{ margin: '6px 0 0', color: '#555' }}>No tenemos el WhatsApp del {quien}.</p>}
+      {!seAvisaAlYonke(retiro.motivo) && <p style={{ margin: '6px 0 0', color: '#555' }}>No se avisa al yonke por este número, porque es el del reclamo.</p>}
+    </div>
+  );
+}
+
+const enlaceAviso = { display: 'inline-block', padding: '6px 12px', borderRadius: '8px', backgroundColor: '#25D366', color: '#fff', fontWeight: 'bold', fontSize: '13px', textDecoration: 'none' };
 
 const AUTORIZACION_VACIA = { medio: '', recibido: '', mensaje: '', autorizacionConfirmada: false };
 const sinAcentos = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();

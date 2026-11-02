@@ -45,6 +45,7 @@ const datos = {
   listarYonkesActivosDeEstado: vi.fn(async (estado) => YONKES[estado] || []),
   sugerirYonke: vi.fn(async () => {}),
   quitarRespuesta: vi.fn(async () => {}),
+  leerWhatsappSolicitante: vi.fn(async () => '6649998877'),
 };
 vi.mock('./datos', () => datos);
 
@@ -170,9 +171,24 @@ describe('Sugerir yonke: pedidos de clientes', () => {
     render(<PedidosAdminPage />);
     await abrir('Alternador');
     fireEvent.click(await screen.findByRole('button', { name: 'Quitar respuesta' }));
-    await waitFor(() => expect(datos.quitarRespuesta).toHaveBeenCalledWith('pedidosClientes', 'A', 'Y1'));
+    expect(screen.getByRole('button', { name: 'Confirmar y quitar' })).toBeDisabled(); // sin motivo no
+    fireEvent.change(screen.getByLabelText('Motivo'), { target: { value: 'sinPieza' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y quitar' }));
+    await waitFor(() => expect(datos.quitarRespuesta).toHaveBeenCalledWith('pedidosClientes', 'A', expect.objectContaining({ yonkeId: 'Y1' }), 'sinPieza'));
     expect(window.confirm.mock.calls.at(-1)[0]).toMatch(/Quitar la respuesta de El Güero/);
     await waitFor(() => expect(datos.leerDetallePedidoCliente).toHaveBeenCalledTimes(2));
+    expect((await screen.findByRole('link', { name: 'Avisar al cliente' })).getAttribute('href')).toContain('wa.me/526649998877');
+    expect(screen.getByRole('link', { name: 'Avisar al yonke' }).getAttribute('href')).toContain('Ya%20no%20tiene%20la%20pieza');
+  });
+
+  it('número ajeno: no ofrece avisar al yonke, porque ese número es de quien reclamó', async () => {
+    render(<PedidosAdminPage />);
+    await abrir('Alternador');
+    fireEvent.click(await screen.findByRole('button', { name: 'Quitar respuesta' }));
+    fireEvent.change(screen.getByLabelText('Motivo'), { target: { value: 'numeroAjeno' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y quitar' }));
+    expect(await screen.findByRole('link', { name: 'Avisar al cliente' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Avisar al yonke' })).not.toBeInTheDocument();
   });
 
   it('quitar respuesta sin confirmar no hace nada', async () => {
@@ -180,6 +196,8 @@ describe('Sugerir yonke: pedidos de clientes', () => {
     render(<PedidosAdminPage />);
     await abrir('Alternador');
     fireEvent.click(await screen.findByRole('button', { name: 'Quitar respuesta' }));
+    fireEvent.change(screen.getByLabelText('Motivo'), { target: { value: 'otro' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y quitar' }));
     expect(datos.quitarRespuesta).not.toHaveBeenCalled();
   });
 });
@@ -213,7 +231,9 @@ describe('Sugerir yonke: pedidos de talleres', () => {
     expect(botones).toHaveLength(1); // solo la de Yonke Sonora
     expect(screen.queryByRole('button', { name: 'Sugerir yonke' })).not.toBeInTheDocument(); // cerrada
     fireEvent.click(botones[0]);
-    await waitFor(() => expect(datos.quitarRespuesta).toHaveBeenCalledWith('solicitudesPiezas', 'S2', 'Y2'));
+    fireEvent.change(screen.getByLabelText('Motivo'), { target: { value: 'errorMecanix' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y quitar' }));
+    await waitFor(() => expect(datos.quitarRespuesta).toHaveBeenCalledWith('solicitudesPiezas', 'S2', expect.objectContaining({ yonkeId: 'Y2' }), 'errorMecanix'));
     await waitFor(() => expect(datos.leerRespuestasSolicitud).toHaveBeenCalledTimes(2));
   });
 });

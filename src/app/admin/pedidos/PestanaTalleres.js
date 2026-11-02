@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { borrarSolicitudTaller, leerRespuestasSolicitud, listarSolicitudesTalleres } from './datos';
 import { fecha } from './PestanaClientes';
-import { RespuestaAdmin, SugerirYonke } from './RespuestasAdmin';
+import { AvisosRetiro, RespuestaAdmin, SugerirYonke } from './RespuestasAdmin';
 
 export default function PestanaTalleres({ estados, sugerir = false }) {
   const [solicitudes, setSolicitudes] = useState(null);
@@ -51,6 +51,7 @@ function DetalleSolicitud({ solicitud, estados, sugerir, onBorrada }) {
   const [error, setError] = useState('');
   const [borrando, setBorrando] = useState(false);
   const [version, setVersion] = useState(0);
+  const [retiros, setRetiros] = useState([]);
 
   useEffect(() => {
     let cancelado = false;
@@ -89,9 +90,10 @@ function DetalleSolicitud({ solicitud, estados, sugerir, onBorrada }) {
           pedidoId={solicitud.id}
           r={r}
           elegida={solicitud.yonkeElegido === r.yonkeId}
-          onQuitada={recargar}
+          onQuitada={(retiro) => { setRetiros((l) => [...l, retiro]); recargar(); }}
         />
       ))}
+      {retiros.map((retiro) => <AvisosRetiro key={retiro.yonkeId} coleccion="solicitudesPiezas" pedido={solicitud} retiro={retiro} />)}
       {sugerir && solicitud.estadoSolicitud === 'abierta' && respuestas && (
         <SugerirYonke
           coleccion="solicitudesPiezas"

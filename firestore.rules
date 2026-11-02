@@ -89,6 +89,34 @@ service cloud.firestore {
       // Solo las conservadas por reclamación, ya atendida. Las demás las borra la política TTL.
       allow delete: if esAdmin() && !('expiraAt' in resource.data);
     }
+    // ---------- Respuestas retiradas por el admin (retirosRespuestas) ----------
+    // Quién quitó qué respuesta, cuándo y por qué, en el mismo lote que el borrado. Vive aparte del
+    // pedido, que se borra antes; dura 30 días (expiraAt, política TTL). Nadie la cambia. El servidor
+    // la lee para el aviso en el enlace del cliente.
+    match /retirosRespuestas/{retiroId} {
+      function retiroValido() {
+        let d = request.resource.data;
+        let respuesta = /databases/$(database)/documents/$(d.coleccion)/$(d.pedidoId)/respuestas/$(d.yonkeId);
+        return d.keys().hasOnly(['coleccion', 'pedidoId', 'yonkeId', 'yonkeNombre', 'motivo', 'adminUid', 'adminEmail', 'fecha', 'expiraAt'])
+          && d.keys().hasAll(['coleccion', 'pedidoId', 'yonkeId', 'yonkeNombre', 'motivo', 'adminUid', 'adminEmail', 'fecha', 'expiraAt'])
+          && d.coleccion in ['pedidosClientes', 'solicitudesPiezas']
+          && d.pedidoId is string && d.pedidoId.size() >= 1
+          && d.yonkeId is string && d.yonkeId.size() >= 1
+          && d.yonkeNombre is string && d.yonkeNombre.size() >= 1 && d.yonkeNombre.size() <= 100
+          && d.motivo in ['pidioYonke', 'sinPieza', 'numeroAjeno', 'errorMecanix', 'otro']
+          && d.adminUid == request.auth.uid
+          && d.adminEmail == request.auth.token.get('email', '')
+          && d.fecha == request.time
+          && d.expiraAt is timestamp
+          && d.expiraAt >= request.time + duration.value(30, 'd') - duration.value(5, 'm')
+          && d.expiraAt <= request.time + duration.value(30, 'd') + duration.value(5, 'm')
+          && exists(respuesta)
+          && !existsAfter(respuesta);
+      }
+      allow read: if esAdmin() || esServicio();
+      allow create: if esAdmin() && retiroValido();
+      allow update, delete: if false;
+    }
     // ---------- Términos vigentes de yonkes (config/terminosYonkes) ----------
     // Si config/terminosYonkes NO existe, no se exige nada (así se apaga la exigencia). Si existe,
     // la versión aceptada del yonke (aceptacionLegal.version) debe ser su campo version. Un yonke

@@ -15,6 +15,15 @@ const { CONSEJOS_ENVIO } = await import('../../../lib/pedidosClientes');
 afterEach(() => { cleanup(); });
 
 describe('página del cliente con las respuestas de los yonkes', () => {
+  it('avisa si Mecanix retiró una respuesta, sin nombre ni motivo', async () => {
+    global.fetch = vi.fn(async () => ({
+      status: 200, ok: true,
+      json: async () => ({ ok: true, pedido: { pieza: 'Faro', vehiculo: {}, estadoPedido: 'abierta' }, respuestas: [], respuestaRetirada: true }),
+    }));
+    render(<MiPedidoCliente />);
+    expect(await screen.findByText(/Mecanix retiró una respuesta de esta búsqueda/)).toBeInTheDocument();
+  });
+
   const respuestaDe = (extra = {}) => ({
     status: 200, ok: true,
     json: async () => ({
