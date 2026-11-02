@@ -31,6 +31,7 @@ const datos = {
   listarYonkesActivosDeEstado: vi.fn(async () => []),
   sugerirYonke: vi.fn(async () => {}),
   quitarRespuesta: vi.fn(async () => {}),
+  leerWhatsappSolicitante: vi.fn(async () => null),
 };
 vi.mock('./datos', () => datos);
 

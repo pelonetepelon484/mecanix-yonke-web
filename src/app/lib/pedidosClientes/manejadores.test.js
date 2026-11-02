@@ -35,6 +35,7 @@ function crearFalsos({ habilitado = true, otrosEstados, obtenerDb } = {}) {
     leerPedido: async (_db, id) => pedidos.get(id) ?? null,
     leerPrivado: async (_db, id) => privados.get(id) ?? null,
     leerRespuestas: async (_db, id) => respuestas.get(id) ?? [],
+    tieneRetiros: async () => false,
     leerYonkes: async (_db, ids) => Object.fromEntries(ids.map((i) => [i, yonkes[i] ?? null])),
     listarAbiertos: async (_db, estado, max) => [...pedidos].filter(([, d]) => d.estado === estado && d.estadoPedido === 'abierta')
       .map(([id, d]) => ({ id, ...d })).slice(0, max),
@@ -180,6 +181,14 @@ describe('POST /api/pedir-pieza', () => {
 });
 
 describe('GET /api/mi-pedido/{id}?c=', () => {
+  it('respuesta retirada: el enlace lo dice sin nombre ni motivo', async () => {
+    const { deps } = crearFalsos();
+    const { id, codigo } = await crearUno(crearManejadores(deps));
+    const leer = async (tieneRetiros) => (await crearManejadores({ ...deps, tieneRetiros }).miPedido(get(`/api/mi-pedido/${id}?c=${codigo}`), id)).json();
+    expect(await leer(async () => false)).not.toHaveProperty('respuestaRetirada');
+    expect((await leer(async () => true)).respuestaRetirada).toBe(true);
+  });
+
   it('advertencia de pago: solo con la bandera avisoPagoCliente manda avisoPago', async () => {
     const { deps } = crearFalsos();
     const m = crearManejadores(deps);

@@ -7,7 +7,7 @@ import { ESTADOS_PEDIDO, estaVencido, estadoVisible } from '../../../lib/pedidos
 import {
   borrarPedidoCliente, cancelarPedidoCliente, cerrarPedidoCliente, leerDetallePedidoCliente, reabrirPedidoCliente,
 } from './datos';
-import { RespuestaAdmin, SugerirYonke } from './RespuestasAdmin';
+import { AvisosRetiro, RespuestaAdmin, SugerirYonke } from './RespuestasAdmin';
 
 export function fecha(ts) {
   const f = ts?.toDate ? ts.toDate() : null;
@@ -75,6 +75,7 @@ function DetallePedido({ pedido, estados, sugerir, onCambio, onRespuestas }) {
   const [error, setError] = useState('');
   const [trabajando, setTrabajando] = useState(false);
   const [version, setVersion] = useState(0);
+  const [retiros, setRetiros] = useState([]);
 
   useEffect(() => {
     let cancelado = false;
@@ -126,8 +127,9 @@ function DetallePedido({ pedido, estados, sugerir, onCambio, onRespuestas }) {
       <p style={{ margin: '14px 0 6px', fontWeight: 'bold', color: '#1A3C5E' }}>Respuestas ({detalle.respuestas.length})</p>
       {detalle.respuestas.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Ningún yonke ha respondido.</p>}
       {detalle.respuestas.map((r) => (
-        <RespuestaAdmin key={r.yonkeId} coleccion="pedidosClientes" pedidoId={pedido.id} r={r} verificado={r.verificado === true} onQuitada={recargar} />
+        <RespuestaAdmin key={r.yonkeId} coleccion="pedidosClientes" pedidoId={pedido.id} r={r} verificado={r.verificado === true} onQuitada={(retiro) => { setRetiros((l) => [...l, retiro]); recargar(); }} />
       ))}
+      {retiros.map((retiro) => <AvisosRetiro key={retiro.yonkeId} coleccion="pedidosClientes" pedido={pedido} retiro={retiro} />)}
       {sugerir && pedido.estadoPedido === 'abierta' && !estaVencido(pedido.expiraAt, new Date()) && (
         <SugerirYonke
           coleccion="pedidosClientes"

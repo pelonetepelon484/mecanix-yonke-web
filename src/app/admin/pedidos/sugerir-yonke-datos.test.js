@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // reglas (firestore.rules, respuestaAdminValida / respuestaPedidoAdminValida).
 const escrituras = [];
 const borrados = [];
+const borradosDelLote = [];
 const consultas = [];
 let configs = {};
 vi.mock('../../lib/firebase', () => ({ db: 'db', auth: { currentUser: { uid: 'adm', email: 'admin@prueba.mx' } } }));
@@ -12,14 +13,19 @@ vi.mock('firebase/firestore', () => ({
   updateDoc: vi.fn(async (ruta, datos) => { escrituras.push([ruta, datos]); }),
   writeBatch: () => {
     const lote = [];
-    return { set: (ref, datos) => lote.push([ref.path ?? ref, datos]), commit: async () => { escrituras.push(...lote); } };
+    return {
+      set: (ref, datos) => lote.push([ref.path ?? ref, datos]),
+      update: (ref, datos) => lote.push([ref, datos]),
+      delete: (ref) => borradosDelLote.push(ref),
+      commit: async () => { escrituras.push(...lote); borrados.push(...borradosDelLote.splice(0)); },
+    };
   },
   doc: (base, ...ruta) => (ruta.length === 0 ? { id: 'E1', path: `${base}/E1` } : ruta.join('/')),
   collection: (_db, ...ruta) => ruta.join('/'),
   where: (...a) => a,
   query: (ref, ...filtros) => { consultas.push([ref, ...filtros]); return ref; },
   serverTimestamp: () => 'HORA_DEL_SERVIDOR',
-  getDoc: vi.fn(async (ruta) => ({ exists: () => ruta in configs, data: () => configs[ruta] })),
+  getDoc: vi.fn(async (ruta) => ({ ref: ruta, exists: () => ruta in configs, data: () => configs[ruta] })),
   getDocs: vi.fn(async () => ({
     docs: [
       { id: 'Y1', data: () => ({ nombre: 'El Güero', whatsapp: '6641111111', estado: 'baja-california', activo: true, verificado: true }) },
@@ -73,9 +79,46 @@ describe('sugerirYonke', () => {
 });
 
 describe('quitarRespuesta y yonkes por estado', () => {
-  it('quitarRespuesta borra solo esa respuesta', async () => {
-    await datos.quitarRespuesta('solicitudesPiezas', 'S1', 'Y2');
+  const respuesta = { yonkeId: 'Y2', yonkeNombre: 'Yonke Dos', evidenciaId: 'EV' };
+
+  it('quitarRespuesta borra solo esa respuesta y deja el motivo en el mismo lote', async () => {
+    await datos.quitarRespuesta('solicitudesPiezas', 'S1', respuesta, 'sinPieza');
     expect(borrados).toEqual(['solicitudesPiezas/S1/respuestas/Y2']);
+    expect(escrituras).toHaveLength(1);
+    expect(escrituras[0][0]).toBe('retirosRespuestas/E1');
+    expect(escrituras[0][1]).toMatchObject({
+      coleccion: 'solicitudesPiezas', pedidoId: 'S1', yonkeId: 'Y2', yonkeNombre: 'Yonke Dos', motivo: 'sinPieza',
+      adminUid: 'adm', adminEmail: 'admin@prueba.mx', fecha: 'HORA_DEL_SERVIDOR',
+    });
+  });
+
+  it('número ajeno: conserva la evidencia vigente; la ya conservada o inexistente no se toca', async () => {
+    const vigente = { toDate: () => new Date(Date.now() + 1000) };
+    configs['evidenciasSugerir/EV'] = { expiraAt: vigente };
+    await datos.quitarRespuesta('pedidosClientes', 'P1', respuesta, 'numeroAjeno');
+    expect(escrituras[1]).toEqual(['evidenciasSugerir/EV', {
+      expiraAt: 'BORRAR_CAMPO', conservadaAt: 'HORA_DEL_SERVIDOR', conservadaPorUid: 'adm', motivoConservacion: 'Reclamo de número ajeno: respuesta retirada',
+    }]);
+    for (const estado of [{}, undefined]) {
+      escrituras.length = 0;
+      if (estado) configs['evidenciasSugerir/EV'] = estado; else delete configs['evidenciasSugerir/EV'];
+      await datos.quitarRespuesta('pedidosClientes', 'P1', respuesta, 'numeroAjeno');
+      expect(escrituras).toHaveLength(1);
+    }
+  });
+
+  it('otro motivo no conserva la evidencia', async () => {
+    configs['evidenciasSugerir/EV'] = { expiraAt: { toDate: () => new Date(Date.now() + 1000) } };
+    await datos.quitarRespuesta('pedidosClientes', 'P1', respuesta, 'otro');
+    expect(escrituras).toHaveLength(1);
+  });
+
+  it('el WhatsApp sale del contacto del cliente o de la ficha del taller', async () => {
+    configs['pedidosClientes/P1/privado/contacto'] = { clienteWhatsapp: '6649998877' };
+    configs['talleres/T1'] = { whatsapp: '6641110000' };
+    expect(await datos.leerWhatsappSolicitante('pedidosClientes', { id: 'P1' })).toBe('6649998877');
+    expect(await datos.leerWhatsappSolicitante('solicitudesPiezas', { id: 'S1', tallerId: 'T1' })).toBe('6641110000');
+    expect(await datos.leerWhatsappSolicitante('pedidosClientes', { id: 'P2' })).toBeNull();
   });
 
   it('listarYonkesActivosDeEstado consulta por estado y activo, y descarta los que no tienen nombre', async () => {

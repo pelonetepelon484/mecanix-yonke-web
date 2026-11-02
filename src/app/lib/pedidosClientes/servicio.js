@@ -155,6 +155,17 @@ export async function leerRespuestas(db, id) {
   return snap.docs.map((d) => ({ yonkeId: d.id, ...d.data() }));
 }
 
+// Si falla, el cliente igual ve su pedido: el aviso de respuesta retirada no debe tumbar la página.
+export async function tieneRetiros(db, id) {
+  try {
+    const snap = await getDocs(query(collection(db, 'retirosRespuestas'), where('pedidoId', '==', id), where('coleccion', '==', 'pedidosClientes'), limit(1)));
+    return !snap.empty;
+  } catch (error) {
+    console.error('[pedidosClientes] No se pudo revisar si hay respuestas retiradas', { code: error?.code, message: error?.message });
+    return false;
+  }
+}
+
 // Yonkes de las respuestas (lectura pública), para la marca de "Verificado" en vivo.
 export async function leerYonkes(db, ids) {
   const pares = await Promise.all(ids.map(async (id) => {
@@ -177,7 +188,7 @@ let manejadores = null;
 export function manejadoresReales() {
   if (!manejadores) {
     manejadores = crearManejadores({
-      obtenerDb: obtenerDbServicio, habilitado, otrosEstados, contar, crearPedido, leerPedido, leerPrivado, leerRespuestas, leerYonkes, listarAbiertos,
+      obtenerDb: obtenerDbServicio, habilitado, otrosEstados, contar, crearPedido, leerPedido, leerPrivado, leerRespuestas, tieneRetiros, leerYonkes, listarAbiertos,
       estados: obtenerEstadosCombinado, notificar: notificarAdmin, ahora: () => new Date(),
       generarCodigo, hashCodigo, codigoCoincide, claveLimite,
       avisarYonkes: crearAvisarYonkesReal({ contar }),

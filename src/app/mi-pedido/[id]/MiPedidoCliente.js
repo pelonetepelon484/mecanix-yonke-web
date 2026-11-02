@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { CONSEJOS_ENVIO, DURACION_RECARGA_MS, INTERVALO_RECARGA_MS, MENSAJES_PEDIDO, avisoRespuestaOtroEstado } from '../../../lib/pedidosClientes';
 import { AVISO_PAGO_ADELANTADO, AVISO_PAGO_MECANIX, AVISO_PAGO_PUNTOS, AVISO_PAGO_TITULO, TEXTO_CONFIRMACION_REGISTRADA, TEXTO_EXPLICA_CONFIRMACION, TEXTO_EXPLICA_PRECIO, formatoPesos, precioValido, textoPrecioRespuesta } from '../../../lib/respuestasPedido';
+import { TEXTO_RETIRO_CLIENTE } from '../../../lib/retiroRespuestas';
 
 export const TEXTO_AVISO_PAGO = `🛡️ ${AVISO_PAGO_TITULO}`;
 
@@ -93,6 +94,7 @@ export default function MiPedidoCliente() {
       </div>
 
       <div style={seccion}>
+        {datos.respuestaRetirada === true && <p role="note" style={avisoPago}>{TEXTO_RETIRO_CLIENTE}</p>}
         {/* Con config/pedidosClientes.avisoPagoCliente (el servidor manda avisoPago): advertencia de
             pago arriba de las respuestas. Sin la bandera, la página queda como siempre. */}
         {datos.avisoPago === true && (
