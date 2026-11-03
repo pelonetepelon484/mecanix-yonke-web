@@ -119,11 +119,11 @@ describe('búsqueda activa (aprobado el 26 de octubre de 2026)', () => {
       cleanup();
     }
   });
-  it('fecha de última actualización y VERSION_LEGAL: 26 de octubre de 2026', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-26');
+  it('fecha de última actualización y VERSION_LEGAL: 2 de noviembre de 2026 (precio Premium); el Aviso no cambió', () => {
+    expect(VERSION_LEGAL).toBe('2026-11-02');
     expect(textoDe(Privacidad)).toContain('Última actualización: 26 de octubre de 2026');
     cleanup();
-    expect(textoDe(Terminos)).toContain('Última actualización: 26 de octubre de 2026');
+    expect(textoDe(Terminos)).toContain('Última actualización: 2 de noviembre de 2026');
   });
 });
 
@@ -131,7 +131,7 @@ describe('textos finales del 12 de octubre de 2026', () => {
   it('Términos, sección 4 «Planes del servicio»: los tres párrafos, sin el texto anterior', () => {
     const texto = textoDe(Terminos);
     expect(texto).toContain('4. Planes del servicio');
-    for (const p of ['La Plataforma ofrece dos planes. Plan Básico: sin costo; incluye la administración y publicación del inventario del yonke, la sección de pedidos y la configuración de los datos de su negocio. Plan Premium: $398.00 MXN al mes más IVA; incluye las demás funciones de la Plataforma, incluidas las que se incorporen en el futuro.', 'Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026 reciben un año del plan Premium sin costo, del 1 de noviembre de 2026 al 1 de noviembre de 2027. Al terminar ese año, el yonke decide si contrata el plan Premium o continúa en el plan Básico, y Mecanix se lo avisará con al menos 30 días naturales de anticipación. No se cobra ningún monto sin que el yonke lo acepte expresamente.', 'Mecanix puede modificar las funciones de cada plan e introducir nuevos planes o funciones de pago, avisando a los yonkes registrados con al menos 30 días naturales de anticipación.']) expect(texto).toContain(p);
+    for (const p of ['La Plataforma ofrece dos planes. Plan Básico: sin costo; incluye la administración y publicación del inventario del yonke, la sección de pedidos y la configuración de los datos de su negocio. Plan Premium: $598.00 MXN al mes más IVA; incluye las demás funciones de la Plataforma, incluidas las que se incorporen en el futuro.', 'Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026 reciben un año del plan Premium sin costo, del 1 de noviembre de 2026 al 1 de noviembre de 2027. Al terminar ese año, el yonke decide si contrata el plan Premium o continúa en el plan Básico, y Mecanix se lo avisará con al menos 30 días naturales de anticipación. No se cobra ningún monto sin que el yonke lo acepte expresamente.', 'Mecanix puede modificar las funciones de cada plan e introducir nuevos planes o funciones de pago, avisando a los yonkes registrados con al menos 30 días naturales de anticipación.']) expect(texto).toContain(p);
     expect(texto).not.toContain('Servicio sin costo y posibles planes de pago');
     expect(texto).not.toContain('gratuito para los yonkes');
   });
@@ -188,7 +188,7 @@ describe('avisos en el dispositivo', () => {
     expect(texto.indexOf(TERMINOS)).toBeLessThan(texto.indexOf('Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026'));
   });
   it('con la versión y la fecha vigentes', () => {
-    expect(VERSION_LEGAL).toBe('2026-10-26');
+    expect(VERSION_LEGAL).toBe('2026-11-02');
     expect(textoDe(Privacidad)).toContain('Última actualización: 26 de octubre de 2026');
   });
 });
