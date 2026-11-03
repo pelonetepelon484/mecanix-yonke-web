@@ -9,7 +9,8 @@
 // 2026-10-23: alerta a otros estados con la casilla marcada por defecto y su consentimiento (privacidad 14, términos 8);
 // 2026-10-26: "búsqueda activa" como nombre único, casilla "Quiero buscar también en otros estados" y portada (privacidad 14, términos 8).
 // 2026-11-02: precio del plan Premium a $598.00 MXN al mes más IVA (términos 4; términos de talleres).
-export const VERSION_LEGAL = '2026-11-02';
+// 2026-11-02b: rev. 6 del abogado: registro ligero, contraseña temporal, «Sugerir yonke» con autorización y evidencia, nueva aceptación de yonkes (términos y privacidad).
+export const VERSION_LEGAL = '2026-11-02b';
 
 // URLs absolutas a propósito: en un subdominio white-label (yonke.mecanixyonkevirtual.com) el
 // middleware reescribe TODAS las rutas a la página del yonke, así que un enlace relativo a

@@ -120,9 +120,9 @@ describe('búsqueda activa (aprobado el 26 de octubre de 2026)', () => {
       cleanup();
     }
   });
-  it('fecha de última actualización y VERSION_LEGAL: 2 de noviembre de 2026 (precio Premium); el Aviso no cambió', () => {
-    expect(VERSION_LEGAL).toBe('2026-11-02');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 26 de octubre de 2026');
+  it('fecha de última actualización y VERSION_LEGAL: 2 de noviembre de 2026 (rev. 6 y precio Premium)', () => {
+    expect(VERSION_LEGAL).toBe('2026-11-02b');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 2 de noviembre de 2026');
     cleanup();
     expect(textoDe(Terminos)).toContain('Última actualización: 2 de noviembre de 2026');
   });
@@ -189,7 +189,7 @@ describe('avisos en el dispositivo', () => {
     expect(texto.indexOf(TERMINOS)).toBeLessThan(texto.indexOf('Los yonkes registrados en la Plataforma antes del 12 de octubre de 2026'));
   });
   it('con la versión y la fecha vigentes', () => {
-    expect(VERSION_LEGAL).toBe('2026-11-02');
-    expect(textoDe(Privacidad)).toContain('Última actualización: 26 de octubre de 2026');
+    expect(VERSION_LEGAL).toBe('2026-11-02b');
+    expect(textoDe(Privacidad)).toContain('Última actualización: 2 de noviembre de 2026');
   });
 });
