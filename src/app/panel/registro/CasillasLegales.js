@@ -1,19 +1,22 @@
 'use client';
 
 // Las tres casillas de los registros de yonke: Términos, Aviso de Privacidad y declaración de
-// autorización. Ninguna viene marcada. `valores` = { terminos, privacidad, autorizacion }.
+// autorización. Ninguna viene marcada. `valores` = { terminos, privacidad, autorizacion }. Sin
+// `conTerminos`, solo las dos últimas: en la reaceptación, los Términos se aceptan escribiendo ACEPTO.
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../../../lib/versionesLegales';
 
 export const CASILLAS_VACIAS = { terminos: false, privacidad: false, autorizacion: false };
 export const casillasCompletas = (v) => v.terminos === true && v.privacidad === true && v.autorizacion === true;
 
-export default function CasillasLegales({ valores, onChange, declaracion }) {
+export default function CasillasLegales({ valores, onChange, declaracion, conTerminos = true }) {
   const marcar = (campo) => (e) => onChange({ ...valores, [campo]: e.target.checked });
   return (
     <>
-      <Casilla checked={valores.terminos} onChange={marcar('terminos')}>
-        He leído y acepto los <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={enlace}>Términos y Condiciones</a>.
-      </Casilla>
+      {conTerminos && (
+        <Casilla checked={valores.terminos} onChange={marcar('terminos')}>
+          He leído y acepto los <a href={URL_TERMINOS} target="_blank" rel="noopener noreferrer" style={enlace}>Términos y Condiciones</a>.
+        </Casilla>
+      )}
       <Casilla checked={valores.privacidad} onChange={marcar('privacidad')}>
         He leído y acepto el <a href={URL_PRIVACIDAD} target="_blank" rel="noopener noreferrer" style={enlace}>Aviso de Privacidad</a>.
       </Casilla>

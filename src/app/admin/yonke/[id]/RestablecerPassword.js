@@ -62,7 +62,7 @@ export default function RestablecerPassword({ usuarioId }) {
       </button>
       {temporal && (
         <div style={{ marginTop: '8px', padding: '10px', borderRadius: '8px', backgroundColor: '#FFF8E1', border: '1px solid #FFD54F' }}>
-          <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#555' }}>Código temporal, válido {HORAS_CODIGO} horas y un solo uso. Se muestra solo esta vez: mándalo por WhatsApp a ese mismo número.</p>
+          <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#555' }}>Contraseña temporal, válida {HORAS_CODIGO} horas y de un solo uso. Se muestra solo esta vez: mándala por WhatsApp a ese mismo número.</p>
           <code style={{ display: 'block', fontSize: '16px', fontWeight: 'bold', color: '#1A3C5E', marginBottom: '6px', wordBreak: 'break-all' }}>{temporal}</code>
           <button onClick={copiar} style={{ minHeight: '34px', padding: '0 12px', borderRadius: '8px', border: 'none', backgroundColor: '#1A3C5E', color: '#fff', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
             {copiada ? 'Mensaje copiado' : 'Copiar mensaje'}

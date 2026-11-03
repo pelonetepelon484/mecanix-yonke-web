@@ -53,7 +53,7 @@ export default function CodigoTemporalPage() {
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#1A3C5E', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
       <div style={{ width: '100%', maxWidth: '400px', backgroundColor: '#fff', borderRadius: '16px', padding: '24px', boxSizing: 'border-box' }}>
-        <h1 style={{ margin: '0 0 8px', fontSize: '20px', color: '#1A3C5E' }}>Tengo un código temporal</h1>
+        <h1 style={{ margin: '0 0 8px', fontSize: '20px', color: '#1A3C5E' }}>Tengo una contraseña temporal</h1>
         {cambiada ? (
           <>
             <p role="status" style={{ fontSize: '14px', color: '#2E7D32', fontWeight: 'bold' }}>Tu contraseña se cambió.</p>
@@ -61,10 +61,10 @@ export default function CodigoTemporalPage() {
           </>
         ) : (
           <>
-            <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#555' }}>Escribe el código que te mandamos por WhatsApp y crea tu contraseña nueva.</p>
+            <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#555' }}>Escribe la contraseña temporal que te mandamos por WhatsApp y crea tu contraseña nueva.</p>
             <label htmlFor="codigo-whatsapp" style={etiqueta}>Tu WhatsApp (10 dígitos)</label>
             <input id="codigo-whatsapp" type="tel" autoComplete="tel-national" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} style={campo} />
-            <label htmlFor="codigo-temporal" style={etiqueta}>Código temporal</label>
+            <label htmlFor="codigo-temporal" style={etiqueta}>Contraseña temporal</label>
             <input id="codigo-temporal" type="text" autoComplete="one-time-code" autoCapitalize="none" autoCorrect="off" value={codigo} onChange={(e) => setCodigo(e.target.value)} style={campo} />
             <label htmlFor="codigo-password" style={etiqueta}>Contraseña nueva (mínimo {PASSWORD_MIN} caracteres)</label>
             <input id="codigo-password" type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={password} onChange={(e) => setPassword(e.target.value)} style={campo} />
