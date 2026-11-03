@@ -2016,8 +2016,10 @@ service cloud.firestore {
                     && d.texto is string && d.texto.size() >= 1 && d.texto.size() <= 500));
         }
         allow read: if esAdmin() || esDuenoDelYonke(yonkeId);
+        // esDuenoDelYonke: al reaceptar, los yonkes que dio de alta el admin pueden no traer ownerUid.
         allow create: if request.auth != null
-                      && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.ownerUid == request.auth.uid
+                      && (esDuenoDelYonke(yonkeId)
+                          || getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.ownerUid == request.auth.uid)
                       && constanciaValida();
         allow create: if esServicio()
                       && getAfter(/databases/$(database)/documents/yonkes/$(yonkeId)).data.tipoRegistro == 'ligero'

@@ -10,7 +10,7 @@ export const RUTA_CODIGO_TEMPORAL = '/panel/codigo-temporal';
 export const MENSAJES_CODIGO = {
   noDisponible: 'No pudimos cambiar tu contraseña. Intenta más tarde.',
   whatsapp: 'Escribe tu WhatsApp a 10 dígitos.',
-  codigo: 'El código no es válido, ya se usó o ya venció. Pídenos uno nuevo.',
+  codigo: 'La contraseña temporal no es válida, ya se usó o ya venció. Pídenos una nueva.',
   password: `La contraseña nueva debe tener al menos ${PASSWORD_MIN} caracteres.`,
   limite: 'Demasiados intentos. Intenta mañana o escríbenos para ayudarte.',
 };
@@ -27,5 +27,5 @@ export function validarUsoCodigo(cuerpo) {
 
 // Texto que el admin le manda al yonke por WhatsApp.
 export function mensajeCodigoTemporal(codigo) {
-  return `Tu código temporal de Mecanix es: ${codigo}\n\nSirve una sola vez y vence en ${HORAS_CODIGO} horas. Úsalo aquí para crear tu contraseña nueva: https://www.mecanixyonkevirtual.com${RUTA_CODIGO_TEMPORAL}`;
+  return `Tu contraseña temporal de Mecanix es: ${codigo}\n\nSirve una sola vez y vence en ${HORAS_CODIGO} horas. Úsala aquí para crear tu contraseña nueva: https://www.mecanixyonkevirtual.com${RUTA_CODIGO_TEMPORAL}`;
 }

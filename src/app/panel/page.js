@@ -149,7 +149,7 @@ export default function PanelLogin() {
           {conWhatsapp && (
             <div style={{ textAlign: 'center', marginTop: '8px' }}>
               <button onClick={() => router.push(RUTA_CODIGO_TEMPORAL)} style={olvideButtonStyle}>
-                Tengo un código temporal
+                Tengo una contraseña temporal
               </button>
             </div>
           )}

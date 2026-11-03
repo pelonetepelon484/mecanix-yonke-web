@@ -13,7 +13,7 @@ const { default: Pagina } = await import('./page.js');
 
 const llenar = () => {
   fireEvent.change(screen.getByLabelText('Tu WhatsApp (10 dígitos)'), { target: { value: '6641234567' } });
-  fireEvent.change(screen.getByLabelText('Código temporal'), { target: { value: 'abcdefghjkmn' } });
+  fireEvent.change(screen.getByLabelText('Contraseña temporal'), { target: { value: 'abcdefghjkmn' } });
   fireEvent.change(screen.getByLabelText(/Contraseña nueva/), { target: { value: 'clave-nueva' } });
   fireEvent.click(screen.getByRole('button', { name: 'Crear mi contraseña' }));
 };
