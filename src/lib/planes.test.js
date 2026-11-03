@@ -61,7 +61,7 @@ describe('textos públicos de la tarjeta del plan sin costo', () => {
     expect(todo).toContain('Calificaciones');
   });
   it('precio de Premium', () => {
-    expect(PRECIO_PREMIUM_TEXTO).toBe('$398.00 MXN al mes más IVA');
+    expect(PRECIO_PREMIUM_TEXTO).toBe('$598.00 MXN al mes más IVA');
   });
 });
 

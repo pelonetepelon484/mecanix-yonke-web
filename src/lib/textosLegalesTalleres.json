@@ -1,6 +1,6 @@
 {
-  "version": "talleres-2026-10-5",
-  "fecha": "22 de octubre de 2026",
+  "version": "talleres-2026-11-1",
+  "fecha": "2 de noviembre de 2026",
   "urls": {
     "terminosTalleres": "https://mecanixyonkevirtual.com/terminos#talleres",
     "privacidadTalleres": "https://mecanixyonkevirtual.com/privacidad#talleres"
@@ -124,7 +124,7 @@
     },
     {
       "tipo": "parrafo",
-      "texto": "La Plataforma ofrece un plan Básico, sin costo, y un plan Premium, de pago, con un precio de $398.00 MXN al mes más IVA. Las cotizaciones y la solicitud de piezas a yonkes están incluidas en el plan Básico. Las órdenes de servicio y las demás funciones de la Plataforma, incluidas las que se incorporen en el futuro, forman parte del plan Premium. Mientras Mecanix no comience a cobrarlas, las órdenes de servicio están disponibles sin costo para los Talleres registrados. Mecanix avisará al Taller con al menos 30 días naturales de anticipación antes de empezar a cobrar una función que hoy es gratuita, y no hará ningún cobro sin la aceptación expresa del Taller. Si el Taller no contrata el plan Premium, podrá seguir consultando, descargando y eliminando las órdenes ya creadas."
+      "texto": "La Plataforma ofrece un plan Básico, sin costo, y un plan Premium, de pago, con un precio de $598.00 MXN al mes más IVA. Las cotizaciones y la solicitud de piezas a yonkes están incluidas en el plan Básico. Las órdenes de servicio y las demás funciones de la Plataforma, incluidas las que se incorporen en el futuro, forman parte del plan Premium. Mientras Mecanix no comience a cobrarlas, las órdenes de servicio están disponibles sin costo para los Talleres registrados. Mecanix avisará al Taller con al menos 30 días naturales de anticipación antes de empezar a cobrar una función que hoy es gratuita, y no hará ningún cobro sin la aceptación expresa del Taller. Si el Taller no contrata el plan Premium, podrá seguir consultando, descargando y eliminando las órdenes ya creadas."
     },
     {
       "tipo": "subtitulo",

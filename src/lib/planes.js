@@ -9,7 +9,7 @@ import { doc, getDoc } from 'firebase/firestore';
 // en premiumVigente() (firestore.rules); tests/rules/planes.rules.mjs comprueba que ambas digan lo
 // mismo con la misma tabla de casos (casosPremiumVigente, abajo).
 
-export const PRECIO_PREMIUM_TEXTO = '$398.00 MXN al mes más IVA';
+export const PRECIO_PREMIUM_TEXTO = '$598.00 MXN al mes más IVA';
 export const TITULO_FUNCION_PREMIUM = 'Función del plan Premium';
 // Respuestas a alertas por día del plan Básico, como se anuncia en la tarjeta pública. DEBE
 // coincidir con config/pedidosClientes.limiteRespuestasDiarias en Firestore (ese campo es el que

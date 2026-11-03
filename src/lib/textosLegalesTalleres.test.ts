@@ -3,8 +3,8 @@ import textos from './textosLegalesTalleres.json';
 
 describe('textos legales de talleres (texto final aprobado por el abogado el 11 de octubre de 2026)', () => {
   it('versión y fecha visibles', () => {
-    expect(textos.version).toBe('talleres-2026-10-5');
-    expect(textos.fecha).toBe('22 de octubre de 2026');
+    expect(textos.version).toBe('talleres-2026-11-1');
+    expect(textos.fecha).toBe('2 de noviembre de 2026');
   });
   it('términos: 14 subtítulos (1.1 a 1.14) y 58 párrafos', () => {
     const subtitulos = textos.terminos.filter((i) => i.tipo === 'subtitulo');
@@ -27,7 +27,7 @@ describe('textos legales de talleres (texto final aprobado por el abogado el 11 
   it('1.2 con CallMeBot y 1.11 con el precio del plan Premium', () => {
     const t = textos.terminos.map((i) => i.texto).join('\n');
     expect(t).toContain('Google LLC (Firebase / Google Cloud), Vercel Inc. y CallMeBot.');
-    expect(t).toContain('un plan Premium, de pago, con un precio de $398.00 MXN al mes más IVA.');
+    expect(t).toContain('un plan Premium, de pago, con un precio de $598.00 MXN al mes más IVA.');
   });
   it('1.9: solicitudes de piezas a yonkes, sin datos del Cliente del Taller', () => {
     const t = textos.terminos.map((i) => i.texto).join('\n');
