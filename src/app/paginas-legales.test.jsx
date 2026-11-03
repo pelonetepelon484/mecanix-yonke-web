@@ -13,7 +13,7 @@ import { VERSION_LEGAL } from '../lib/versionesLegales';
 const CASILLA = 'Quiero buscar también en otros estados.';
 const CONSENTIMIENTO = 'Si la dejas marcada, mostraremos los datos de tu vehículo, la pieza que buscas y tu estado en nuestra portada y a la red de yonkes Verificados con Envíos Nacionales de todo el país. Así aumentas tus posibilidades de encontrarla. Jamás mostraremos tu nombre, teléfono ni datos de contacto. Si la desmarcas, tu búsqueda solo será visible dentro de tu propio estado.';
 const TEXTO_2 = 'Búsquedas activas y cobertura por estado. Al registrar una búsqueda activa, mostramos los datos técnicos de tu vehículo (año, marca, modelo), la refacción que necesitas y el estado donde actualmente buscas la pieza a los yonkes locales y a los visitantes de nuestra portada que se encuentren en tu mismo estado. La casilla "Quiero buscar también en otros estados" viene marcada de origen para darte mayor alcance; si la mantienes activa, estos mismos datos se mostrarán en la portada pública a visitantes de todo el país y a la red de Yonkes Verificados con Envíos Nacionales. Si decides desmarcarla, la información se limitará exclusivamente a tu estado. Te garantizamos que estos datos no incluyen tu nombre, teléfono, correo electrónico ni ubicaciones específicas. Tus datos de contacto nunca se publican y tú mantienes el control total de con quién comunicarte.';
-const TEXTO_3 = 'Búsquedas activas. Al generar una búsqueda activa en nuestra plataforma, autorizas que se muestren las características del vehículo, la pieza solicitada y tu estado a los yonkes de tu misma entidad y en la portada del sitio a los visitantes ubicados en tu estado. Si dejas seleccionada la casilla "Quiero buscar también en otros estados" (activa por defecto), autorizas que dicha información sea visible también para visitantes de otros estados y para la red de Yonkes Verificados con Envíos Nacionales. Mecanix protege tu identidad: en ningún caso mostraremos tu nombre o datos de contacto en áreas públicas o comerciales. Si desmarcas la casilla, tu búsqueda se mantendrá estrictamente local. Mecanix funciona como un puente de contacto; no garantizamos que algún yonke cuente con la pieza y es responsabilidad del usuario confirmar el estado de la refacción y las condiciones de envío directamente con el vendedor antes de realizar cualquier pago.';
+const TEXTO_3 = 'Búsquedas activas. Al generar una búsqueda activa en nuestra plataforma, autorizas que se muestren las características del vehículo, la pieza solicitada y tu estado a los yonkes de tu misma entidad y en la portada pública del sitio a los visitantes ubicados en tu estado. Si dejas seleccionada la casilla "Quiero buscar también en otros estados" (activa por defecto), autorizas que dicha información sea visible también para visitantes de otros estados y para la red de Yonkes Verificados con Envíos Nacionales. Mecanix protege tu identidad: en ningún caso mostraremos tu nombre o datos de contacto en la página pública de solicitudes. Si desmarcas la casilla, la publicación de tu solicitud se limitará a tu estado.';
 // Sección 14 completa, en orden (el resto del contenido se conserva, solo con el nombre nuevo).
 const SECCION_14 = [
   '14. Búsquedas activas',
@@ -24,7 +24,8 @@ const SECCION_14 = [
   'Para qué los usamos.',
   '(a) Mostrar tu búsqueda activa, sin tus datos de contacto, para que los yonkes te respondan, como se explica a continuación.',
   TEXTO_2,
-  '(b) Mostrarte, en tu enlace privado, las respuestas de los yonkes.',
+  '(b) Mostrarte, en tu enlace privado, las respuestas de los yonkes. Las solicitudes de búsqueda activa pueden aparecer en la página pública conforme a la cobertura y a la opción de alcance que selecciones. Sin embargo, las respuestas que envían los yonkes no se publican en esa página: se muestran únicamente a través del enlace asociado a tu búsqueda.',
+  'Respuestas registradas mediante «Sugerir yonke». Mecanix cuenta con una función denominada «Sugerir yonke», mediante la cual puede registrar una respuesta cuando un yonke informa que cuenta con una pieza solicitada por un cliente.',
   '(c) Avisar internamente a Mecanix de que hay una búsqueda activa nueva.',
   '(d) Contactarte, solo si es necesario, para darle seguimiento a tu búsqueda activa.',
   '(e) Prevenir abusos y uso indebido de la Plataforma.',
@@ -34,8 +35,8 @@ const SECCION_14 = [
   'Asimismo, cuando el usuario utiliza la función de Búsqueda Activa, la información de la autoparte o refacción solicitada en dicha búsqueda activa es compartida con los yonkes y yonkeros afiliados para atender la disponibilidad de la pieza dentro de la búsqueda activa autorizada por el cliente.',
   '• Proveedores de infraestructura que almacenan y procesan la información por cuenta de Mecanix, sin usarla para fines propios: Google LLC (Firebase / Google Cloud) y Vercel Inc.',
   '• El aviso interno a Mecanix sobre una búsqueda activa nueva se envía por WhatsApp mediante el servicio CallMeBot. Ese aviso no incluye tu número.',
-  'Cuando tú contactas a un yonke. Si decides escribirle a un yonke desde tu enlace, la conversación ocurre directamente entre tú y el yonke, fuera de la Plataforma. A partir de ese momento el yonke conoce tu número porque tú se lo diste, y lo trata por su cuenta, como responsable independiente.',
-  'Tu enlace privado. Cualquier persona que tenga tu enlace puede ver las respuestas de tu búsqueda activa. Esas respuestas no incluyen tus datos de contacto. Te recomendamos no compartirlo.',
+  'Cuando tú contactas a un yonke. Si decides contactar a un yonke desde el enlace de tu búsqueda, podrás utilizar el medio de contacto que se muestre en la respuesta, que puede incluir el número de WhatsApp del negocio.',
+  'Tu enlace privado. Cualquier persona que tenga tu enlace puede ver las respuestas de tu búsqueda activa y los datos comerciales que los yonkes hayan proporcionado para atenderla, incluidos los medios de contacto que se muestren en cada respuesta.',
   'Cuánto tiempo los conservamos. Tu búsqueda activa, tu número de WhatsApp y las respuestas de los yonkes se eliminan automáticamente a los 5 días de haber registrado la búsqueda activa.',
   'Tus derechos. Puedes solicitar el acceso, la rectificación o la cancelación de tus datos, u oponerte a su uso, escribiendo a contacto@mecanixyonkevirtual.com o al WhatsApp 661 103 4260. Para ubicar tu búsqueda activa nos puedes compartir tu enlace o tu número de WhatsApp. Si pides la cancelación antes de los 5 días, eliminamos tu búsqueda activa y tus datos.',
 ];
@@ -92,12 +93,12 @@ describe('búsqueda activa (aprobado el 26 de octubre de 2026)', () => {
     expect(texto).not.toContain('Pedidos de piezas a los yonkes.');
     expect(texto).not.toContain('Mecanix permite que el cliente avise a los yonkes');
   });
-  it('Términos, sección 6: respuestas a búsquedas activas (solo cambia el nombre)', () => {
+  it('Términos, sección 6: respuestas a búsquedas activas (rev. 6 del abogado)', () => {
     const texto = textoDe(Terminos);
     const s6 = texto.indexOf('6. Responsabilidades del yonke');
     const s7 = texto.indexOf('7. Datos de terceros');
-    for (const frase of ['Respuestas a búsquedas activas de clientes. El yonke que responde una búsqueda activa se obliga a:',
-      'Cada yonke puede responder una sola vez a cada búsqueda activa, y su respuesta no se puede modificar.']) {
+    for (const frase of ['Respuestas a búsquedas activas de clientes. El yonke que responde una búsqueda activa, ya sea mediante una cuenta ligera o una cuenta comercial completa, se obliga a:',
+      'Cada yonke puede registrar una respuesta por búsqueda activa; una vez registrada, no puede editarla.']) {
       expect(texto.indexOf(frase)).toBeGreaterThan(s6);
       expect(texto.indexOf(frase)).toBeLessThan(s7);
     }
