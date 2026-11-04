@@ -4,15 +4,15 @@ import { ImageResponse } from 'next/og';
 import { ALTO, ANCHO } from './imagenVistaPrevia';
 
 // Imagen de vista previa de la portada (1200 × 630, PNG), mismo patrón que la de los subdominios
-// (imagenVistaPrevia.js): logo nuevo (logo-mecanix-red-yonkes.png) centrado y grande, la frase
+// (imagenVistaPrevia.js): logo de la red (logo-red-mecanix.png) centrado y grande, la frase
 // (FRASE_PORTADA) debajo y una franja azul con la dirección del sitio. Tipografía Inter (src/assets/fuentes/).
 // Solo lee el logo nuevo y las fuentes: nada de los logos viejos.
 
 const AZUL = '#1A3C5E';
 const FAMILIA = 'Inter, sans-serif';
-// El logo mide 900 × 318: a 780 de ancho conserva su proporción.
-const LOGO_ANCHO = 780;
-const LOGO_ALTO = Math.round((LOGO_ANCHO * 318) / 900);
+// El logo mide 1200 × 307: a 900 de ancho conserva su proporción.
+const LOGO_ANCHO = 900;
+const LOGO_ALTO = Math.round((LOGO_ANCHO * 307) / 1200);
 // Frase debajo del logo. No cabe en una línea: va en dos, centradas, partida después de la coma
 // para que las dos líneas queden parejas (y dentro de 1000 px, por si se cambia la frase).
 export const FRASE_PORTADA = 'Encuentra la refacción que necesitas, directo con el yonke que la tiene';
@@ -23,7 +23,7 @@ export const lineasFrase = (frase) => {
 
 export async function leerRecursosPortada(raiz = process.cwd()) {
   const [logo, regular, seminegrita] = await Promise.all([
-    readFile(path.join(raiz, 'public', 'logo-mecanix-red-yonkes.png')),
+    readFile(path.join(raiz, 'public', 'logo-red-mecanix.png')),
     readFile(path.join(raiz, 'src', 'assets', 'fuentes', 'inter-regular.ttf')),
     readFile(path.join(raiz, 'src', 'assets', 'fuentes', 'inter-semibold.ttf')),
   ]);

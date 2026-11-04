@@ -76,8 +76,8 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '28px' }}>
           <Link href="/" style={{ flex: '1 1 auto', minWidth: 0, maxWidth: '260px' }}>
             <img
-              src="/logo-mecanix-red-yonkes.webp" alt="Mecanix, motor de búsqueda de autopartes, red de yonkes de México"
-              width={900} height={318} style={{ width: '100%', height: 'auto', display: 'block' }}
+              src="/logo-red-mecanix.webp" alt="Red Mecanix, ecosistema automotriz"
+              width={1200} height={307} style={{ width: '100%', height: 'auto', display: 'block' }}
             />
           </Link>
           <a

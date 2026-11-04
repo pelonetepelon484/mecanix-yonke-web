@@ -43,7 +43,7 @@ describe('imagen de vista previa de la portada (logo nuevo, 1200 × 630)', () =>
     await mkdir(path.join(raiz, 'public'));
     await mkdir(path.join(raiz, 'src', 'assets', 'fuentes'), { recursive: true });
     const real = process.cwd();
-    await copyFile(path.join(real, 'public', 'logo-mecanix-red-yonkes.png'), path.join(raiz, 'public', 'logo-mecanix-red-yonkes.png'));
+    await copyFile(path.join(real, 'public', 'logo-red-mecanix.png'), path.join(raiz, 'public', 'logo-red-mecanix.png'));
     for (const f of ['inter-regular.ttf', 'inter-semibold.ttf']) {
       await copyFile(path.join(real, 'src', 'assets', 'fuentes', f), path.join(raiz, 'src', 'assets', 'fuentes', f));
     }

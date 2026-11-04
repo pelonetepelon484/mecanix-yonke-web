@@ -1652,12 +1652,11 @@ function obtenerEstadoAbierto(horario) {
         {/* Header de marca — compartido entre las dos pestañas, no se repite ni desaparece
             al cambiar de una a otra. */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          {/* El logo ya trae "motor de búsqueda de autopartes" y "Red de yonkes México" dentro de la
-              imagen: todo el ancho en celular (para que se lean las letras chicas), máximo 440 px. */}
+          {/* Logo "Red Mecanix, Ecosistema Automotriz": todo el ancho en celular, máximo 440 px. */}
           <img
-            src="/logo-mecanix-red-yonkes.webp"
-            alt="Mecanix, motor de búsqueda de autopartes, red de yonkes de México"
-            width={900} height={318}
+            src="/logo-red-mecanix.webp"
+            alt="Red Mecanix, ecosistema automotriz"
+            width={1200} height={307}
             style={{ width: '100%', maxWidth: '440px', height: 'auto', margin: '0 auto', display: 'block' }}
           />
         </div>
