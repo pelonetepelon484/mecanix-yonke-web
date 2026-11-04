@@ -61,9 +61,9 @@ export function imagenDeYonke({ nombre, lugar, colorPrimario, logo }, recursos) 
 // franja azul con la dirección del sitio. recursos: { nuevo, fuentes }
 export const FRASE_GENERICA = 'Refacciones y autopartes usadas en México';
 const AZUL = '#1A3C5E';
-// logo-mecanix-red-yonkes mide 900 × 318: a 780 de ancho conserva su proporción.
-const NUEVO_ANCHO = 780;
-const NUEVO_ALTO = Math.round((NUEVO_ANCHO * 318) / 900);
+// logo-red-mecanix mide 1200 × 307: a 900 de ancho conserva su proporción.
+const NUEVO_ANCHO = 900;
+const NUEVO_ALTO = Math.round((NUEVO_ANCHO * 307) / 1200);
 export function imagenGenerica(recursos) {
   return new ImageResponse(
     (

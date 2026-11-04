@@ -26,12 +26,12 @@ describe('imagen de vista previa (PNG 1200 × 630, caché de 1 día)', () => {
     expect(FRASE_GENERICA).toBe('Refacciones y autopartes usadas en México');
   }, 30000);
 
-  it('se genera SIN ningún logo viejo en el disco: solo logo-mecanix-solo, logo-mecanix-red-yonkes e Inter', async () => {
+  it('se genera SIN ningún logo viejo en el disco: solo logo-mecanix-solo, logo-red-mecanix e Inter', async () => {
     const raiz = await mkdtemp(path.join(tmpdir(), 'vista-previa-'));
     await mkdir(path.join(raiz, 'public'));
     await mkdir(path.join(raiz, 'src', 'assets', 'fuentes'), { recursive: true });
     const real = process.cwd();
-    for (const f of ['logo-mecanix-solo.png', 'logo-mecanix-red-yonkes.png']) await copyFile(path.join(real, 'public', f), path.join(raiz, 'public', f));
+    for (const f of ['logo-mecanix-solo.png', 'logo-red-mecanix.png']) await copyFile(path.join(real, 'public', f), path.join(raiz, 'public', f));
     for (const f of ['inter-regular.ttf', 'inter-semibold.ttf']) await copyFile(path.join(real, 'src', 'assets', 'fuentes', f), path.join(raiz, 'src', 'assets', 'fuentes', f));
     const logos = await leerRecursosImagen(raiz);
     expect(Object.keys(logos).sort()).toEqual(['fuentes', 'nuevo', 'solo']);

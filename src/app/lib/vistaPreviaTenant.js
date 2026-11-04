@@ -55,13 +55,13 @@ export async function descargarLogoComoDataUri(url) {
 }
 
 // Logos NUEVOS de Mecanix (public/: logo-mecanix-solo para el crédito "Con tecnología" y
-// logo-mecanix-red-yonkes para la imagen genérica) y tipografía Inter (src/assets/fuentes/),
+// logo-red-mecanix para la imagen genérica) y tipografía Inter (src/assets/fuentes/),
 // incluidos en la función por next.config.mjs. Se leen una vez por instancia del servidor.
 // raiz: otra carpeta (solo pruebas), sin guardar en la caché.
 function cargarRecursos(raiz) {
   const logo = async (archivo) => `data:image/png;base64,${(await readFile(path.join(raiz, 'public', archivo))).toString('base64')}`;
   const fuente = (archivo) => readFile(path.join(raiz, 'src', 'assets', 'fuentes', archivo));
-  return Promise.all([logo('logo-mecanix-solo.png'), logo('logo-mecanix-red-yonkes.png'), fuente('inter-regular.ttf'), fuente('inter-semibold.ttf')])
+  return Promise.all([logo('logo-mecanix-solo.png'), logo('logo-red-mecanix.png'), fuente('inter-regular.ttf'), fuente('inter-semibold.ttf')])
     .then(([solo, nuevo, regular, seminegrita]) => ({
       solo, nuevo,
       fuentes: [
