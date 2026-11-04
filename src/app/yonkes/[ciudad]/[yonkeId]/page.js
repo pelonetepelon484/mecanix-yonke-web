@@ -34,7 +34,7 @@ export async function generateMetadata({ params }) {
   // template, así que ahí sí se manda el título completo.
   const titleBase = `${yonke.nombre} – Yonke en ${ciudadInfo.label}, ${estadoLabel}`;
   const title = `${titleBase} | Mecanix Yonke Virtual`;
-  const description = `${yonke.nombre} es un yonke afiliado en ${ciudadInfo.label}, ${estadoLabel}. Consulta dirección, teléfono, horario y contacta directo por WhatsApp para tu refacción usada.`;
+  const description = `${yonke.nombre} es un yonke colaborador de la red Mecanix en ${ciudadInfo.label}, ${estadoLabel}. Consulta dirección, teléfono, horario y contacta directo por WhatsApp para tu refacción usada.`;
   const url = `/yonkes/${ciudad}/${yonkeId}`;
   // Vista previa: el logo del yonke tal como lo subió (sin medidas inventadas: cada logo mide
   // distinto); si no tiene, la imagen de la portada con el logo nuevo de Mecanix (1200 × 630).

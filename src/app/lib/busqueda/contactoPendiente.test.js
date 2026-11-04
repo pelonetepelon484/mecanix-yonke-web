@@ -39,13 +39,13 @@ describe('/api/buscar con config/pedidosClientes APAGADA o inexistente: exactame
     expect(notificar).not.toHaveBeenCalled();
   });
   it('"sin inventario": promete avisar solo si el cliente dejó su WhatsApp', () => {
-    expect(mensajeSinInventario({ conContacto: true })).toBe('No tenemos esa pieza en inventario ahorita, pero te avisamos en cuanto algún yonke la registre.');
-    expect(mensajeSinInventario({ vehiculo: true, conContacto: true })).toBe('No tenemos ese vehículo en inventario ahorita, pero te avisamos en cuanto algún yonke lo registre.');
+    expect(mensajeSinInventario({ conContacto: true })).toBe('Ningún yonke colaborador de la red Mecanix tiene esa pieza en su inventario ahorita, pero te avisamos en cuanto algún yonke la registre.');
+    expect(mensajeSinInventario({ vehiculo: true, conContacto: true })).toBe('Ningún yonke colaborador de la red Mecanix tiene ese vehículo en su inventario ahorita, pero te avisamos en cuanto algún yonke lo registre.');
     expect(mensajeSinInventario({ pedidosClientesActivos: false, conContacto: true })).toBe(MENSAJE_SIN_INVENTARIO);
     expect(mensajeSinInventario({ vehiculo: true, pedidosClientesActivos: false, conContacto: true })).toBe(MENSAJE_VEHICULO_SIN_INVENTARIO);
     // Sin WhatsApp: solo "No tenemos … en inventario ahorita."
-    expect(mensajeSinInventario()).toBe('No tenemos esa pieza en inventario ahorita.');
-    expect(mensajeSinInventario({ vehiculo: true })).toBe('No tenemos ese vehículo en inventario ahorita.');
+    expect(mensajeSinInventario()).toBe('Ningún yonke colaborador de la red Mecanix tiene esa pieza en su inventario ahorita.');
+    expect(mensajeSinInventario({ vehiculo: true })).toBe('Ningún yonke colaborador de la red Mecanix tiene ese vehículo en su inventario ahorita.');
     expect(mensajeSinInventario({ conContacto: false })).toBe(MENSAJE_SIN_INVENTARIO_PEDIDOS);
   });
 });

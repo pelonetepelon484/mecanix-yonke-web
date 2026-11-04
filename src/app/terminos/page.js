@@ -1,7 +1,7 @@
 import textosTalleres from '../../lib/textosLegalesTalleres.json';
 export const metadata = {
   title: 'Términos y Condiciones',
-  description: 'Términos y condiciones de uso de Mecanix Yonke Virtual — la plataforma que conecta clientes con yonkes afiliados en México.',
+  description: 'Términos y condiciones de uso de Mecanix Yonke Virtual — la plataforma que conecta clientes con los yonkes, talleres y negocios colaboradores de la red Mecanix en México.',
   alternates: { canonical: '/terminos' },
   robots: { index: true, follow: true },
 };

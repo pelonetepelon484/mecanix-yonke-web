@@ -66,13 +66,13 @@ export function avisoTarjetaOtroEstado(r) {
 //   cuando abajo SÍ se muestran resultados de otros estados (seMuestranOtrosEstados): con
 //   sin_yonkes_estado SIEMPRE ("Prueba buscando en Todos los estados" los contradiría, haya o no
 //   alerta de un paso) y con sin_inventario solo con la alerta de un paso (sin ella, su texto
-//   "No tenemos esa pieza en inventario ahorita." no contradice nada y es la única explicación);
+//   "Ningún yonke colaborador … ahorita." no contradice nada y es la única explicación);
 // - confirmar: "Sí, buscar así / No, corregir";
 // - botonTodos: "Buscar en todos los estados", solo con un estado elegido y cuando el servidor NO
 //   buscó ya en otros estados (conOtrosEstados: llegó la sección o otrosEstadosRevisados). Así
 //   solo se ve donde hace falta: "no identificamos el modelo", bandera apagada o búsqueda cortada.
 // sinYonkesYaRevisado (solo con config/pedidosClientes.formularioAbierto): ya se buscó en otros
-// estados, así que "Aún no tenemos yonkes registrados en… Prueba buscando en Todos los estados" no
+// estados, así que "Aún no hay yonkes colaboradores de la red Mecanix en… Prueba buscando en Todos los estados" no
 // sale, aunque allá tampoco haya resultados.
 export function partesCuadroMensaje({ tipo, alertaUnPaso, estadoBusqueda, conOtrosEstados, seMuestranOtrosEstados = false, sinYonkesYaRevisado = false }) {
   return {

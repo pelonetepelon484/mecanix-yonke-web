@@ -10,7 +10,7 @@ export const TIPOS_SIN_RESULTADO_CON_ALERTA = ['sin_inventario', 'no_catalogado'
 export const TIPOS_EXTRA_ALERTA_SIEMPRE = ['numero_de_parte', 'marca_muy_general', 'pieza_sin_vehiculo'];
 
 // Título del recuadro grande de la alerta cuando la búsqueda no llegó a buscar un vehículo
-// (número de parte, marca muy general o pieza sin vehículo): ahí no aplica "No tenemos ese
+// (número de parte, marca muy general o pieza sin vehículo): ahí no aplica "Ningún yonke colaborador tiene ese
 // vehículo todavía". null para los demás tipos (se queda el título de siempre).
 export const TITULO_ALERTA_BUSQUEDA_INCOMPLETA = '¿No encuentras la pieza? Consulta con los yonkes';
 // Con config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta").

@@ -4,7 +4,7 @@
 // estado vienen de la búsqueda; solo se pide el WhatsApp (y, si faltan, la pieza, el estado o el
 // vehículo). Sin cuenta. Crea la MISMA alerta que AvisarYonkes (enviarAlertaCliente ->
 // /api/pedir-pieza): mismos datos, mismas validaciones, mismos límites.
-// - variante="protagonista": bloque grande "No tenemos ese vehículo todavía" (sin resultados). Con
+// - variante="protagonista": bloque grande "Ningún yonke colaborador tiene ese vehículo todavía" (sin resultados). Con
 //   titulo/texto (opcionales) se cambian SOLO ese título y ese texto (p. ej. cuando abajo hay
 //   resultados de otros estados); el botón y el formulario de la alerta no cambian.
 // - variante="discreta": "¿No encontraste la pieza exacta? Activa una alerta" (debajo de resultados).
@@ -27,7 +27,7 @@ import {
 import { enlaceGuardarPorWhatsapp } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
-export const TITULO_SIN_RESULTADOS = 'No tenemos ese vehículo todavía';
+export const TITULO_SIN_RESULTADOS = 'Ningún yonke colaborador tiene ese vehículo todavía';
 export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Consulta con los yonkes';
 export const TEXTO_COMPACTO = '¿No era lo que buscabas? Consulta con los yonkes aquí';
 export const textoSinResultados = (estadoNombre) =>

@@ -30,7 +30,7 @@ const TARJETA = {
 const GRUPOS = [{ estado: 'sonora', estadoNombre: 'Sonora', resultados: [TARJETA] }];
 // Respuesta del servidor para cada caso (sin la marca formularioAbierto).
 const RESPUESTAS = {
-  sin_inventario: { estado: 'sin_inventario', mensaje: 'No tenemos esa pieza en inventario ahorita.', busqueda: BUSQUEDA },
+  sin_inventario: { estado: 'sin_inventario', mensaje: 'Ningún yonke colaborador de la red Mecanix tiene esa pieza en su inventario ahorita.', busqueda: BUSQUEDA },
   no_catalogado: { estado: 'no_catalogado', mensaje: 'No identificamos ese modelo todavía — ¿nos confirmas la marca y el año?', busqueda: BUSQUEDA },
   sin_yonkes_estado: { estado: 'sin_yonkes_estado', mensaje: 'Todavía no hay yonkes en ese estado.', busqueda: BUSQUEDA },
   sin_en_tu_zona: {

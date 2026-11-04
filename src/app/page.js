@@ -61,7 +61,7 @@ export async function generateMetadata() {
   }
   const textoSeoEstados = construirTextoSeoEstados(estadosConCobertura);
   const description = textoSeoEstados
-    ? `Encuentra autopartes y refacciones usadas entre los yonkes y deshuesaderos afiliados en México. ${textoSeoEstados} Busca por marca, modelo y año. Reserva en línea al instante.`
+    ? `Encuentra autopartes y refacciones usadas entre los yonkes y deshuesaderos colaboradores de la red Mecanix en México. ${textoSeoEstados} Busca por marca, modelo y año. Reserva en línea al instante.`
     : undefined; // undefined = hereda la description del layout raíz
   return description ? { description } : {};
 }

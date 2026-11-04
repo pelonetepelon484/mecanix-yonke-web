@@ -30,7 +30,7 @@ import { otrosEstadosSiAplica, camposRespuestaOtrosEstados, camposRegistroOtrosE
 async function mensajeSinYonkesEnEstado(estadoFiltro) {
   const estados = await obtenerEstadosCombinado();
   const nombre = estados.find((e) => e.id === estadoFiltro)?.nombre || estadoFiltro;
-  return `Aún no tenemos yonkes registrados en ${nombre} — muy pronto estaremos ahí. Prueba buscando en "Todos los estados".`;
+  return `Aún no hay yonkes colaboradores de la red Mecanix en ${nombre} — muy pronto estaremos ahí. Prueba buscando en "Todos los estados".`;
 }
 
 // El estado elegido no tiene NINGÚN yonke. Con config/buscador.otrosEstadosSinResultados (y un
@@ -418,7 +418,7 @@ async function resolverBusquedaVehiculo({ marca, modelo, anio, numeroDeParteExpl
     resultadosTransmisiones: transmisiones, resultadosTransmisionesCercanos: transmisionesCercanos,
     marca, modelo, anio, pieza: null,
     encabezadoVehiculo: resultados.length > 0
-      ? `Esto es lo que tenemos disponible para ${partesEncabezado.join(' ')}:`
+      ? `Esto encontramos en los yonkes colaboradores de la red Mecanix para ${partesEncabezado.join(' ')}:`
       : null,
   };
   const porIp = await otrosEstadosPorIpSiAplica(estadoFiltro, geo, respuesta);

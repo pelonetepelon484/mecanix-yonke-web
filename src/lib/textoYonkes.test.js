@@ -11,7 +11,7 @@ describe('singular y plural de yonkes (encabezados de resultados)', () => {
 });
 
 describe('título del recuadro grande de la alerta', () => {
-  it('número de parte, marca muy general y pieza sin vehículo: título propio (no "No tenemos ese vehículo todavía")', () => {
+  it('número de parte, marca muy general y pieza sin vehículo: título propio (no "Ningún yonke colaborador tiene ese vehículo todavía")', () => {
     for (const tipo of ['numero_de_parte', 'marca_muy_general', 'pieza_sin_vehiculo']) {
       expect(tituloAlertaProtagonista(tipo)).toBe(TITULO_ALERTA_BUSQUEDA_INCOMPLETA);
     }
