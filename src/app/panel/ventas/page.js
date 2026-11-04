@@ -137,7 +137,7 @@ export default function VentasPanel() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      // Título principal: el nombre del yonke (es SU reporte), no "Mecanix Yonke Virtual" -- antes
+      // Título principal: el nombre del yonke (es SU reporte), no "Red Mecanix" -- antes
       // el PDF nunca mostraba el nombre del yonke en ningún lado.
       doc.text(nombreYonke || 'Reporte de Ventas', 14, 14);
       doc.setFontSize(11);

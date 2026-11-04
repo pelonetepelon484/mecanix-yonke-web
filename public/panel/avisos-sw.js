@@ -14,7 +14,7 @@ function datosDelAviso(evento) {
   try { crudo = evento.data ? evento.data.json() : {}; } catch (e) { crudo = {}; }
   const d = (crudo && crudo.data) || crudo || {};
   return {
-    titulo: typeof d.titulo === 'string' && d.titulo ? d.titulo : 'Mecanix Yonke Virtual',
+    titulo: typeof d.titulo === 'string' && d.titulo ? d.titulo : 'Red Mecanix',
     cuerpo: typeof d.cuerpo === 'string' ? d.cuerpo : '',
     url: rutaSegura(d.url),
     etiqueta: typeof d.etiqueta === 'string' && d.etiqueta ? d.etiqueta : 'mecanix-avisos',

@@ -228,7 +228,7 @@ function NotaImprimible({ venta, nombreYonke, logoUrl, nombreCliente, telefonoCl
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '2px solid #1A3C5E', paddingBottom: '10px', marginBottom: '14px' }}>
         {logoUrl && <img src={logoUrl} alt={nombreYonke} style={{ width: '48px', height: '48px', objectFit: 'contain' }} />}
         <div>
-          {/* Fallback a 'Tu yonke' (no a "Mecanix Yonke Virtual"): este nombre encabeza una nota de
+          {/* Fallback a 'Tu yonke' (no a "Red Mecanix"): este nombre encabeza una nota de
               garantía que emite el YONKE, no Mecanix (que explícitamente no es el vendedor, ver
               terminos/page.js) -- mostrar el nombre de Mecanix ahí sería incorrecto, no solo una
               cuestión de marca. nombreYonke carga async desde Firestore y arranca en '', así que

@@ -1282,7 +1282,7 @@ function obtenerEstadoAbierto(horario) {
       : busqueda ? (busqueda.pieza || '') : (piezaSeleccion === 'OTRA' ? piezaBuscada.trim() : piezaSeleccion) || '';
 
     if (!pieza) {
-      return 'Hola, los encontré en Mecanix Yonke Virtual. ¿Me pueden ayudar con una pieza?';
+      return 'Hola, los encontré en Red Mecanix. ¿Me pueden ayudar con una pieza?';
     }
 
     const datosVehiculo = r.esMotor ? r.motor : r.vehiculo;
@@ -1292,10 +1292,10 @@ function obtenerEstadoAbierto(horario) {
 
     if (marcaTexto && modeloTexto) {
       const anoParte = anoTexto ? ` ${anoTexto}` : '';
-      return `Hola, encontré esta pieza en Mecanix Yonke Virtual: ${pieza} para ${marcaTexto} ${modeloTexto}${anoParte}. ¿Sigue disponible?`;
+      return `Hola, encontré esta pieza en Red Mecanix: ${pieza} para ${marcaTexto} ${modeloTexto}${anoParte}. ¿Sigue disponible?`;
     }
 
-    return `Hola, encontré esta pieza en Mecanix Yonke Virtual: ${pieza}. ¿Sigue disponible?`;
+    return `Hola, encontré esta pieza en Red Mecanix: ${pieza}. ¿Sigue disponible?`;
   }
 
   // "Entrega inmediata": el pedido va a DAVID, no al yonke — por eso arma su propio mensaje
@@ -2346,7 +2346,7 @@ function obtenerEstadoAbierto(horario) {
                 Refacciones y autopartes usadas en México
               </h2>
               <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.8', margin: 0 }}>
-                Mecanix Yonke Virtual es el buscador de <strong>refacciones y autopartes usadas</strong> de
+                Red Mecanix (antes Mecanix Yonke Virtual) es el buscador de <strong>refacciones y autopartes usadas</strong> de
                 México: la plataforma que conecta compradores con <strong>yonkes</strong> y
                 deshuesaderos registrados en todo el país. Encuentra motores, transmisiones, puertas, faroles, defensas y más
                 piezas de carro a precios accesibles, de las marcas Nissan, Toyota, Chevrolet, Honda, Ford y

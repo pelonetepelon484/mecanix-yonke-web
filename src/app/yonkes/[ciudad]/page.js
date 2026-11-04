@@ -24,10 +24,10 @@ export async function generateMetadata({ params }) {
   if (!ciudadInfo) return {};
 
   // titleBase (sin sufijo) es lo que se manda como `title` de la página — el layout raíz ya le
-  // agrega " | Mecanix Yonke Virtual" vía el template; openGraph/twitter no pasan por ese
+  // agrega " | Red Mecanix" vía el template; openGraph/twitter no pasan por ese
   // template, así que ahí sí se manda el título completo.
   const titleBase = `Yonkes en ${ciudadInfo.label}`;
-  const title = `${titleBase} | Mecanix Yonke Virtual`;
+  const title = `${titleBase} | Red Mecanix`;
   const description = `Encuentra yonkes y deshuesaderos colaboradores de la red Mecanix en ${ciudadInfo.label}, Baja California. Consulta refacciones usadas, teléfono, horario y contacta directo por WhatsApp.`;
   const url = `/yonkes/${ciudad}`;
 
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }) {
     alternates: { canonical: url },
     openGraph: {
       title, description, url,
-      siteName: 'Mecanix Yonke Virtual',
+      siteName: 'Red Mecanix',
       locale: 'es_MX',
       type: 'website',
       images: [{ ...IMAGEN_PORTADA, alt: title }],
@@ -106,7 +106,7 @@ function YonkeCard({ yonke, ciudadKey }) {
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
         {yonke.whatsapp && (
           <a
-            href={`https://wa.me/52${yonke.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, los encontré en Mecanix Yonke Virtual. ¿Me pueden ayudar con una pieza?')}`}
+            href={`https://wa.me/52${yonke.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, los encontré en Red Mecanix. ¿Me pueden ayudar con una pieza?')}`}
             target="_blank"
             rel="noopener noreferrer"
             style={whatsappButtonStyle}
@@ -154,7 +154,7 @@ export default async function CiudadPage({ params }) {
               <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.8', margin: 0 }}>
                 Consulta los <strong>yonkes registrados</strong> en {ciudadInfo.label} y encuentra autopartes usadas
                 como motores, transmisiones, puertas, faroles y más. Contacta directo por WhatsApp o busca tu pieza
-                por marca, modelo y año en Mecanix Yonke Virtual.
+                por marca, modelo y año en Red Mecanix.
               </p>
             ) : (
               <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.8', margin: 0 }}>

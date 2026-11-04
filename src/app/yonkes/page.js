@@ -9,17 +9,17 @@ export const metadata = {
   description: 'Consulta la lista de yonkes y deshuesaderos colaboradores de la red Mecanix en Tijuana, Mexicali, Ensenada, Tecate, Playas de Rosarito y San Quintín.',
   alternates: { canonical: '/yonkes' },
   openGraph: {
-    title: 'Yonkes registrados en Baja California | Mecanix Yonke Virtual',
+    title: 'Yonkes registrados en Baja California | Red Mecanix',
     description: 'Consulta la lista de yonkes y deshuesaderos colaboradores de la red Mecanix en Baja California.',
     url: '/yonkes',
-    siteName: 'Mecanix Yonke Virtual',
+    siteName: 'Red Mecanix',
     locale: 'es_MX',
     type: 'website',
     images: [{ ...IMAGEN_PORTADA, alt: 'Yonkes registrados en Baja California' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Yonkes registrados en Baja California | Mecanix Yonke Virtual',
+    title: 'Yonkes registrados en Baja California | Red Mecanix',
     images: [IMAGEN_PORTADA],
   },
 };
