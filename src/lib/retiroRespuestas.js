@@ -23,9 +23,9 @@ function busqueda(pedido) {
   return `${pedido.pieza} para ${[v.marca, v.modelo, v.anio].filter(Boolean).join(' ')}`;
 }
 
-export const mensajeRetiroSolicitante = (pedido) => `Hola, te escribimos de Mecanix Yonke Virtual sobre tu búsqueda de ${busqueda(pedido)}. Retiramos una respuesta de esa búsqueda. Si ya habías contactado a ese yonke, confirma directamente con ese yonke antes de pagar.`;
+export const mensajeRetiroSolicitante = (pedido) => `Hola, te escribimos de Red Mecanix sobre tu búsqueda de ${busqueda(pedido)}. Retiramos una respuesta de esa búsqueda. Si ya habías contactado a ese yonke, confirma directamente con ese yonke antes de pagar.`;
 
-export const mensajeRetiroYonke = (pedido, motivo) => `Hola, te escribimos de Mecanix Yonke Virtual. Retiramos tu respuesta a la búsqueda de ${busqueda(pedido)}. Motivo: ${nombreMotivo(motivo)}. Si crees que es un error, responde este mensaje.`;
+export const mensajeRetiroYonke = (pedido, motivo) => `Hola, te escribimos de Red Mecanix. Retiramos tu respuesta a la búsqueda de ${busqueda(pedido)}. Motivo: ${nombreMotivo(motivo)}. Si crees que es un error, responde este mensaje.`;
 
 // Número ajeno: ese WhatsApp es de quien reclamó, no del dueño de la cuenta.
 export const seAvisaAlYonke = (motivo) => motivo !== MOTIVO_NUMERO_AJENO;

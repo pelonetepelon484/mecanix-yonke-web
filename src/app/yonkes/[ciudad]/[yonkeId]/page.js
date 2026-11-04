@@ -30,10 +30,10 @@ export async function generateMetadata({ params }) {
   const { ciudadInfo, yonke, estadoLabel } = resuelto;
 
   // titleBase (sin sufijo) es lo que se manda como `title` de la página — el layout raíz ya le
-  // agrega " | Mecanix Yonke Virtual" vía el template; openGraph/twitter no pasan por ese
+  // agrega " | Red Mecanix" vía el template; openGraph/twitter no pasan por ese
   // template, así que ahí sí se manda el título completo.
   const titleBase = `${yonke.nombre} – Yonke en ${ciudadInfo.label}, ${estadoLabel}`;
-  const title = `${titleBase} | Mecanix Yonke Virtual`;
+  const title = `${titleBase} | Red Mecanix`;
   const description = `${yonke.nombre} es un yonke colaborador de la red Mecanix en ${ciudadInfo.label}, ${estadoLabel}. Consulta dirección, teléfono, horario y contacta directo por WhatsApp para tu refacción usada.`;
   const url = `/yonkes/${ciudad}/${yonkeId}`;
   // Vista previa: el logo del yonke tal como lo subió (sin medidas inventadas: cada logo mide
@@ -46,7 +46,7 @@ export async function generateMetadata({ params }) {
     alternates: { canonical: url },
     openGraph: {
       title, description, url,
-      siteName: 'Mecanix Yonke Virtual',
+      siteName: 'Red Mecanix',
       locale: 'es_MX',
       type: 'website',
       images: [imagen],
@@ -134,7 +134,7 @@ export default async function YonkeDetallePage({ params }) {
 
             {yonke.whatsapp && (
               <a
-                href={`https://wa.me/52${yonke.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, vi ${yonke.nombre} en Mecanix Yonke Virtual. ¿Me pueden ayudar con una pieza?`)}`}
+                href={`https://wa.me/52${yonke.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, vi ${yonke.nombre} en Red Mecanix. ¿Me pueden ayudar con una pieza?`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={whatsappButtonStyle}

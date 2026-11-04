@@ -3,7 +3,7 @@ import path from 'path';
 
 export const metadata = {
   title: 'Nuestra Historia',
-  description: 'Conoce a David, mecánico de Tijuana y fundador de Mecanix Yonke Virtual, y la historia detrás de la plataforma.',
+  description: 'Conoce a David, mecánico de Tijuana y fundador de Red Mecanix, y la historia detrás de la plataforma.',
   // Su propia dirección (si no, hereda la de la portada del layout).
   alternates: { canonical: '/nosotros' },
 };
@@ -42,7 +42,7 @@ export default function Nosotros() {
             {hayFoto ? (
               <img
                 src={`/${FOTO_FUNDADOR}`}
-                alt="David, fundador de Mecanix Yonke Virtual"
+                alt="David, fundador de Red Mecanix"
                 style={{
                   width: '200px', height: '200px', borderRadius: '50%', objectFit: 'cover',
                   border: '4px solid #1A3C5E', boxShadow: '0 4px 16px rgba(26,60,94,0.15)',
@@ -65,7 +65,7 @@ export default function Nosotros() {
 
           <div style={{ color: '#444', fontSize: '15px', lineHeight: '1.8' }}>
             <p style={parrafoStyle}>
-              Hola, soy David, mecánico de Tijuana y fundador de Mecanix Yonke Virtual.
+              Hola, soy David, mecánico de Tijuana y fundador de Red Mecanix.
             </p>
             <p style={parrafoStyle}>
               Antes de la mecánica, trabajé quitando partes en un yonke. Ahí veía todos los días
@@ -86,7 +86,7 @@ export default function Nosotros() {
               forma.
             </p>
             <p style={parrafoStyle}>
-              Así nació Mecanix Yonke Virtual: un buscador donde cualquier persona puede encontrar
+              Así nació Mecanix Yonke Virtual, hoy Red Mecanix: un buscador donde cualquier persona puede encontrar
               su autoparte usada entre los yonkes de la región y contactarlos directo, sin vueltas
               ni complicaciones. Lo construí con mis propias manos, junto a mi hijo, empezando con
               unos cuantos yonkeros que confiaron en la idea.
@@ -106,7 +106,7 @@ export default function Nosotros() {
             textAlign: 'center',
           }}>
             <p style={{ color: '#1A3C5E', fontSize: '15px', fontWeight: '700', margin: '0 0 6px' }}>
-              — David, fundador de Mecanix Yonke Virtual
+              — David, fundador de Red Mecanix
             </p>
             <a href="mailto:contacto@mecanixyonkevirtual.com" style={{ color: '#E8720C', fontSize: '14px', fontWeight: '600', textDecoration: 'none' }}>
               📧 contacto@mecanixyonkevirtual.com

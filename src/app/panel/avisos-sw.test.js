@@ -42,7 +42,7 @@ describe('service worker de avisos', () => {
     await disparar('push', push({ data: { url: 'https://otro-sitio.com/robo' } }));
     await disparar('push', { data: { json: () => { throw new Error('no es JSON'); } } });
     for (const [titulo, opciones] of self.registration.showNotification.mock.calls) {
-      expect(titulo).toBe('Mecanix Yonke Virtual');
+      expect(titulo).toBe('Red Mecanix');
       expect(opciones.data.url).toBe('/panel/reservaciones');
     }
   });

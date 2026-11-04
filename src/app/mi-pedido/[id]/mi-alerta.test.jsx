@@ -77,7 +77,7 @@ describe('página del cliente con las respuestas de los yonkes', () => {
     expect(await screen.findByText('Alternador')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Mi búsqueda activa');
     expect(screen.queryByText('Mi pedido de pieza')).not.toBeInTheDocument();
-    expect(metadata.title).toBe('Mi búsqueda activa | Mecanix Yonke Virtual');
+    expect(metadata.title).toBe('Mi búsqueda activa | Red Mecanix');
   });
 
   it('cada respuesta dice el estado del yonke; las de otro estado llevan el aviso (con o sin Envíos nacionales)', async () => {

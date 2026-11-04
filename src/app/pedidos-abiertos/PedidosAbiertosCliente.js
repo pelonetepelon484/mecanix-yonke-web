@@ -56,7 +56,7 @@ export default function PedidosAbiertosCliente() {
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '16px' }}>
       <div style={{ maxWidth: '560px', margin: '0 auto' }}>
-        <Link href="/" style={{ color: '#1A3C5E', fontSize: '14px', textDecoration: 'none' }}>← Mecanix Yonke Virtual</Link>
+        <Link href="/" style={{ color: '#1A3C5E', fontSize: '14px', textDecoration: 'none' }}>← Red Mecanix</Link>
         <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '10px 0 6px' }}>Clientes buscando piezas</h1>
 
         {situacion === 'noDisponible' ? (

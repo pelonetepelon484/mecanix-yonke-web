@@ -29,7 +29,7 @@ export const metadata = {
   robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
   openGraph: {
     title: META_BIENVENIDA.titulo, description: META_BIENVENIDA.descripcion, url,
-    siteName: 'Mecanix Yonke Virtual', locale: 'es_MX', type: 'website', images: [IMAGEN_PORTADA],
+    siteName: 'Red Mecanix', locale: 'es_MX', type: 'website', images: [IMAGEN_PORTADA],
   },
   twitter: { card: 'summary_large_image', title: META_BIENVENIDA.titulo, description: META_BIENVENIDA.descripcion, images: [IMAGEN_PORTADA] },
 };

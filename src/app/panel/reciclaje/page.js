@@ -777,7 +777,7 @@ function TicketReciclaje({ compra, nombreYonke }) {
       {compra.incluirAvisoFactura && (
         <p style={{ ...ticketLineaStyle, fontSize: '11px', marginBottom: '8px' }}>{AVISO_FACTURA_TEXTO}</p>
       )}
-      {/* Fallback a 'Tu yonke' (no a "Mecanix Yonke Virtual"): este ticket de compra lo emite el
+      {/* Fallback a 'Tu yonke' (no a "Red Mecanix"): este ticket de compra lo emite el
           YONKE, no Mecanix -- mismo criterio que NotaGarantiaModal.js. */}
       <p style={ticketCentroStyle}>{nombreYonke || 'Tu yonke'}</p>
       <p style={ticketCentroStyle}>Compra de material reciclable</p>

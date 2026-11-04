@@ -106,7 +106,7 @@ function DetallePedido({ pedido, estados, sugerir, onCambio, onRespuestas }) {
   if (!detalle) return <p style={{ color: '#555', fontSize: '13px' }}>Cargando...</p>;
 
   const vehiculo = `${pedido.vehiculo?.marca} ${pedido.vehiculo?.modelo} ${pedido.vehiculo?.anio}`;
-  const textoCliente = `Hola, te escribimos de Mecanix Yonke Virtual sobre tu pedido de ${pedido.pieza} para ${vehiculo}.`;
+  const textoCliente = `Hola, te escribimos de Red Mecanix sobre tu pedido de ${pedido.pieza} para ${vehiculo}.`;
 
   return (
     <div style={{ borderTop: '1px solid #EEE', marginTop: '10px', paddingTop: '10px' }}>

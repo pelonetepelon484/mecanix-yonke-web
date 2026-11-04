@@ -9,7 +9,7 @@ export function manifestPanel() {
     id: '/panel',
     name: 'Mecanix',
     short_name: 'Mecanix',
-    description: 'Panel de Mecanix Yonke Virtual para yonkes y talleres.',
+    description: 'Panel de Red Mecanix para yonkes y talleres.',
     lang: 'es-MX',
     start_url: '/panel',
     scope: '/',
