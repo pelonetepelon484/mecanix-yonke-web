@@ -73,9 +73,10 @@ describe('interruptor y SEO', () => {
 });
 
 describe('pantalla', () => {
-  it('encabezado, hero con los dos registros y aviso de textos provisionales', async () => {
+  it('encabezado y hero con los dos registros; textos aprobados, sin aviso provisional', async () => {
     await pintar();
-    expect(screen.getByText(AVISO_PROVISIONAL)).toBeInTheDocument();
+    expect(screen.queryByText(AVISO_PROVISIONAL)).not.toBeInTheDocument();
+    expect(screen.queryByText(/PROVISIONAL/)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: HERO.titulo })).toBeInTheDocument();
     expect(screen.getByText('Para yonkes, talleres y clientes')).toBeInTheDocument();
     const whatsapp = screen.getByRole('link', { name: 'WhatsApp 661 103 4260' });
@@ -162,6 +163,29 @@ describe('pantalla', () => {
     await pintar();
     fireEvent.click(within(selector()).getByRole('button', { name: /Soy taller/ }));
     expect(screen.queryByText('Planes para tu taller')).not.toBeInTheDocument();
+  });
+
+  it('?soy= de la portada abre esa pestaña; un valor que no existe (o taller sin talleres) deja yonke', async () => {
+    const pulsado = () => within(selector()).getAllByRole('button').find((b) => b.getAttribute('aria-pressed') === 'true').textContent;
+    try {
+      for (const [url, conTalleres, esperado, evento] of [
+        ['/bienvenida?soy=cliente#primeros-pasos', true, /Soy cliente/, [{ tipo: 'cliente', origen: 'enlace' }]],
+        ['/bienvenida?soy=taller#primeros-pasos', true, /Soy taller/, [{ tipo: 'taller', origen: 'enlace' }]],
+        ['/bienvenida?soy=yonke', true, /Soy yonke/, []],
+        ['/bienvenida?soy=otro', true, /Soy yonke/, []],
+        ['/bienvenida?soy=taller', false, /Soy yonke/, []],
+      ]) {
+        window.history.replaceState(null, '', url);
+        talleres = conTalleres;
+        gtag.mockClear();
+        await pintar();
+        expect(pulsado()).toMatch(esperado);
+        expect(eventos('bienvenida_selector')).toEqual(evento);
+        cleanup();
+      }
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
   });
 
   it('cliente: el enlace del hero la elige, cambia el título, sin planes y con la tarjeta azul', async () => {

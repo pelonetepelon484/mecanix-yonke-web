@@ -6,11 +6,10 @@
 import { FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, PRECIO_PREMIUM_TEXTO } from './planes';
 import { AVISO_PAGO_ADELANTADO, AVISO_PAGO_MECANIX } from './respuestasPedido';
 
-// ⚠️ [PROVISIONAL] Todo lo de este archivo está pendiente de aprobación legal. Mientras
-// TEXTOS_APROBADOS sea false, la página muestra arriba AVISO_PROVISIONAL. Cuando el abogado los
-// apruebe, se reemplazan por los finales y TEXTOS_APROBADOS pasa a true (el aviso desaparece).
+// Textos aprobados por el abogado (David, 2026-11-03): TEXTOS_APROBADOS en true, sin el aviso de
+// arriba. Si se cambia un texto de aquí y vuelve a revisión, regresarlo a false.
 
-export const TEXTOS_APROBADOS = false;
+export const TEXTOS_APROBADOS = true;
 export const AVISO_PROVISIONAL = '[PROVISIONAL] Textos en revisión legal. No compartas esta página hasta que estén aprobados.';
 
 // Vista previa (WhatsApp, Facebook) y pestaña del navegador.
