@@ -6,7 +6,7 @@
 // los pasos, los planes, las preguntas frecuentes y la llamada final ("Soy taller" solo con
 // talleres). Eventos de Google Analytics: clic_registro, contacto_mecanix, clic_premium (ubicacion
 // "bienvenida") y bienvenida_selector.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ASI_FUNCIONA, AVISO_PROVISIONAL, BOTON_REGISTRO_PLANES, HERO, LLAMADA_FINAL, PIE, PREGUNTAS_FRECUENTES, PRIMEROS_PASOS, TEXTOS_APROBADOS,
@@ -16,6 +16,7 @@ import {
   TarjetaBasicoYonke, TarjetaCapturaDomicilio, TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle, notaPromoStyle,
 } from '../TarjetasPlanes';
 import { ProximamenteMecanix } from '../EcosistemaMecanix';
+import { PARAMETRO_SOY } from '../../lib/enlaceBienvenida';
 import { textoPromoRegistro } from '../../lib/premiumGratis';
 
 export const REGISTRO_YONKE = '/panel/registro?desde=bienvenida';
@@ -45,6 +46,17 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
     setTipo(nuevo);
     registrarEvento('bienvenida_selector', { tipo: nuevo, origen });
   }
+
+  // ?soy=cliente|yonke|taller (botones de la portada, ConoceMecanix.js): abre esa pestaña. Se lee en
+  // el navegador para no quitarle a la página su cadencia de 10 min (leerlo en el servidor la haría
+  // dinámica: una lectura de Firestore por visita). Por eso es un efecto que corre una sola vez al
+  // abrir. Un valor que no existe se ignora.
+  useEffect(() => {
+    const soy = new URLSearchParams(window.location.search).get(PARAMETRO_SOY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (soy && soy !== 'yonke' && opciones.includes(soy)) elegir(soy, 'enlace');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const pasos = pasosVisibles(PRIMEROS_PASOS[tipo], banderas || {});
   const preguntas = preguntasVisibles(PREGUNTAS_FRECUENTES[tipo], {
