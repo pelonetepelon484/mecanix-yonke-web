@@ -6,11 +6,11 @@ export const revalidate = 3600;
 
 export const metadata = {
   title: 'Yonkes registrados en Baja California',
-  description: 'Consulta la lista de yonkes y deshuesaderos afiliados a Mecanix Yonke Virtual en Tijuana, Mexicali, Ensenada, Tecate, Playas de Rosarito y San Quintín.',
+  description: 'Consulta la lista de yonkes y deshuesaderos colaboradores de la red Mecanix en Tijuana, Mexicali, Ensenada, Tecate, Playas de Rosarito y San Quintín.',
   alternates: { canonical: '/yonkes' },
   openGraph: {
     title: 'Yonkes registrados en Baja California | Mecanix Yonke Virtual',
-    description: 'Consulta la lista de yonkes y deshuesaderos afiliados a Mecanix Yonke Virtual en Baja California.',
+    description: 'Consulta la lista de yonkes y deshuesaderos colaboradores de la red Mecanix en Baja California.',
     url: '/yonkes',
     siteName: 'Mecanix Yonke Virtual',
     locale: 'es_MX',
@@ -35,7 +35,7 @@ export default async function YonkesIndexPage() {
             Yonkes registrados en Baja California
           </h1>
           <p style={{ color: '#C5D4E8', fontSize: '13px', margin: '6px 0 0' }}>
-            Elige tu ciudad para ver los yonkes afiliados y sus refacciones usadas
+            Elige tu ciudad para ver los yonkes colaboradores y sus refacciones usadas
           </p>
         </div>
       </div>
@@ -49,7 +49,7 @@ export default async function YonkesIndexPage() {
                 <p style={{ fontWeight: '700', color: '#1A3C5E', fontSize: '16px', margin: 0 }}>{c.label}</p>
                 <p style={{ fontSize: '13px', margin: '4px 0 0' }}>
                   {conteo[c.key] > 0
-                    ? <span style={{ color: '#888' }}>{conteo[c.key]} {conteo[c.key] === 1 ? 'yonke afiliado' : 'yonkes afiliados'}</span>
+                    ? <span style={{ color: '#888' }}>{conteo[c.key]} {conteo[c.key] === 1 ? 'yonke colaborador' : 'yonkes colaboradores'}</span>
                     : <span style={{ color: '#E8720C', fontWeight: '600' }}>Sé el primero en tu ciudad</span>}
                 </p>
               </a>

@@ -5,16 +5,16 @@
 // los yonkes". Apagado, todo funciona exactamente igual que antes.
 
 export const MENSAJE_SIN_INVENTARIO =
-  'No tenemos esa pieza en inventario ahorita, pero te avisamos en cuanto algún yonke la registre.';
+  'Ningún yonke colaborador de la red Mecanix tiene esa pieza en su inventario ahorita, pero te avisamos en cuanto algún yonke la registre.';
 export const MENSAJE_VEHICULO_SIN_INVENTARIO =
-  'No tenemos ese vehículo en inventario ahorita, pero te avisamos en cuanto algún yonke lo registre.';
+  'Ningún yonke colaborador de la red Mecanix tiene ese vehículo en su inventario ahorita, pero te avisamos en cuanto algún yonke lo registre.';
 // Con el pedido de clientes encendido ya no se promete avisar: debajo aparece "Avisar a los yonkes".
-export const MENSAJE_SIN_INVENTARIO_PEDIDOS = 'No tenemos esa pieza en inventario ahorita.';
-export const MENSAJE_VEHICULO_SIN_INVENTARIO_PEDIDOS = 'No tenemos ese vehículo en inventario ahorita.';
+export const MENSAJE_SIN_INVENTARIO_PEDIDOS = 'Ningún yonke colaborador de la red Mecanix tiene esa pieza en su inventario ahorita.';
+export const MENSAJE_VEHICULO_SIN_INVENTARIO_PEDIDOS = 'Ningún yonke colaborador de la red Mecanix tiene ese vehículo en su inventario ahorita.';
 
 // conContacto: el cliente dejó su WhatsApp. Solo entonces se promete avisarle (aviso de privacidad,
 // sección 4: "Si nos dejas tu WhatsApp, … avisarte cuando la pieza esté disponible"). Sin él, o con
-// el pedido de clientes encendido, solo "No tenemos … en inventario ahorita."
+// el pedido de clientes encendido, solo "Ningún yonke colaborador … ahorita."
 export function mensajeSinInventario({ vehiculo = false, pedidosClientesActivos = false, conContacto = false } = {}) {
   const prometer = conContacto === true && !pedidosClientesActivos;
   if (vehiculo) return prometer ? MENSAJE_VEHICULO_SIN_INVENTARIO : MENSAJE_VEHICULO_SIN_INVENTARIO_PEDIDOS;

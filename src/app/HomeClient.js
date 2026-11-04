@@ -1184,7 +1184,7 @@ export default function HomeClient({ textoSeoEstados, textoConteoRed = '', boton
   function getHeaderText() {
     if (sinYonkesEnEstadoManual) {
       const nombreEstado = estadosDisponibles.find(e => e.id === estadoBusqueda)?.nombre || estadoBusqueda;
-      return `Aún no tenemos yonkes registrados en ${nombreEstado} — muy pronto estaremos ahí.`;
+      return `Aún no hay yonkes colaboradores de la red Mecanix en ${nombreEstado} — muy pronto estaremos ahí.`;
     }
     const ciudadLabel = ciudad ? CIUDADES_BC.find(c => c.key === ciudad)?.label : null;
     const sufijoCiudad = ciudadLabel ? ` en ${ciudadLabel}` : '';
@@ -1638,7 +1638,7 @@ function obtenerEstadoAbierto(horario) {
   // Caso a de otros estados (estado elegido sin nada y abajo resultados de otros estados): el
   // recuadro de la alerta cambia solo su título y su texto.
   const nombreEstadoBusqueda = estadosDisponibles.find((e) => e.id === estadoBusqueda)?.nombre || estadoBusqueda;
-  // Número de parte, marca muy general o pieza sin vehículo: título propio (no "No tenemos ese
+  // Número de parte, marca muy general o pieza sin vehículo: título propio (no "Ningún yonke colaborador tiene ese
   // vehículo todavía", porque no se buscó un vehículo).
   const tituloIncompleta = mensajeLibre ? tituloAlertaProtagonista(mensajeLibre.tipo, textosConsulta) : null;
   const alertaConOtrosEstados = mensajeLibre?.otrosEstados?.modo === 'a'
@@ -1826,7 +1826,7 @@ function obtenerEstadoAbierto(horario) {
                   backgroundColor: ['sin_inventario', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) ? '#EEF4FA' : '#FFF8E1',
                   border: `1px solid ${['sin_inventario', 'sin_yonkes_estado'].includes(mensajeLibre.tipo) ? '#C5D8EC' : '#FFD54F'}`,
                 }}>
-                  {/* Con la alerta de un paso, "No tenemos esa pieza…" ya lo dice su título. */}
+                  {/* Con la alerta de un paso, "Ningún yonke colaborador…" ya lo dice su título. */}
                   {partesCuadro.texto && (
                     <p style={{ margin: 0, fontSize: '13px', color: '#1A3C5E', lineHeight: '1.5' }}>
                       {mensajeLibre.texto}
@@ -2384,7 +2384,7 @@ function obtenerEstadoAbierto(horario) {
             <div style={yonkeCtaStyle}>
               <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏪</div>
               <p style={{ fontSize: '13px', fontWeight: '700', color: '#E8720C', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 6px' }}>
-                Únete a la red de yonkes
+                Únete a la red Mecanix
               </p>
               <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A3C5E', margin: '0 0 10px' }}>
                 ¿Administras un yonke?

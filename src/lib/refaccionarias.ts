@@ -17,7 +17,7 @@ export const TEXTOS_PROVISIONALES = {
   avisoPrecios: '[PROVISIONAL] Precios y existencias sujetos a confirmación con la refaccionaria. Mecanix no vende piezas: el trato es directo con el negocio.',
   noDisponible: '[PROVISIONAL] Esta refaccionaria no está disponible por ahora en Mecanix.',
   // Buscador "Piezas nuevas" (etapa 4)
-  introPiezasNuevas: '[PROVISIONAL] Busca piezas nuevas por número de parte o descripción entre las refaccionarias de Mecanix y contacta directo a la refaccionaria.',
+  introPiezasNuevas: '[PROVISIONAL] Busca piezas nuevas por número de parte o descripción entre las refaccionarias colaboradoras de la red Mecanix y contacta directo a la refaccionaria.',
   ordenResultados: '[PROVISIONAL] Orden: primero las piezas que mejor coinciden con tu búsqueda (número de parte exacto, luego que empieza o que contiene lo que escribiste) y, si coinciden igual, el precio más bajo.',
 } as const;
 // Hasta que existan las secciones legales de refaccionarias, apuntan a los documentos generales.

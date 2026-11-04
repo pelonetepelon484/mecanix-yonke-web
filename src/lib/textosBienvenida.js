@@ -1,7 +1,9 @@
 // Textos de /bienvenida (página para mandar por WhatsApp a yonkes y talleres), todos juntos para que
 // el abogado los revise de una vez. Los textos de planes NO van aquí: salen de lib/planes.js (los
-// mismos de la portada). Reglas de redacción: "red de yonkes" sí, "nuestros yonkes" o "nuestra red"
-// no; Mecanix es un "motor de búsqueda de autopartes"; nada de cifras ni promesas nuevas.
+// mismos de la portada). Reglas de redacción: los negocios son "colaboradores de la red Mecanix"
+// (nunca "de Mecanix", "nuestros yonkes", "nuestra red" ni "no tenemos esa pieza"); "red Mecanix"
+// cuando se habla de toda la red (ya no solo hay yonkes); Mecanix es un "motor de búsqueda de
+// autopartes"; nada de cifras ni promesas nuevas.
 //
 import { FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, PRECIO_PREMIUM_TEXTO } from './planes';
 import { AVISO_PAGO_ADELANTADO, AVISO_PAGO_MECANIX } from './respuestasPedido';
@@ -27,7 +29,7 @@ export const WHATSAPP_MECANIX = {
 export const HERO = {
   etiqueta: 'Para yonkes, talleres y clientes',
   titulo: 'Los clientes ya buscan piezas. Que te encuentren a ti.',
-  entrada: 'Mecanix es un motor de búsqueda de autopartes: conecta a quien busca una pieza con la red de yonkes.',
+  entrada: 'Mecanix es un motor de búsqueda de autopartes: conecta a quien busca una pieza con los yonkes, talleres y negocios colaboradores de la red Mecanix.',
   botonYonke: 'Registrar mi yonke',
   botonTaller: 'Registrar mi taller',
   enlaceCliente: '¿Buscas una pieza? Mira cómo funciona para clientes',
@@ -90,7 +92,7 @@ export const PRIMEROS_PASOS = {
     { titulo: 'Registra tu refaccionaria', desc: 'Crea la cuenta de tu negocio con tus datos y tu zona de entrega.' },
     { titulo: 'Sube tu catálogo de piezas nuevas', desc: 'Desde un archivo CSV o Excel, con número de parte, descripción y precio.' },
     { titulo: 'Tu catálogo en línea', desc: 'Tu refaccionaria tendrá su propia página, donde el cliente verá tus piezas, precios y promociones.' },
-    { titulo: 'El cliente compara precios', desc: 'El buscador "Piezas nuevas" busca entre las refaccionarias de Mecanix, compara sus precios y los muestra en tarjetas para que el cliente decida a quién comprarle.' },
+    { titulo: 'El cliente compara precios', desc: 'El buscador "Piezas nuevas" busca entre las refaccionarias colaboradoras de la red Mecanix, compara sus precios y los muestra en tarjetas para que el cliente decida a quién comprarle.' },
     { titulo: 'El cliente te escribe directo', desc: 'El trato, el pago y la entrega los acuerdas tú con él. Mecanix no vende piezas.' },
   ],
   etiquetaProximamente: 'Próximamente',

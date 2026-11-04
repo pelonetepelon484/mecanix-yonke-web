@@ -5,7 +5,7 @@ import '@testing-library/jest-dom/vitest';
 
 // Página principal en modo número (config/pedidosClientes.formularioAbierto, que el servidor manda
 // como formularioAbierto en la respuesta) contra la bandera apagada: recuadro de la alerta, título de
-// otros estados y el recuadro azul "Aún no tenemos yonkes registrados en…".
+// otros estados y el recuadro azul "Aún no hay yonkes colaboradores de la red Mecanix en…".
 // config/pedidosClientes: con la bandera encendida el documento trae formularioAbierto (textos de
 // "consulta") y el servidor manda formularioAbierto en la respuesta (formulario abierto).
 let configPedidos = {};
@@ -26,7 +26,7 @@ const { TEXTO_BOTON_ALERTA, TEXTO_CASILLA_OTROS_ESTADOS, TEXTO_CONSENTIMIENTO_OT
 const { TITULO_CON_OTROS_ESTADOS } = await import('../lib/otrosEstadosPantalla');
 
 const BUSQUEDA = { marca: 'Nissan', modelo: 'Sentra', anio: 2005, pieza: 'Alternador' };
-const SIN_YONKES = 'Aún no tenemos yonkes registrados en Colima — muy pronto estaremos ahí. Prueba buscando en "Todos los estados".';
+const SIN_YONKES = 'Aún no hay yonkes colaboradores de la red Mecanix en Colima — muy pronto estaremos ahí. Prueba buscando en "Todos los estados".';
 const TARJETA = {
   yonkeId: 'SON', yonkeNombre: 'Yonke Sonora', ciudad: 'Hermosillo', vehiculoId: 'v1', estadoYonke: 'sonora',
   calificacion: { promedio: 0, total: 0 }, metodosPago: [], vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2005 }, piezas: [], fotos: {},
@@ -37,7 +37,7 @@ const RESPUESTAS = {
   // Caso a de otros estados: abajo sí hay resultados de otros estados.
   numeroDeParte: { estado: 'numero_de_parte', mensaje: 'Parece un número de parte.' },
   conOtrosEstados: {
-    estado: 'sin_inventario', mensaje: 'No tenemos esa pieza en inventario ahorita.', busqueda: BUSQUEDA,
+    estado: 'sin_inventario', mensaje: 'Ningún yonke colaborador de la red Mecanix tiene esa pieza en su inventario ahorita.', busqueda: BUSQUEDA,
     otrosEstadosRevisados: true, resultadosOtrosEstados: [{ estado: 'sonora', estadoNombre: 'Sonora', resultados: [TARJETA] }],
   },
 };

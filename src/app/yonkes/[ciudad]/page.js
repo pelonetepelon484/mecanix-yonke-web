@@ -28,7 +28,7 @@ export async function generateMetadata({ params }) {
   // template, así que ahí sí se manda el título completo.
   const titleBase = `Yonkes en ${ciudadInfo.label}`;
   const title = `${titleBase} | Mecanix Yonke Virtual`;
-  const description = `Encuentra yonkes y deshuesaderos afiliados en ${ciudadInfo.label}, Baja California. Consulta refacciones usadas, teléfono, horario y contacta directo por WhatsApp.`;
+  const description = `Encuentra yonkes y deshuesaderos colaboradores de la red Mecanix en ${ciudadInfo.label}, Baja California. Consulta refacciones usadas, teléfono, horario y contacta directo por WhatsApp.`;
   const url = `/yonkes/${ciudad}`;
 
   return {
@@ -138,7 +138,7 @@ export default async function CiudadPage({ params }) {
             Yonkes en {ciudadInfo.label}
           </h1>
           <p style={{ color: '#C5D4E8', fontSize: '13px', margin: 0 }}>
-            {yonkes.length} {yonkes.length === 1 ? 'yonke afiliado' : 'yonkes afiliados'}
+            {yonkes.length} {yonkes.length === 1 ? 'yonke colaborador' : 'yonkes colaboradores'}
           </p>
         </div>
       </div>
@@ -158,7 +158,7 @@ export default async function CiudadPage({ params }) {
               </p>
             ) : (
               <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.8', margin: 0 }}>
-                Aún no hay yonkes afiliados en {ciudadInfo.label}. ¿Tienes un yonke aquí?{' '}
+                Aún no hay yonkes colaboradores en {ciudadInfo.label}. ¿Tienes un yonke aquí?{' '}
                 <strong style={{ color: '#E8720C' }}>Regístrate.</strong>
               </p>
             )}

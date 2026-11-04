@@ -6,7 +6,7 @@ import CalificarClient from './CalificarClient';
 // escribe, sin cambios de lógica).
 export const metadata = {
   title: 'Califica tu experiencia',
-  description: 'Califica tu experiencia de compra con un yonke afiliado a Mecanix Yonke Virtual usando tu número de pedido.',
+  description: 'Califica tu experiencia de compra con un yonke colaborador de la red Mecanix usando tu número de pedido.',
   alternates: { canonical: '/calificar' },
   robots: { index: true, follow: true },
 };
