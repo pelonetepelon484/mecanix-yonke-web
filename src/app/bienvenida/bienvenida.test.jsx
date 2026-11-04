@@ -50,7 +50,7 @@ const pintar = async () => render(await Bienvenida());
 const selector = () => screen.getByRole('group', { name: '¿Quién eres?' });
 // El hero es lo primero; la llamada final repite los mismos botones al final.
 const hero = (nombre) => screen.getAllByRole('link', { name: nombre })[0];
-const final = () => screen.getByRole('region', { name: /Empieza a recibir búsquedas hoy|¿Buscas una pieza\?/ });
+const final = () => screen.getByRole('region', { name: /Empieza a recibir búsquedas hoy|¿Buscas una pieza\?|¿Tienes una refaccionaria\?/ });
 const preguntas = () => within(screen.getByRole('region', { name: 'Preguntas frecuentes' })).queryAllByRole('group').map((d) => d.querySelector('summary').textContent);
 const respuesta = (pregunta) => within(screen.getByRole('region', { name: 'Preguntas frecuentes' })).getByText(pregunta).closest('details').textContent.slice(pregunta.length);
 const eventos = (nombre) => gtag.mock.calls.filter(([, n]) => n === nombre).map(([, , p]) => p);
@@ -106,7 +106,7 @@ describe('pantalla', () => {
     await pintar();
     expect(screen.queryByRole('link', { name: /Registrar mi taller/ })).not.toBeInTheDocument();
     expect(within(selector()).queryByRole('button', { name: /Soy taller/ })).not.toBeInTheDocument();
-    expect(within(selector()).getAllByRole('button')).toHaveLength(2);
+    expect(within(selector()).getAllByRole('button')).toHaveLength(3);
   });
 
   it('yonke: pasos y planes con los interruptores de la portada; captura donde hay visitas', async () => {
@@ -165,12 +165,43 @@ describe('pantalla', () => {
     expect(screen.queryByText('Planes para tu taller')).not.toBeInTheDocument();
   });
 
+  it('refaccionaria: "próximamente", 5 pasos, sin registro ni planes; WhatsApp para que les avisen', async () => {
+    docs['config/planes'] = { limitesActivos: true, tarjetasTalleres: true };
+    await pintar();
+    fireEvent.click(within(selector()).getByRole('button', { name: '📦 Soy refaccionaria' }));
+    expect(eventos('bienvenida_selector')).toEqual([{ tipo: 'refaccionaria', origen: 'selector' }]);
+    const seccion = screen.getByRole('region', { name: 'Así funcionará para tu refaccionaria' });
+    expect(within(seccion).getByText('Próximamente')).toBeInTheDocument();
+    expect(within(seccion).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(PRIMEROS_PASOS.refaccionaria.map((p) => p.titulo));
+    expect(screen.getByText(/tendrá su propia página, donde el cliente verá tus piezas, precios y promociones/)).toBeInTheDocument();
+    expect(screen.getByText(/compara sus precios y los muestra en tarjetas/)).toBeInTheDocument();
+    // Ni registro de refaccionarias ni planes de yonke o taller.
+    expect(document.querySelector('a[href*="/panel/refaccionaria"]')).toBeNull();
+    expect(screen.queryByText(PRECIO_PREMIUM_TEXTO)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Planes para tu yonke' })).not.toBeInTheDocument();
+    const avisar = screen.getAllByRole('link', { name: /Quiero que me avisen/ });
+    expect(avisar).toHaveLength(2);
+    const url = `https://wa.me/526611034260?text=${encodeURIComponent('Hola, tengo una refaccionaria y quiero que me avisen cuando abran el registro')}`;
+    for (const a of avisar) expect(a).toHaveAttribute('href', url);
+    fireEvent.click(avisar[0]);
+    fireEvent.click(avisar[1]);
+    expect(eventos('contacto_mecanix')).toEqual([
+      { medio: 'whatsapp', ubicacion: 'bienvenida_refaccionaria' }, { medio: 'whatsapp', ubicacion: 'bienvenida_refaccionaria_final' },
+    ]);
+    expect(final()).toHaveTextContent('¿Tienes una refaccionaria?');
+    expect(within(final()).queryByText('Escríbenos por WhatsApp')).not.toBeInTheDocument();
+    expect(preguntas()).toEqual(['¿Cuándo abren el registro?', '¿Mecanix vende las piezas?']);
+    // "Próximamente en Mecanix" no repite "Refacciones nuevas" en esta pestaña.
+    expect(within(screen.getByRole('region', { name: 'Próximamente en Mecanix' })).queryByText('Refacciones nuevas')).not.toBeInTheDocument();
+  });
+
   it('?soy= de la portada abre esa pestaña; un valor que no existe (o taller sin talleres) deja yonke', async () => {
     const pulsado = () => within(selector()).getAllByRole('button').find((b) => b.getAttribute('aria-pressed') === 'true').textContent;
     try {
       for (const [url, conTalleres, esperado, evento] of [
         ['/bienvenida?soy=cliente#primeros-pasos', true, /Soy cliente/, [{ tipo: 'cliente', origen: 'enlace' }]],
         ['/bienvenida?soy=taller#primeros-pasos', true, /Soy taller/, [{ tipo: 'taller', origen: 'enlace' }]],
+        ['/bienvenida?soy=refaccionaria', false, /Soy refaccionaria/, [{ tipo: 'refaccionaria', origen: 'enlace' }]],
         ['/bienvenida?soy=yonke', true, /Soy yonke/, []],
         ['/bienvenida?soy=otro', true, /Soy yonke/, []],
         ['/bienvenida?soy=taller', false, /Soy yonke/, []],

@@ -54,7 +54,8 @@ export const ASI_FUNCIONA = {
 export const PRIMEROS_PASOS = {
   titulo: 'Tus primeros pasos',
   tituloCliente: 'Cómo buscar tu pieza',
-  opciones: { yonke: '🏪 Soy yonke', taller: '🔧 Soy taller', cliente: '🚗 Soy cliente' },
+  tituloRefaccionaria: 'Así funcionará para tu refaccionaria',
+  opciones: { yonke: '🏪 Soy yonke', taller: '🔧 Soy taller', cliente: '🚗 Soy cliente', refaccionaria: '📦 Soy refaccionaria' },
   yonke: [
     { titulo: 'Regístrate', desc: 'Crea la cuenta de tu yonke. Actualmente sin costo.' },
     { titulo: 'Instala la app', desc: 'Desde tu panel, agrega Mecanix a la pantalla de inicio de tu celular.' },
@@ -83,6 +84,21 @@ export const PRIMEROS_PASOS = {
       antes: { si: 'formularioAbierto', texto: 'Mecanix no manda mensajes automáticos.' },
     },
   ],
+  // Refaccionarias: solo "próximamente". El registro sigue cerrado (config/refaccionarias), así que
+  // no hay botón de registro: solo WhatsApp para que les avisemos. Sin precios, planes ni fechas.
+  refaccionaria: [
+    { titulo: 'Registra tu refaccionaria', desc: 'Crea la cuenta de tu negocio con tus datos y tu zona de entrega.' },
+    { titulo: 'Sube tu catálogo de piezas nuevas', desc: 'Desde un archivo CSV o Excel, con número de parte, descripción y precio.' },
+    { titulo: 'Tu catálogo en línea', desc: 'Tu refaccionaria tendrá su propia página, donde el cliente verá tus piezas, precios y promociones.' },
+    { titulo: 'El cliente compara precios', desc: 'El buscador "Piezas nuevas" busca entre las refaccionarias de Mecanix, compara sus precios y los muestra en tarjetas para que el cliente decida a quién comprarle.' },
+    { titulo: 'El cliente te escribe directo', desc: 'El trato, el pago y la entrega los acuerdas tú con él. Mecanix no vende piezas.' },
+  ],
+  etiquetaProximamente: 'Próximamente',
+  tarjetaRefaccionaria: {
+    titulo: 'Todavía no recibimos registros de refaccionarias',
+    texto: 'Si quieres que te avisemos cuando abramos, escríbenos.',
+    boton: 'Quiero que me avisen',
+  },
   tarjetaCliente: {
     titulo: 'Buscar no tiene costo para ti',
     texto: 'No necesitas crear una cuenta para consultar con los yonkes.',
@@ -190,6 +206,10 @@ export const PREGUNTAS_FRECUENTES = {
     },
     { pregunta: '¿Puedo pagar directo en Mecanix?', respuesta: [{ texto: `No. ${AVISO_PAGO_APROBADO}` }] },
   ],
+  refaccionaria: [
+    { pregunta: '¿Cuándo abren el registro?', respuesta: [{ texto: 'Todavía no hay fecha. Si nos escribes por WhatsApp, te avisamos cuando abramos.' }] },
+    { pregunta: '¿Mecanix vende las piezas?', respuesta: [{ texto: 'No. El cliente te escribe directo y el trato, el pago y la entrega los acuerdas tú con él.' }] },
+  ],
 };
 
 // Llamada final según la pestaña. WhatsApp con el mismo mensaje del encabezado.
@@ -197,8 +217,12 @@ export const LLAMADA_FINAL = {
   yonke: { titulo: 'Empieza a recibir búsquedas hoy', boton: 'Registrar mi yonke' },
   taller: { titulo: 'Empieza a recibir búsquedas hoy', boton: 'Registrar mi taller' },
   cliente: { titulo: '¿Buscas una pieza?', boton: 'Buscar una pieza' },
+  refaccionaria: { titulo: '¿Tienes una refaccionaria?', boton: 'Quiero que me avisen' },
   whatsapp: 'Escríbenos por WhatsApp',
 };
+
+// "Quiero que me avisen" de la pestaña refaccionaria: WhatsApp de Mecanix con su propio mensaje.
+export const WHATSAPP_REFACCIONARIA = `https://wa.me/526611034260?text=${encodeURIComponent('Hola, tengo una refaccionaria y quiero que me avisen cuando abran el registro')}`;
 
 export const PIE = { tecnologia: 'Con tecnología Mecanix', terminos: 'Términos y Condiciones', privacidad: 'Aviso de Privacidad' };
 

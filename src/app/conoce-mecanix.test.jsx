@@ -30,12 +30,13 @@ describe('ConoceMecanix', () => {
       ['🚗 Soy cliente', '/bienvenida?soy=cliente#primeros-pasos'],
       ['🏪 Tengo un yonke', '/bienvenida?soy=yonke#primeros-pasos'],
       ['🔧 Tengo un taller', '/bienvenida?soy=taller#primeros-pasos'],
+      ['📦 Tengo una refaccionaria · Próximamente', '/bienvenida?soy=refaccionaria#primeros-pasos'],
     ]);
   });
 
   it('sin talleres no aparece "Tengo un taller"', () => {
     render(<ConoceMecanix />);
-    expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual(['🚗 Soy cliente', '🏪 Tengo un yonke']);
+    expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual(['🚗 Soy cliente', '🏪 Tengo un yonke', '📦 Tengo una refaccionaria · Próximamente']);
   });
 
   it('registra el clic en Google Analytics', () => {

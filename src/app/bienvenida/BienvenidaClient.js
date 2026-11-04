@@ -2,15 +2,15 @@
 
 // Pantalla de /bienvenida (page.js decide si existe y le pasa las banderas). Una columna, primero
 // celular. Textos nuevos en lib/textosBienvenida.js; planes, los mismos componentes y textos de la
-// portada (TarjetasPlanes.js, lib/planes.js). Selector "Soy yonke / Soy taller / Soy cliente": cambia
-// los pasos, los planes, las preguntas frecuentes y la llamada final ("Soy taller" solo con
-// talleres). Eventos de Google Analytics: clic_registro, contacto_mecanix, clic_premium (ubicacion
+// portada (TarjetasPlanes.js, lib/planes.js). Selector "Soy yonke / Soy taller / Soy cliente / Soy
+// refaccionaria": cambia los pasos, los planes, las preguntas frecuentes y la llamada final ("Soy
+// taller" solo con talleres; refaccionaria solo "próximamente", sin registro). Eventos de Google Analytics: clic_registro, contacto_mecanix, clic_premium (ubicacion
 // "bienvenida") y bienvenida_selector.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ASI_FUNCIONA, AVISO_PROVISIONAL, BOTON_REGISTRO_PLANES, HERO, LLAMADA_FINAL, PIE, PREGUNTAS_FRECUENTES, PRIMEROS_PASOS, TEXTOS_APROBADOS,
-  TITULO_PLANES_YONKE, TITULO_PREGUNTAS, TITULO_PROXIMAMENTE, WHATSAPP_MECANIX, pasosVisibles, preguntasVisibles,
+  TITULO_PLANES_YONKE, TITULO_PREGUNTAS, TITULO_PROXIMAMENTE, WHATSAPP_MECANIX, WHATSAPP_REFACCIONARIA, pasosVisibles, preguntasVisibles,
 } from '../../lib/textosBienvenida';
 import {
   TarjetaBasicoYonke, TarjetaCapturaDomicilio, TarjetaPremiumYonke, TarjetasPlanesTaller, gridPlanesStyle, gridTresPlanesStyle, notaPromoStyle,
@@ -30,6 +30,7 @@ function registrarEvento(nombre, params = {}) {
 }
 
 const clicRegistro = (tipo, ubicacion) => () => registrarEvento('clic_registro', { tipo, ubicacion });
+const avisarRefaccionaria = (ubicacion) => () => registrarEvento('contacto_mecanix', { medio: 'whatsapp', ubicacion });
 
 // "Baja California", "Baja California y Sonora", "A, B y C".
 export function listaConY(nombres) {
@@ -40,7 +41,7 @@ export function listaConY(nombres) {
 // mesesPromoTaller: promoción "Premium gratis al registrarte" de config/talleres (null = apagada).
 export default function BienvenidaClient({ talleres = false, planes, banderas, estadosConVisitas = [], buscadorRefacciones = false, mesesPromoTaller = null }) {
   const [tipo, setTipo] = useState('yonke');
-  const opciones = ['yonke', ...(talleres ? ['taller'] : []), 'cliente'];
+  const opciones = ['yonke', ...(talleres ? ['taller'] : []), 'cliente', 'refaccionaria'];
 
   function elegir(nuevo, origen = 'selector') {
     setTipo(nuevo);
@@ -119,8 +120,12 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
         </section>
 
         <section id="primeros-pasos" style={{ ...caja, scrollMarginTop: '16px' }} aria-labelledby="titulo-primeros-pasos">
-          <h2 id="titulo-primeros-pasos" style={tituloSeccion}>{tipo === 'cliente' ? PRIMEROS_PASOS.tituloCliente : PRIMEROS_PASOS.titulo}</h2>
-          <div role="group" aria-label="¿Quién eres?" style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+          <h2 id="titulo-primeros-pasos" style={tituloSeccion}>
+            {{ cliente: PRIMEROS_PASOS.tituloCliente, refaccionaria: PRIMEROS_PASOS.tituloRefaccionaria }[tipo] ?? PRIMEROS_PASOS.titulo}
+          </h2>
+          {tipo === 'refaccionaria' && <p style={pastillaProximamente}>{PRIMEROS_PASOS.etiquetaProximamente}</p>}
+          {/* Con 4 opciones, 2 por renglón: en celular no caben 4 en uno. */}
+          <div role="group" aria-label="¿Quién eres?" style={{ display: 'grid', gridTemplateColumns: `repeat(${opciones.length > 3 ? 2 : opciones.length}, 1fr)`, gap: '8px', marginBottom: '20px' }}>
             {opciones.map((o) => (
               <button key={o} type="button" aria-pressed={tipo === o} onClick={() => elegir(o)} style={opcion(tipo === o)}>
                 {PRIMEROS_PASOS.opciones[o]}
@@ -140,6 +145,15 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
           </ol>
           {tipo === 'taller' && talleres && mesesPromoTaller && (
             <p style={{ ...notaPromoStyle, display: 'block', textAlign: 'center' }}>🎁 {textoPromoRegistro(mesesPromoTaller)}</p>
+          )}
+          {tipo === 'refaccionaria' && (
+            <div style={tarjetaCliente}>
+              <p style={{ margin: '0 0 6px', fontSize: '17px', fontWeight: 700 }}>{PRIMEROS_PASOS.tarjetaRefaccionaria.titulo}</p>
+              <p style={{ margin: '0 0 16px', fontSize: '14px', lineHeight: 1.5, opacity: 0.9 }}>{PRIMEROS_PASOS.tarjetaRefaccionaria.texto}</p>
+              <a href={WHATSAPP_REFACCIONARIA} target="_blank" rel="noopener noreferrer" style={botonVerde} onClick={avisarRefaccionaria('bienvenida_refaccionaria')}>
+                💬 {PRIMEROS_PASOS.tarjetaRefaccionaria.boton}
+              </a>
+            </div>
           )}
           {tipo === 'cliente' && (
             <div style={tarjetaCliente}>
@@ -170,7 +184,7 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
         )}
 
         <div style={{ marginTop: '28px' }}>
-          <ProximamenteMecanix titulo={TITULO_PROXIMAMENTE} ocultarRefacciones={buscadorRefacciones} />
+          <ProximamenteMecanix titulo={TITULO_PROXIMAMENTE} ocultarRefacciones={buscadorRefacciones || tipo === 'refaccionaria'} />
         </div>
 
         <section style={caja} aria-labelledby="preguntas-frecuentes">
@@ -194,20 +208,27 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
 
         <section style={{ ...tarjetaCliente, marginTop: '12px' }} aria-labelledby="llamada-final">
           <h2 id="llamada-final" style={{ margin: '0 0 16px', fontSize: '22px', fontWeight: 700 }}>{final.titulo}</h2>
-          {tipo === 'cliente' ? (
-            <Link href="/" style={botonNaranja}>🔍 {final.boton}</Link>
-          ) : (
+          {tipo === 'cliente' && <Link href="/" style={botonNaranja}>🔍 {final.boton}</Link>}
+          {tipo === 'refaccionaria' && (
+            <a href={WHATSAPP_REFACCIONARIA} target="_blank" rel="noopener noreferrer" style={botonVerde} onClick={avisarRefaccionaria('bienvenida_refaccionaria_final')}>
+              💬 {final.boton}
+            </a>
+          )}
+          {(tipo === 'yonke' || tipo === 'taller') && (
             <a href={registroFinal} style={botonNaranja} onClick={clicRegistro(tipo, 'bienvenida_final')}>
               {tipo === 'yonke' ? '🏪' : '🔧'} {final.boton}
             </a>
           )}
-          <a
-            href={WHATSAPP_MECANIX.url} target="_blank" rel="noopener noreferrer"
-            style={{ display: 'block', marginTop: '16px', color: '#fff', fontWeight: 600, fontSize: '14px' }}
-            onClick={() => registrarEvento('contacto_mecanix', { medio: 'whatsapp', ubicacion: 'bienvenida_final' })}
-          >
-            {LLAMADA_FINAL.whatsapp}
-          </a>
+          {/* En refaccionaria el botón de arriba ya es WhatsApp. */}
+          {tipo !== 'refaccionaria' && (
+            <a
+              href={WHATSAPP_MECANIX.url} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'block', marginTop: '16px', color: '#fff', fontWeight: 600, fontSize: '14px' }}
+              onClick={() => registrarEvento('contacto_mecanix', { medio: 'whatsapp', ubicacion: 'bienvenida_final' })}
+            >
+              {LLAMADA_FINAL.whatsapp}
+            </a>
+          )}
         </section>
 
         <footer style={{ marginTop: '32px', paddingTop: '20px', borderTop: '1px solid #ddd', textAlign: 'center' }}>
@@ -227,6 +248,8 @@ const botonWhatsapp = { flexShrink: 0, padding: '10px 16px', borderRadius: '50px
 const etiqueta = { fontSize: '13px', fontWeight: 700, color: '#E8720C', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 10px' };
 const botonBase = { display: 'inline-block', padding: '14px 24px', borderRadius: '50px', color: '#fff', fontWeight: 700, fontSize: '15px', textDecoration: 'none' };
 const botonNaranja = { ...botonBase, background: 'linear-gradient(135deg, #E8720C 0%, #cf6209 100%)', boxShadow: '0 4px 14px rgba(232,114,12,0.4)' };
+const botonVerde = { ...botonBase, backgroundColor: '#25D366', boxShadow: '0 4px 12px rgba(37,211,102,0.35)' };
+const pastillaProximamente = { margin: '-8px auto 16px', width: 'fit-content', padding: '4px 12px', borderRadius: '999px', backgroundColor: '#FFF3E6', color: '#E8720C', fontSize: '12px', fontWeight: 700 };
 const botonAzul = { ...botonBase, backgroundColor: '#1A3C5E', boxShadow: '0 4px 12px rgba(26,60,94,0.3)' };
 const caja = { backgroundColor: '#fff', borderRadius: '20px', padding: '24px 20px', boxShadow: '0 4px 16px rgba(26,60,94,0.07)', marginBottom: '12px' };
 const tituloSeccion = { fontSize: '20px', color: '#1A3C5E', fontWeight: 700, margin: '0 0 18px', textAlign: 'center' };

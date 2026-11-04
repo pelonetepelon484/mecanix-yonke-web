@@ -13,6 +13,8 @@ export const BOTONES_CONOCE = [
   { tipo: 'cliente', texto: '🚗 Soy cliente' },
   { tipo: 'yonke', texto: '🏪 Tengo un yonke' },
   { tipo: 'taller', texto: '🔧 Tengo un taller' },
+  // Solo "próximamente": abre la pestaña que explica cómo funcionará, sin registro.
+  { tipo: 'refaccionaria', texto: '📦 Tengo una refaccionaria · Próximamente' },
 ];
 
 function registrarClic(tipo) {
