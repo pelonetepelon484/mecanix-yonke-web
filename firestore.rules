@@ -569,6 +569,66 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Asistencia vial (etapa 1: directorio, solo el admin da de alta) ----------
+    // El público solo lee proveedores activos (la página consulta con where activo == true). Lo
+    // privado (notas, documentos revisados, contacto del dueño) va aparte en privado/datos, solo
+    // admin. Ver src/lib/asistenciaVial.js.
+    match /asistenciaVial/{proveedorId} {
+      function proveedorValido() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['nombre', 'servicios', 'tiposGrua', 'ciudades', 'atiende24h', 'horario', 'telefono', 'whatsapp', 'descripcion', 'logoUrl', 'activo', 'documentosEnRegla', 'fechaRevisionDocumentos', 'creadoAt', 'actualizadoAt'])
+          && d.nombre is string && d.nombre.size() >= 2 && d.nombre.size() <= 100
+          && d.servicios is list && d.servicios.size() >= 1 && d.servicios.size() <= 7
+          && d.servicios.hasOnly(['grua', 'llantera', 'paso_de_corriente', 'cambio_de_llanta', 'gasolina', 'cerrajeria_automotriz', 'otro'])
+          && d.get('tiposGrua', []) is list && d.get('tiposGrua', []).size() <= 10
+          && d.ciudades is list && d.ciudades.size() >= 1 && d.ciudades.size() <= 30
+          && d.atiende24h is bool
+          && d.get('horario', '') is string && d.get('horario', '').size() <= 150
+          && d.telefono is string && d.telefono.matches('^[0-9]{10}$')
+          && d.get('whatsapp', '') is string && (d.get('whatsapp', '') == '' || d.get('whatsapp', '').matches('^[0-9]{10}$'))
+          && d.get('descripcion', '') is string && d.get('descripcion', '').size() <= 300
+          && d.get('logoUrl', '') is string && d.get('logoUrl', '').size() <= 500
+          && d.activo is bool
+          && d.documentosEnRegla is bool
+          && (d.get('fechaRevisionDocumentos', null) == null || d.get('fechaRevisionDocumentos', null) is timestamp);
+      }
+      allow get, list: if resource.data.activo == true || esAdmin();
+      allow create, update: if esAdmin() && proveedorValido();
+      allow delete: if esAdmin();
+
+      match /privado/{docId} {
+        allow read: if esAdmin();
+        allow create, update: if esAdmin()
+                              && docId == 'datos'
+                              && request.resource.data.keys().hasOnly(['notasInternas', 'documentosRevisados', 'contactoDueno'])
+                              && request.resource.data.get('notasInternas', '') is string && request.resource.data.get('notasInternas', '').size() <= 2000
+                              && request.resource.data.get('documentosRevisados', '') is string && request.resource.data.get('documentosRevisados', '').size() <= 2000
+                              && request.resource.data.get('contactoDueno', '') is string && request.resource.data.get('contactoDueno', '').size() <= 300;
+        allow delete: if esAdmin();
+      }
+
+      // Toques en "Llamar" y "WhatsApp", uno por mes (AAAA-MM). Mismo patrón que el de
+      // refaccionarias: cada toque suma exactamente 1 a UNO de los dos; solo de proveedores activos;
+      // no guarda nada de quien toca. Lo lee solo el admin.
+      match /contactos/{mes} {
+        function proveedorActivo() {
+          return get(/databases/$(database)/documents/asistenciaVial/$(proveedorId)).data.get('activo', false) == true;
+        }
+        allow read: if esAdmin();
+        allow create: if mes.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+                      && exists(/databases/$(database)/documents/asistenciaVial/$(proveedorId))
+                      && proveedorActivo()
+                      && ((request.resource.data.keys().hasOnly(['llamadas']) && request.resource.data.llamadas == 1)
+                          || (request.resource.data.keys().hasOnly(['whatsapp']) && request.resource.data.whatsapp == 1));
+        allow update: if proveedorActivo()
+                      && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['llamadas'])
+                           && request.resource.data.llamadas == resource.data.get('llamadas', 0) + 1)
+                          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['whatsapp'])
+                           && request.resource.data.whatsapp == resource.data.get('whatsapp', 0) + 1));
+        allow delete: if esAdmin();
+      }
+    }
+
     // ---------- Talleres (cuenta de taller, separada de yonkes) ----------
     // Un taller nace SIN aceptar (aceptacionVersion vacía). Su primera aceptación se registra
     // justo después, en un lote con su entrada del historial.

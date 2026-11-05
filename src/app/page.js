@@ -86,7 +86,9 @@ export default async function Home() {
   const textoSeoEstados = construirTextoSeoEstados(estadosConCobertura);
   // config/portada se lee aquí, en el servidor, con la misma cadencia de 10 min (revalidate):
   // ninguna lectura extra por visitante. Un cambio en la consola tarda hasta 10 min en verse.
-  const { botonPanel, ecosistema, bienvenida } = await leerConfigPortada(dbServer);
+  const { botonPanel, ecosistema, bienvenida, asistenciaVialProximamente, asistenciaVialActiva } = await leerConfigPortada(dbServer);
+  // Tarjeta de asistencia vial en el bloque ecosistema: activa gana a "próximamente".
+  const asistenciaVial = asistenciaVialActiva ? 'activa' : (asistenciaVialProximamente ? 'proximamente' : null);
   // Rango de años de la búsqueda avanzada (config/buscador; null = el de siempre). Misma cadencia.
   const rangoAnios = await rangoAniosServer();
   // Buscador "Piezas nuevas" (config/refaccionarias.buscador, exige paginaPublica). Misma cadencia;
@@ -96,5 +98,5 @@ export default async function Home() {
   // la lectura, no se anuncia.
   const mesesPromoTaller = await leerPromoTalleres(dbServer);
 
-  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} ecosistema={ecosistema} bienvenida={bienvenida} rangoAnios={rangoAnios} buscadorRefacciones={buscadorRefacciones} mesesPromoTaller={mesesPromoTaller} />;
+  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} ecosistema={ecosistema} asistenciaVial={asistenciaVial} bienvenida={bienvenida} rangoAnios={rangoAnios} buscadorRefacciones={buscadorRefacciones} mesesPromoTaller={mesesPromoTaller} />;
 }
