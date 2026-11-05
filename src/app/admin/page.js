@@ -521,6 +521,16 @@ export default function AdminPage() {
             🏪 Refaccionarias
           </button>
           <button
+            onClick={() => router.push('/admin/asistencia-vial')}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#1A3C5E', color: '#fff', fontWeight: '600',
+              fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            🚨 Asistencia vial
+          </button>
+          <button
             onClick={() => router.push('/admin/seguimientos')}
             style={{
               padding: '8px 16px', borderRadius: '8px', border: 'none',
