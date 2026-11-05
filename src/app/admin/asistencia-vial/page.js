@@ -133,6 +133,7 @@ function FormProveedor({ inicial, id, onListo, onCancelar }) {
       <textarea id="av-descripcion" value={f.descripcion} maxLength={300} rows={3} onChange={(e) => cambiar('descripcion')(e.target.value)} style={campo} />
 
       <label style={etiqueta} htmlFor="av-logo">Logo (opcional)</label>
+      {/* eslint-disable-next-line @next/next/no-img-element -- vista previa chica del logo */}
       {f.logoUrl && !quitarLogo && <img src={f.logoUrl} alt="" style={{ width: '64px', height: '64px', objectFit: 'contain', display: 'block', marginBottom: '6px' }} />}
       <input id="av-logo" type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setArchivoLogo(e.target.files?.[0] || null)} style={{ marginBottom: '6px' }} />
       {f.logoUrl && (

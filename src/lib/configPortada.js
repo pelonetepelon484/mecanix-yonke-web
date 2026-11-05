@@ -5,10 +5,14 @@
 //   ecosistema: bloque "Ecosistema de soluciones automotrices" al final de la pestaña cliente
 //   (EcosistemaMecanix.js). Se lee en el servidor (page.js) para que el texto vaya en el HTML inicial.
 //   bienvenida: página /bienvenida (para mandar a yonkes y talleres). Apagada, /bienvenida da 404.
+//   asistenciaVialProximamente: tarjeta "Asistencia vial · Próximamente" en el bloque ecosistema.
+//   asistenciaVialActiva: directorio público /asistencia-vial (apagada, 404 y noindex) y la tarjeta
+//   pasa a activa con enlace. Ver src/lib/asistenciaVial.js.
 import { doc, getDoc } from 'firebase/firestore';
 
 export const banderasPortada = (config) => ({
   botonPanel: config?.botonPanel === true, ecosistema: config?.ecosistema === true, bienvenida: config?.bienvenida === true,
+  asistenciaVialProximamente: config?.asistenciaVialProximamente === true, asistenciaVialActiva: config?.asistenciaVialActiva === true,
 });
 
 export async function leerConfigPortada(db) {
