@@ -16,11 +16,12 @@ import {
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 // Mismo botón en los dos lugares donde se ofrece (sin resultados y sin el año exacto).
-export const TEXTO_BOTON_ALERTA = '🚨 Consultar con los yonkes 🚨';
-export const TEXTO_ENVIAR_ALERTA = '🚨 Enviar búsqueda activa';
+// "Búsqueda activa": el mismo nombre que usan los Términos y el Aviso de Privacidad.
+export const TEXTO_BOTON_ALERTA = '🔔 Añadir a búsqueda activa';
+export const TEXTO_ENVIAR_ALERTA = '✅ Añadir a búsqueda activa';
 // Con config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta"), en este formulario
 // y en AlertaUnPaso: el mismo texto para el botón que abre el formulario, su título y el envío.
-export const TEXTO_BOTON_ENVIAR = '📲 Consultar con los yonkes';
+export const TEXTO_BOTON_ENVIAR = '📲 Añadir a búsqueda activa';
 export const TEXTO_CONFIRMACION = '✅ ¡Listo! Guarda este enlace: ahí verás si algún yonke tiene tu pieza. Vence en 5 días.';
 export const MENSAJE_AVISAR_CONSULTA = '¿No la encontraste? Consulta con los yonkes de tu estado y revisa sus respuestas en tu link.';
 

@@ -47,7 +47,7 @@ beforeEach(() => { global.fetch = vi.fn(async () => ({ ok: true, json: async () 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 // Botón que abre el formulario: el de siempre o, con la bandera, el de "consulta".
-const botonAbrir = () => screen.queryByRole('button', { name: TEXTO_BOTON_ALERTA }) || screen.queryByRole('button', { name: '📲 Consultar con los yonkes' });
+const botonAbrir = () => screen.queryByRole('button', { name: TEXTO_BOTON_ALERTA }) || screen.queryByRole('button', { name: '📲 Añadir a búsqueda activa' });
 
 async function buscar(caso, bandera) {
   configPedidos = { habilitado: true, alertaUnPaso: true, otrosEstados: true, ...(bandera ? { formularioAbierto: true } : {}) };
@@ -73,7 +73,7 @@ describe('bandera encendida (modo número)', () => {
     expect(screen.queryByText(SIN_YONKES)).not.toBeInTheDocument();
     expect(screen.getByText(TEXTO_MODO_NUMERO)).toBeInTheDocument();
     expect(screen.queryByText(TITULO_SIN_RESULTADOS)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '📲 Consultar con los yonkes' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '📲 Añadir a búsqueda activa' })).toBeInTheDocument();
     const texto = recuadro().textContent.replace(TEXTO_CASILLA_OTROS_ESTADOS, '').replace(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS, '');
     expect(texto).not.toMatch(/alerta|te avisamos|avisarte/i);
   });
@@ -87,10 +87,10 @@ describe('bandera encendida (modo número)', () => {
 });
 
 describe('bandera encendida: título del recuadro en número de parte (sin formulario abierto)', () => {
-  it('"¿No encuentras la pieza? Consulta con los yonkes" y el botón "📲 Consultar con los yonkes"', async () => {
+  it('"¿No encuentras la pieza? Consulta con los yonkes" y el botón "📲 Añadir a búsqueda activa"', async () => {
     await buscar('numeroDeParte', true);
     expect(screen.getByText('¿No encuentras la pieza? Consulta con los yonkes')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '📲 Consultar con los yonkes' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '📲 Añadir a búsqueda activa' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Tu WhatsApp')).not.toBeInTheDocument();
   });
 });
@@ -103,7 +103,7 @@ describe('bandera apagada: igual que hoy', () => {
     expect(screen.queryByText(TEXTO_MODO_NUMERO)).not.toBeInTheDocument();
     // Al abrirla, el formulario de siempre.
     fireEvent.click(screen.getByRole('button', { name: TEXTO_BOTON_ALERTA }));
-    expect(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' })).toBeInTheDocument();
   });
 
   it('con resultados de otros estados: el título y el texto de siempre', async () => {

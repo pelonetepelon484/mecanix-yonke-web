@@ -136,7 +136,7 @@ export default function Privacidad() {
         </Seccion>
 
         <Seccion titulo="14. Búsquedas activas" id="pedidos-clientes">
-          <p style={parrafoStyle}><strong>Datos que recabamos.</strong> Cuando registras una búsqueda activa te pedimos:</p>
+          <p style={parrafoStyle}><strong>Datos que recabamos.</strong> La búsqueda activa también puede aparecer en la Plataforma como «consulta con los yonkes» o «solicitud de pieza». Cuando registras una búsqueda activa te pedimos:</p>
           <p style={parrafoStyle}>• marca, modelo y año de tu vehículo;</p>
           <p style={parrafoStyle}>• la pieza que buscas;</p>
           <p style={parrafoStyle}>• el estado de la República donde la buscas;</p>

@@ -55,8 +55,24 @@ describe('alerta en un paso', () => {
     expect(await screen.findByText(TITULO_SIN_RESULTADOS)).toBeInTheDocument();
     expect(screen.getByText('Consulta con los yonkes de Sonora: verán tu búsqueda activa y te responderán con su precio.')).toBeInTheDocument();
     const boton = screen.getByRole('button', { name: TEXTO_BOTON_ALERTA });
-    expect(TEXTO_BOTON_ALERTA).toBe('🚨 Consultar con los yonkes 🚨');
+    expect(TEXTO_BOTON_ALERTA).toBe('🔔 Añadir a búsqueda activa');
     expect(boton.style.fontSize).toBe('clamp(12px, 3.7vw, 18px)');
+  });
+
+  it('debajo de "Buscar con IA" (debajoIA): solo el botón; abre el formulario que pide vehículo, pieza y WhatsApp', async () => {
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, enlace: ENLACE }) }));
+    render(<AlertaUnPaso variante="debajoIA" estado="sonora" estados={ESTADOS} />);
+    fireEvent.click(await screen.findByRole('button', { name: '🔔 Añadir a búsqueda activa' }));
+    expect(screen.queryByText(TITULO_SIN_RESULTADOS)).not.toBeInTheDocument();
+    expect(screen.getByText('📍 Sonora')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Marca'), { target: { value: 'Nissan' } });
+    fireEvent.change(screen.getByLabelText('Modelo'), { target: { value: 'Sentra' } });
+    fireEvent.change(screen.getByLabelText('Año'), { target: { value: '2005' } });
+    fireEvent.change(screen.getByLabelText('Pieza que buscas'), { target: { value: 'Alternador' } });
+    fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
+    fireEvent.click(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' }));
+    expect(await screen.findByText(ENLACE)).toBeInTheDocument();
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual({ vehiculo: { marca: 'Nissan', modelo: 'Sentra', anio: 2005 }, pieza: 'Alternador', estado: 'sonora', whatsapp: '6641234567' });
   });
 
   it('un paso: todo prellenado, solo pide WhatsApp; crea la misma alerta y confirma con el enlace (sin "te contactaremos")', async () => {
@@ -68,7 +84,7 @@ describe('alerta en un paso', () => {
     expect(screen.getByText('📍 Sonora')).toBeInTheDocument();
     for (const etiqueta of ['Marca', 'Año', 'Pieza que buscas', '¿En qué estado la buscas?']) expect(screen.queryByLabelText(etiqueta)).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '664 123 4567' } });
-    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' }));
+    fireEvent.click(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' }));
     expect(await screen.findByText('✅ Listo, los yonkes de Sonora ya pueden ver tu búsqueda activa. Aquí verás sus respuestas:')).toBeInTheDocument();
     const [url, opciones] = global.fetch.mock.calls[0];
     expect(url).toBe('/api/pedir-pieza');
@@ -83,7 +99,7 @@ describe('alerta en un paso', () => {
     render(<AlertaUnPaso {...completo} />);
     fireEvent.click(await screen.findByRole('button', { name: TEXTO_BOTON_ALERTA }));
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '123' } });
-    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' }));
+    fireEvent.click(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Escribe tu WhatsApp a 10 dígitos');
     expect(global.fetch).not.toHaveBeenCalled();
   });
@@ -95,7 +111,7 @@ describe('alerta en un paso', () => {
     fireEvent.click(screen.getByRole('button', { name: TEXTO_BOTON_ALERTA }));
     expect(screen.getByLabelText('¿En qué estado la buscas?')).toHaveValue('');
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' }));
+    fireEvent.click(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Elige el estado donde buscas la pieza.');
     expect(global.fetch).not.toHaveBeenCalled();
   });
@@ -121,7 +137,7 @@ describe('alerta en un paso', () => {
     expect(screen.getByLabelText('¿En qué estado la buscas?')).toHaveValue('sonora');
   });
 
-  it('con resultados (discreta): "¿No encontraste la pieza exacta? Consulta con los yonkes" abre el mismo paso', async () => {
+  it('con resultados (discreta): "¿No encontraste la pieza exacta? Añádela a búsqueda activa" abre el mismo paso', async () => {
     render(<AlertaUnPaso {...completo} variante="discreta" />);
     fireEvent.click(await screen.findByRole('button', { name: `🔔 ${TEXTO_DISCRETO}` }));
     expect(screen.getByLabelText('Tu WhatsApp')).toBeInTheDocument();
@@ -137,9 +153,9 @@ describe('alerta en un paso', () => {
     // Consentimiento: visible debajo de la casilla y antes del botón de enviar.
     const consentimiento = screen.getByText(TEXTO_CONSENTIMIENTO_OTROS_ESTADOS);
     expect(screen.getByLabelText(TEXTO_CASILLA_OTROS_ESTADOS).compareDocumentPosition(consentimiento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(consentimiento.compareDocumentPosition(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(consentimiento.compareDocumentPosition(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' }));
+    fireEvent.click(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(JSON.parse(global.fetch.mock.calls[0][1].body).aceptaOtrosEstados).toBe(true);
   });
@@ -150,7 +166,7 @@ describe('alerta en un paso', () => {
     fireEvent.click(await screen.findByRole('button', { name: TEXTO_BOTON_ALERTA }));
     fireEvent.click(await screen.findByLabelText(TEXTO_CASILLA_OTROS_ESTADOS));
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' }));
+    fireEvent.click(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(JSON.parse(global.fetch.mock.calls[0][1].body).aceptaOtrosEstados).toBe(false);
   });
@@ -160,7 +176,7 @@ describe('alerta compacta (config/pedidosClientes.alertaSiempre)', () => {
   it('texto pedido y, al tocarla, el mismo formulario de siempre', async () => {
     render(<AlertaUnPaso variante="compacta" {...completo} />);
     const boton = await screen.findByRole('button', { name: `🔔 ${TEXTO_COMPACTO}` });
-    expect(TEXTO_COMPACTO).toBe('¿No era lo que buscabas? Consulta con los yonkes aquí');
+    expect(TEXTO_COMPACTO).toBe('¿No era lo que buscabas? Añádela a búsqueda activa aquí');
     expect(screen.queryByText(TITULO_SIN_RESULTADOS)).not.toBeInTheDocument();
     expect(screen.queryByText(TEXTO_DISCRETO, { exact: false })).not.toBeInTheDocument();
     fireEvent.click(boton);
