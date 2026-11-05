@@ -47,7 +47,7 @@ export const ASI_FUNCIONA = {
 // "Tus primeros pasos": el selector cambia los pasos y los planes. Los pasos marcados con una
 // condición solo se muestran si la función está encendida (page.js lee las mismas banderas que la
 // portada): así la página nunca anuncia algo que hoy no existe.
-//   consultas: config/pedidosClientes.habilitado (búsquedas activas, "Consultar con los yonkes").
+//   consultas: config/pedidosClientes.habilitado (búsquedas activas, "Añadir a búsqueda activa").
 //   otrosEstados: config/pedidosClientes.otrosEstados (casilla de otros estados).
 //   vehiculosCompletos: config/pedidosClientes.inventarioVehiculos (vehículo completo 30 días).
 //   formularioAbierto: config/pedidosClientes.formularioAbierto. Sin ella la portada todavía muestra
@@ -77,7 +77,7 @@ export const PRIMEROS_PASOS = {
   cliente: [
     { titulo: 'Busca tu vehículo y la pieza', desc: 'Escribe la pieza y tu vehículo (por ejemplo, "alternador civic 2016") o elige marca, modelo y año en la búsqueda avanzada. Si algún yonke de la red la tiene en su inventario, la ves al momento.' },
     {
-      titulo: 'Si no aparece, consulta con los yonkes', desc: 'Toca "Consultar con los yonkes". Tu búsqueda activa se muestra a los yonkes de tu estado durante 5 días.', si: 'consultas',
+      titulo: 'Si no aparece, añádela a búsqueda activa', desc: 'Toca "Añadir a búsqueda activa". Tu búsqueda activa se muestra a los yonkes de tu estado durante 5 días.', si: 'consultas',
       extra: { si: 'otrosEstados', texto: 'Si dejas marcada la casilla "Quiero buscar también en otros estados", también pueden responderte yonkes Verificados con Envíos Nacionales de otros estados.' },
     },
     { titulo: 'Revisa las respuestas en tu enlace', desc: 'Cada yonke que la tenga responde con su precio. Las ves en tu enlace "Mi búsqueda activa", con la insignia Verificado o la marca "Yonke nuevo, sin verificar".', si: 'consultas' },

@@ -5,7 +5,7 @@ import '@testing-library/jest-dom/vitest';
 
 // AlertaUnPaso en modo número (config/pedidosClientes.formularioAbierto, en los 4 casos sin
 // resultado): sin la palabra "alerta" (salvo en la casilla y el consentimiento aprobados, que no
-// cambian), sin promesas de aviso, "📲 Consultar con los yonkes" y la confirmación nueva. Sin el modo, igual que hoy.
+// cambian), sin promesas de aviso, "📲 Añadir a búsqueda activa" y la confirmación nueva. Sin el modo, igual que hoy.
 vi.mock('./lib/banderaPedidosClientes', () => ({
   // Aquí la bandera de textos va apagada: el modo número usa los textos de "consulta" por sí mismo.
   leerBanderaFormularioAbierto: async () => false,
@@ -53,10 +53,10 @@ describe('modo número (bandera encendida)', () => {
     expect(container.textContent).not.toMatch(/te avisamos|avisarte/i);
   });
 
-  it('"📲 Consultar con los yonkes" y "Nunca ven tu número de WhatsApp."; WhatsApp, casilla, consentimiento y "Al enviar aceptas…" igual', async () => {
+  it('"📲 Añadir a búsqueda activa" y "Nunca ven tu número de WhatsApp."; WhatsApp, casilla, consentimiento y "Al enviar aceptas…" igual', async () => {
     await abrir();
     expect(screen.getByRole('button', { name: TEXTO_ENVIAR_NUMERO })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '🚨 Enviar búsqueda activa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '✅ Añadir a búsqueda activa' })).not.toBeInTheDocument();
     expect(screen.getByText(TEXTO_NUNCA_VEN_NUMERO)).toBeInTheDocument();
     expect(screen.queryByText(LINEA_VIEJA, { exact: false })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Tu WhatsApp')).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('sin el modo número (bandera apagada): igual que hoy', () => {
     await act(async () => {});
     expect(screen.getByText(TITULO_SIN_RESULTADOS)).toBeInTheDocument();
     expect(screen.getByText(TEXTO_BOTON_ALERTA)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
     expect(screen.getByText(LINEA_VIEJA, { exact: false })).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_MODO_NUMERO)).not.toBeInTheDocument();
@@ -104,7 +104,7 @@ describe('sin el modo número (bandera apagada): igual que hoy', () => {
     render(<AlertaUnPaso variante="protagonista" {...completo} abiertoDeEntrada />);
     await act(async () => {});
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '6641234567' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '🚨 Enviar búsqueda activa' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '✅ Añadir a búsqueda activa' })); });
     expect(screen.getByText('✅ Listo, los yonkes de Sonora ya pueden ver tu búsqueda activa. Aquí verás sus respuestas:', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('Ver mi búsqueda activa')).toBeInTheDocument();
     expect(screen.queryByText(TEXTO_CONFIRMACION_NUMERO)).not.toBeInTheDocument();

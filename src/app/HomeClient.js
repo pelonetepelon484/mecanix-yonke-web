@@ -1726,8 +1726,13 @@ function obtenerEstadoAbierto(horario) {
               <button onClick={buscarConTextoLibre} disabled={buscandoLibre} className="mecanix-btn-primary">
                 {buscandoLibre ? 'Buscando...' : '✨ Buscar con IA'}
               </button>
-              {/* Solo con la alerta de búsqueda encendida (config/pedidosClientes): apagada, no existe. */}
-              {pedidosClientesActivos && (
+              {/* Solo con la alerta de búsqueda encendida (config/pedidosClientes): apagada, no existe.
+                  Con la alerta de un paso, botón "Añadir a búsqueda activa", salvo cuando la búsqueda ya
+                  muestra el suyo (sin resultados o junto a las tarjetas): así nunca salen dos. */}
+              {pedidosClientesActivos && alertaUnPaso && !busquedaHecha && !(mensajeLibre && mensajeConAlerta(mensajeLibre.tipo, alertaSiempre)) && (
+                <AlertaUnPaso key={estadoBusqueda} variante="debajoIA" estado={estadoBusqueda} estados={estadosDisponibles} />
+              )}
+              {pedidosClientesActivos && !alertaUnPaso && (
                 <p style={{ textAlign: 'center', fontSize: '13px', color: '#1A3C5E', margin: '12px 0 0', lineHeight: '1.5' }}>
                   ¿No la encuentras? Avisamos a los yonkes y te responden.
                 </p>

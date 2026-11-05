@@ -59,6 +59,19 @@ async function buscar(caso, formularioAbierto) {
 
 const abierta = () => Boolean(screen.queryByLabelText('Tu WhatsApp'));
 
+describe('"Añadir a búsqueda activa" debajo de "Buscar con IA"', () => {
+  it('antes de buscar sale el botón; sin resultados queda uno solo (el del recuadro grande)', async () => {
+    respuesta = RESPUESTAS.sin_inventario;
+    render(<HomeClient textoSeoEstados="" />);
+    expect(await screen.findByRole('button', { name: TEXTO_BOTON_ALERTA })).toBeInTheDocument();
+    expect(screen.queryByText('¿No la encuentras? Avisamos a los yonkes y te responden.')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('¿Qué pieza necesitas?'), { target: { value: 'alternador sentra 2005' } });
+    fireEvent.click(screen.getByRole('button', { name: /Buscar con IA/ }));
+    expect(await screen.findByText('Ningún yonke colaborador tiene ese vehículo todavía')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: TEXTO_BOTON_ALERTA })).toHaveLength(1);
+  });
+});
+
 describe('formulario de la alerta abierto de entrada', () => {
   describe('bandera encendida (formularioAbierto en la respuesta)', () => {
     for (const caso of ['sin_inventario', 'no_catalogado', 'sin_yonkes_estado', 'sin_en_tu_zona']) {
@@ -66,7 +79,7 @@ describe('formulario de la alerta abierto de entrada', () => {
         await buscar(caso, true);
         expect(abierta()).toBe(true);
         expect(screen.queryByRole('button', { name: TEXTO_BOTON_ALERTA })).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '📲 Consultar con los yonkes' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '📲 Añadir a búsqueda activa' })).toBeInTheDocument();
       });
     }
     for (const caso of ['numero_de_parte', 'pieza_sin_vehiculo']) {

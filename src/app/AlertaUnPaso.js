@@ -10,6 +10,8 @@
 // - variante="discreta": "¿No encontraste la pieza exacta? Activa una alerta" (debajo de resultados).
 // - variante="compacta": "¿No era lo que buscabas? Activa una alerta aquí", chica pero a la vista,
 //   ARRIBA de los resultados (config/pedidosClientes.alertaSiempre).
+// - variante="debajoIA": botón "Añadir a búsqueda activa" debajo de "Buscar con IA", sin haber
+//   buscado; el formulario pide vehículo, pieza y estado (lo que falte) y el WhatsApp.
 // - abiertoDeEntrada (config/pedidosClientes.formularioAbierto, lo decide HomeClient): el formulario
 //   sale abierto, sin tocar el botón; en la protagonista, su título y su texto quedan encima.
 // - modoNumero (con abiertoDeEntrada, misma bandera, solo en los 4 casos sin resultado): pantalla sin
@@ -28,15 +30,15 @@ import { enlaceGuardarPorWhatsapp } from '../lib/pedidosClientes';
 import { URL_PRIVACIDAD, URL_TERMINOS } from '../lib/versionesLegales';
 
 export const TITULO_SIN_RESULTADOS = 'Ningún yonke colaborador tiene ese vehículo todavía';
-export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Consulta con los yonkes';
-export const TEXTO_COMPACTO = '¿No era lo que buscabas? Consulta con los yonkes aquí';
+export const TEXTO_DISCRETO = '¿No encontraste la pieza exacta? Añádela a búsqueda activa';
+export const TEXTO_COMPACTO = '¿No era lo que buscabas? Añádela a búsqueda activa aquí';
 export const textoSinResultados = (estadoNombre) =>
   `Consulta con los yonkes de ${estadoNombre || 'tu estado'}: verán tu búsqueda activa y te responderán con su precio.`;
 export const textoConfirmacion = (estadoNombre) =>
   `✅ Listo, los yonkes de ${estadoNombre} ya pueden ver tu búsqueda activa. Aquí verás sus respuestas:`;
 // Con config/pedidosClientes.formularioAbierto ("consulta" en lugar de "alerta").
-export const TEXTO_DISCRETO_CONSULTA = '¿No encontraste la pieza exacta? Consulta con los yonkes';
-export const TEXTO_COMPACTO_CONSULTA = '¿No era lo que buscabas? Consulta con los yonkes aquí';
+export const TEXTO_DISCRETO_CONSULTA = '¿No encontraste la pieza exacta? Añádela a búsqueda activa';
+export const TEXTO_COMPACTO_CONSULTA = '¿No era lo que buscabas? Añádela a búsqueda activa aquí';
 export const textoSinResultadosConsulta = (estadoNombre) =>
   `Consulta con los yonkes de ${estadoNombre || 'tu estado'}: verán tu búsqueda activa y te responderán con su precio.`;
 
@@ -155,6 +157,11 @@ export default function AlertaUnPaso({
         </button>
       );
     }
+    if (variante === 'debajoIA') {
+      return (
+        <button type="button" onClick={() => setAbierto(true)} style={botonDebajoIA}>{textoBoton}</button>
+      );
+    }
     if (variante === 'discreta') {
       return (
         <button type="button" onClick={() => setAbierto(true)} style={botonDiscreto}>
@@ -256,6 +263,7 @@ const resumenStyle = { backgroundColor: '#fff', border: '1px solid #F2C9A0', bor
 const botonCorregir = { marginTop: '4px', padding: 0, border: 'none', background: 'none', color: '#E8720C', fontSize: '12px', fontWeight: '700', textDecoration: 'underline', cursor: 'pointer' };
 const botonCancelar = { display: 'block', width: '100%', marginTop: '8px', padding: '8px', border: 'none', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' };
 const botonCompacto = { display: 'block', width: '100%', margin: '0 0 14px', padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #E8720C', backgroundColor: '#FFF4E8', color: '#1A3C5E', fontSize: '14px', fontWeight: '700', cursor: 'pointer', textAlign: 'center' };
+const botonDebajoIA = { ...botonCompacto, margin: '12px 0 0' };
 const botonDiscreto = { display: 'block', width: '100%', margin: '16px 0', padding: '12px', borderRadius: '12px', border: '1px dashed #C5D8EC', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '14px', fontWeight: '600', cursor: 'pointer' };
 const etiqueta = { display: 'block', fontSize: '12px', color: '#555', margin: '0 0 4px', fontWeight: 'bold' };
 const input = { width: '100%', boxSizing: 'border-box', padding: '11px', fontSize: '15px', borderRadius: '10px', border: '1px solid #CCC', marginBottom: '10px', backgroundColor: '#fff' };
