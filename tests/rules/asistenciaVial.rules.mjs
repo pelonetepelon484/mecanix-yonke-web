@@ -18,7 +18,7 @@ const proveedor = (extra = {}) => ({
 });
 
 before(async () => {
-  env = await initializeTestEnvironment({ projectId: 'demo-mecanix', firestore: { rules: reglas } });
+  env = await initializeTestEnvironment({ projectId: 'demo-asistencia-vial', firestore: { rules: reglas } });
 });
 after(async () => { await env.cleanup(); });
 beforeEach(async () => {
