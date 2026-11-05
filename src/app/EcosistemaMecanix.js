@@ -3,6 +3,9 @@
 // el HTML inicial. Sin estado, sin lecturas, sin formularios, sin enlaces ni botones. Mismo patrón
 // visual que "¿Cómo funciona?" (ComoFuncionaBuscador.js): caja blanca y renglones con emoji, título
 // y descripción. Las de "Próximamente" van más tenues y con su etiqueta.
+// Asistencia vial (config/portada): asistenciaVial="proximamente" la agrega tenue y sin botón;
+// "activa" la agrega con las activas, como enlace a /asistencia-vial. Sin la bandera, no aparece.
+import Link from 'next/link';
 
 export const TITULO_ECOSISTEMA = 'Ecosistema de soluciones automotrices';
 export const ENTRADA_ECOSISTEMA = 'Mecanix conecta yonkes, talleres y más soluciones automotrices en un solo lugar.';
@@ -17,8 +20,24 @@ export const TARJETAS_PROXIMAMENTE = [
   { emoji: '🛠️', titulo: 'Especialistas', desc: 'Más especialidades automotrices.' },
   { emoji: '✨', titulo: 'Servicios futuros', desc: 'Nuevas soluciones para el sector automotriz.' },
 ];
+export const TARJETA_ASISTENCIA = { emoji: '🚨', titulo: 'Asistencia vial', desc: 'Grúas, llanteras y ayuda en carretera.' };
+export const RUTA_ASISTENCIA = '/asistencia-vial';
 
-function Tarjeta({ emoji, titulo, desc, proximamente = false }) {
+function Tarjeta({ emoji, titulo, desc, proximamente = false, href = null }) {
+  if (href) {
+    return (
+      <li>
+        <Link href={href} style={{ ...tarjeta, textDecoration: 'none' }}>
+          <span style={{ fontSize: '22px', lineHeight: 1 }} aria-hidden="true">{emoji}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={tituloTarjeta}>{titulo}</h3>
+            <p style={descTarjeta}>{desc}</p>
+          </div>
+          <span style={{ color: '#E8720C', fontWeight: '700', fontSize: '13px', whiteSpace: 'nowrap' }}>Ver →</span>
+        </Link>
+      </li>
+    );
+  }
   return (
     <li style={proximamente ? tarjetaProxima : tarjeta}>
       <span style={{ fontSize: '22px', lineHeight: 1, opacity: proximamente ? 0.55 : 1 }} aria-hidden="true">{emoji}</span>
@@ -31,13 +50,15 @@ function Tarjeta({ emoji, titulo, desc, proximamente = false }) {
   );
 }
 
-export default function EcosistemaMecanix() {
+export default function EcosistemaMecanix({ asistenciaVial = null }) {
   return (
     <section style={caja} aria-labelledby="ecosistema-mecanix">
       <h2 id="ecosistema-mecanix" style={titulo}>{TITULO_ECOSISTEMA}</h2>
       <p style={entrada}>{ENTRADA_ECOSISTEMA}</p>
       <ul style={lista}>
         {TARJETAS_ACTIVAS.map((t) => <Tarjeta key={t.titulo} {...t} />)}
+        {asistenciaVial === 'activa' && <Tarjeta {...TARJETA_ASISTENCIA} href={RUTA_ASISTENCIA} />}
+        {asistenciaVial === 'proximamente' && <Tarjeta {...TARJETA_ASISTENCIA} proximamente />}
         {TARJETAS_PROXIMAMENTE.map((t) => <Tarjeta key={t.titulo} {...t} proximamente />)}
       </ul>
     </section>

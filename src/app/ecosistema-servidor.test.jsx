@@ -52,7 +52,25 @@ describe('HTML inicial de la portada (servidor)', () => {
   }, 30000);
 });
 
+describe('asistencia vial en el bloque ecosistema', () => {
+  it('sin sus banderas no aparece; "próximamente" sale tenue y sin enlace; activa enlaza a /asistencia-vial', async () => {
+    let html = await htmlInicial({ ecosistema: true });
+    expect(html).not.toContain('Asistencia vial');
+    html = await htmlInicial({ ecosistema: true, asistenciaVialProximamente: true });
+    expect(html).toContain('Asistencia vial');
+    expect(html).not.toContain('href="/asistencia-vial"');
+    html = await htmlInicial({ ecosistema: true, asistenciaVialProximamente: true, asistenciaVialActiva: true });
+    expect(html).toContain('href="/asistencia-vial"');
+  }, 30000);
+});
+
 describe('subdominios de yonkes (middleware)', () => {
+  it('/asistencia-vial en un subdominio va a la página del yonke; en el dominio principal pasa normal', () => {
+    const ir = (url) => middleware(new NextRequest(url, { headers: { host: new URL(url).host } }));
+    expect(ir('https://elguero.mecanixyonkevirtual.com/asistencia-vial').headers.get('x-middleware-rewrite')).toContain('/tenant-demo');
+    expect(ir('https://mecanixyonkevirtual.com/asistencia-vial').headers.get('x-middleware-rewrite')).toBeNull();
+  });
+
   const ir = (url) => middleware(new NextRequest(url, { headers: { host: new URL(url).host } }));
 
   it('la raíz y cualquier ruta de un subdominio van a /tenant-demo (nunca a la portada)', () => {
