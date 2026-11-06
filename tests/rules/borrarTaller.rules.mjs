@@ -56,6 +56,11 @@ async function sembrar() {
     await setDoc(doc(db, 'talleres', 'T1', 'historial', 'v1'), vehiculo('O251011-AAAA'));
     await setDoc(doc(db, 'talleres', 'T1', 'historial', 'v2'), vehiculo('O251011-BBBB'));
     await setDoc(doc(db, 'talleres', 'T2', 'historial', 'v3'), vehiculo('O251011-ZZZZ'));
+    // Libreta de contactos: dos de T1 y uno de T2
+    const contacto = { nombre: 'Juan', nombreBusqueda: 'juan', telefono: '6641234567', nota: '', vehiculos: [], placasLista: [], creadoAt: new Date(), actualizadoAt: new Date(), expiraAt: new Date(Date.now() + 548 * 86400000) };
+    await setDoc(doc(db, 'talleres', 'T1', 'contactosClientes', 'c01'), contacto);
+    await setDoc(doc(db, 'talleres', 'T1', 'contactosClientes', 'c02'), contacto);
+    await setDoc(doc(db, 'talleres', 'T2', 'contactosClientes', 'c01'), contacto);
     // Solicitudes de piezas: dos de T1 y una de T2, cada una con privado/contacto y dos respuestas
     for (const [id, t] of [['S1', 'T1'], ['S2', 'T1'], ['S3', 'T2']]) {
       const exp = new Date(Date.now() + 5 * 86400000);
@@ -86,8 +91,9 @@ async function conteos(uid, tallerId) {
   const usuario = await getDoc(doc(db, 'usuarios', tallerId.toLowerCase()));
   const segs = await getDocs(query(collection(db, 'seguimientos'), where('tallerId', '==', tallerId)));
   const hist = await getDocs(collection(db, 'talleres', tallerId, 'historial'));
+  const cons = await getDocs(collection(db, 'talleres', tallerId, 'contactosClientes'));
   const sols = await getDocs(query(collection(db, 'solicitudesPiezas'), where('tallerId', '==', tallerId)));
-  return { cotizaciones: cots.size, renglones, seguimientos: segs.size, ordenes: ords.size, historial: hist.size, solicitudes: sols.size, aceptaciones: acs.size, taller: taller.exists(), usuario: usuario.exists() };
+  return { cotizaciones: cots.size, renglones, seguimientos: segs.size, ordenes: ords.size, historial: hist.size, contactos: cons.size, solicitudes: sols.size, aceptaciones: acs.size, taller: taller.exists(), usuario: usuario.exists() };
 }
 
 // Documentos que quedan en las subcolecciones de una solicitud (aunque la solicitud ya no exista).
@@ -113,12 +119,13 @@ describe('admin borra un taller completo', () => {
     assert.equal(resumen.seguimientos, 2);
     assert.equal(resumen.ordenes, 3);
     assert.equal(resumen.historial, 2);
+    assert.equal(resumen.contactos, 2);
     assert.equal(resumen.solicitudesPiezas, 2);
     assert.equal(resumen.aceptaciones, 1);
     assert.equal(resumen.taller, true);
     assert.equal(resumen.usuarios, 1);
     const despues = await conteos('adm', 'T1');
-    assert.deepEqual(despues, { cotizaciones: 0, renglones: 0, seguimientos: 0, ordenes: 0, historial: 0, solicitudes: 0, aceptaciones: 0, taller: false, usuario: false });
+    assert.deepEqual(despues, { cotizaciones: 0, renglones: 0, seguimientos: 0, ordenes: 0, historial: 0, contactos: 0, solicitudes: 0, aceptaciones: 0, taller: false, usuario: false });
     assert.equal(await subdocsDeSolicitud('adm', 'S1'), 0);
     assert.equal(await subdocsDeSolicitud('adm', 'S2'), 0);
     const otro = await conteos('adm', 'T2');
@@ -126,6 +133,7 @@ describe('admin borra un taller completo', () => {
     assert.equal(otro.aceptaciones, 1);
     assert.equal(otro.seguimientos, 1);
     assert.equal(otro.historial, 1);
+    assert.equal(otro.contactos, 1);
     assert.equal(otro.solicitudes, 1);
     assert.equal(await subdocsDeSolicitud('adm', 'S3'), 3);
   });
