@@ -95,8 +95,9 @@ describe('textos nuevos de las tarjetas', () => {
       'Cotizaciones para tus clientes, con PDF',
       'Pide piezas a los yonkes y compara sus respuestas',
       'Aviso de privacidad para tus clientes incluido',
+      'Libreta de contactos de tus clientes (hasta 25)',
     ]);
-    expect(FUNCIONES_TALLER_PREMIUM).toEqual(['Todo lo del Plan Básico', 'Órdenes de servicio con PDF', 'Descarga de todos tus documentos', 'Historial de servicios y recordatorios de mantenimiento', 'Enlace de seguimiento de órdenes para tu cliente', 'Las demás funciones que se incorporen']);
+    expect(FUNCIONES_TALLER_PREMIUM).toEqual(['Todo lo del Plan Básico', 'Órdenes de servicio con PDF', 'Descarga de todos tus documentos', 'Historial de servicios y recordatorios de mantenimiento', 'Enlace de seguimiento de órdenes para tu cliente', 'Libreta de contactos sin límite', 'Las demás funciones que se incorporen']);
     expect([...FUNCIONES_TALLER_BASICO, ...FUNCIONES_TALLER_PREMIUM].join(' ')).not.toMatch(/sin costo|gratis/i);
     expect(decodeURIComponent(URL_QUIERO_PREMIUM_TALLER)).toBe('https://wa.me/5216611034260?text=Hola, me interesa el Plan Premium de Mecanix para talleres');
   });
