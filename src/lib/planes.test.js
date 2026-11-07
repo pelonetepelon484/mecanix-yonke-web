@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   esPremiumVigente, estadoPlan, limitesEncendidos, casosPremiumVigente, tarjetaPlanSinCosto, FUNCIONES_PLAN_BASICO, PRECIO_PREMIUM_TEXTO,
   FUNCIONES_PLAN_PREMIUM, FUNCIONES_TALLER_BASICO, FUNCIONES_TALLER_PREMIUM, LIMITE_RESPUESTAS_DIARIAS_BASICO, URL_QUIERO_PREMIUM,
-  URL_QUIERO_PREMIUM_TALLER, tarjetasTalleresEncendidas,
+  URL_QUIERO_PREMIUM_TALLER, tarjetasTalleresEncendidas, premiumCitasOk,
 } from './planes';
 
 const AHORA = new Date('2026-10-12T12:00:00');
@@ -97,7 +97,7 @@ describe('textos nuevos de las tarjetas', () => {
       'Aviso de privacidad para tus clientes incluido',
       'Libreta de contactos de tus clientes (hasta 25)',
     ]);
-    expect(FUNCIONES_TALLER_PREMIUM).toEqual(['Todo lo del Plan Básico', 'Órdenes de servicio con PDF', 'Descarga de todos tus documentos', 'Historial de servicios y recordatorios de mantenimiento', 'Enlace de seguimiento de órdenes para tu cliente', 'Libreta de contactos sin límite', 'Las demás funciones que se incorporen']);
+    expect(FUNCIONES_TALLER_PREMIUM).toEqual(['Todo lo del Plan Básico', 'Órdenes de servicio con PDF', 'Descarga de todos tus documentos', 'Historial de servicios y recordatorios de mantenimiento', 'Enlace de seguimiento de órdenes para tu cliente', 'Libreta de contactos sin límite', 'Agenda de citas con recordatorio por WhatsApp', 'Las demás funciones que se incorporen']);
     expect([...FUNCIONES_TALLER_BASICO, ...FUNCIONES_TALLER_PREMIUM].join(' ')).not.toMatch(/sin costo|gratis/i);
     expect(decodeURIComponent(URL_QUIERO_PREMIUM_TALLER)).toBe('https://wa.me/5216611034260?text=Hola, me interesa el Plan Premium de Mecanix para talleres');
   });
@@ -106,5 +106,21 @@ describe('textos nuevos de las tarjetas', () => {
     for (const c of [null, undefined, {}, { tarjetasTalleres: false }, { tarjetasTalleres: 'true' }, { tarjetasTalleres: 1 }]) {
       expect(tarjetasTalleresEncendidas(c)).toBe(false);
     }
+  });
+});
+
+describe('premiumCitasOk', () => {
+  const premium = { plan: 'premium', premiumHasta: new Date(Date.now() + 86400000) };
+  const vencido = { plan: 'premium', premiumHasta: new Date(Date.now() - 86400000) };
+  it('sin requierePremium true exacto: siempre se puede', () => {
+    for (const c of [null, undefined, {}, { requierePremium: false }, { requierePremium: 'true' }]) {
+      expect(premiumCitasOk(c, { plan: 'basico' })).toBe(true);
+    }
+  });
+  it('con requierePremium: solo Premium vigente', () => {
+    expect(premiumCitasOk({ requierePremium: true }, premium)).toBe(true);
+    expect(premiumCitasOk({ requierePremium: true }, vencido)).toBe(false);
+    expect(premiumCitasOk({ requierePremium: true }, { plan: 'basico' })).toBe(false);
+    expect(premiumCitasOk({ requierePremium: true }, null)).toBe(false);
   });
 });
