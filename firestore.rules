@@ -2552,5 +2552,66 @@ service cloud.firestore {
       allow update: if esAdmin();
       allow delete: if esAdmin();
     }
+
+    // ---------- Comparador de compatibilidad de piezas (config/comparador) ----------
+    // Todo lo escribe y lo lee el usuario de servicio del servidor (api/comparador); el navegador no
+    // entra. Ningún documento lleva IP, identificador del navegador, uid ni VIN completo.
+    // Contador diario por IP, navegador o cuenta (el ID lleva un hash, nunca el dato). TTL en expiraEn.
+    match /comparadorLimite/{docId} {
+      allow get: if esServicio();
+      allow create, update: if esServicio()
+                            && docId.matches('^(ip|disp|cuenta)_[0-9a-f]{32}_[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                            && request.resource.data.keys().hasOnly(['count', 'actualizado', 'expiraEn'])
+                            && request.resource.data.count is int
+                            && request.resource.data.count >= 0
+                            && request.resource.data.count <= 1000
+                            && request.resource.data.actualizado is timestamp
+                            && request.resource.data.expiraEn is timestamp
+                            && request.resource.data.expiraEn <= request.time + duration.value(3, 'd');
+      allow list, delete: if false;
+    }
+    // Conteos del día (AAAA-MM-DD): solo números. El admin los lee en la consola.
+    match /comparadorUso/{dia} {
+      allow read: if esAdmin() || esServicio();
+      allow create, update: if esServicio()
+                            && dia.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                            && request.resource.data.keys().hasOnly(['consultas', 'vinNuevos', 'vinCache', 'vinFallos', 'limiteAlcanzado', 'actualizadoAt'])
+                            && (!('consultas' in request.resource.data) || request.resource.data.consultas is int)
+                            && (!('vinNuevos' in request.resource.data) || request.resource.data.vinNuevos is int)
+                            && (!('vinCache' in request.resource.data) || request.resource.data.vinCache is int)
+                            && (!('vinFallos' in request.resource.data) || request.resource.data.vinFallos is int)
+                            && (!('limiteAlcanzado' in request.resource.data) || request.resource.data.limiteAlcanzado is int)
+                            && request.resource.data.actualizadoAt is timestamp;
+      allow delete: if false;
+    }
+    // Caché de NHTSA vPIC. El ID es la clave del VIN SIN número de serie ("1HGCM826*3A").
+    match /vinDecodificado/{clave} {
+      function textoCorto(d, k) { return d[k] is string && d[k].size() <= 80; }
+      function vinCacheValido() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['marca', 'modelo', 'anio', 'motor', 'cilindrada', 'cilindros', 'combustible', 'transmision', 'traccion', 'carroceria', 'pais', 'planta', 'sinDatos', 'guardadoAt'])
+          && textoCorto(d, 'marca') && textoCorto(d, 'modelo') && textoCorto(d, 'anio') && textoCorto(d, 'motor')
+          && textoCorto(d, 'cilindrada') && textoCorto(d, 'cilindros') && textoCorto(d, 'combustible') && textoCorto(d, 'transmision')
+          && textoCorto(d, 'traccion') && textoCorto(d, 'carroceria') && textoCorto(d, 'pais') && textoCorto(d, 'planta')
+          && d.sinDatos is bool
+          && d.guardadoAt is timestamp;
+      }
+      allow get: if esServicio() || esAdmin();
+      allow list: if esAdmin();
+      allow create, update: if esServicio()
+                            && clave.matches('^[A-HJ-NPR-Z0-9]{8}[*][A-HJ-NPR-Z0-9]{2}$')
+                            && vinCacheValido();
+      allow delete: if esAdmin();
+    }
+    // Tabla propia de equivalencias. Por ahora la llena el admin (a mano en la consola); la lee el
+    // servidor. clase 'equivalencia': partes = [números de parte equivalentes]; clase 'aplicacion':
+    // parte -> vehículo (claveVin, o marca + modelo + anioDesde/anioHasta).
+    match /equivalenciasPiezas/{id} {
+      allow read: if esServicio() || esAdmin();
+      allow create, update: if esAdmin()
+                            && request.resource.data.keys().hasOnly(['clase', 'tipoPieza', 'partes', 'parte', 'claveVin', 'marca', 'modelo', 'anioDesde', 'anioHasta', 'nota', 'creadoAt'])
+                            && request.resource.data.clase in ['equivalencia', 'aplicacion'];
+      allow delete: if esAdmin();
+    }
   }
 }
