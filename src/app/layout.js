@@ -16,10 +16,10 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: {
-    default: "Red Mecanix — Refacciones y autopartes usadas en México",
+    default: "Red Mecanix — Refacciones y autopartes usadas, talleres y servicios en México",
     template: "%s | Red Mecanix",
   },
-  description: "Encuentra autopartes y refacciones usadas entre los yonkes y deshuesaderos colaboradores de la red Mecanix en México. Busca por marca, modelo y año. Reserva en línea al instante.",
+  description: "Encuentra autopartes y refacciones usadas entre los yonkes y deshuesaderos colaboradores de la red Mecanix en México, además de talleres y servicios automotrices. Busca por marca, modelo y año. Reserva en línea al instante.",
 keywords: "yonke Tijuana, refacciones usadas Tijuana, autopartes Tijuana, yonke Mexicali, refacciones usadas México, piezas de carro usadas, yonke virtual, comprar refacciones en línea, motor usado Tijuana, transmisión usada Tijuana, piezas usadas Tijuana, dónde comprar refacciones Tijuana, yonke Ensenada, yonke Tecate, yonke Rosarito, refacciones Nissan Tijuana, refacciones Toyota Tijuana, refacciones Chevrolet Tijuana, refacciones Honda Tijuana, refacciones Ford Tijuana, autopartes baratas Tijuana, deshuese Tijuana, deshuesadero Tijuana, partes de carro Tijuana, yonkes en Tijuana, yonkes en México, deshuesadero México",  authors: [{ name: "Mecanix" }],
   creator: "Mecanix",
   publisher: "Mecanix",
@@ -28,8 +28,8 @@ keywords: "yonke Tijuana, refacciones usadas Tijuana, autopartes Tijuana, yonke 
     canonical: SITIO_OFICIAL,
   },
   openGraph: {
-    title: "Red Mecanix — Refacciones y autopartes usadas en México",
-    description: "Encuentra autopartes y refacciones usadas entre los yonkes y deshuesaderos colaboradores de la red Mecanix en México. Busca por marca, modelo y año.",
+    title: "Red Mecanix — Refacciones y autopartes usadas, talleres y servicios en México",
+    description: "Encuentra autopartes y refacciones usadas entre los yonkes y deshuesaderos colaboradores de la red Mecanix en México, además de talleres y servicios automotrices. Busca por marca, modelo y año.",
     url: SITIO_OFICIAL,
     siteName: "Red Mecanix",
     locale: "es_MX",
@@ -39,8 +39,8 @@ keywords: "yonke Tijuana, refacciones usadas Tijuana, autopartes Tijuana, yonke 
   },
   twitter: {
     card: "summary_large_image",
-    title: "Red Mecanix — Refacciones y autopartes usadas en México",
-    description: "Encuentra autopartes y refacciones usadas entre los yonkes colaboradores de la red Mecanix en México.",
+    title: "Red Mecanix — Refacciones y autopartes usadas, talleres y servicios en México",
+    description: "Encuentra autopartes y refacciones usadas entre los yonkes colaboradores de la red Mecanix en México, además de talleres y servicios automotrices.",
     images: [IMAGEN_PORTADA],
   },
   robots: {
@@ -85,7 +85,7 @@ export default function RootLayout({ children }) {
               "@type": "WebSite",
               "name": "Red Mecanix",
               "alternateName": ["Mecanix Yonke Virtual", "Mecanix"],
-              "description": "Plataforma que conecta a quien busca autopartes con los yonkes, talleres y negocios colaboradores de la red Mecanix en México",
+              "description": "Ecosistema automotriz que conecta a quien busca autopartes o servicios con los yonkes, talleres y proveedores colaboradores de la red Mecanix en México",
               "url": "${SITIO_OFICIAL}",
               "inLanguage": "es-MX"
             }

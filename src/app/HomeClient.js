@@ -220,6 +220,9 @@ function AvisoCompraSeguraCorto() {
 // textoSeoEstados llega ya armado desde page.js (Server Component) — lee la colección
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
+// Debajo del logo, en todas las pestañas: la portada ya no es solo de autopartes.
+export const FRASE_ECOSISTEMA_PORTADA = 'Encuentra la pieza o el servicio que tu vehículo necesita y contacta directo al proveedor.';
+
 export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, asistenciaVial = null, registroAsistencia = false, bienvenida = false, rangoAnios = null, buscadorRefacciones = false, mesesPromoTaller = null }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
@@ -1659,6 +1662,10 @@ function obtenerEstadoAbierto(horario) {
             width={1200} height={307}
             style={{ width: '100%', maxWidth: '440px', height: 'auto', margin: '0 auto', display: 'block' }}
           />
+          {/* Frase del ecosistema, en todas las pestañas (David, 2026-11-07). */}
+          <p style={{ fontSize: '15px', color: '#1A3C5E', fontWeight: '600', lineHeight: '1.5', maxWidth: '440px', margin: '12px auto 0' }}>
+            {FRASE_ECOSISTEMA_PORTADA}
+          </p>
         </div>
 
         {/* Pestañas: cliente vs yonke (vs taller, solo con la bandera prendida) — lo primero
@@ -1680,10 +1687,10 @@ function obtenerEstadoAbierto(horario) {
         {pestanaActiva === 'cliente' && tipoPiezas === 'usadas' && (
           <>
             <p style={{ textAlign: 'center', fontSize: '16px', color: '#1A3C5E', fontWeight: '600', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 8px' }}>
-              Encuentra la autoparte usada que necesitas y contacta directo al yonke.
+              Busca tu autoparte usada entre los yonkes colaboradores de la red Mecanix.
             </p>
             <p style={{ textAlign: 'center', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 20px' }}>
-              Mecanix no vende piezas: te conecta directo con el yonke que la tiene.
+              Mecanix no vende piezas ni presta servicios: te conecta directo con quien los ofrece.
             </p>
 
             {/* Selector de estado — aplica tanto al buscador inteligente como al avanzado (mismo
@@ -1708,7 +1715,7 @@ function obtenerEstadoAbierto(horario) {
             {/* Buscador inteligente — EL BUSCADOR GRANDE Y PROTAGONISTA, sin cambios en su lógica. */}
             <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 8px 32px rgba(26,60,94,0.10)', marginBottom: '12px' }}>
               <h2 style={{ fontSize: '18px', color: '#1A3C5E', marginBottom: '6px', fontWeight: '700', letterSpacing: '-0.3px' }}>
-                ✨ Buscador inteligente
+                ✨ Buscador de piezas inteligente
               </h2>
               <p style={{ fontSize: '13px', color: '#888', marginBottom: '16px' }}>
                 Descríbelo con tus palabras, ej. "defensa delantera para un tsuru 2010"

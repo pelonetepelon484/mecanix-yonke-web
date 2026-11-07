@@ -42,7 +42,7 @@ describe('portada con la bandera apagada', () => {
     render(<HomeClient textoSeoEstados="" />);
     expect(screen.queryByRole('group', { name: 'Tipo de pieza' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Piezas nuevas/)).not.toBeInTheDocument();
-    expect(screen.getByText('✨ Buscador inteligente')).toBeInTheDocument();
+    expect(screen.getByText('✨ Buscador de piezas inteligente')).toBeInTheDocument();
   });
   it('mismo HTML con la bandera en false que sin ella', () => {
     const sin = render(<HomeClient textoSeoEstados="" />).container.innerHTML;
@@ -56,15 +56,15 @@ describe('portada con la bandera encendida', () => {
     render(<HomeClient textoSeoEstados="" buscadorRefacciones />);
     const selector = screen.getByRole('group', { name: 'Tipo de pieza' });
     expect(within(selector).getByRole('button', { name: /Piezas usadas/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('✨ Buscador inteligente')).toBeInTheDocument();
+    expect(screen.getByText('✨ Buscador de piezas inteligente')).toBeInTheDocument();
 
     fireEvent.click(within(selector).getByRole('button', { name: /Piezas nuevas/ }));
-    expect(screen.queryByText('✨ Buscador inteligente')).not.toBeInTheDocument();
+    expect(screen.queryByText('✨ Buscador de piezas inteligente')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Número de parte o descripción')).toBeInTheDocument();
     expect(screen.getByText(TEXTOS_PROVISIONALES.introPiezasNuevas)).toBeInTheDocument();
 
     fireEvent.click(within(selector).getByRole('button', { name: /Piezas usadas/ }));
-    expect(screen.getByText('✨ Buscador inteligente')).toBeInTheDocument();
+    expect(screen.getByText('✨ Buscador de piezas inteligente')).toBeInTheDocument();
     expect(screen.queryByLabelText('Número de parte o descripción')).not.toBeInTheDocument();
   });
 

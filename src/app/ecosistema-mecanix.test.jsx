@@ -84,3 +84,18 @@ describe('portada (HomeClient)', () => {
     expect(seo.parentElement.nextElementSibling).toBe(titulo.closest('section'));
   });
 });
+
+describe('frases de la portada (ecosistema, 2026-11-07)', () => {
+  it('frase del ecosistema debajo del logo y frases de piezas sin "contacta directo al yonke"', async () => {
+    const { FRASE_ECOSISTEMA_PORTADA } = await import('./HomeClient');
+    render(<HomeClient textoSeoEstados="" />);
+    expect(FRASE_ECOSISTEMA_PORTADA).toBe('Encuentra la pieza o el servicio que tu vehículo necesita y contacta directo al proveedor.');
+    const frase = screen.getByText(FRASE_ECOSISTEMA_PORTADA);
+    const logo = screen.getByAltText('Red Mecanix, ecosistema automotriz');
+    expect(logo.nextElementSibling).toBe(frase);
+    expect(screen.getByText('Busca tu autoparte usada entre los yonkes colaboradores de la red Mecanix.')).toBeInTheDocument();
+    expect(screen.getByText('Mecanix no vende piezas ni presta servicios: te conecta directo con quien los ofrece.')).toBeInTheDocument();
+    expect(screen.getByText('✨ Buscador de piezas inteligente')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/contacta directo al yonke/);
+  });
+});
