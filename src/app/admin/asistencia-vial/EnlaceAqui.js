@@ -79,7 +79,7 @@ export default function EnlaceAqui({ p }) {
 
   return (
     <div style={{ marginTop: '10px', padding: '10px', borderRadius: '10px', backgroundColor: '#F7F9FB', border: '1px solid #E3EAF2' }}>
-      <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: '700', color: '#1A3C5E' }}>📍 Enlace "Estoy aquí" (mapa)</p>
+      <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: '700', color: '#1A3C5E' }}>📍 Enlace &quot;Estoy aquí&quot; (mapa)</p>
       {enlace && (
         <>
           <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#555' }}>Guárdalo o mándalo ahora: después ya no se puede volver a ver.</p>

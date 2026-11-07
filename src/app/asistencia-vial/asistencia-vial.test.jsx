@@ -44,9 +44,18 @@ describe('servidor', () => {
     expect(where).toHaveBeenCalledWith('activo', '==', true);
     expect(getDocs).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(elemento.props.proveedores)).not.toContain('secreto');
+    expect(elemento.props.mapa).toBe(false);
     const meta = await generateMetadata();
     expect(meta.robots).toBeUndefined();
     expect(meta.title).toBe('Grúas y asistencia vial en Baja California');
+  });
+});
+
+describe('servidor: bandera del mapa', () => {
+  it('con asistenciaVialMapa, la página recibe mapa = true', async () => {
+    configPortada = { asistenciaVialActiva: true, asistenciaVialMapa: true };
+    proveedoresFirestore = [];
+    expect((await Pagina()).props.mapa).toBe(true);
   });
 });
 

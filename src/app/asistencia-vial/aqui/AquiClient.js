@@ -32,13 +32,25 @@ export default function AquiClient() {
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState('');
 
+  // El secreto solo existe en el navegador (después del "#"): se lee al abrir y se pregunta el estado.
   useEffect(() => {
-    const s = window.location.hash.slice(1);
-    if (!esSecretoValido(s)) { setEstado({ cargando: false, nombre: '', hastaMs: null, error: MENSAJES_UBICACION.enlaceInvalido }); return; }
-    setSecreto(s);
-    llamar({ secreto: s, accion: 'estado' })
-      .then((r) => setEstado({ cargando: false, nombre: r.nombre, hastaMs: r.hastaMs, error: '' }))
-      .catch((err) => setEstado({ cargando: false, nombre: '', hastaMs: null, error: err.message }));
+    let cancelado = false;
+    (async () => {
+      await null;
+      const s = window.location.hash.slice(1);
+      if (!esSecretoValido(s)) {
+        if (!cancelado) setEstado({ cargando: false, nombre: '', hastaMs: null, error: MENSAJES_UBICACION.enlaceInvalido });
+        return;
+      }
+      if (!cancelado) setSecreto(s);
+      try {
+        const r = await llamar({ secreto: s, accion: 'estado' });
+        if (!cancelado) setEstado({ cargando: false, nombre: r.nombre, hastaMs: r.hastaMs, error: '' });
+      } catch (err) {
+        if (!cancelado) setEstado({ cargando: false, nombre: '', hastaMs: null, error: err.message });
+      }
+    })();
+    return () => { cancelado = true; };
   }, []);
 
   async function llegue() {
