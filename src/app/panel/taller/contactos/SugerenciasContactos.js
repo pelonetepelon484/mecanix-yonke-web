@@ -21,7 +21,7 @@ export default function SugerenciasContactos({ tallerId, texto, onElegir }) {
   const [remotos, setRemotos] = useState([]);
   const [elegido, setElegido] = useState(null);
   const pidiendo = useRef(false);
-  const textoInicial = useRef((texto ?? '').trim());
+  const [textoInicial] = useState(() => (texto ?? '').trim());
 
   useEffect(() => {
     let cancelado = false;
@@ -32,7 +32,7 @@ export default function SugerenciasContactos({ tallerId, texto, onElegir }) {
   }, []);
 
   const t = (texto ?? '').trim();
-  const activo = habilitado && Boolean(tallerId) && t.length >= MIN_LETRAS && t !== elegido && t !== textoInicial.current;
+  const activo = habilitado && Boolean(tallerId) && t.length >= MIN_LETRAS && t !== elegido && t !== textoInicial;
 
   useEffect(() => {
     if (!activo || primeros || pidiendo.current) return;
