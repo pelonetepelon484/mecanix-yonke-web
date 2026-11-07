@@ -13,3 +13,9 @@ export function idContadorRateLimit(ip: string, minutoBucket: number, sal: strin
   const hash = createHmac('sha256', sal).update(ip || 'unknown').digest('hex').slice(0, 32);
   return `${hash}_${minutoBucket}`;
 }
+
+// Hash corto (HMAC-SHA256 con la misma sal secreta) para IDs de contadores que no deben llevar la IP,
+// el identificador del navegador ni el uid en claro (comparador de piezas).
+export function hashConSal(texto: string, sal: string = process.env.RATE_LIMIT_SALT || SAL_RESPALDO): string {
+  return createHmac('sha256', sal).update(texto || 'unknown').digest('hex').slice(0, 32);
+}
