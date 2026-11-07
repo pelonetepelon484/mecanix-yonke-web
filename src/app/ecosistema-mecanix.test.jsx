@@ -99,3 +99,13 @@ describe('frases de la portada (ecosistema, 2026-11-07)', () => {
     expect(document.body.textContent).not.toMatch(/contacta directo al yonke/);
   });
 });
+
+describe('tarjeta del comparador en la portada', () => {
+  it('solo con la bandera', () => {
+    render(<HomeClient textoSeoEstados="" />);
+    expect(screen.queryByRole('link', { name: /Comparar número de serie o número de parte/ })).not.toBeInTheDocument();
+    cleanup();
+    render(<HomeClient textoSeoEstados="" comparador />);
+    expect(screen.getByRole('link', { name: /Comparar número de serie o número de parte/ })).toHaveAttribute('href', '/comparador');
+  });
+});

@@ -9,6 +9,7 @@ import { rangoAniosServer } from './lib/busqueda/configBuscadorServer';
 import { buscadorRefaccionesEncendido } from './lib/refaccionariaPublica';
 import { leerPromoTalleres } from '../lib/premiumGratis';
 import { esRegistroLigero } from '../lib/yonkeLigero';
+import { leerConfigComparador } from '../lib/configComparador';
 
 // Misma cadencia que el caché en memoria de estadosServer.js (10 min) — sin esto, Next.js
 // generaría esta página como estática en el build y el texto SEO de cobertura quedaría
@@ -97,6 +98,8 @@ export default async function Home() {
   // Promoción "Premium gratis al registrarte" de talleres (config/talleres). Misma cadencia; si falla
   // la lectura, no se anuncia.
   const mesesPromoTaller = await leerPromoTalleres(dbServer);
+  // Comparador de piezas (config/comparador.habilitado). Misma cadencia; si falla la lectura, apagado.
+  const { habilitado: comparador } = await leerConfigComparador(dbServer);
 
-  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} ecosistema={ecosistema} asistenciaVial={asistenciaVial} registroAsistencia={asistenciaVialRegistro} bienvenida={bienvenida} rangoAnios={rangoAnios} buscadorRefacciones={buscadorRefacciones} mesesPromoTaller={mesesPromoTaller} />;
+  return <HomeClient textoSeoEstados={textoSeoEstados} textoConteoRed={textoConteoRedYonkes(conteo)} botonPanel={botonPanel} ecosistema={ecosistema} asistenciaVial={asistenciaVial} registroAsistencia={asistenciaVialRegistro} bienvenida={bienvenida} rangoAnios={rangoAnios} buscadorRefacciones={buscadorRefacciones} mesesPromoTaller={mesesPromoTaller} comparador={comparador} />;
 }

@@ -25,6 +25,7 @@ import { aniosCercanos, ordenarPorCercania } from '../lib/rangoAnios';
 import VentanaAlertas from './VentanaAlertas';
 import ComoFuncionaBuscador from './ComoFuncionaBuscador';
 import ConoceMecanix from './ConoceMecanix';
+import TarjetaComparador from './comparador/TarjetaComparador';
 import EcosistemaMecanix from './EcosistemaMecanix';
 import VehiculosDisponiblesAlerta from './VehiculosDisponiblesAlerta';
 import { buscarVehiculosAlerta, sinYonkesYaMostrados } from './lib/buscarVehiculosAlerta';
@@ -223,7 +224,7 @@ function AvisoCompraSeguraCorto() {
 // Debajo del logo, en todas las pestañas: la portada ya no es solo de autopartes.
 export const FRASE_ECOSISTEMA_PORTADA = 'Encuentra la pieza o el servicio que tu vehículo necesita y contacta directo al proveedor.';
 
-export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, asistenciaVial = null, registroAsistencia = false, bienvenida = false, rangoAnios = null, buscadorRefacciones = false, mesesPromoTaller = null }) {
+export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, asistenciaVial = null, registroAsistencia = false, bienvenida = false, rangoAnios = null, buscadorRefacciones = false, mesesPromoTaller = null, comparador = false }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
   // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
@@ -1692,6 +1693,8 @@ function obtenerEstadoAbierto(horario) {
             <p style={{ textAlign: 'center', fontSize: '14px', color: '#1A3C5E', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 20px' }}>
               Mecanix no vende piezas ni presta servicios: te conecta directo con quien los ofrece.
             </p>
+            {/* Comparador de piezas: solo con config/comparador.habilitado (page.js). */}
+            {comparador && <TarjetaComparador />}
 
             {/* Selector de estado — aplica tanto al buscador inteligente como al avanzado (mismo
                 valor, una sola vez arriba de los dos). Default "todos" = comportamiento de
