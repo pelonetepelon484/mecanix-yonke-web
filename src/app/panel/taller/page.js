@@ -12,6 +12,7 @@ import { leerConfigSolicitudesPiezas } from '../solicitudesPiezasDatos';
 import { leerConfigOrdenes } from './ordenes/datos';
 import { leerConfigHistorial } from './historial/datos';
 import { leerConfigContactos } from './contactos/config';
+import { leerConfigCitas } from './citas/config';
 import ServiciosPorVencer from './ServiciosPorVencer';
 import AvisoVersion from './AvisoVersion';
 import { OpcionInstalarApp } from '../AvisoInstalarApp';
@@ -38,6 +39,8 @@ export default function PanelTaller() {
   const [historialHabilitado, setHistorialHabilitado] = useState(false);
   // Libreta de contactos: solo con config/contactos.habilitado === true (sin el documento, no aparece).
   const [contactosHabilitados, setContactosHabilitados] = useState(false);
+  // Citas: solo con config/citas.habilitado === true (sin el documento, no aparece).
+  const [citasHabilitadas, setCitasHabilitadas] = useState(false);
   // Premium gratis de la promoción de registro (del mismo documento del taller, sin lecturas extra).
   const [promo, setPromo] = useState(null);
 
@@ -49,8 +52,9 @@ export default function PanelTaller() {
       leerConfigOrdenes().catch(() => null),
       leerConfigHistorial().catch(() => null),
       leerConfigContactos().catch(() => null),
+      leerConfigCitas().catch(() => null),
     ])
-      .then(([snap, config, configPiezas, configOrdenes, configHistorial, configContactos]) => {
+      .then(([snap, config, configPiezas, configOrdenes, configHistorial, configContactos, configCitas]) => {
         if (cancelado) return;
         if (snap.exists()) {
           setNombre(snap.data().nombre || '');
@@ -66,6 +70,7 @@ export default function PanelTaller() {
         setOrdenesHabilitadas(configOrdenes?.habilitado === true);
         setHistorialHabilitado(configHistorial?.habilitado === true);
         setContactosHabilitados(configContactos?.habilitado === true);
+        setCitasHabilitadas(configCitas?.habilitado === true);
       })
       .catch(() => { if (!cancelado) setErrorCarga('No pudimos cargar los datos de tu taller. Intenta recargar la página.'); });
     return () => { cancelado = true; };
@@ -99,22 +104,27 @@ export default function PanelTaller() {
         )}
         {talleresHabilitados() && (
           <>
-            <button onClick={() => router.push('/panel/taller/cotizaciones')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado || ordenesHabilitadas || historialHabilitado || contactosHabilitados ? '16px 0 10px' : '16px 0 24px' }}>
+            <button onClick={() => router.push('/panel/taller/cotizaciones')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#E8720C', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado || ordenesHabilitadas || historialHabilitado || contactosHabilitados || citasHabilitadas ? '16px 0 10px' : '16px 0 24px' }}>
               Cotizaciones
             </button>
             {ordenesHabilitadas && (
-              <button onClick={() => router.push('/panel/taller/ordenes')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#1A3C5E', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado || historialHabilitado || contactosHabilitados ? '0 0 10px' : '0 0 24px' }}>
+              <button onClick={() => router.push('/panel/taller/ordenes')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: 'none', backgroundColor: '#1A3C5E', color: '#fff', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado || historialHabilitado || contactosHabilitados || citasHabilitadas ? '0 0 10px' : '0 0 24px' }}>
                 Órdenes de servicio
               </button>
             )}
             {historialHabilitado && (
-              <button onClick={() => router.push('/panel/taller/historial')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: '2px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado || contactosHabilitados ? '0 0 10px' : '0 0 24px' }}>
+              <button onClick={() => router.push('/panel/taller/historial')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: '2px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado || contactosHabilitados || citasHabilitadas ? '0 0 10px' : '0 0 24px' }}>
                 Historial de servicios
               </button>
             )}
             {contactosHabilitados && (
-              <button onClick={() => router.push('/panel/taller/contactos')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: '2px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado ? '0 0 10px' : '0 0 24px' }}>
+              <button onClick={() => router.push('/panel/taller/contactos')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: '2px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado || citasHabilitadas ? '0 0 10px' : '0 0 24px' }}>
                 📇 Contactos
+              </button>
+            )}
+            {citasHabilitadas && (
+              <button onClick={() => router.push('/panel/taller/citas')} style={{ width: '100%', minHeight: '56px', borderRadius: '14px', border: '2px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', margin: pedirPiezaHabilitado ? '0 0 10px' : '0 0 24px' }}>
+                📅 Citas
               </button>
             )}
             {pedirPiezaHabilitado && (
