@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MENSAJES_CITA, enlaceRecordatorioCita, expiraCita, fechaDeInputs, inputsDeFecha, mensajeRecordatorioCita, separarHoy, textoDia, textoHora,
-  validarCita,
+  validarCita, ordenDesdeCita,
 } from './citasTaller';
 
 const AHORA = new Date(2026, 10, 6, 12, 0).getTime(); // viernes 6 de noviembre de 2026, 12:00
@@ -76,5 +76,20 @@ describe('fechas y textos', () => {
     const r = separarHoy(citas, ahora);
     expect(r.hoy.map((c) => c.id)).toEqual(['a', 'b']);
     expect(r.proximas.map((c) => c.id)).toEqual(['c']);
+  });
+});
+
+describe('ordenDesdeCita', () => {
+  const cita = { nombre: 'Juan', telefono: '6641234567', vehiculo: 'Nissan Versa 2018', placas: 'ABC123', motivo: 'Ruido en frenos' };
+  it('con datos del cliente', () => {
+    expect(ordenDesdeCita(cita, true)).toEqual({
+      cliente: { nombre: 'Juan', telefono: '6641234567' },
+      vehiculo: { marca: 'Nissan', modelo: 'Versa', anio: 2018, placas: 'ABC123' },
+      fallaReportada: 'Ruido en frenos',
+    });
+  });
+  it('sin datos del cliente: solo vehículo y falla', () => {
+    expect(ordenDesdeCita(cita, false)).toEqual({ cliente: {}, vehiculo: { marca: 'Nissan', modelo: 'Versa', anio: 2018 }, fallaReportada: 'Ruido en frenos' });
+    expect(ordenDesdeCita({ nombre: 'Ana', vehiculo: 'Tsuru' }, false).vehiculo).toEqual({ marca: '', modelo: '' });
   });
 });

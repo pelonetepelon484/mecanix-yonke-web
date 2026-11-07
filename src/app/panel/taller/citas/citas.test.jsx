@@ -26,6 +26,16 @@ vi.mock('../cotizaciones/datos', () => ({
   aceptarVersion: vi.fn(),
 }));
 vi.mock('./config', () => ({ leerConfigCitas: vi.fn(async () => configCitas) }));
+let configOrdenes = null;
+let configContactos = null;
+const crearContacto = vi.fn(async () => 'c01');
+vi.mock('../ordenes/datos', () => ({ leerConfigOrdenes: vi.fn(async () => configOrdenes) }));
+vi.mock('../contactos/config', () => ({ leerConfigContactos: vi.fn(async () => configContactos) }));
+vi.mock('../contactos/datos', () => ({
+  listarContactos: vi.fn(async () => ({ items: [{ id: 'c01', nombre: 'Juan Pérez', telefono: '6649998877', vehiculos: [{ marca: 'Nissan', modelo: 'Versa', anio: 2018, placas: 'XYZ1' }] }], hayMas: false })),
+  buscarContactos: vi.fn(async () => []),
+  crearContacto: (...a) => crearContacto(...a),
+}));
 vi.mock('./datos', () => ({
   listarProximas: vi.fn(async () => proximas),
   listarPasadas: (...a) => listarPasadas(...a),
@@ -52,7 +62,7 @@ afterEach(() => {
   [crearCita, guardarCita, cambiarEstadoCita, borrarCita, listarPasadas].forEach((f) => f.mockClear());
   configCitas = { habilitado: true };
   taller = { id: 'T1', nombre: 'Taller Ruiz', activo: true, aceptacionVersion: 'v1' };
-  proximas = []; pasadas = []; cita = null;
+  proximas = []; pasadas = []; cita = null; configOrdenes = null; configContactos = null; crearContacto.mockClear();
 });
 
 describe('marco: falla cerrada', () => {
@@ -208,5 +218,54 @@ describe('detalle', () => {
     conMarco(<Detalle />);
     expect(await screen.findByRole('button', { name: 'Borrar cita' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '💬 Recordar por WhatsApp' })).not.toBeInTheDocument();
+  });
+});
+
+describe('integración con contactos y órdenes', () => {
+  it('al agendar, sugiere de la libreta y llena WhatsApp, vehículo y placas', async () => {
+    vi.stubEnv('NEXT_PUBLIC_TALLERES_HABILITADOS', '1');
+    configContactos = { habilitado: true };
+    conMarco(<Nueva />);
+    fireEvent.change(await screen.findByLabelText('Nombre del cliente *'), { target: { value: 'jua' } });
+    fireEvent.click(await screen.findByRole('option'));
+    expect(screen.getByLabelText('Nombre del cliente *')).toHaveValue('Juan Pérez');
+    expect(screen.getByLabelText('WhatsApp (10 dígitos)')).toHaveValue('6649998877');
+    expect(screen.getByLabelText('Vehículo')).toHaveValue('Nissan Versa 2018');
+    expect(screen.getByLabelText('Placas')).toHaveValue('XYZ1');
+  });
+  it('"Convertir en orden" solo con órdenes encendidas y abre la orden nueva con la cita', async () => {
+    vi.stubEnv('NEXT_PUBLIC_TALLERES_HABILITADOS', '1');
+    cita = c('C1', enDias(1));
+    conMarco(<Detalle />);
+    await screen.findByRole('button', { name: 'Borrar cita' });
+    expect(screen.queryByRole('button', { name: 'Convertir en orden' })).not.toBeInTheDocument();
+    cleanup();
+    configOrdenes = { habilitado: true };
+    conMarco(<Detalle />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Convertir en orden' }));
+    expect(push).toHaveBeenCalledWith('/panel/taller/ordenes/nueva?cita=C1');
+  });
+  it('cita cancelada u órdenes con Premium que el taller no tiene: sin "Convertir en orden"', async () => {
+    vi.stubEnv('NEXT_PUBLIC_TALLERES_HABILITADOS', '1');
+    configOrdenes = { habilitado: true };
+    cita = c('C1', enDias(1), { estado: 'cancelada' });
+    conMarco(<Detalle />);
+    await screen.findByRole('button', { name: 'Borrar cita' });
+    expect(screen.queryByRole('button', { name: 'Convertir en orden' })).not.toBeInTheDocument();
+    cleanup();
+    configOrdenes = { habilitado: true, requierePremium: true };
+    cita = c('C1', enDias(1));
+    conMarco(<Detalle />);
+    await screen.findByRole('button', { name: 'Borrar cita' });
+    expect(screen.queryByRole('button', { name: 'Convertir en orden' })).not.toBeInTheDocument();
+  });
+  it('"Guardar en mis contactos" desde la cita', async () => {
+    vi.stubEnv('NEXT_PUBLIC_TALLERES_HABILITADOS', '1');
+    configContactos = { habilitado: true };
+    cita = c('C1', enDias(1), { nombre: 'Juan Pérez', vehiculo: 'Nissan Versa 2018', placas: 'ABC123' });
+    conMarco(<Detalle />);
+    fireEvent.click(await screen.findByRole('button', { name: '📇 Guardar en mis contactos' }));
+    await waitFor(() => expect(crearContacto).toHaveBeenCalled());
+    expect(crearContacto.mock.calls[0][0].datos).toEqual({ nombre: 'Juan Pérez', telefono: '6641234567', nota: '', vehiculos: [{ marca: 'Nissan', modelo: 'Versa', anio: 2018, placas: 'ABC123' }] });
   });
 });
