@@ -12,6 +12,7 @@ const MIN_LETRAS = 2;
 // orden. Solo aparece con config/contactos.habilitado == true. Lee los contactos una sola vez
 // (primeros 50, A-Z) al escribir 2 letras y filtra en pantalla; si el taller tiene más, busca en
 // Firestore (inicio del nombre, WhatsApp o placas) un momento después de dejar de escribir.
+// Solo después de que el taller escribe (al abrir algo ya guardado no sale nada).
 // onElegir(contacto, vehiculo|null): el formulario llena sus campos. Si algo falla, no se muestra
 // nada y el formulario sigue igual.
 export default function SugerenciasContactos({ tallerId, texto, onElegir }) {
@@ -20,6 +21,7 @@ export default function SugerenciasContactos({ tallerId, texto, onElegir }) {
   const [remotos, setRemotos] = useState([]);
   const [elegido, setElegido] = useState(null);
   const pidiendo = useRef(false);
+  const textoInicial = useRef((texto ?? '').trim());
 
   useEffect(() => {
     let cancelado = false;
@@ -30,7 +32,7 @@ export default function SugerenciasContactos({ tallerId, texto, onElegir }) {
   }, []);
 
   const t = (texto ?? '').trim();
-  const activo = habilitado && Boolean(tallerId) && t.length >= MIN_LETRAS && t !== elegido;
+  const activo = habilitado && Boolean(tallerId) && t.length >= MIN_LETRAS && t !== elegido && t !== textoInicial.current;
 
   useEffect(() => {
     if (!activo || primeros || pidiendo.current) return;

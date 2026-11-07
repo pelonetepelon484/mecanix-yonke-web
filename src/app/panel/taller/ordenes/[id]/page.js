@@ -12,6 +12,7 @@ import { descargarPdfOrden } from '../pdf';
 import { datosClienteDisponibles, ordenConSeguimiento } from '../../../../../lib/avisoOrden';
 import { AVISO_ENTREGA_SEGUIMIENTO, ligaSeguimientoParaPdf } from '../../../../../lib/seguimiento';
 import SeguimientoOrden from '../SeguimientoOrden';
+import GuardarComoContacto from '../../contactos/GuardarComoContacto';
 
 export default function DetalleOrden() {
   const router = useRouter();
@@ -97,6 +98,9 @@ export default function DetalleOrden() {
         {/* Historial de servicios (config/historialTaller): solo órdenes entregadas, con Premium. */}
         <AgregarAlHistorial tallerId={tallerId} taller={taller} folio={folio} orden={orden} puedeEditar={puedeEditar} />
 
+        {/* Libreta de contactos (config/contactos): solo si la orden tiene nombre del cliente. */}
+        <GuardarComoContacto tallerId={tallerId} taller={taller} puedeEscribir={puedeBorrar} datos={{ nombre: orden.cliente?.nombre, telefono: orden.cliente?.telefono, vehiculo: orden.vehiculo }} />
+
         {/* Seguimiento en línea (config/ordenes.seguimientoHabilitado): solo órdenes con aviso que lo incluye. */}
         <SeguimientoOrden
           key={`seg-${version}`}
@@ -108,6 +112,7 @@ export default function DetalleOrden() {
         <OrdenForm
           key={version}
           inicial={orden}
+          tallerId={tallerId}
           tallerActivo={taller?.activo === true}
           soloLectura={soloLectura}
           // Eliminar y quitar datos: taller activo Y términos vigentes (las reglas exigen lo mismo; no
