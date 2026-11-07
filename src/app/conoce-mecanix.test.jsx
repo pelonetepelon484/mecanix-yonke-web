@@ -39,6 +39,11 @@ describe('ConoceMecanix', () => {
     expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual(['🚗 Soy cliente', '🏪 Tengo un yonke', '📦 Tengo una refaccionaria · Próximamente']);
   });
 
+  it('"Tengo grúa o llantera" solo con el registro de asistencia vial', () => {
+    render(<ConoceMecanix conTalleres conAsistencia />);
+    expect(screen.getByRole('link', { name: '🚛 Tengo grúa o llantera' })).toHaveAttribute('href', '/bienvenida?soy=asistencia#primeros-pasos');
+  });
+
   it('registra el clic en Google Analytics', () => {
     window.gtag = vi.fn();
     render(<ConoceMecanix />);

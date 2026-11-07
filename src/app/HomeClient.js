@@ -2118,7 +2118,7 @@ function obtenerEstadoAbierto(horario) {
                 <VentanaAlertas estado={estadoBusqueda} />
                 {/* Con /bienvenida encendida (config/portada.bienvenida), "¿Quieres saber más sobre
                     Mecanix?" con botones a /bienvenida; apagada, el diagrama de cómo funciona el buscador. */}
-                {bienvenida ? <ConoceMecanix conTalleres={talleresHabilitados()} /> : <ComoFuncionaBuscador />}
+                {bienvenida ? <ConoceMecanix conTalleres={talleresHabilitados()} conAsistencia={registroAsistencia} /> : <ComoFuncionaBuscador />}
 
                 <AvisoCompraSegura />
 

@@ -48,10 +48,17 @@ async function leerConfig(nombre) {
 // Banderas que cambian los pasos y las preguntas. Las de config/pedidosClientes siguen las reglas de
 // lib/banderaPedidosClientes.js (todas exigen habilitado); avisos, las de config/notificaciones
 // (habilitado); seguimiento, config/ordenes.seguimientoHabilitado. Solo true exacto.
-async function banderasPasos() {
-  const [c, notificaciones, ordenes] = await Promise.all([leerConfig('pedidosClientes'), leerConfig('notificaciones'), leerConfig('ordenes')]);
+// Contactos y citas: config/contactos y config/citas (habilitado; citasPremium, requierePremium);
+// asistencia vial: las banderas de config/portada (portada = leerConfigPortada).
+async function banderasPasos(portada) {
+  const [c, notificaciones, ordenes, contactos, citas] = await Promise.all([
+    leerConfig('pedidosClientes'), leerConfig('notificaciones'), leerConfig('ordenes'), leerConfig('contactos'), leerConfig('citas'),
+  ]);
   const consultas = c.habilitado === true;
+  const citasOn = citas.habilitado === true;
   return {
+    contactos: contactos.habilitado === true, citas: citasOn, citasPremium: citasOn && citas.requierePremium === true,
+    asistenciaVial: portada.asistenciaVialActiva, asistenciaMapa: portada.asistenciaVialActiva && portada.asistenciaVialMapa,
     consultas, otrosEstados: consultas && c.otrosEstados === true, vehiculosCompletos: consultas && c.inventarioVehiculos === true,
     formularioAbierto: consultas && c.formularioAbierto === true,
     avisos: notificaciones.habilitado === true, seguimiento: ordenes.seguimientoHabilitado === true,
@@ -59,11 +66,11 @@ async function banderasPasos() {
 }
 
 export default async function Bienvenida() {
-  const { bienvenida } = await leerConfigPortada(dbServer);
-  if (!bienvenida) notFound();
+  const portada = await leerConfigPortada(dbServer);
+  if (!portada.bienvenida) notFound();
 
   const [planes, banderas, estados, buscadorRefacciones, mesesPromoTaller] = await Promise.all([
-    leerConfigPlanes(dbServer), banderasPasos(), obtenerEstadosCombinado(), buscadorRefaccionesEncendido(), leerPromoTalleres(dbServer),
+    leerConfigPlanes(dbServer), banderasPasos(portada), obtenerEstadosCombinado(), buscadorRefaccionesEncendido(), leerPromoTalleres(dbServer),
   ]);
   // Captura a domicilio: solo donde hay visitas, igual que la tarjeta de la portada.
   const estadosConVisitas = estados.filter((e) => e.tieneVisitas === true).map((e) => e.nombre).filter(Boolean)
@@ -72,7 +79,7 @@ export default async function Bienvenida() {
   return (
     <BienvenidaClient
       talleres={talleresHabilitados()} planes={planes} banderas={banderas}
-      estadosConVisitas={estadosConVisitas} buscadorRefacciones={buscadorRefacciones} mesesPromoTaller={mesesPromoTaller}
+      asistenciaRegistro={portada.asistenciaVialRegistro} estadosConVisitas={estadosConVisitas} buscadorRefacciones={buscadorRefacciones} mesesPromoTaller={mesesPromoTaller}
     />
   );
 }
