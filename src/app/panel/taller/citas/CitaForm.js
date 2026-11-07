@@ -5,10 +5,13 @@ import {
   ADVERTENCIA_MOTIVO_CITA, ESTADOS_CITA, MAX_MOTIVO_CITA, MAX_NOMBRE_CITA, MAX_VEHICULO_CITA, NOMBRES_ESTADO_CITA, fechaDeCita, inputsDeFecha,
   validarCita,
 } from '../../../../lib/citasTaller';
+import { textoVehiculoSinPlacas } from '../../../../lib/contactosTaller';
+import SugerenciasContactos from '../contactos/SugerenciasContactos';
 
 // Formulario de alta y edición. Valida en pantalla (lib/citasTaller.ts) y llama onGuardar con los
 // datos limpios; si onGuardar falla, el mensaje se muestra y lo escrito sigue en pantalla.
-export default function CitaForm({ inicial = null, textoBoton = 'Agendar cita', onGuardar }) {
+// tallerId: con él, debajo del nombre salen sugerencias de la libreta de contactos.
+export default function CitaForm({ inicial = null, tallerId = null, textoBoton = 'Agendar cita', onGuardar }) {
   const fechaInicial = inicial ? fechaDeCita(inicial) : null;
   const inputs = fechaInicial ? inputsDeFecha(fechaInicial) : { fecha: '', hora: '' };
   const [fecha, setFecha] = useState(inputs.fecha);
@@ -50,6 +53,20 @@ export default function CitaForm({ inicial = null, textoBoton = 'Agendar cita', 
       </div>
       <label htmlFor="ci-nombre" style={etiqueta}>Nombre del cliente *</label>
       <input id="ci-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={MAX_NOMBRE_CITA} autoComplete="off" style={campo} />
+      {tallerId && (
+        <div style={{ marginTop: '8px' }}>
+          <SugerenciasContactos
+            tallerId={tallerId}
+            texto={nombre}
+            onElegir={(c, v) => {
+              setNombre(c.nombre ?? '');
+              setTelefono(c.telefono ?? '');
+              setVehiculo(v ? textoVehiculoSinPlacas(v) : '');
+              setPlacas(v?.placas ?? '');
+            }}
+          />
+        </div>
+      )}
       <label htmlFor="ci-telefono" style={etiqueta}>WhatsApp (10 dígitos)</label>
       <input id="ci-telefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} inputMode="tel" autoComplete="off" placeholder="6641234567" style={campo} />
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>

@@ -12,6 +12,7 @@ import { convertirCotizacionEnOrden, leerConfigOrdenes } from '../../ordenes/dat
 import { MENSAJES_CONVERSION, mensajeConfirmarConversion } from '../../../../../lib/ordenes';
 import { datosClienteDisponibles } from '../../../../../lib/avisoOrden';
 import { MENSAJES_COTIZACION } from '../../../../../lib/cotizaciones';
+import GuardarComoContacto from '../../contactos/GuardarComoContacto';
 
 export default function EditarCotizacion() {
   const router = useRouter();
@@ -137,9 +138,13 @@ export default function EditarCotizacion() {
           </button>
         )}
 
+        {/* Libreta de contactos (config/contactos): solo si la cotización tiene nombre del cliente. */}
+        <GuardarComoContacto tallerId={tallerId} taller={taller} puedeEscribir={puedeEditar} datos={{ nombre: cot.cliente?.nombre, telefono: cot.cliente?.telefono, vehiculo: cot.vehiculo }} />
+
         <CotizacionForm
           key={version}
           inicial={cot}
+          tallerId={tallerId}
           tallerActivo={taller?.activo === true}
           soloLectura={soloLectura}
           datosClienteHabilitados={datosClienteHabilitados}

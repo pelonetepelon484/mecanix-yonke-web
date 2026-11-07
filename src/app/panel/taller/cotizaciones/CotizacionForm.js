@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import SelectorMarcaModelo from '../../../lib/SelectorMarcaModelo';
+import SugerenciasContactos from '../contactos/SugerenciasContactos';
 import { ESTADOS_COTIZACION, IVA_PORCENTAJE, MAX_RENGLONES, MAX_VIGENCIA_DIAS, MENSAJES_COTIZACION, formatearPesos, ivaCentavos, redondearCentavos, subtotalCentavos, totalCentavos, totalConIvaCentavos, validarCotizacion, validarRenglon } from '../../../../lib/cotizaciones';
 import { enlacePedirPieza } from '../../../../lib/pedirPiezaDesdeCotizacion';
 
@@ -70,6 +71,8 @@ const enlacePedirPiezaStyle = {
 export default function CotizacionForm({
   inicial = null, tallerActivo = true, soloLectura = false, datosClienteHabilitados = true, fechaEliminacion = null,
   mostrarPedirPieza = false,
+  // tallerId: con datos del cliente, debajo del nombre salen sugerencias de la libreta de contactos.
+  tallerId = null,
   puedeEliminar = false,
   // "Quitar datos del cliente" exige taller activo Y términos vigentes (las reglas también).
   puedeQuitarDatos = true,
@@ -79,6 +82,8 @@ export default function CotizacionForm({
   const [archivada] = useState(inicial?.archivada ?? false);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
+  // Al elegir un contacto, el selector de marca y modelo se vuelve a armar para mostrar lo nuevo.
+  const [vueltaSelector, setVueltaSelector] = useState(0);
 
   const set = (campo) => (e) => setF((prev) => ({ ...prev, [campo]: e.target.value }));
   const setRenglon = (i, campo, valor) => setF((prev) => ({
@@ -136,6 +141,21 @@ export default function CotizacionForm({
             <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E' }}>Cliente (opcional)</p>
             <label style={etiqueta}>Nombre</label>
             <input value={f.nombre} onChange={set('nombre')} style={inputBase} autoComplete="off" />
+            {tallerId && !soloLectura && (
+              <SugerenciasContactos
+                tallerId={tallerId}
+                texto={f.nombre}
+                onElegir={(c, v) => {
+                  setF((p) => ({
+                    ...p,
+                    nombre: c.nombre ?? '',
+                    telefono: c.telefono ?? '',
+                    ...(v ? { marca: v.marca ?? '', modelo: v.modelo ?? '', anio: v.anio ? String(v.anio) : '', placas: v.placas ?? '' } : {}),
+                  }));
+                  if (v) setVueltaSelector((n) => n + 1);
+                }}
+              />
+            )}
             <label style={etiqueta}>Teléfono</label>
             <input type="tel" inputMode="tel" value={f.telefono} onChange={set('telefono')} style={inputBase} autoComplete="off" />
           </div>
@@ -144,6 +164,7 @@ export default function CotizacionForm({
         <div style={seccion}>
           <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E' }}>Vehículo</p>
           <SelectorMarcaModelo
+            key={vueltaSelector}
             marca={f.marca}
             modelo={f.modelo}
             onMarca={(v) => setF((p) => ({ ...p, marca: v }))}

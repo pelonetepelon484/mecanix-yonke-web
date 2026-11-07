@@ -5,6 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCitas } from '../contexto';
 import { borrarCita, cambiarEstadoCita, guardarCita, leerCita } from '../datos';
 import CitaForm from '../CitaForm';
+import GuardarComoContacto from '../../contactos/GuardarComoContacto';
+import { leerConfigOrdenes } from '../../ordenes/datos';
+import { premiumOrdenesOk } from '../../../../../lib/planes';
+import { vehiculoDesdeTexto } from '../../../../../lib/contactosTaller';
 import {
   MENSAJES_CITA, NOMBRES_ESTADO_CITA, enlaceRecordatorioCita, expiraCita, fechaDeCita, textoDia, textoHora,
 } from '../../../../../lib/citasTaller';
@@ -16,12 +20,22 @@ const fechaLarga = (d) => d.toLocaleDateString('es-MX', { day: 'numeric', month:
 export default function DetalleCitaPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { tallerId, taller, puedeEscribir } = useCitas();
+  const { tallerId, taller, versionVigente, puedeEscribir } = useCitas();
   const [cita, setCita] = useState(undefined);
   const [editando, setEditando] = useState(false);
   const [aviso, setAviso] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [recarga, setRecarga] = useState(0);
+  // "Convertir en orden": solo con config/ordenes.habilitado === true (igual que en cotizaciones).
+  const [configOrdenes, setConfigOrdenes] = useState(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    leerConfigOrdenes()
+      .then((c) => { if (!cancelado) setConfigOrdenes(c); })
+      .catch(() => {});
+    return () => { cancelado = true; };
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -78,6 +92,10 @@ export default function DetalleCitaPage() {
   const f = fechaDeCita(cita);
   const enlace = enlaceRecordatorioCita(cita.telefono, taller?.nombre || '', cita.nombre, f);
   const otrosEstados = ['confirmada', 'atendida', 'cancelada'].filter((s) => s !== cita.estado);
+  // Términos vigentes y taller activo (sin pedir Premium de citas): guardar contacto y crear la orden.
+  const tallerAlDia = versionVigente && taller?.activo === true;
+  const puedeConvertir = configOrdenes?.habilitado === true && tallerAlDia && premiumOrdenesOk(configOrdenes, taller) && cita.estado !== 'cancelada';
+  const datosContacto = { nombre: cita.nombre, telefono: cita.telefono, vehiculo: vehiculoDesdeTexto(cita.vehiculo, cita.placas) };
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: '#F4F5F5', padding: '16px' }}>
@@ -86,7 +104,7 @@ export default function DetalleCitaPage() {
         {editando ? (
           <>
             <h1 style={titulo}>Editar cita</h1>
-            <CitaForm inicial={cita} textoBoton="Guardar cambios" onGuardar={guardar} />
+            <CitaForm inicial={cita} tallerId={tallerId} textoBoton="Guardar cambios" onGuardar={guardar} />
             <button type="button" onClick={() => setEditando(false)} style={{ ...secundario, marginTop: '10px' }}>Cancelar</button>
           </>
         ) : (
@@ -102,6 +120,9 @@ export default function DetalleCitaPage() {
             {enlace && (
               <a href={enlace} target="_blank" rel="noopener noreferrer" style={botonWhatsapp}>💬 Recordar por WhatsApp</a>
             )}
+            {puedeConvertir && (
+              <button type="button" onClick={() => router.push(`/panel/taller/ordenes/nueva?cita=${id}`)} style={botonOrden}>Convertir en orden</button>
+            )}
             {puedeEscribir && (
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${otrosEstados.length}, 1fr)`, gap: '8px', margin: '0 0 10px' }}>
                 {otrosEstados.map((s) => (
@@ -112,6 +133,7 @@ export default function DetalleCitaPage() {
               </div>
             )}
             {puedeEscribir && <button type="button" onClick={() => setEditando(true)} style={secundario}>Editar</button>}
+            <GuardarComoContacto tallerId={tallerId} taller={taller} puedeEscribir={tallerAlDia} datos={datosContacto} />
             <button type="button" onClick={borrar} disabled={ocupado} style={botonBorrar}>Borrar cita</button>
           </>
         )}
@@ -124,6 +146,7 @@ const volver = { background: 'none', border: 'none', color: '#1A3C5E', fontWeigh
 const titulo = { fontSize: '22px', color: '#1A3C5E', margin: '8px 0 10px' };
 const linea = { margin: '4px 0', fontSize: '15px', color: '#1A3C5E' };
 const botonWhatsapp = { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', boxSizing: 'border-box', minHeight: '52px', borderRadius: '12px', backgroundColor: '#25D366', color: '#fff', fontSize: '16px', fontWeight: 'bold', textDecoration: 'none', margin: '0 0 10px' };
+const botonOrden = { width: '100%', minHeight: '52px', borderRadius: '12px', border: 'none', backgroundColor: '#1A3C5E', color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', margin: '0 0 10px' };
 const botonEstado = { minHeight: '48px', borderRadius: '12px', border: '1px solid #1A3C5E', backgroundColor: '#F4F7FA', color: '#1A3C5E', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' };
 const secundario = { width: '100%', minHeight: '48px', borderRadius: '12px', border: '1px solid #1A3C5E', backgroundColor: '#fff', color: '#1A3C5E', fontWeight: 'bold', cursor: 'pointer', margin: '0 0 10px' };
 const botonBorrar = { width: '100%', minHeight: '48px', borderRadius: '12px', border: '1px solid #B3261E', backgroundColor: '#fff', color: '#B3261E', fontWeight: 'bold', cursor: 'pointer' };

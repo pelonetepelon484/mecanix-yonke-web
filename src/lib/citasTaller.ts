@@ -7,7 +7,7 @@
 //
 // La fecha y la hora se toman como las escribe el taller en su celular (hora local del celular).
 import { whatsappHref } from './whatsapp';
-import { normalizarPlacasContacto, normalizarTelefonoContacto } from './contactosTaller';
+import { normalizarPlacasContacto, normalizarTelefonoContacto, vehiculoDesdeTexto } from './contactosTaller';
 
 export const DIAS_RETENCION_CITA = 30;
 // Hasta cuánto tiempo atrás se puede guardar o editar una cita (p. ej. marcar "Atendida" días
@@ -148,4 +148,23 @@ export function mensajeRecordatorioCita(nombreTaller: string, nombreCliente: str
 export function enlaceRecordatorioCita(telefono: unknown, nombreTaller: string, nombreCliente: string, fecha: Date | null): string | null {
   if (!fecha) return null;
   return whatsappHref(telefono, mensajeRecordatorioCita(nombreTaller, nombreCliente, fecha));
+}
+
+// "Convertir en orden": datos para LLENAR el formulario de orden nueva (el taller revisa y guarda).
+// Nombre, teléfono y placas solo si la orden puede llevar datos del cliente (datosCliente); el
+// motivo pasa a "Falla reportada". Si el vehículo no se puede separar en marca y modelo, va vacío.
+export function ordenDesdeCita(
+  cita: { nombre?: string; telefono?: string; vehiculo?: string; placas?: string; motivo?: string },
+  datosCliente: boolean,
+) {
+  const v = vehiculoDesdeTexto(cita.vehiculo ?? '');
+  const cliente: { nombre?: string; telefono?: string } = {};
+  const vehiculo: { marca: string; modelo: string; anio?: number; placas?: string } = { marca: v?.marca ?? '', modelo: v?.modelo ?? '' };
+  if (v?.anio) vehiculo.anio = v.anio;
+  if (datosCliente) {
+    if (cita.nombre) cliente.nombre = cita.nombre;
+    if (cita.telefono) cliente.telefono = cita.telefono;
+    if (cita.placas) vehiculo.placas = cita.placas;
+  }
+  return { cliente, vehiculo, fallaReportada: (cita.motivo ?? '').slice(0, 500) };
 }

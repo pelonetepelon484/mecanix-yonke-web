@@ -27,7 +27,7 @@ export default function NuevaCitaPage() {
       <div style={{ maxWidth: '560px', margin: '0 auto' }}>
         <button type="button" onClick={() => router.push('/panel/taller/citas')} style={volver}>← Citas</button>
         <h1 style={{ fontSize: '22px', color: '#1A3C5E', margin: '8px 0 6px' }}>Agendar cita</h1>
-        <CitaForm textoBoton="Agendar cita" onGuardar={guardar} />
+        <CitaForm tallerId={tallerId} textoBoton="Agendar cita" onGuardar={guardar} />
       </div>
     </main>
   );

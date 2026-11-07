@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SelectorMarcaModelo from '../../../lib/SelectorMarcaModelo';
+import SugerenciasContactos from '../contactos/SugerenciasContactos';
 import { IVA_PORCENTAJE, formatearPesos, ivaCentavos, redondearCentavos, subtotalCentavos, totalConIvaCentavos } from '../../../../lib/cotizaciones';
 import {
   ADVERTENCIA_OBSERVACIONES, ADVERTENCIA_VEHICULO, ESTADOS_ORDEN, MAX_ESTADO_RECEPCION, MAX_FALLA, MAX_GARANTIA_DIAS, MAX_OBSERVACIONES,
@@ -15,6 +16,8 @@ import {
 // Nunca VIN ni fotos.
 // soloLectura: el taller tiene la versión vieja, está desactivado o la orden venció.
 // avisoEntrega: texto que se muestra al marcar "Entregado" (p. ej. el del enlace de seguimiento).
+// prellenado: datos para llenar una orden NUEVA (p. ej. desde una cita); no cuenta como orden guardada.
+// tallerId: con datosCliente, debajo del nombre salen sugerencias de la libreta de contactos.
 // Todo lo que viene de Firestore se lee como texto plano (leerItems/textoPlano) y React lo muestra
 // como texto: nunca se interpreta como HTML.
 
@@ -137,9 +140,12 @@ function ListaItems({ titulo, nombreSingular, lista, max, datos, onCambiar, onQu
 
 export default function OrdenForm({
   inicial = null, tallerActivo = true, soloLectura = false, puedeEliminar = false, datosCliente = false, avisoEntrega = null,
+  prellenado = null, tallerId = null,
   onGuardar, onQuitarDatos, onEliminar, onCancelar,
 }) {
-  const [f, setF] = useState(() => desdeInicial(inicial));
+  const [f, setF] = useState(() => desdeInicial(inicial ?? prellenado));
+  // Al elegir un contacto, el selector de marca y modelo se vuelve a armar para mostrar lo nuevo.
+  const [vueltaSelector, setVueltaSelector] = useState(0);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
 
@@ -195,6 +201,21 @@ export default function OrdenForm({
             <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E' }}>Cliente (opcional)</p>
             <label htmlFor="orden-nombre" style={etiqueta}>Nombre</label>
             <input id="orden-nombre" maxLength={100} value={f.nombre} onChange={set('nombre')} style={inputBase} autoComplete="off" />
+            {tallerId && !soloLectura && (
+              <SugerenciasContactos
+                tallerId={tallerId}
+                texto={f.nombre}
+                onElegir={(c, v) => {
+                  setF((p) => ({
+                    ...p,
+                    nombre: c.nombre ?? '',
+                    telefono: c.telefono ?? '',
+                    ...(v ? { marca: v.marca ?? '', modelo: v.modelo ?? '', anio: v.anio ? String(v.anio) : '', placas: v.placas ?? '' } : {}),
+                  }));
+                  if (v) setVueltaSelector((n) => n + 1);
+                }}
+              />
+            )}
             <label htmlFor="orden-telefono" style={etiqueta}>Teléfono</label>
             <input id="orden-telefono" type="tel" inputMode="tel" maxLength={20} value={f.telefono} onChange={set('telefono')} style={inputBase} autoComplete="off" />
           </div>
@@ -203,6 +224,7 @@ export default function OrdenForm({
         <div style={seccion}>
           <p style={{ margin: '0 0 10px', fontWeight: 'bold', color: '#1A3C5E' }}>Vehículo</p>
           <SelectorMarcaModelo
+            key={vueltaSelector}
             marca={f.marca}
             modelo={f.modelo}
             onMarca={(v) => setF((p) => ({ ...p, marca: v }))}
