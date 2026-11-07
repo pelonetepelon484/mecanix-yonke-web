@@ -629,6 +629,53 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Asistencia vial, etapa 2: "Estoy aquí" y mapa ----------
+    // checkinsAsistencia/{huella}: enlace privado de cada proveedor. huella = SHA-256 (hex) del
+    // secreto del enlace; el secreto no se guarda en ningún lado. Solo el admin crea, ve y borra
+    // (para desactivar un enlace). Nunca se edita: un enlace nuevo = otro documento.
+    match /checkinsAsistencia/{huella} {
+      // El usuario de servicio del servidor (esServicio) solo lo lee uno por uno (con la huella
+      // del enlace que recibió) y solo con la bandera del mapa: nunca lista.
+      allow read: if esAdmin();
+      allow get: if esServicio() && mapaAsistenciaEncendido();
+      allow create: if esAdmin()
+                    && huella.matches('^[0-9a-f]{64}$')
+                    && request.resource.data.keys().hasOnly(['proveedorId', 'creadoAt'])
+                    && request.resource.data.keys().hasAll(['proveedorId', 'creadoAt'])
+                    && request.resource.data.proveedorId is string
+                    && exists(/databases/$(database)/documents/asistenciaVial/$(request.resource.data.proveedorId))
+                    && request.resource.data.creadoAt == request.time;
+      allow delete: if esAdmin();
+    }
+
+    // ubicacionesAsistencia/{proveedorId}: ubicación REDONDEADA (~300 m) y la hora hasta la que
+    // el proveedor dijo que estará ahí. La escribe SOLO el usuario de servicio del servidor
+    // (api/asistencia-vial/aqui, después de revisar el enlace): desde la app nadie más la crea ni
+    // la edita. Se lee solo con config/portada.asistenciaVialMapa == true (apagada, nadie la ve
+    // salvo el admin). El admin y el servidor ("Ya me fui") pueden borrarla.
+    function mapaAsistenciaEncendido() {
+      return get(/databases/$(database)/documents/config/portada).data.get('asistenciaVialMapa', false) == true;
+    }
+    match /ubicacionesAsistencia/{proveedorId} {
+      function ubicacionValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['lat', 'lng', 'hastaAt', 'actualizadoAt'])
+          && d.keys().hasAll(['lat', 'lng', 'hastaAt', 'actualizadoAt'])
+          && d.lat is number && d.lat >= 28.0 && d.lat <= 32.8
+          && d.lng is number && d.lng >= -117.3 && d.lng <= -112.5
+          && d.actualizadoAt == request.time
+          && d.hastaAt is timestamp
+          && d.hastaAt > request.time
+          && d.hastaAt <= request.time + duration.value(181, 'm');
+      }
+      allow read: if esAdmin() || mapaAsistenciaEncendido();
+      allow create, update: if esServicio()
+                            && mapaAsistenciaEncendido()
+                            && get(/databases/$(database)/documents/asistenciaVial/$(proveedorId)).data.get('activo', false) == true
+                            && ubicacionValida();
+      allow delete: if esAdmin() || esServicio();
+    }
+
     // ---------- Talleres (cuenta de taller, separada de yonkes) ----------
     // Un taller nace SIN aceptar (aceptacionVersion vacía). Su primera aceptación se registra
     // justo después, en un lote con su entrada del historial.

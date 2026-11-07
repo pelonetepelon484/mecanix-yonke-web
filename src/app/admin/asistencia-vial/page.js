@@ -17,6 +17,8 @@ import {
   CIUDADES_ASISTENCIA, COLECCION_ASISTENCIA, TIPOS_GRUA, TIPOS_SERVICIO, estadoDocumentos, etiquetaCiudad, etiquetaServicio,
   mesAnio, proveedorParaPagina, validarProveedor, venceRevisionMs,
 } from '../../../lib/asistenciaVial';
+import EnlaceAqui, { desactivarEnlaces } from './EnlaceAqui';
+import { leerConfigPortada } from '../../../lib/configPortada';
 
 const idLogo = (id) => `asistencia-${id}`;
 const VACIO = {
@@ -174,7 +176,7 @@ function FormProveedor({ inicial, id, onListo, onCancelar }) {
   );
 }
 
-function FilaProveedor({ p, onEditar, onCambio }) {
+function FilaProveedor({ p, mapa = false, onEditar, onCambio }) {
   const [trabajando, setTrabajando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [toques, setToques] = useState(null);
@@ -200,6 +202,7 @@ function FilaProveedor({ p, onEditar, onCambio }) {
       const contactos = await getDocs(collection(db, COLECCION_ASISTENCIA, p.id, 'contactos'));
       await Promise.all(contactos.docs.map((d) => deleteDoc(d.ref)));
       await deleteDoc(doc(db, COLECCION_ASISTENCIA, p.id, 'privado', 'datos'));
+      await desactivarEnlaces(p.id).catch(() => {}); // enlace "Estoy aquí" y su punto del mapa (si falla, no estorba: el servidor exige proveedor activo)
       if (p.logoUrl) await borrarLogoYonke(idLogo(p.id));
       await deleteDoc(doc(db, COLECCION_ASISTENCIA, p.id));
       onCambio();
@@ -234,6 +237,7 @@ function FilaProveedor({ p, onEditar, onCambio }) {
         {p.fechaRevisionMs ? ` · revisado en ${mesAnio(p.fechaRevisionMs)}` : ''}
         {estado === 'en_regla' ? ` · vence en ${mesAnio(venceRevisionMs(p.fechaRevisionMs))}` : ''}
       </span>
+      {mapa && p.activo && <EnlaceAqui p={p} />}
       {toques && (
         <div style={{ marginTop: '8px', fontSize: '13px', color: '#1A3C5E' }}>
           {toques.length === 0 ? 'Todavía sin toques.' : toques.map((t) => <p key={t.mes} style={{ margin: '2px 0' }}>{t.mes}: 📞 {t.llamadas} llamadas · 💬 {t.whatsapp} WhatsApp</p>)}
@@ -257,6 +261,12 @@ export default function AdminAsistenciaVialPage() {
   const [recarga, setRecarga] = useState(0);
   // null: lista; { id: null }: nuevo; { id, inicial }: edición.
   const [editando, setEditando] = useState(null);
+  // Enlace "Estoy aquí": solo con config/portada.asistenciaVialMapa (etapa 2).
+  const [mapa, setMapa] = useState(false);
+
+  useEffect(() => {
+    leerConfigPortada(db).then((b) => setMapa(b.asistenciaVialMapa === true)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -316,7 +326,7 @@ export default function AdminAsistenciaVialPage() {
             {!error && proveedores === null && <p style={{ color: '#666' }}>Cargando...</p>}
             {proveedores && proveedores.length === 0 && <p style={{ color: '#666' }}>Todavía no hay proveedores.</p>}
             {proveedores && proveedores.map((p) => (
-              <FilaProveedor key={`${p.id}-${p.activo}`} p={p} onEditar={() => editar(p)} onCambio={() => setRecarga((n) => n + 1)} />
+              <FilaProveedor key={`${p.id}-${p.activo}`} p={p} mapa={mapa} onEditar={() => editar(p)} onCambio={() => setRecarga((n) => n + 1)} />
             ))}
           </>
         )}

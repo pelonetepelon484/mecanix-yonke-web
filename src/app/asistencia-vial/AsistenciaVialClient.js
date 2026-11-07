@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { registrarContactoAsistencia } from '../lib/registrarContactoAsistencia';
+import MapaAsistencia from './MapaAsistencia';
 import {
   AVISO_ASISTENCIA, CIUDADES_ASISTENCIA, TIPOS_SERVICIO, enlaceLlamar, enlaceWhatsappAsistencia, etiquetaCiudad, etiquetaGrua,
   etiquetaServicio, ordenarProveedores, selloVigente, textoSello,
@@ -18,7 +19,7 @@ export const textoVacio = (ciudad) => (ciudad
   ? `Aún no hay proveedores colaboradores de la red Mecanix en ${etiquetaCiudad(ciudad)} con esos filtros.`
   : 'Aún no hay proveedores colaboradores de la red Mecanix con esos filtros.');
 
-function Tarjeta({ p, ahoraMs }) {
+function Tarjeta({ p, ahoraMs, extra = '' }) {
   const sello = selloVigente(p, ahoraMs);
   return (
     <li style={tarjeta}>
@@ -29,6 +30,7 @@ function Tarjeta({ p, ahoraMs }) {
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ margin: 0, fontSize: '17px', color: '#1A3C5E', fontWeight: '800', lineHeight: '1.3' }}>{p.nombre}</h3>
+          {extra && <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#E8720C', fontWeight: '800' }}>📍 {extra}</p>}
           {sello && <span style={selloDocumentos}>📄 {textoSello(p)}</span>}
         </div>
       </div>
@@ -60,7 +62,8 @@ function Lista({ titulo, proveedores, ahoraMs }) {
   );
 }
 
-export default function AsistenciaVialClient({ proveedores = [], ahoraMs }) {
+// mapa: config/portada.asistenciaVialMapa (etapa 2). Apagada, la página queda igual que antes.
+export default function AsistenciaVialClient({ proveedores = [], ahoraMs, mapa = false }) {
   const [ciudad, setCiudad] = useState('');
   const [servicio, setServicio] = useState('');
   const [solo24h, setSolo24h] = useState(false);
@@ -74,6 +77,8 @@ export default function AsistenciaVialClient({ proveedores = [], ahoraMs }) {
         <p style={{ fontSize: '15px', color: '#1A3C5E', lineHeight: '1.5', margin: '0 0 14px' }}>{ENTRADA_ASISTENCIA}</p>
 
         <p role="note" style={aviso}>{AVISO_ASISTENCIA}</p>
+
+        {mapa && <MapaAsistencia proveedores={proveedores} Tarjeta={Tarjeta} ahoraMs={ahoraMs} />}
 
         <div style={filtros}>
           <label style={etiqueta} htmlFor="av-ciudad">Ciudad</label>
