@@ -1,5 +1,6 @@
 // Pruebas de reglas: asistencia vial etapa 2. checkinsAsistencia/{huella} (enlaces privados, solo
-// admin) y ubicacionesAsistencia/{proveedorId} (la escribe solo el servidor; se lee con la bandera).
+// admin; el servidor los lee uno por uno) y ubicacionesAsistencia/{proveedorId} (la escribe solo el
+// usuario de servicio del servidor; se lee con la bandera).
 // Comando (desde la raíz del repo):  npm run test:rules
 import { describe, it, before, after, beforeEach } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -13,13 +14,14 @@ const anonimo = () => env.unauthenticatedContext().firestore();
 const HUELLA = 'ab'.repeat(32);
 const ubicacion = { lat: 32.514, lng: -117.039, hastaAt: new Date(Date.now() + 3600000), actualizadoAt: new Date() };
 
-async function sembrar({ mapa = true } = {}) {
+async function sembrar({ mapa = true, activo = true } = {}) {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'usuarios', 'admin'), { rol: 'admin' });
+    await setDoc(doc(db, 'usuarios', 'srv'), { rol: 'servicio' });
     await setDoc(doc(db, 'config', 'portada'), { asistenciaVialActiva: true, asistenciaVialMapa: mapa });
-    await setDoc(doc(db, 'asistenciaVial', 'P1'), { nombre: 'Grúas', activo: true });
+    await setDoc(doc(db, 'asistenciaVial', 'P1'), { nombre: 'Grúas', activo });
     await setDoc(doc(db, 'checkinsAsistencia', HUELLA), { proveedorId: 'P1', creadoAt: new Date() });
     await setDoc(doc(db, 'ubicacionesAsistencia', 'P1'), ubicacion);
   });
@@ -51,6 +53,14 @@ describe('checkinsAsistencia (enlaces privados)', () => {
     await assertFails(setDoc(doc(como('admin'), 'checkinsAsistencia', 'ef'.repeat(32)), { proveedorId: 'P1', creadoAt: serverTimestamp(), secreto: 'x' }));
     await assertFails(updateDoc(doc(como('admin'), 'checkinsAsistencia', HUELLA), { proveedorId: 'P2' }));
   });
+  it('el servidor lo lee uno por uno solo con la bandera del mapa, nunca lista ni escribe', async () => {
+    await assertSucceeds(getDoc(doc(como('srv'), 'checkinsAsistencia', HUELLA)));
+    await assertFails(getDocs(collection(como('srv'), 'checkinsAsistencia')));
+    await assertFails(setDoc(doc(como('srv'), 'checkinsAsistencia', 'cd'.repeat(32)), { proveedorId: 'P1', creadoAt: serverTimestamp() }));
+    await assertFails(deleteDoc(doc(como('srv'), 'checkinsAsistencia', HUELLA)));
+    await sembrar({ mapa: false });
+    await assertFails(getDoc(doc(como('srv'), 'checkinsAsistencia', HUELLA)));
+  });
   it('nadie más crea ni borra', async () => {
     await assertFails(setDoc(doc(como('alguien'), 'checkinsAsistencia', 'cd'.repeat(32)), { proveedorId: 'P1', creadoAt: serverTimestamp() }));
     await assertFails(deleteDoc(doc(anonimo(), 'checkinsAsistencia', HUELLA)));
@@ -58,14 +68,36 @@ describe('checkinsAsistencia (enlaces privados)', () => {
 });
 
 describe('ubicacionesAsistencia (mapa)', () => {
-  it('con la bandera del mapa, cualquiera las lee; nadie las escribe desde la app', async () => {
+  const nueva = (extra = {}) => ({ lat: 32.52, lng: -117.04, hastaAt: new Date(Date.now() + 90 * 60000), actualizadoAt: serverTimestamp(), ...extra });
+  it('con la bandera del mapa, cualquiera las lee; desde la app nadie las escribe', async () => {
     await sembrar();
     await assertSucceeds(getDoc(doc(anonimo(), 'ubicacionesAsistencia', 'P1')));
     await assertSucceeds(getDocs(collection(anonimo(), 'ubicacionesAsistencia')));
     for (const db of [anonimo(), como('alguien'), como('admin')]) {
-      await assertFails(setDoc(doc(db, 'ubicacionesAsistencia', 'P2'), ubicacion));
+      await assertFails(setDoc(doc(db, 'ubicacionesAsistencia', 'P1'), nueva()));
       await assertFails(updateDoc(doc(db, 'ubicacionesAsistencia', 'P1'), { lat: 32.6 }));
     }
+  });
+  it('el servidor la guarda solo con forma válida, hasta 3 horas y en Baja California', async () => {
+    await sembrar();
+    await assertSucceeds(setDoc(doc(como('srv'), 'ubicacionesAsistencia', 'P1'), nueva()));
+    await assertSucceeds(setDoc(doc(como('srv'), 'ubicacionesAsistencia', 'P1'), nueva({ hastaAt: new Date(Date.now() + 180 * 60000) })));
+    const malas = [
+      nueva({ hastaAt: new Date(Date.now() + 240 * 60000) }),
+      nueva({ hastaAt: new Date(Date.now() - 60000) }),
+      nueva({ lat: 19.43, lng: -99.13 }),
+      nueva({ lat: '32.5' }),
+      nueva({ actualizadoAt: new Date(2020, 0, 1) }),
+      nueva({ telefono: '6641234567' }),
+    ];
+    for (const d of malas) await assertFails(setDoc(doc(como('srv'), 'ubicacionesAsistencia', 'P1'), d));
+    await assertSucceeds(deleteDoc(doc(como('srv'), 'ubicacionesAsistencia', 'P1')));
+  });
+  it('el servidor no la guarda sin la bandera o con el proveedor inactivo', async () => {
+    await sembrar({ mapa: false });
+    await assertFails(setDoc(doc(como('srv'), 'ubicacionesAsistencia', 'P1'), nueva()));
+    await sembrar({ activo: false });
+    await assertFails(setDoc(doc(como('srv'), 'ubicacionesAsistencia', 'P1'), nueva()));
   });
   it('sin la bandera del mapa, solo el admin las ve', async () => {
     await sembrar({ mapa: false });
