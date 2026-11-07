@@ -109,7 +109,8 @@ describe('lista', () => {
     vi.stubEnv('NEXT_PUBLIC_TALLERES_HABILITADOS', '1');
     lista = { items: [c('c01', { nombre: 'José Álvarez' }), c('c02', { nombre: 'Ana', telefono: '6649990000', vehiculos: [{ marca: 'Nissan', modelo: 'Versa', placas: 'XYZ987' }] })], cursor: null, hayMas: false };
     conMarco(<Lista />);
-    const caja = await screen.findByRole('textbox', { name: 'Buscar por nombre, WhatsApp o placas' });
+    await screen.findByText('José Álvarez'); // espera a que la lista termine de cargar
+    const caja = screen.getByRole('textbox', { name: 'Buscar por nombre, WhatsApp o placas' });
     fireEvent.change(caja, { target: { value: 'jose' } });
     expect(screen.getByText('José Álvarez')).toBeInTheDocument();
     expect(screen.queryByText('Ana')).not.toBeInTheDocument();
@@ -126,7 +127,7 @@ describe('lista', () => {
     buscarContactos.mockResolvedValueOnce([c('abc', { nombre: 'Encontrado' })]);
     conMarco(<Lista />);
     fireEvent.change(await screen.findByRole('textbox', { name: 'Buscar por nombre, WhatsApp o placas' }), { target: { value: 'enc' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Buscar' })); // aparece al terminar de cargar la lista
     expect(await screen.findByText('Encontrado')).toBeInTheDocument();
     expect(buscarContactos).toHaveBeenCalledWith('T1', 'enc');
   });
