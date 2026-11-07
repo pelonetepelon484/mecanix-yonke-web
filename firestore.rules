@@ -1474,6 +1474,61 @@ service cloud.firestore {
       allow delete: if esAdmin() || esDuenoC();
     }
 
+    // ---------- Citas del taller ----------
+    // talleres/{tallerId}/citas/{citaId}. Solo el dueño (y el admin) las ve. Bandera
+    // config/citas.habilitado. Con config/citas.requierePremium == true, CREAR y EDITAR piden
+    // Premium vigente; ver y borrar no. Borrado automático: expiraAt = fecha + 30 días (TTL).
+    // La fecha puede ser de hasta 30 días atrás (para marcar "Atendida") y hasta 400 días adelante.
+    match /talleres/{tallerId}/citas/{citaId} {
+      function tallerCi() {
+        return get(/databases/$(database)/documents/talleres/$(tallerId)).data;
+      }
+      function esDuenoCi() {
+        return request.auth != null && tallerCi().ownerUid == request.auth.uid;
+      }
+      function puedeEscribirCi() {
+        let t = tallerCi();
+        let c = get(/databases/$(database)/documents/config/citas).data;
+        return request.auth != null
+          && t.ownerUid == request.auth.uid
+          && t.activo == true
+          && t.aceptacionVersion == get(/databases/$(database)/documents/config/cotizaciones).data.terminosVersion
+          && c.get('habilitado', false) == true
+          && (c.get('requierePremium', false) != true || premiumVigente(t));
+      }
+      function formaCi() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['fecha', 'nombre', 'telefono', 'vehiculo', 'placas', 'motivo', 'estado', 'creadoAt', 'actualizadoAt', 'expiraAt'])
+          && d.keys().hasAll(['fecha', 'nombre', 'telefono', 'vehiculo', 'placas', 'motivo', 'estado', 'creadoAt', 'actualizadoAt', 'expiraAt'])
+          && d.fecha is timestamp
+          && d.fecha >= request.time - duration.value(30, 'd')
+          && d.fecha <= request.time + duration.value(400, 'd')
+          && d.nombre is string && d.nombre.size() >= 1 && d.nombre.size() <= 100
+          && d.telefono is string && (d.telefono == '' || d.telefono.matches('^[0-9]{10}$'))
+          && d.vehiculo is string && d.vehiculo.size() <= 100
+          && d.placas is string && (d.placas == '' || d.placas.matches('^[A-Z0-9-]{1,12}$'))
+          && d.motivo is string && d.motivo.size() <= 200
+          && d.estado in ['pendiente', 'confirmada', 'atendida', 'cancelada']
+          && d.actualizadoAt == request.time
+          && d.expiraAt is timestamp
+          && d.expiraAt == d.fecha + duration.value(30, 'd');
+      }
+
+      allow read: if esAdmin() || esDuenoCi();
+
+      allow create: if puedeEscribirCi()
+                    && formaCi()
+                    && request.resource.data.creadoAt == request.time
+                    && citaId.matches('^[A-Za-z0-9]{20}$');
+
+      allow update: if puedeEscribirCi()
+                    && formaCi()
+                    && request.resource.data.creadoAt == resource.data.creadoAt
+                    && resource.data.expiraAt > request.time;
+
+      allow delete: if esAdmin() || esDuenoCi();
+    }
+
     // ---------- Pedido de piezas de talleres a yonkes ----------
     // El taller publica una solicitud (vehículo + pieza, SIN datos del cliente final); Mecanix
     // decide a qué yonkes avisar por estado (fuera de las reglas); cada yonke responde una sola

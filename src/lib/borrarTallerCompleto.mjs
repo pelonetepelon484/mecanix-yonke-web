@@ -1,5 +1,5 @@
 // Borrado completo de un taller, solo para admin, SIN pantalla (por ahora).
-// Orden: renglones -> cotizaciones -> enlaces de seguimiento -> órdenes de servicio -> historial de vehículos -> libreta de contactos ->
+// Orden: renglones -> cotizaciones -> enlaces de seguimiento -> órdenes de servicio -> historial de vehículos -> libreta de contactos -> citas ->
 // solicitudes de piezas (privado y respuestas primero) -> historial de aceptaciones -> taller -> usuario de rol taller.
 // La cuenta de Firebase Auth NO se borra aquí: se borra a mano en la consola.
 // Las dependencias de Firebase se pasan desde fuera (fns) para poder probarlo en el emulador.
@@ -11,7 +11,7 @@ export async function borrarTallerCompleto({ db, fns }, tallerId) {
   const { collection, getDocs, writeBatch, query, where } = fns;
   if (!tallerId || typeof tallerId !== 'string') throw new Error('Falta el ID del taller.');
 
-  const resumen = { cotizaciones: 0, renglones: 0, seguimientos: 0, ordenes: 0, historial: 0, contactos: 0, solicitudesPiezas: 0, aceptaciones: 0, usuarios: 0, taller: false };
+  const resumen = { cotizaciones: 0, renglones: 0, seguimientos: 0, ordenes: 0, historial: 0, contactos: 0, citas: 0, solicitudesPiezas: 0, aceptaciones: 0, usuarios: 0, taller: false };
 
   // 1) Renglones y 2) cotización, de una en una (cada lote tiene como máximo 21 operaciones)
   const cotizaciones = await getDocs(collection(db, 'talleres', tallerId, 'cotizaciones'));
@@ -43,6 +43,10 @@ export async function borrarTallerCompleto({ db, fns }, tallerId) {
   // 2c-bis) Libreta de contactos (talleres/{id}/contactosClientes/{id}, sin subcolecciones), en lotes.
   const contactos = await getDocs(collection(db, 'talleres', tallerId, 'contactosClientes'));
   resumen.contactos = await borrarRefs(db, writeBatch, contactos.docs.map((d) => d.ref));
+
+  // 2c-ter) Citas (talleres/{id}/citas/{id}, sin subcolecciones), en lotes.
+  const citas = await getDocs(collection(db, 'talleres', tallerId, 'citas'));
+  resumen.citas = await borrarRefs(db, writeBatch, citas.docs.map((d) => d.ref));
 
   // 2d) Solicitudes de piezas del taller a los yonkes (solicitudesPiezas, colección aparte con
   //     tallerId). Por cada una: primero privado/contacto (WhatsApp del taller) y respuestas/{yonkeId},
