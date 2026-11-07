@@ -629,6 +629,33 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Asistencia vial, etapa 2: "Estoy aquí" y mapa ----------
+    // checkinsAsistencia/{huella}: enlace privado de cada proveedor. huella = SHA-256 (hex) del
+    // secreto del enlace; el secreto no se guarda en ningún lado. Solo el admin crea, ve y borra
+    // (para desactivar un enlace). Nunca se edita: un enlace nuevo = otro documento.
+    match /checkinsAsistencia/{huella} {
+      allow read: if esAdmin();
+      allow create: if esAdmin()
+                    && huella.matches('^[0-9a-f]{64}$')
+                    && request.resource.data.keys().hasOnly(['proveedorId', 'creadoAt'])
+                    && request.resource.data.keys().hasAll(['proveedorId', 'creadoAt'])
+                    && request.resource.data.proveedorId is string
+                    && exists(/databases/$(database)/documents/asistenciaVial/$(request.resource.data.proveedorId))
+                    && request.resource.data.creadoAt == request.time;
+      allow delete: if esAdmin();
+    }
+
+    // ubicacionesAsistencia/{proveedorId}: ubicación REDONDEADA (~300 m) y la hora hasta la que
+    // el proveedor dijo que estará ahí. La escribe SOLO el servidor (api/asistencia-vial/aqui, con
+    // su cuenta de servicio, que no pasa por estas reglas): desde la app nadie la crea ni la edita.
+    // Se lee solo con config/portada.asistenciaVialMapa == true (apagada, nadie la ve salvo el
+    // admin). El admin puede borrarla ("quitar del mapa").
+    match /ubicacionesAsistencia/{proveedorId} {
+      allow read: if esAdmin()
+                  || get(/databases/$(database)/documents/config/portada).data.get('asistenciaVialMapa', false) == true;
+      allow delete: if esAdmin();
+    }
+
     // ---------- Talleres (cuenta de taller, separada de yonkes) ----------
     // Un taller nace SIN aceptar (aceptacionVersion vacía). Su primera aceptación se registra
     // justo después, en un lote con su entrada del historial.
