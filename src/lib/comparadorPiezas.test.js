@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MENSAJES_COMPARADOR, NOTA_PARTES_DISTINTAS, NOTA_PROGRAMACION, NOTA_VERIFICAR_PARTE, RESULTADOS, claveVin, compararVehiculos,
+  ALERTA_CLUSTER, MENSAJES_COMPARADOR, NOTA_PARTES_DISTINTAS, TIPOS_PIEZA, NOTA_PROGRAMACION, NOTA_VERIFICAR_PARTE, RESULTADOS, claveVin, compararVehiculos,
   normalizarParte, normalizarVin, resultadoPorPieza, validarEntrada, vehiculoDesdeVpic, vinParaMostrar, vinValido,
 } from './comparadorPiezas';
 
@@ -56,9 +56,9 @@ describe('comparación campo por campo', () => {
 });
 
 describe('resultado por pieza', () => {
-  it('número de parte idéntico: compatible (computadora y frenos con su nota)', () => {
+  it('número de parte idéntico: compatible (las electrónicas con su nota)', () => {
     expect(resultadoPorPieza({ tipo: 'motor', parteA: 'ABC123', parteB: 'ABC123' }).resultado).toBe(RESULTADOS.compatible);
-    for (const tipo of ['computadora', 'frenos']) {
+    for (const tipo of ['computadora', 'tcm', 'bcm', 'cluster']) {
       const r = resultadoPorPieza({ tipo, parteA: 'ABC123', parteB: 'ABC123' });
       expect(r.resultado).toBe(RESULTADOS.compatible);
       expect(r.nota).toBe(NOTA_PROGRAMACION);
@@ -66,11 +66,11 @@ describe('resultado por pieza', () => {
   });
   it('distintos pero registrados como equivalentes o para ese vehículo: según registros', () => {
     expect(resultadoPorPieza({ tipo: 'motor', parteA: 'A11', parteB: 'B22' }, null, null, { equivalentes: true }).resultado).toBe(RESULTADOS.registros);
-    expect(resultadoPorPieza({ tipo: 'frenos', parteA: 'A11' }, null, v(), { aplicacion: true })).toMatchObject({ resultado: RESULTADOS.registros, nota: NOTA_PROGRAMACION });
+    expect(resultadoPorPieza({ tipo: 'bcm', parteA: 'A11' }, null, v(), { aplicacion: true })).toMatchObject({ resultado: RESULTADOS.registros, nota: NOTA_PROGRAMACION });
   });
-  it('computadora y frenos: el VIN nunca basta', () => {
+  it('electrónicas: el VIN nunca basta', () => {
     expect(resultadoPorPieza({ tipo: 'computadora' }, v(), v())).toMatchObject({ resultado: RESULTADOS.indeterminado, nota: NOTA_VERIFICAR_PARTE });
-    expect(resultadoPorPieza({ tipo: 'frenos', parteA: 'A11', parteB: 'B22' }, v(), v())).toMatchObject({ resultado: RESULTADOS.indeterminado, nota: NOTA_PARTES_DISTINTAS });
+    expect(resultadoPorPieza({ tipo: 'tcm', parteA: 'A11', parteB: 'B22' }, v(), v())).toMatchObject({ resultado: RESULTADOS.indeterminado, nota: NOTA_PARTES_DISTINTAS });
   });
   it('motor: cilindrada, cilindros, combustible y año cercano', () => {
     expect(resultadoPorPieza({ tipo: 'motor' }, v(), v({ ModelYear: '2018' })).resultado).toBe(RESULTADOS.probable);
@@ -96,6 +96,29 @@ describe('resultado por pieza', () => {
   it('sin datos de VIN: no se puede determinar', () => {
     expect(resultadoPorPieza({ tipo: 'motor' }, v(), null).resultado).toBe(RESULTADOS.indeterminado);
     expect(resultadoPorPieza({ tipo: 'motor' }, { sinDatos: true }, v()).resultado).toBe(RESULTADOS.indeterminado);
+  });
+});
+
+describe('lista de piezas (2026-11-07)', () => {
+  it('dos grupos, sin discos de freno ni bolsas de aire', () => {
+    expect(TIPOS_PIEZA.map((t) => t.key)).toEqual(['motor', 'transmision', 'suspension', 'accesorios', 'carroceria', 'computadora', 'tcm', 'bcm', 'cluster']);
+    expect(JSON.stringify(TIPOS_PIEZA)).not.toMatch(/freno|bolsa|airbag/i);
+  });
+  it('accesorios del motor: misma regla que el motor', () => {
+    expect(resultadoPorPieza({ tipo: 'accesorios' }, v(), v({ ModelYear: '2017' })).resultado).toBe(RESULTADOS.probable);
+    expect(resultadoPorPieza({ tipo: 'accesorios' }, v(), v({ DisplacementL: '2.0' })).resultado).toBe(RESULTADOS.noCompatible);
+  });
+  it('carrocería: marca, modelo, tipo de carrocería y mismo año', () => {
+    expect(resultadoPorPieza({ tipo: 'carroceria' }, v(), v()).resultado).toBe(RESULTADOS.probable);
+    expect(resultadoPorPieza({ tipo: 'carroceria' }, v(), v({ BodyClass: 'Hatchback/Liftback/Notchback' })).resultado).toBe(RESULTADOS.noCompatible);
+    expect(resultadoPorPieza({ tipo: 'carroceria' }, v(), v({ ModelYear: '2014' })).resultado).toBe(RESULTADOS.indeterminado);
+    expect(resultadoPorPieza({ tipo: 'carroceria' }, v(), v({ BodyClass: '' })).resultado).toBe(RESULTADOS.indeterminado);
+  });
+  it('tablero: siempre la alerta del kilometraje del carro donante; las demás, sin alerta', () => {
+    expect(resultadoPorPieza({ tipo: 'cluster', parteA: 'A11', parteB: 'A11' }).alerta).toBe(ALERTA_CLUSTER);
+    expect(resultadoPorPieza({ tipo: 'cluster' }, v(), v()).alerta).toBe(ALERTA_CLUSTER);
+    expect(ALERTA_CLUSTER).toMatch(/kilometraje del carro donante/);
+    expect(resultadoPorPieza({ tipo: 'motor' }, v(), v()).alerta).toBeNull();
   });
 });
 

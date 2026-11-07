@@ -122,6 +122,7 @@ export function crearManejadorComparador(deps) {
         comparacion,
         resultado: resultado.resultado,
         nota: resultado.nota,
+        alerta: resultado.alerta,
         motivos: resultado.motivos,
       });
     } catch (error) {
