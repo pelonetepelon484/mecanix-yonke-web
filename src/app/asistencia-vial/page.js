@@ -45,8 +45,8 @@ async function leerProveedores() {
 }
 
 export default async function AsistenciaVialPage() {
-  const { asistenciaVialActiva, asistenciaVialMapa } = await leerBanderas();
+  const { asistenciaVialActiva, asistenciaVialMapa, asistenciaVialRegistro } = await leerBanderas();
   if (!asistenciaVialActiva) notFound();
   const { proveedores, ahoraMs } = await leerProveedores();
-  return <AsistenciaVialClient proveedores={proveedores} ahoraMs={ahoraMs} mapa={asistenciaVialMapa} />;
+  return <AsistenciaVialClient proveedores={proveedores} ahoraMs={ahoraMs} mapa={asistenciaVialMapa} registro={asistenciaVialRegistro} />;
 }

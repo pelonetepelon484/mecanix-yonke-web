@@ -220,7 +220,7 @@ function AvisoCompraSeguraCorto() {
 // textoSeoEstados llega ya armado desde page.js (Server Component) — lee la colección
 // `estados` en el servidor para que Google vea la cobertura real en el HTML inicial, sin que
 // este componente cliente tenga que volver a leer Firestore para lo mismo.
-export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, asistenciaVial = null, bienvenida = false, rangoAnios = null, buscadorRefacciones = false, mesesPromoTaller = null }) {
+export default function HomeClient({ textoSeoEstados, textoConteoRed = '', botonPanel = false, ecosistema = false, asistenciaVial = null, registroAsistencia = false, bienvenida = false, rangoAnios = null, buscadorRefacciones = false, mesesPromoTaller = null }) {
   // Visor de fotos del vehículo (las 4, deslizable) -- null = cerrado. Solo se abre desde la
   // foto frontal de un resultado de vehículo real (nunca motor ni pieza suelta, que no tienen 4
   // fotos). Las otras 3 fotos no se piden al navegador hasta que esto deja de ser null.
@@ -2361,7 +2361,7 @@ function obtenerEstadoAbierto(horario) {
 
             {/* Ecosistema de soluciones automotrices: solo con config/portada.ecosistema (page.js lo
                 lee en el servidor, así que el texto va en el HTML inicial). */}
-            {ecosistema && <EcosistemaMecanix asistenciaVial={asistenciaVial} />}
+            {ecosistema && <EcosistemaMecanix asistenciaVial={asistenciaVial} registro={registroAsistencia} />}
           </>
         )}
 

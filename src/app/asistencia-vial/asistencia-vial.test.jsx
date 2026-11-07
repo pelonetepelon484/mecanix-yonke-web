@@ -115,3 +115,15 @@ describe('página', () => {
     expect(textoVacio('mexicali')).toBe('Aún no hay proveedores colaboradores de la red Mecanix en Mexicali con esos filtros.');
   });
 });
+
+describe('botón Regístrate en /asistencia-vial', () => {
+  it('la página pasa la bandera y el botón sale solo con ella', async () => {
+    configPortada = { asistenciaVialActiva: true, asistenciaVialRegistro: true };
+    proveedoresFirestore = [];
+    expect((await Pagina()).props.registro).toBe(true);
+    const { rerender } = render(<AsistenciaVialClient proveedores={[]} ahoraMs={AHORA} />);
+    expect(screen.queryByRole('button', { name: /Regístrate/ })).not.toBeInTheDocument();
+    rerender(<AsistenciaVialClient proveedores={[]} ahoraMs={AHORA} registro />);
+    expect(screen.getByRole('button', { name: /Regístrate/ })).toBeInTheDocument();
+  });
+});
