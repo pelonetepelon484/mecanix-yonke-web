@@ -101,3 +101,28 @@ describe('WhatsApp', () => {
     expect(enlaceWhatsappContacto('', 'Taller Ruiz', 'Juan')).toBeNull();
   });
 });
+
+describe('integración: vehiculoDesdeTexto, contactoDesdeDatos, sugerenciasDe', () => {
+  it('separa marca, modelo y año del texto', async () => {
+    const { vehiculoDesdeTexto, textoVehiculoSinPlacas } = await import('./contactosTaller');
+    expect(vehiculoDesdeTexto('Nissan Versa 2018', 'abc 123')).toEqual({ marca: 'Nissan', modelo: 'Versa', anio: 2018, placas: 'ABC123' });
+    expect(vehiculoDesdeTexto('  Chevrolet   Aveo  LT ')).toEqual({ marca: 'Chevrolet', modelo: 'Aveo LT' });
+    expect(vehiculoDesdeTexto('Ford 2015')).toEqual({ marca: 'Ford', modelo: '2015' });
+    expect(vehiculoDesdeTexto('Tsuru')).toBeNull();
+    expect(vehiculoDesdeTexto('')).toBeNull();
+    expect(textoVehiculoSinPlacas({ marca: 'Nissan', modelo: 'Versa', anio: 2018, placas: 'X' })).toBe('Nissan Versa 2018');
+  });
+  it('arma el contacto desde una orden o cotización', async () => {
+    const { contactoDesdeDatos, validarContacto } = await import('./contactosTaller');
+    const c = contactoDesdeDatos({ nombre: ' Juan ', telefono: '664 123 4567', vehiculo: { marca: 'Nissan', modelo: 'Versa', anio: 2018, placas: 'abc123' } });
+    expect(c).toEqual({ nombre: 'Juan', telefono: '6641234567', nota: '', vehiculos: [{ marca: 'Nissan', modelo: 'Versa', anio: '2018', placas: 'ABC123' }] });
+    expect(validarContacto(c).ok).toBe(true);
+    expect(contactoDesdeDatos({ nombre: 'Ana', telefono: '123', vehiculo: { marca: 'Nissan', modelo: '' } })).toEqual({ nombre: 'Ana', telefono: '', nota: '', vehiculos: [] });
+  });
+  it('una sugerencia por vehículo', async () => {
+    const { sugerenciasDe } = await import('./contactosTaller');
+    expect(sugerenciasDe({ id: 'c01', vehiculos: [] }).map((s) => s.clave)).toEqual(['c01-0']);
+    const dos = sugerenciasDe({ id: 'c02', vehiculos: [{ marca: 'A', modelo: 'B' }, { marca: 'C', modelo: 'D' }] });
+    expect(dos.map((s) => s.vehiculo?.marca)).toEqual(['A', 'C']);
+  });
+});

@@ -175,3 +175,67 @@ export function enlaceWhatsappContacto(telefono: unknown, nombreTaller: string, 
 export function textoLugares(ocupados: number): string {
   return `Usas ${Math.min(ocupados, LIMITE_CONTACTOS_BASICO)} de ${LIMITE_CONTACTOS_BASICO} lugares del plan Básico.`;
 }
+
+// ---------- Integración con cotizaciones, órdenes y citas ----------
+
+// "Nissan Versa 2018" -> { marca: 'Nissan', modelo: 'Versa', anio: 2018 }. La primera palabra es
+// la marca, el resto el modelo y un año de 4 cifras al final se separa. null si no alcanza para
+// marca y modelo (una sola palabra) o si queda muy largo.
+export function vehiculoDesdeTexto(texto: unknown, placas: unknown = ''): VehiculoContacto | null {
+  if (typeof texto !== 'string') return null;
+  const partes = texto.trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
+  let anio: number | undefined;
+  const ultimo = partes[partes.length - 1];
+  if (partes.length > 2 && /^\d{4}$/.test(ultimo ?? '')) {
+    const n = Number(ultimo);
+    if (n >= 1950 && n <= 2100) { anio = n; partes.pop(); }
+  }
+  if (partes.length < 2) return null;
+  const marca = partes[0];
+  const modelo = partes.slice(1).join(' ');
+  if (marca.length > 60 || modelo.length > 60) return null;
+  const v: VehiculoContacto = { marca, modelo };
+  if (anio) v.anio = anio;
+  const p = normalizarPlacasContacto(placas);
+  if (p) v.placas = p;
+  return v;
+}
+
+// Texto de un vehículo sin placas, para el campo "Vehículo" de una cita.
+export const textoVehiculoSinPlacas = (v: VehiculoContacto) => [v.marca, v.modelo, v.anio].filter((x) => x !== undefined && x !== '').join(' ');
+
+type DatosOrigen = {
+  nombre?: unknown; telefono?: unknown;
+  vehiculo?: { marca?: unknown; modelo?: unknown; anio?: unknown; placas?: unknown } | null;
+};
+
+// Lo que viene de una cotización, orden o cita, listo para validarContacto. El vehículo solo va si
+// trae marca y modelo; si el teléfono no queda en 10 dígitos se guarda sin teléfono.
+export function contactoDesdeDatos(d: DatosOrigen): ContactoEscrito {
+  const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const tel = normalizarTelefonoContacto(texto(d.telefono));
+  const v = d.vehiculo ?? {};
+  const marca = texto(v.marca).slice(0, 60);
+  const modelo = texto(v.modelo).slice(0, 60);
+  const anio = typeof v.anio === 'number' && Number.isInteger(v.anio) && v.anio >= 1950 && v.anio <= 2100 ? String(v.anio) : '';
+  const placas = normalizarPlacasContacto(texto(v.placas)) ?? '';
+  return {
+    nombre: texto(d.nombre).slice(0, MAX_NOMBRE_CONTACTO),
+    telefono: tel ?? '',
+    nota: '',
+    vehiculos: marca && modelo ? [{ marca, modelo, anio, placas }] : [],
+  };
+}
+
+// Una sugerencia por vehículo del contacto (o una sola sin vehículo), para el autocompletar.
+export function sugerenciasDe<T extends { id?: string; vehiculos?: VehiculoContacto[] }>(c: T): { contacto: T; vehiculo: VehiculoContacto | null; clave: string }[] {
+  const vs = c.vehiculos ?? [];
+  if (vs.length === 0) return [{ contacto: c, vehiculo: null, clave: `${c.id}-0` }];
+  return vs.map((v, i) => ({ contacto: c, vehiculo: v, clave: `${c.id}-${i}` }));
+}
+
+export const MENSAJES_INTEGRACION_CONTACTO = {
+  guardado: 'Guardado en tus contactos.',
+  yaExiste: 'Este cliente ya está en tus contactos.',
+  sinNombre: 'Para guardarlo como contacto, primero escribe el nombre del cliente y guarda.',
+} as const;
