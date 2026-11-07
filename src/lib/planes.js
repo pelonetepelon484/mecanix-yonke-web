@@ -51,6 +51,7 @@ export const FUNCIONES_TALLER_BASICO = [
   'Cotizaciones para tus clientes, con PDF',
   'Pide piezas a los yonkes y compara sus respuestas',
   'Aviso de privacidad para tus clientes incluido',
+  'Libreta de contactos de tus clientes (hasta 25)',
 ];
 export const FUNCIONES_TALLER_PREMIUM = [
   'Todo lo del Plan Básico',
@@ -58,6 +59,7 @@ export const FUNCIONES_TALLER_PREMIUM = [
   'Descarga de todos tus documentos',
   'Historial de servicios y recordatorios de mantenimiento',
   'Enlace de seguimiento de órdenes para tu cliente',
+  'Libreta de contactos sin límite',
   'Las demás funciones que se incorporen',
 ];
 

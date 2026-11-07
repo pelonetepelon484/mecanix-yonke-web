@@ -1396,6 +1396,84 @@ service cloud.firestore {
       allow delete: if esAdmin() || esDuenoH();
     }
 
+    // ---------- Libreta de contactos del taller ----------
+    // Un documento por contacto (nombre, WhatsApp, nota corta y hasta 3 vehículos). Solo lo ve el
+    // dueño del taller (y el admin). Escribir: dueño con taller activo, términos vigentes y
+    // config/contactos.habilitado == true (sin el documento, get() falla y se niega: falla cerrada).
+    // Tope del plan Básico (25) sin contar documentos: un contacto NUEVO solo puede usar uno de los
+    // 25 lugares con ID fijo c01 ... c25; cualquier otro ID (automático, 20 letras y números) pide
+    // Premium vigente. Si el lugar ya está ocupado, setDoc sería una edición y la edición exige el
+    // mismo creadoAt: no se puede pisar un contacto. Editar, usar y borrar NO piden Premium (quien
+    // baja de Premium con más de 25 conserva todo; solo no agrega nuevos con los 25 lugares llenos).
+    // Borrar: el dueño SIEMPRE (aunque tenga términos viejos o el taller desactivado) o el admin.
+    // Borrado automático: expiraAt = ahora + 548 días (±5 min) en cada guardado (política TTL).
+    match /talleres/{tallerId}/contactosClientes/{contactoId} {
+      function tallerC() {
+        return get(/databases/$(database)/documents/talleres/$(tallerId)).data;
+      }
+      function esDuenoC() {
+        return request.auth != null && tallerC().ownerUid == request.auth.uid;
+      }
+      function puedeEscribirC() {
+        let t = tallerC();
+        return request.auth != null
+          && t.ownerUid == request.auth.uid
+          && t.activo == true
+          && t.aceptacionVersion == get(/databases/$(database)/documents/config/cotizaciones).data.terminosVersion
+          && get(/databases/$(database)/documents/config/contactos).data.get('habilitado', false) == true;
+      }
+      function cercaC(t, objetivo) {
+        return t >= objetivo - duration.value(5, 'm') && t <= objetivo + duration.value(5, 'm');
+      }
+      function vehiculoC(v) {
+        return v is map
+          && v.keys().hasOnly(['marca', 'modelo', 'anio', 'placas'])
+          && v.keys().hasAll(['marca', 'modelo'])
+          && v.marca is string && v.marca.size() >= 1 && v.marca.size() <= 60
+          && v.modelo is string && v.modelo.size() >= 1 && v.modelo.size() <= 60
+          && (!('anio' in v) || (v.anio is int && v.anio >= 1950 && v.anio <= 2100))
+          && (!('placas' in v) || (v.placas is string && v.placas.matches('^[A-Z0-9-]{1,12}$')));
+      }
+      function placasC(p) {
+        return p is string && p.matches('^[A-Z0-9-]{1,12}$');
+      }
+      function formaC() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['nombre', 'nombreBusqueda', 'telefono', 'nota', 'vehiculos', 'placasLista', 'creadoAt', 'actualizadoAt', 'expiraAt'])
+          && d.keys().hasAll(['nombre', 'nombreBusqueda', 'telefono', 'nota', 'vehiculos', 'placasLista', 'creadoAt', 'actualizadoAt', 'expiraAt'])
+          && d.nombre is string && d.nombre.size() >= 1 && d.nombre.size() <= 100
+          && d.nombreBusqueda is string && d.nombreBusqueda.size() <= 100
+          && d.telefono is string && (d.telefono == '' || d.telefono.matches('^[0-9]{10}$'))
+          && d.nota is string && d.nota.size() <= 200
+          && d.vehiculos is list && d.vehiculos.size() <= 3
+          && (d.vehiculos.size() < 1 || vehiculoC(d.vehiculos[0]))
+          && (d.vehiculos.size() < 2 || vehiculoC(d.vehiculos[1]))
+          && (d.vehiculos.size() < 3 || vehiculoC(d.vehiculos[2]))
+          && d.placasLista is list && d.placasLista.size() <= 3
+          && (d.placasLista.size() < 1 || placasC(d.placasLista[0]))
+          && (d.placasLista.size() < 2 || placasC(d.placasLista[1]))
+          && (d.placasLista.size() < 3 || placasC(d.placasLista[2]))
+          && d.actualizadoAt == request.time
+          && d.expiraAt is timestamp
+          && cercaC(d.expiraAt, request.time + duration.value(548, 'd'));
+      }
+
+      allow read: if esAdmin() || esDuenoC();
+
+      allow create: if puedeEscribirC()
+                    && formaC()
+                    && request.resource.data.creadoAt == request.time
+                    && (contactoId.matches('^c(0[1-9]|1[0-9]|2[0-5])$')
+                        || (premiumVigente(tallerC()) && contactoId.matches('^[A-Za-z0-9]{20}$')));
+
+      allow update: if puedeEscribirC()
+                    && formaC()
+                    && request.resource.data.creadoAt == resource.data.creadoAt
+                    && resource.data.expiraAt > request.time;
+
+      allow delete: if esAdmin() || esDuenoC();
+    }
+
     // ---------- Pedido de piezas de talleres a yonkes ----------
     // El taller publica una solicitud (vehículo + pieza, SIN datos del cliente final); Mecanix
     // decide a qué yonkes avisar por estado (fuera de las reglas); cada yonke responde una sola
