@@ -25,6 +25,7 @@ export default function NuevaCotizacion() {
         <CotizacionForm
           tallerActivo={taller?.activo === true}
           datosClienteHabilitados={datosClienteHabilitados}
+          tallerId={tallerId}
           onCancelar={() => router.push('/panel/taller/cotizaciones')}
           onGuardar={async (datos) => {
             const folio = await guardarCotizacion({ tallerId, datos, avisoVersion });
