@@ -60,6 +60,7 @@ export const FUNCIONES_TALLER_PREMIUM = [
   'Historial de servicios y recordatorios de mantenimiento',
   'Enlace de seguimiento de órdenes para tu cliente',
   'Libreta de contactos sin límite',
+  'Agenda de citas con recordatorio por WhatsApp',
   'Las demás funciones que se incorporen',
 ];
 
@@ -104,6 +105,14 @@ export function esPremiumVigente(yonke, ahora = new Date()) {
 // Órdenes de servicio del taller (config/ordenes.requierePremium, solo true exacto): con la bandera,
 // CREAR y EDITAR exigen Premium vigente del taller (mismos campos plan/premiumHasta que los
 // yonkes). Ver, descargar, quitar datos del cliente y borrar no lo exigen. Sin la bandera, como hoy.
+// Citas del taller (config/citas.requierePremium, solo true exacto): igual que órdenes, CREAR y
+// EDITAR exigen Premium vigente; ver, escribir por WhatsApp y borrar no. Las reglas repiten esto
+// en premiumCitasOk() (firestore.rules).
+export const citasRequierenPremium = (configCitas) => configCitas?.requierePremium === true;
+export function premiumCitasOk(configCitas, taller, ahora = new Date()) {
+  return !citasRequierenPremium(configCitas) || esPremiumVigente(taller, ahora);
+}
+
 export const ordenesRequierenPremium = (configOrdenes) => configOrdenes?.requierePremium === true;
 export function premiumOrdenesOk(configOrdenes, taller, ahora = new Date()) {
   return !ordenesRequierenPremium(configOrdenes) || esPremiumVigente(taller, ahora);
