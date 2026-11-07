@@ -15,14 +15,16 @@ export const BOTONES_CONOCE = [
   { tipo: 'taller', texto: '🔧 Tengo un taller' },
   // Solo "próximamente": abre la pestaña que explica cómo funcionará, sin registro.
   { tipo: 'refaccionaria', texto: '📦 Tengo una refaccionaria · Próximamente' },
+  // Solo con config/portada.asistenciaVialRegistro (la pestaña de /bienvenida sale con la misma).
+  { tipo: 'asistencia', texto: '🚛 Tengo grúa o llantera' },
 ];
 
 function registrarClic(tipo) {
   if (typeof window !== 'undefined' && window.gtag) window.gtag('event', 'conoce_mecanix', { tipo });
 }
 
-export default function ConoceMecanix({ conTalleres = false }) {
-  const botones = BOTONES_CONOCE.filter((b) => conTalleres || b.tipo !== 'taller');
+export default function ConoceMecanix({ conTalleres = false, conAsistencia = false }) {
+  const botones = BOTONES_CONOCE.filter((b) => (conTalleres || b.tipo !== 'taller') && (conAsistencia || b.tipo !== 'asistencia'));
   return (
     <section style={caja} aria-labelledby="conoce-mecanix">
       <h3 id="conoce-mecanix" style={titulo}>{TITULO_CONOCE}</h3>

@@ -18,6 +18,7 @@ import {
 import { ProximamenteMecanix } from '../EcosistemaMecanix';
 import { PARAMETRO_SOY } from '../../lib/enlaceBienvenida';
 import { textoPromoRegistro } from '../../lib/premiumGratis';
+import RegistroProveedor from '../asistencia-vial/RegistroProveedor';
 
 export const REGISTRO_YONKE = '/panel/registro?desde=bienvenida';
 export const REGISTRO_TALLER = '/panel/taller/registro?desde=bienvenida';
@@ -39,9 +40,11 @@ export function listaConY(nombres) {
 }
 
 // mesesPromoTaller: promoción "Premium gratis al registrarte" de config/talleres (null = apagada).
-export default function BienvenidaClient({ talleres = false, planes, banderas, estadosConVisitas = [], buscadorRefacciones = false, mesesPromoTaller = null }) {
+// asistenciaRegistro: config/portada.asistenciaVialRegistro, pestaña "Soy grúa / llantera" con el
+// formulario de registro por WhatsApp.
+export default function BienvenidaClient({ talleres = false, planes, banderas, estadosConVisitas = [], buscadorRefacciones = false, mesesPromoTaller = null, asistenciaRegistro = false }) {
   const [tipo, setTipo] = useState('yonke');
-  const opciones = ['yonke', ...(talleres ? ['taller'] : []), 'cliente', 'refaccionaria'];
+  const opciones = ['yonke', ...(talleres ? ['taller'] : []), 'cliente', 'refaccionaria', ...(asistenciaRegistro ? ['asistencia'] : [])];
 
   function elegir(nuevo, origen = 'selector') {
     setTipo(nuevo);
@@ -121,7 +124,7 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
 
         <section id="primeros-pasos" style={{ ...caja, scrollMarginTop: '16px' }} aria-labelledby="titulo-primeros-pasos">
           <h2 id="titulo-primeros-pasos" style={tituloSeccion}>
-            {{ cliente: PRIMEROS_PASOS.tituloCliente, refaccionaria: PRIMEROS_PASOS.tituloRefaccionaria }[tipo] ?? PRIMEROS_PASOS.titulo}
+            {{ cliente: PRIMEROS_PASOS.tituloCliente, refaccionaria: PRIMEROS_PASOS.tituloRefaccionaria, asistencia: PRIMEROS_PASOS.tituloAsistencia }[tipo] ?? PRIMEROS_PASOS.titulo}
           </h2>
           {tipo === 'refaccionaria' && <p style={pastillaProximamente}>{PRIMEROS_PASOS.etiquetaProximamente}</p>}
           {/* Con 4 opciones, 2 por renglón: en celular no caben 4 en uno. */}
@@ -146,6 +149,7 @@ export default function BienvenidaClient({ talleres = false, planes, banderas, e
           {tipo === 'taller' && talleres && mesesPromoTaller && (
             <p style={{ ...notaPromoStyle, display: 'block', textAlign: 'center' }}>🎁 {textoPromoRegistro(mesesPromoTaller)}</p>
           )}
+          {tipo === 'asistencia' && <RegistroProveedor />}
           {tipo === 'refaccionaria' && (
             <div style={tarjetaCliente}>
               <p style={{ margin: '0 0 6px', fontSize: '17px', fontWeight: 700 }}>{PRIMEROS_PASOS.tarjetaRefaccionaria.titulo}</p>

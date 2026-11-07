@@ -10,6 +10,10 @@ import { AVISO_PAGO_ADELANTADO, AVISO_PAGO_MECANIX } from './respuestasPedido';
 
 // Textos aprobados por el abogado (David, 2026-11-03): TEXTOS_APROBADOS en true, sin el aviso de
 // arriba. Si se cambia un texto de aquí y vuelve a revisión, regresarlo a false.
+// EXCEPCIÓN (David, 2026-11-07, opción A): los textos marcados "NUEVO 2026-11-07" (contactos,
+// citas y asistencia vial) se agregaron SIN revisión del abogado y salen sin el aviso provisional,
+// cada uno solo con su función encendida. Van en el paquete para el abogado junto con contactos y
+// citas. Ningún texto aprobado se cambió.
 
 export const TEXTOS_APROBADOS = true;
 export const AVISO_PROVISIONAL = '[PROVISIONAL] Textos en revisión legal. No compartas esta página hasta que estén aprobados.';
@@ -50,6 +54,10 @@ export const ASI_FUNCIONA = {
 //   consultas: config/pedidosClientes.habilitado (búsquedas activas, "Añadir a búsqueda activa").
 //   otrosEstados: config/pedidosClientes.otrosEstados (casilla de otros estados).
 //   vehiculosCompletos: config/pedidosClientes.inventarioVehiculos (vehículo completo 30 días).
+//   contactos: config/contactos.habilitado. citas: config/citas.habilitado; citasPremium, además
+//   config/citas.requierePremium. asistenciaVial: config/portada.asistenciaVialActiva;
+//   asistenciaMapa: también asistenciaVialMapa. La pestaña "Soy grúa / llantera" solo sale con
+//   config/portada.asistenciaVialRegistro (BienvenidaClient.js).
 //   formularioAbierto: config/pedidosClientes.formularioAbierto. Sin ella la portada todavía muestra
 //   el campo viejo "Tu WhatsApp (opcional, para avisarte cuando llegue)", así que "Mecanix no manda
 //   mensajes automáticos" no sale.
@@ -57,7 +65,8 @@ export const PRIMEROS_PASOS = {
   titulo: 'Tus primeros pasos',
   tituloCliente: 'Cómo buscar tu pieza',
   tituloRefaccionaria: 'Así funcionará para tu refaccionaria',
-  opciones: { yonke: '🏪 Soy yonke', taller: '🔧 Soy taller', cliente: '🚗 Soy cliente', refaccionaria: '📦 Soy refaccionaria' },
+  tituloAsistencia: 'Así funciona para tu grúa o llantera',
+  opciones: { yonke: '🏪 Soy yonke', taller: '🔧 Soy taller', cliente: '🚗 Soy cliente', refaccionaria: '📦 Soy refaccionaria', asistencia: '🚛 Soy grúa / llantera' },
   yonke: [
     { titulo: 'Regístrate', desc: 'Crea la cuenta de tu yonke. Actualmente sin costo.' },
     { titulo: 'Instala la app', desc: 'Desde tu panel, agrega Mecanix a la pantalla de inicio de tu celular.' },
@@ -72,7 +81,14 @@ export const PRIMEROS_PASOS = {
     { titulo: 'Registra tu taller', desc: 'Crea la cuenta de tu taller. Actualmente sin costo.' },
     { titulo: 'Haz cotizaciones con PDF', desc: 'Cotiza a tus clientes y compárteles el PDF.' },
     { titulo: 'Pide piezas a los yonkes', desc: 'Pide la pieza a los yonkes y compara sus respuestas.' },
+    // NUEVO 2026-11-07 (sin revisión del abogado).
+    { titulo: 'Guarda a tus clientes en tu libreta de contactos', desc: 'Al escribir el nombre de un cliente guardado, sus datos y su vehículo se llenan solos en cotizaciones, órdenes y citas.', si: 'contactos' },
     { titulo: 'Con Premium', desc: 'Órdenes de servicio, historial de servicios, recordatorios de mantenimiento y seguimiento de la orden para tu cliente con enlace o código QR.' },
+    // NUEVO 2026-11-07 (sin revisión del abogado).
+    {
+      titulo: 'Agenda citas', desc: 'Apunta las citas de tus clientes, mándales el recordatorio por WhatsApp con un botón y, cuando llegue el cliente, conviértela en orden de servicio con sus datos ya llenos.', si: 'citas',
+      extra: { si: 'citasPremium', texto: 'Es una función Premium.' },
+    },
   ],
   cliente: [
     { titulo: 'Busca tu vehículo y la pieza', desc: 'Escribe la pieza y tu vehículo (por ejemplo, "alternador civic 2016") o elige marca, modelo y año en la búsqueda avanzada. Si algún yonke de la red la tiene en su inventario, la ves al momento.' },
@@ -85,6 +101,16 @@ export const PRIMEROS_PASOS = {
       titulo: 'Escríbele tú al yonke que prefieras', desc: 'Antes de pagar, confirma la pieza directamente con el yonke.',
       antes: { si: 'formularioAbierto', texto: 'Mecanix no manda mensajes automáticos.' },
     },
+    // NUEVO 2026-11-07 (sin revisión del abogado).
+    { titulo: '¿Te quedaste tirado?', desc: 'En Asistencia vial encuentras grúas, llanteras y ayuda en carretera colaboradoras de la red Mecanix en Baja California. Les llamas o les escribes directo.', si: 'asistenciaVial' },
+  ],
+  // NUEVO 2026-11-07 (sin revisión del abogado). Proveedores de asistencia vial: el registro es por
+  // WhatsApp (RegistroProveedor.js) y el admin los da de alta a mano.
+  asistencia: [
+    { titulo: 'Regístrate por WhatsApp', desc: 'Llena el formulario de abajo con tus servicios y tus ciudades. Se abre WhatsApp con tus datos para Red Mecanix. Actualmente sin costo.' },
+    { titulo: 'Te damos de alta', desc: 'Revisamos tus datos y apareces en Asistencia vial como colaborador de la red Mecanix, con tus botones de Llamar y WhatsApp.' },
+    { titulo: 'Marca dónde estás', desc: 'Con tu enlace privado tocas "Estoy aquí" y escoges cuánto tiempo estarás en ese lugar. Los clientes ven quién está más cerca.', si: 'asistenciaMapa' },
+    { titulo: 'El cliente te llama directo', desc: 'El precio, el pago y el servicio los acuerdas tú con él. Mecanix no cobra ni participa en el servicio.' },
   ],
   // Refaccionarias: solo "próximamente". El registro sigue cerrado (config/refaccionarias), así que
   // no hay botón de registro: solo WhatsApp para que les avisemos. Sin precios, planes ni fechas.
@@ -191,6 +217,18 @@ export const PREGUNTAS_FRECUENTES = {
       pregunta: '¿Qué es la liga de seguimiento?', si: 'seguimiento',
       respuesta: [{ texto: 'Es un enlace para que tu cliente vea el estado de su unidad en línea. Es una función Premium.' }],
     },
+    // NUEVO 2026-11-07 (sin revisión del abogado).
+    {
+      pregunta: '¿Cuántos contactos puedo guardar?', si: 'contactos',
+      respuesta: [{ texto: 'En el plan Básico, hasta 25. En Premium, sin límite.' }],
+    },
+    {
+      pregunta: '¿Cómo funcionan las citas?', si: 'citas',
+      respuesta: [
+        { texto: 'Apuntas la fecha, la hora, el cliente y su vehículo. Con un botón le mandas el recordatorio por WhatsApp desde tu celular. Cuando llega, tocas "Convertir en orden" y la orden de servicio se llena con sus datos.' },
+        { si: 'citasPremium', texto: 'Es una función Premium.' },
+      ],
+    },
   ],
   cliente: [
     {
@@ -208,6 +246,15 @@ export const PREGUNTAS_FRECUENTES = {
     },
     { pregunta: '¿Puedo pagar directo en Mecanix?', respuesta: [{ texto: `No. ${AVISO_PAGO_APROBADO}` }] },
   ],
+  // NUEVO 2026-11-07 (sin revisión del abogado).
+  asistencia: [
+    { pregunta: '¿Cuánto cuesta?', respuesta: [{ texto: 'Actualmente no tiene costo.' }] },
+    { pregunta: '¿Mecanix cobra o participa en el servicio?', respuesta: [{ texto: 'No. El cliente te llama o te escribe directo y el precio, el pago y el servicio los acuerdas tú con él.' }] },
+    {
+      pregunta: '¿Se ve siempre dónde estoy?', si: 'asistenciaMapa',
+      respuesta: [{ texto: 'No. Solo cuando tocas "Estoy aquí", de forma aproximada (unos 300 metros) y hasta la hora que escojas. Con "Ya me fui" dejas de salir antes.' }],
+    },
+  ],
   refaccionaria: [
     { pregunta: '¿Cuándo abren el registro?', respuesta: [{ texto: 'Todavía no hay fecha. Si nos escribes por WhatsApp, te avisamos cuando abramos.' }] },
     { pregunta: '¿Mecanix vende las piezas?', respuesta: [{ texto: 'No. El cliente te escribe directo y el trato, el pago y la entrega los acuerdas tú con él.' }] },
@@ -220,6 +267,7 @@ export const LLAMADA_FINAL = {
   taller: { titulo: 'Empieza a recibir búsquedas hoy', boton: 'Registrar mi taller' },
   cliente: { titulo: '¿Buscas una pieza?', boton: 'Buscar una pieza' },
   refaccionaria: { titulo: '¿Tienes una refaccionaria?', boton: 'Quiero que me avisen' },
+  asistencia: { titulo: '¿Tienes dudas antes de registrarte?' }, // NUEVO 2026-11-07
   whatsapp: 'Escríbenos por WhatsApp',
 };
 

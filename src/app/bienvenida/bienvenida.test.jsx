@@ -445,3 +445,87 @@ describe('textos', () => {
     expect(listaConY(['A', 'B', 'C'])).toBe('A, B y C');
   });
 });
+
+describe('funciones nuevas (2026-11-07, sin revisión del abogado)', () => {
+  const tomar = (o) => fireEvent.click(within(selector()).getByRole('button', { name: o }));
+
+  it('taller: contactos y citas solo con su función encendida; seguimiento sigue igual', async () => {
+    await pintar();
+    tomar(/Soy taller/);
+    expect(screen.queryByText('Guarda a tus clientes en tu libreta de contactos')).not.toBeInTheDocument();
+    expect(screen.queryByText('Agenda citas')).not.toBeInTheDocument();
+    expect(preguntas()).not.toContain('¿Cómo funcionan las citas?');
+    cleanup();
+
+    docs['config/contactos'] = { habilitado: true };
+    docs['config/citas'] = { habilitado: true, requierePremium: true };
+    docs['config/ordenes'] = { seguimientoHabilitado: true };
+    await pintar();
+    tomar(/Soy taller/);
+    const titulos = within(document.getElementById('primeros-pasos')).getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+    expect(titulos).toEqual([
+      'Registra tu taller', 'Haz cotizaciones con PDF', 'Pide piezas a los yonkes', 'Guarda a tus clientes en tu libreta de contactos', 'Con Premium', 'Agenda citas',
+    ]);
+    expect(screen.getByText(/seguimiento de la orden para tu cliente con enlace o código QR/)).toBeInTheDocument();
+    expect(screen.getByText(/conviértela en orden de servicio con sus datos ya llenos\. Es una función Premium\./)).toBeInTheDocument();
+    expect(preguntas()).toEqual(expect.arrayContaining(['¿Qué es la liga de seguimiento?', '¿Cuántos contactos puedo guardar?', '¿Cómo funcionan las citas?']));
+    expect(respuesta('¿Cuántos contactos puedo guardar?')).toBe('En el plan Básico, hasta 25. En Premium, sin límite.');
+    expect(respuesta('¿Cómo funcionan las citas?')).toMatch(/Convertir en orden.*Es una función Premium\.$/);
+    cleanup();
+
+    docs['config/citas'] = { habilitado: true, requierePremium: false };
+    await pintar();
+    tomar(/Soy taller/);
+    expect(screen.getByText('Agenda citas')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/datos ya llenos\. Es una función Premium/);
+  });
+
+  it('cliente: "¿Te quedaste tirado?" solo con Asistencia vial activa', async () => {
+    await pintar();
+    tomar(/Soy cliente/);
+    expect(screen.queryByText('¿Te quedaste tirado?')).not.toBeInTheDocument();
+    cleanup();
+    docs['config/portada'] = { bienvenida: true, asistenciaVialActiva: true };
+    await pintar();
+    tomar(/Soy cliente/);
+    expect(screen.getByText('¿Te quedaste tirado?')).toBeInTheDocument();
+  });
+
+  it('"Soy grúa / llantera": solo con el registro; pasos, formulario, preguntas y WhatsApp final', async () => {
+    await pintar();
+    expect(within(selector()).queryByRole('button', { name: /Soy grúa/ })).not.toBeInTheDocument();
+    cleanup();
+
+    docs['config/portada'] = { bienvenida: true, asistenciaVialRegistro: true };
+    await pintar();
+    tomar(/Soy grúa/);
+    expect(screen.getByRole('heading', { name: 'Así funciona para tu grúa o llantera' })).toBeInTheDocument();
+    // Sin el mapa encendido no se anuncia "Estoy aquí".
+    expect(screen.queryByText('Marca dónde estás')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Regístrate/ })).toBeInTheDocument();
+    expect(preguntas()).toEqual(['¿Cuánto cuesta?', '¿Mecanix cobra o participa en el servicio?']);
+    expect(screen.queryByText('Planes para tu yonke')).not.toBeInTheDocument();
+    const fin = screen.getByRole('region', { name: '¿Tienes dudas antes de registrarte?' });
+    expect(within(fin).getByRole('link', { name: 'Escríbenos por WhatsApp' })).toBeInTheDocument();
+    expect(within(fin).queryByRole('link', { name: /Registrar/ })).not.toBeInTheDocument();
+    cleanup();
+
+    docs['config/portada'] = { bienvenida: true, asistenciaVialRegistro: true, asistenciaVialActiva: true, asistenciaVialMapa: true };
+    await pintar();
+    tomar(/Soy grúa/);
+    expect(screen.getByText('Marca dónde estás')).toBeInTheDocument();
+    expect(preguntas()).toContain('¿Se ve siempre dónde estoy?');
+  });
+
+  it('?soy=asistencia abre la pestaña solo con el registro encendido', async () => {
+    window.history.replaceState(null, '', '/bienvenida?soy=asistencia');
+    docs['config/portada'] = { bienvenida: true, asistenciaVialRegistro: true };
+    await pintar();
+    expect(within(selector()).getByRole('button', { name: /Soy grúa/ })).toHaveAttribute('aria-pressed', 'true');
+    cleanup();
+    docs['config/portada'] = { bienvenida: true };
+    await pintar();
+    expect(within(selector()).getByRole('button', { name: /Soy yonke/ })).toHaveAttribute('aria-pressed', 'true');
+    window.history.replaceState(null, '', '/');
+  });
+});

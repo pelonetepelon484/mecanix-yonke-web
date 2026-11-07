@@ -44,7 +44,7 @@ describe('portada en el servidor: bandera del buscador de piezas nuevas', () => 
     for (const [config, conFalla] of [[{ buscador: true }], [{ buscador: 'true', paginaPublica: true }], [null], [{ buscador: true, paginaPublica: true }, true]]) {
       const html = await htmlInicial(config, conFalla);
       expect(html).not.toContain('Piezas nuevas');
-      expect(html).toContain('Buscador inteligente');
+      expect(html).toContain('Buscador de piezas inteligente');
     }
   });
 });
