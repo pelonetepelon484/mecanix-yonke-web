@@ -118,6 +118,7 @@ export default function ResultadosComparador({ analizando = false, resultado = n
                   <p style={{ margin: '4px 0 0', color: C.tenue, fontSize: '14px', lineHeight: 1.5 }}>{resultado.resultado.desc}</p>
                 </div>
               </div>
+              {resultado.alerta && <p role="alert" style={{ margin: '12px 0 0', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#3A1D1B', border: `1px solid ${C.rojo}`, color: '#FFB4AE', fontSize: '14px', fontWeight: '700', lineHeight: 1.5 }}>⚠️ {resultado.alerta}</p>}
               {resultado.nota && <p style={{ margin: '12px 0 0', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#1B2F48', color: C.ambar, fontSize: '14px', fontWeight: '700' }}>{resultado.nota}</p>}
               {resultado.motivos?.length > 0 && (
                 <ul style={{ margin: '12px 0 0', paddingLeft: '18px', color: C.texto, fontSize: '13px', lineHeight: 1.6 }}>

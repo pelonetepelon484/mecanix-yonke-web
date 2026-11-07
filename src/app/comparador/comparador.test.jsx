@@ -18,7 +18,7 @@ const { default: Pagina, generateMetadata } = await import('./page.js');
 const { default: ComparadorClient, ayudaVin } = await import('./ComparadorClient.js');
 const { default: ResultadosComparador } = await import('./ResultadosComparador.js');
 const { default: TarjetaComparador } = await import('./TarjetaComparador.js');
-const { AVISO_COMPARADOR, MENSAJES_COMPARADOR, RESULTADOS, TEXTO_BOTON_COMPARADOR, compararVehiculos, vehiculoDesdeVpic } = await import('../../lib/comparadorPiezas');
+const { ALERTA_CLUSTER, AVISO_COMPARADOR, MENSAJES_COMPARADOR, RESULTADOS, TEXTO_BOTON_COMPARADOR, compararVehiculos, vehiculoDesdeVpic } = await import('../../lib/comparadorPiezas');
 
 const VIN_A = '3N1CN7AP5FL812345';
 const VIN_B = '3N1CN7AP7FL899999';
@@ -93,7 +93,7 @@ describe('captura', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, json: async () => ({ error: MENSAJES_COMPARADOR.limite, limite: true, conCuenta: false }) });
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<ComparadorClient conTalleres />);
-    fireEvent.change(screen.getByLabelText('Tipo de pieza'), { target: { value: 'frenos' } });
+    fireEvent.change(screen.getByLabelText('Tipo de pieza'), { target: { value: 'bcm' } });
     fireEvent.change(screen.getAllByLabelText('Número de parte')[0], { target: { value: 'ABC123' } });
     fireEvent.change(screen.getAllByLabelText('Número de parte')[1], { target: { value: 'ABC123' } });
     fireEvent.click(screen.getByRole('button', { name: '🔎 Comparar' }));
@@ -102,6 +102,24 @@ describe('captura', () => {
     expect(alerta).toHaveTextContent(MENSAJES_COMPARADOR.limite);
     expect(within(alerta).getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute('href', '/panel');
     expect(within(alerta).getByRole('link', { name: 'Registrar mi taller' })).toHaveAttribute('href', '/panel/taller/registro');
+  });
+});
+
+describe('lista y alerta del tablero', () => {
+  it('el menú agrupa mecánicas y electrónicas', () => {
+    render(<ComparadorClient />);
+    const grupos = [...screen.getByLabelText('Tipo de pieza').querySelectorAll('optgroup')].map((g) => g.label);
+    expect(grupos).toEqual(['🔧 Compatibilidad mecánica', '💻 Compatibilidad electrónica']);
+    expect(screen.getByRole('option', { name: 'Tablero de instrumentos (cluster)' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /freno/i })).not.toBeInTheDocument();
+  });
+  it('resultado del tablero: la alerta del kilometraje se ve', () => {
+    render(<ResultadosComparador resultado={{
+      tipo: 'cluster', resultado: RESULTADOS.compatible, nota: 'Compatible en número de parte, puede requerir programación o verificación.', motivos: [],
+      alerta: ALERTA_CLUSTER,
+      vehiculoA: { vin: '', parte: 'ABC123', estado: 'sin_vin', datos: null }, vehiculoB: { vin: '', parte: 'ABC123', estado: 'sin_vin', datos: null }, comparacion: null,
+    }} />);
+    expect(screen.getByRole('alert')).toHaveTextContent(ALERTA_CLUSTER);
   });
 });
 

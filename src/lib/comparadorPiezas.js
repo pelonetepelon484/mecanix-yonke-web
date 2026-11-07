@@ -10,12 +10,22 @@ export const AVISO_COMPARADOR = 'Resultado orientativo. Confirma siempre la comp
 export const TEXTO_BOTON_COMPARADOR = 'Comparar número de serie o número de parte';
 export const SIN_DATOS = 'Sin datos';
 
+// Dos grupos: mecánicas (el VIN orienta) y electrónicas (el VIN nunca basta: se necesita el número de
+// parte y casi siempre programación al VIN del vehículo). Sin bolsas de aire (pieza de seguridad).
+export const GRUPOS_PIEZA = [
+  { key: 'mecanica', label: '🔧 Compatibilidad mecánica' },
+  { key: 'electronica', label: '💻 Compatibilidad electrónica' },
+];
 export const TIPOS_PIEZA = [
-  { key: 'motor', label: 'Motor' },
-  { key: 'transmision', label: 'Transmisión' },
-  { key: 'suspension', label: 'Suspensión' },
-  { key: 'computadora', label: 'Computadora de motor' },
-  { key: 'frenos', label: 'Discos de freno' },
+  { key: 'motor', label: 'Motor', grupo: 'mecanica' },
+  { key: 'transmision', label: 'Transmisión', grupo: 'mecanica' },
+  { key: 'suspension', label: 'Suspensión y tren delantero', grupo: 'mecanica' },
+  { key: 'accesorios', label: 'Accesorios del motor (alternador, marcha, radiador, compresor de A/C)', grupo: 'mecanica' },
+  { key: 'carroceria', label: 'Carrocería (puertas, cofre, defensas, faros, calaveras)', grupo: 'mecanica' },
+  { key: 'computadora', label: 'Computadora del motor (ECM / PCM)', grupo: 'electronica' },
+  { key: 'tcm', label: 'Computadora de transmisión (TCM)', grupo: 'electronica' },
+  { key: 'bcm', label: 'Módulo de carrocería (BCM)', grupo: 'electronica' },
+  { key: 'cluster', label: 'Tablero de instrumentos (cluster)', grupo: 'electronica' },
 ];
 export const etiquetaTipoPieza = (key) => TIPOS_PIEZA.find((t) => t.key === key)?.label ?? key;
 
@@ -110,6 +120,9 @@ export const RESULTADOS = {
 export const NOTA_PROGRAMACION = 'Compatible en número de parte, puede requerir programación o verificación.';
 export const NOTA_VERIFICAR_PARTE = 'Verificar con número de parte: con esta pieza el VIN nunca basta.';
 export const NOTA_PARTES_DISTINTAS = 'Los números de parte son distintos y no hay una equivalencia registrada.';
+// Tablero: siempre, con cualquier resultado.
+export const ALERTA_CLUSTER = 'Atención: el tablero guarda el kilometraje del carro donante. Al cambiarlo, tu vehículo mostraría ese kilometraje y no el real.';
+const ALERTAS = { cluster: ALERTA_CLUSTER };
 
 // Qué campos del VIN deben coincidir según la pieza. "anioCercano": años a menos de 3 de diferencia;
 // "anioIgual": el mismo año modelo (la generación no viene en los datos del VIN, y el mismo año
@@ -118,8 +131,11 @@ const REGLAS_VIN = {
   motor: { requeridos: ['cilindrada', 'cilindros'], opcionales: ['combustible'], anio: 'cercano' },
   transmision: { requeridos: ['transmision', 'traccion', 'cilindrada', 'cilindros'], opcionales: [], anio: null },
   suspension: { requeridos: ['marca', 'modelo', 'traccion'], opcionales: [], anio: 'igual' },
+  // Alternador, marcha, radiador y compresor dependen del motor: misma regla que el motor.
+  accesorios: { requeridos: ['cilindrada', 'cilindros'], opcionales: ['combustible'], anio: 'cercano' },
+  carroceria: { requeridos: ['marca', 'modelo', 'carroceria'], opcionales: [], anio: 'igual' },
 };
-const SOLO_PARTE = new Set(['computadora', 'frenos']);
+const SOLO_PARTE = new Set(TIPOS_PIEZA.filter((t) => t.grupo === 'electronica').map((t) => t.key));
 
 function porVin(tipo, va, vb) {
   const regla = REGLAS_VIN[tipo];
@@ -147,8 +163,12 @@ function porVin(tipo, va, vb) {
 
 // entrada: { tipo, parteA, parteB } (ya normalizados), vehiculoA/B de vehiculoDesdeVpic (o null),
 // registros: { equivalentes: bool, aplicacion: bool } leídos de equivalenciasPiezas.
-// Devuelve { resultado, nota, motivos }.
-export function resultadoPorPieza({ tipo, parteA = '', parteB = '' }, vehiculoA, vehiculoB, registros = {}) {
+// Devuelve { resultado, nota, motivos, alerta }.
+export function resultadoPorPieza(entrada, vehiculoA, vehiculoB, registros = {}) {
+  return { ...resultadoSinAlerta(entrada, vehiculoA, vehiculoB, registros), alerta: ALERTAS[entrada.tipo] ?? null };
+}
+
+function resultadoSinAlerta({ tipo, parteA = '', parteB = '' }, vehiculoA, vehiculoB, registros) {
   const soloParte = SOLO_PARTE.has(tipo);
   const conNota = (resultado, motivos) => ({ resultado, nota: soloParte ? NOTA_PROGRAMACION : null, motivos });
   if (parteA && parteB && parteA === parteB) return conNota(RESULTADOS.compatible, [`Mismo número de parte: ${parteA}.`]);

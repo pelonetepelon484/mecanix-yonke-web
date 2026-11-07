@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import {
-  AVISO_COMPARADOR, MENSAJES_COMPARADOR, TIPOS_PIEZA, normalizarVin, validarEntrada, vinValido,
+  AVISO_COMPARADOR, GRUPOS_PIEZA, MENSAJES_COMPARADOR, TIPOS_PIEZA, normalizarVin, validarEntrada, vinValido,
 } from '../../lib/comparadorPiezas';
 import ResultadosComparador from './ResultadosComparador';
 import { MONO } from './estilos';
@@ -118,7 +118,11 @@ export default function ComparadorClient({ requiereLogin = false, conTalleres = 
           <label htmlFor="cp-tipo" style={etiquetaCampo}>Tipo de pieza</label>
           <select id="cp-tipo" value={f.tipo} onChange={(e) => cambiar('tipo')(e.target.value)} style={campo}>
             <option value="">Escoge una pieza</option>
-            {TIPOS_PIEZA.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+            {GRUPOS_PIEZA.map((g) => (
+              <optgroup key={g.key} label={g.label}>
+                {TIPOS_PIEZA.filter((t) => t.grupo === g.key).map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+              </optgroup>
+            ))}
           </select>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginTop: '14px' }}>

@@ -150,7 +150,7 @@ describe('api/comparador', () => {
 
   it('números de parte: pasan normalizados a los registros', async () => {
     const { deps, atender } = armar({ buscarRegistros: vi.fn(async () => ({ equivalentes: true, aplicacion: false })) });
-    const r = await atender(peticion(), { tipo: 'frenos', parteA: 'ab-123', parteB: 'xy 789' });
+    const r = await atender(peticion(), { tipo: 'bcm', parteA: 'ab-123', parteB: 'xy 789' });
     expect(deps.buscarRegistros.mock.calls[0][1]).toMatchObject({ parteA: 'AB123', parteB: 'XY789', claveA: null, claveB: null });
     expect(r.json.resultado).toBe(RESULTADOS.registros);
     expect(deps.decodificar).not.toHaveBeenCalled();
