@@ -11,12 +11,15 @@
 //   asistenciaVialMapa: mapa y "Usar mi ubicación" en /asistencia-vial, y el enlace "Estoy aquí"
 //   de los proveedores (/asistencia-vial/aqui). Solo sirve con asistenciaVialActiva encendida.
 //   Ver src/lib/ubicacionAsistencia.js.
+//   asistenciaVialRegistro: botón "Regístrate" para proveedores (abre WhatsApp a Red Mecanix, no
+//   guarda nada) en la tarjeta de asistencia vial de la portada y en /asistencia-vial. Ver
+//   src/lib/registroAsistencia.js.
 import { doc, getDoc } from 'firebase/firestore';
 
 export const banderasPortada = (config) => ({
   botonPanel: config?.botonPanel === true, ecosistema: config?.ecosistema === true, bienvenida: config?.bienvenida === true,
   asistenciaVialProximamente: config?.asistenciaVialProximamente === true, asistenciaVialActiva: config?.asistenciaVialActiva === true,
-  asistenciaVialMapa: config?.asistenciaVialMapa === true,
+  asistenciaVialMapa: config?.asistenciaVialMapa === true, asistenciaVialRegistro: config?.asistenciaVialRegistro === true,
 });
 
 export async function leerConfigPortada(db) {
