@@ -5,7 +5,10 @@
 // y descripción. Las de "Próximamente" van más tenues y con su etiqueta.
 // Asistencia vial (config/portada): asistenciaVial="proximamente" la agrega tenue y sin botón;
 // "activa" la agrega con las activas, como enlace a /asistencia-vial. Sin la bandera, no aparece.
+// registro (config/portada.asistenciaVialRegistro): debajo, el botón "Regístrate" para proveedores
+// de asistencia vial (solo si la tarjeta de asistencia vial se ve).
 import Link from 'next/link';
+import RegistroProveedor from './asistencia-vial/RegistroProveedor';
 
 export const TITULO_ECOSISTEMA = 'Ecosistema de soluciones automotrices';
 export const ENTRADA_ECOSISTEMA = 'Mecanix conecta yonkes, talleres y más soluciones automotrices en un solo lugar.';
@@ -50,7 +53,7 @@ function Tarjeta({ emoji, titulo, desc, proximamente = false, href = null }) {
   );
 }
 
-export default function EcosistemaMecanix({ asistenciaVial = null }) {
+export default function EcosistemaMecanix({ asistenciaVial = null, registro = false }) {
   return (
     <section style={caja} aria-labelledby="ecosistema-mecanix">
       <h2 id="ecosistema-mecanix" style={titulo}>{TITULO_ECOSISTEMA}</h2>
@@ -61,6 +64,7 @@ export default function EcosistemaMecanix({ asistenciaVial = null }) {
         {asistenciaVial === 'proximamente' && <Tarjeta {...TARJETA_ASISTENCIA} proximamente />}
         {TARJETAS_PROXIMAMENTE.map((t) => <Tarjeta key={t.titulo} {...t} proximamente />)}
       </ul>
+      {registro && asistenciaVial && <div style={{ maxWidth: '420px', margin: '0 auto' }}><RegistroProveedor /></div>}
     </section>
   );
 }

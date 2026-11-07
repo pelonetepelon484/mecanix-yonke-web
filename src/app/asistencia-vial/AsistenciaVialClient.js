@@ -8,6 +8,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { registrarContactoAsistencia } from '../lib/registrarContactoAsistencia';
 import MapaAsistencia from './MapaAsistencia';
+import RegistroProveedor from './RegistroProveedor';
 import {
   AVISO_ASISTENCIA, CIUDADES_ASISTENCIA, TIPOS_SERVICIO, enlaceLlamar, enlaceWhatsappAsistencia, etiquetaCiudad, etiquetaGrua,
   etiquetaServicio, ordenarProveedores, selloVigente, textoSello,
@@ -63,7 +64,8 @@ function Lista({ titulo, proveedores, ahoraMs }) {
 }
 
 // mapa: config/portada.asistenciaVialMapa (etapa 2). Apagada, la página queda igual que antes.
-export default function AsistenciaVialClient({ proveedores = [], ahoraMs, mapa = false }) {
+// registro: config/portada.asistenciaVialRegistro, botón "Regístrate" al final para proveedores.
+export default function AsistenciaVialClient({ proveedores = [], ahoraMs, mapa = false, registro = false }) {
   const [ciudad, setCiudad] = useState('');
   const [servicio, setServicio] = useState('');
   const [solo24h, setSolo24h] = useState(false);
@@ -101,6 +103,7 @@ export default function AsistenciaVialClient({ proveedores = [], ahoraMs, mapa =
           ? <Lista titulo={ciudad ? `En ${etiquetaCiudad(ciudad)}` : null} proveedores={enCiudad} ahoraMs={ahoraMs} />
           : <p role="status" style={vacio}>{textoVacio(ciudad)}</p>}
         {cercanos.length > 0 && <Lista titulo={`Cerca de ${etiquetaCiudad(ciudad)}`} proveedores={cercanos} ahoraMs={ahoraMs} />}
+        {registro && <div style={{ marginTop: '24px' }}><RegistroProveedor /></div>}
       </div>
     </main>
   );
