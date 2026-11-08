@@ -5,7 +5,7 @@
 import { describe, it, before, after, beforeEach } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { collection, deleteDoc, doc, getDoc, getDocs, increment, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, Timestamp, updateDoc, where } from 'firebase/firestore';
 
 const reglas = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
 let env;
@@ -13,6 +13,8 @@ const como = (uid) => env.authenticatedContext(uid).firestore();
 const anonimo = () => env.unauthenticatedContext().firestore();
 const ID_LIMITE = `ip_${'a'.repeat(32)}_2026-11-07`;
 const CLAVE = '1HGCM826*3A';
+const ID_SUG = 'computadora_12605843_19210736';
+const ID_SUG2 = 'bcm_AAA111_BBB222';
 const enDias = (d) => Timestamp.fromMillis(Date.now() + d * 86400000);
 const limite = (extra = {}) => ({ count: 1, actualizado: Timestamp.now(), expiraEn: enDias(2), ...extra });
 const vin = (extra = {}) => ({
@@ -31,6 +33,8 @@ async function sembrar() {
     await setDoc(doc(db, 'comparadorUso', '2026-11-07'), { consultas: 1, actualizadoAt: Timestamp.now() });
     await setDoc(doc(db, 'vinDecodificado', CLAVE), vin({ guardadoAt: Timestamp.now() }));
     await setDoc(doc(db, 'equivalenciasPiezas', 'E1'), { clase: 'equivalencia', partes: ['ABC123', 'XYZ789'] });
+    await setDoc(doc(db, 'sugerenciasEquivalencia', ID_SUG), { tipoPieza: 'computadora', partes: ['12605843', '19210736'], estado: 'buscando', creadoAt: Timestamp.now(), actualizadoAt: Timestamp.now() });
+    await setDoc(doc(db, 'sugerenciasEquivalencia', ID_SUG2), { tipoPieza: 'bcm', partes: ['AAA111', 'BBB222'], estado: 'pendiente', creadoAt: Timestamp.now(), actualizadoAt: Timestamp.now() });
   });
 }
 
@@ -79,6 +83,11 @@ describe('comparadorUso', () => {
     await assertFails(setDoc(doc(srv, 'comparadorUso', '2026-11-07'), { consultas: 'mucho', actualizadoAt: serverTimestamp() }, { merge: true }));
     await assertFails(setDoc(doc(srv, 'comparadorUso', 'hoy'), { consultas: 1, actualizadoAt: serverTimestamp() }));
   });
+  it('conteos de la búsqueda automática (solo números)', async () => {
+    const srv = como('srv');
+    await assertSucceeds(setDoc(doc(srv, 'comparadorUso', '2026-11-07'), { iaBusquedas: increment(1), iaTokensEntrada: increment(5000), iaTokensSalida: increment(300), iaBusquedasWeb: increment(3), actualizadoAt: serverTimestamp() }, { merge: true }));
+    await assertFails(setDoc(doc(srv, 'comparadorUso', '2026-11-07'), { iaBusquedas: 'una', actualizadoAt: serverTimestamp() }, { merge: true }));
+  });
 });
 
 describe('vinDecodificado (caché de vPIC)', () => {
@@ -111,5 +120,48 @@ describe('equivalenciasPiezas', () => {
     await assertFails(setDoc(doc(como('admin'), 'equivalenciasPiezas', 'E3'), { clase: 'otra', partes: ['A1', 'B1'] }));
     await assertFails(getDoc(doc(anonimo(), 'equivalenciasPiezas', 'E1')));
     await assertFails(getDoc(doc(como('taller1'), 'equivalenciasPiezas', 'E1')));
+  });
+});
+
+describe('sugerenciasEquivalencia (búsqueda automática)', () => {
+  beforeEach(() => sembrar());
+  const nueva = (extra = {}) => ({ tipoPieza: 'tcm', partes: ['CCC333', 'DDD444'], estado: 'buscando', creadoAt: serverTimestamp(), actualizadoAt: serverTimestamp(), ...extra });
+  const resultado = (extra = {}) => ({
+    estado: 'pendiente', equivalentes: true, confianza: 'alta', resumen: 'Reemplazo oficial.', partesRelacionadas: ['12615418'],
+    fuentes: [{ url: 'https://gm.com/x', titulo: 'GM' }], tokensEntrada: 1000, tokensSalida: 200, busquedas: 2, actualizadoAt: serverTimestamp(), ...extra,
+  });
+
+  it('el servidor la aparta y la completa una sola vez', async () => {
+    const srv = como('srv');
+    await assertSucceeds(getDoc(doc(srv, 'sugerenciasEquivalencia', ID_SUG)));
+    await assertSucceeds(setDoc(doc(srv, 'sugerenciasEquivalencia', 'tcm_CCC333_DDD444'), nueva()));
+    await assertSucceeds(updateDoc(doc(srv, 'sugerenciasEquivalencia', ID_SUG), resultado()));
+    await assertFails(updateDoc(doc(srv, 'sugerenciasEquivalencia', ID_SUG), resultado({ estado: 'sin_resultado' })));
+    await assertFails(updateDoc(doc(srv, 'sugerenciasEquivalencia', ID_SUG2), resultado({ estado: 'aprobada' })));
+    await assertFails(getDocs(collection(srv, 'sugerenciasEquivalencia')));
+  });
+
+  it('forma: ID de la pareja, nace "buscando", sin campos de más', async () => {
+    const srv = como('srv');
+    await assertFails(setDoc(doc(srv, 'sugerenciasEquivalencia', 'tcm_ccc333_ddd444'), nueva()));
+    await assertFails(setDoc(doc(srv, 'sugerenciasEquivalencia', 'tcm_CCC333_DDD444'), nueva({ estado: 'pendiente' })));
+    await assertFails(setDoc(doc(srv, 'sugerenciasEquivalencia', 'tcm_CCC333_DDD444'), nueva({ ip: '1.2.3.4' })));
+    await assertFails(updateDoc(doc(srv, 'sugerenciasEquivalencia', ID_SUG), resultado({ partes: ['X1X', 'Y2Y'] })));
+    await assertFails(updateDoc(doc(srv, 'sugerenciasEquivalencia', ID_SUG), resultado({ resumen: 'x'.repeat(601) })));
+    await assertFails(updateDoc(doc(srv, 'sugerenciasEquivalencia', ID_SUG), resultado({ confianza: 'total' })));
+  });
+
+  it('el admin la lee, la aprueba o descarta y la borra; nadie más la ve', async () => {
+    const admin = como('admin');
+    await assertSucceeds(getDocs(query(collection(admin, 'sugerenciasEquivalencia'), where('estado', 'in', ['pendiente', 'error']))));
+    await assertSucceeds(updateDoc(doc(admin, 'sugerenciasEquivalencia', ID_SUG2), { estado: 'aprobada', revisadoAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(admin, 'sugerenciasEquivalencia', ID_SUG), { estado: 'pendiente', revisadoAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(admin, 'sugerenciasEquivalencia', ID_SUG), { estado: 'descartada', resumen: 'otro', revisadoAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(admin, 'sugerenciasEquivalencia', 'tcm_CCC333_DDD444'), nueva()));
+    await assertSucceeds(deleteDoc(doc(admin, 'sugerenciasEquivalencia', ID_SUG)));
+    for (const db of [anonimo(), como('taller1')]) {
+      await assertFails(getDoc(doc(db, 'sugerenciasEquivalencia', ID_SUG2)));
+      await assertFails(getDocs(collection(db, 'sugerenciasEquivalencia')));
+    }
   });
 });

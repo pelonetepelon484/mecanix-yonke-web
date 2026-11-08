@@ -1,5 +1,6 @@
+import { after } from 'next/server';
 import {
-  Timestamp, collection, doc, getDoc, getDocs, increment, limit, query, runTransaction, serverTimestamp, setDoc, where,
+  Timestamp, collection, doc, getDoc, getDocs, increment, limit, query, runTransaction, serverTimestamp, setDoc, updateDoc, where,
 } from 'firebase/firestore';
 import { dbServer } from '../firebase-server';
 import { obtenerDbServicio } from '../pedidosClientes/servicio';
@@ -7,7 +8,9 @@ import { leerComoUsuario, uidDeToken } from '../avisosAdmin/identidadUsuario';
 import { hashConSal } from '../../../lib/rateLimitId';
 import { leerConfigComparador } from '../../../lib/configComparador';
 import { CAMPOS_VEHICULO } from '../../../lib/comparadorPiezas';
+import { COLECCION_SUGERENCIAS, idSugerencia } from '../../../lib/equivalencias';
 import { decodificarVpic } from './vpic';
+import { buscarConClaude } from './buscarConClaude';
 import { crearManejadorComparador } from './manejador';
 
 // Solo servidor. Dependencias reales del comparador. Usa la MISMA identidad de servicio que los
@@ -16,7 +19,8 @@ import { crearManejadorComparador } from './manejador';
 //   comparadorLimite/{tipo_hash_dia}   { count, actualizado, expiraEn }   (TTL en expiraEn)
 //   comparadorUso/{AAAA-MM-DD}          conteos del día, sin datos personales
 //   vinDecodificado/{clave sin serie}   caché de vPIC
-//   equivalenciasPiezas/{id}            tabla propia (por ahora se llena a mano en la consola)
+//   equivalenciasPiezas/{id}            tabla propia (la llena el admin en /admin/equivalencias)
+//   sugerenciasEquivalencia/{tipo_A_B}  búsqueda automática (apagada por defecto), la revisa el admin
 export const COLECCION_LIMITE = 'comparadorLimite';
 export const COLECCION_USO = 'comparadorUso';
 export const COLECCION_VIN = 'vinDecodificado';
@@ -109,6 +113,47 @@ async function buscarRegistros(db, { tipo, parteA, parteB, claveA, claveB, vehic
   return { equivalentes, aplicacion };
 }
 
+// Búsqueda automática de una pareja (corre DESPUÉS de responder al cliente). Una transacción
+// aparta la pareja y suma 1 al conteo del día; si la pareja ya existe o se llegó al límite diario,
+// no busca (y no cuesta nada). Después guarda el resultado como sugerencia para el admin.
+async function sugerirEquivalencia(db, { tipo, parteA, parteB, dia, limiteDiario }) {
+  const ref = doc(db, COLECCION_SUGERENCIAS, idSugerencia(tipo, parteA, parteB));
+  const refUso = doc(db, COLECCION_USO, dia);
+  const apartada = await runTransaction(db, async (t) => {
+    const [s, u] = [await t.get(ref), await t.get(refUso)];
+    if (s.exists()) return false;
+    if ((u.exists() ? (u.data().iaBusquedas || 0) : 0) >= limiteDiario) return false;
+    const ahora = serverTimestamp();
+    t.set(ref, { tipoPieza: tipo, partes: [parteA, parteB].sort(), estado: 'buscando', creadoAt: ahora, actualizadoAt: ahora });
+    t.set(refUso, { iaBusquedas: increment(1), actualizadoAt: ahora }, { merge: true });
+    return true;
+  });
+  if (!apartada) return;
+  const r = await buscarConClaude({ tipo, parteA, parteB });
+  await updateDoc(ref, {
+    estado: r.estado,
+    equivalentes: typeof r.equivalentes === 'boolean' ? r.equivalentes : null,
+    confianza: r.confianza || 'baja',
+    resumen: r.resumen || '',
+    partesRelacionadas: r.partesRelacionadas || [],
+    fuentes: r.fuentes || [],
+    tokensEntrada: r.tokensEntrada || 0,
+    tokensSalida: r.tokensSalida || 0,
+    busquedas: r.busquedas || 0,
+    actualizadoAt: serverTimestamp(),
+  });
+  await sumarUso(db, dia, { iaTokensEntrada: r.tokensEntrada, iaTokensSalida: r.tokensSalida, iaBusquedasWeb: r.busquedas });
+}
+
+// Corre una tarea después de responder (Next.js "after"): el cliente no espera la búsqueda.
+function enSegundoPlano(tarea) {
+  after(async () => {
+    try { await tarea(); } catch (error) {
+      console.warn('[comparador] Falló la sugerencia automática', error?.code || error?.message);
+    }
+  });
+}
+
 async function leerRol(token, uid) {
   const u = await leerComoUsuario(token, `usuarios/${uid}`);
   return typeof u?.rol === 'string' ? u.rol : null;
@@ -130,6 +175,8 @@ export function manejadorComparador() {
       decodificar: (clave) => decodificarVpic(clave),
       buscarRegistros,
       sumarUso,
+      sugerirEquivalencia,
+      enSegundoPlano,
       ahora: () => new Date(),
     });
   }

@@ -2575,7 +2575,12 @@ service cloud.firestore {
       allow read: if esAdmin() || esServicio();
       allow create, update: if esServicio()
                             && dia.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-                            && request.resource.data.keys().hasOnly(['consultas', 'vinNuevos', 'vinCache', 'vinFallos', 'limiteAlcanzado', 'actualizadoAt'])
+                            && request.resource.data.keys().hasOnly(['consultas', 'vinNuevos', 'vinCache', 'vinFallos', 'limiteAlcanzado',
+                                                                     'iaBusquedas', 'iaTokensEntrada', 'iaTokensSalida', 'iaBusquedasWeb', 'actualizadoAt'])
+                            && (!('iaBusquedas' in request.resource.data) || request.resource.data.iaBusquedas is int)
+                            && (!('iaTokensEntrada' in request.resource.data) || request.resource.data.iaTokensEntrada is int)
+                            && (!('iaTokensSalida' in request.resource.data) || request.resource.data.iaTokensSalida is int)
+                            && (!('iaBusquedasWeb' in request.resource.data) || request.resource.data.iaBusquedasWeb is int)
                             && (!('consultas' in request.resource.data) || request.resource.data.consultas is int)
                             && (!('vinNuevos' in request.resource.data) || request.resource.data.vinNuevos is int)
                             && (!('vinCache' in request.resource.data) || request.resource.data.vinCache is int)
@@ -2611,6 +2616,44 @@ service cloud.firestore {
       allow create, update: if esAdmin()
                             && request.resource.data.keys().hasOnly(['clase', 'tipoPieza', 'partes', 'parte', 'claveVin', 'marca', 'modelo', 'anioDesde', 'anioHasta', 'nota', 'creadoAt'])
                             && request.resource.data.clase in ['equivalencia', 'aplicacion'];
+      allow delete: if esAdmin();
+    }
+    // Sugerencias automáticas de equivalencia (búsqueda con IA, apagada por defecto). Las crea y
+    // completa SOLO el servidor; el admin las lee y las marca aprobada o descartada. El cliente
+    // nunca las lee. ID: tipo_PARTEA_PARTEB (pareja en orden).
+    match /sugerenciasEquivalencia/{id} {
+      allow get: if esServicio() || esAdmin();
+      allow list: if esAdmin();
+      allow create: if esServicio()
+                    && id.matches('^[a-z]{2,20}_[A-Z0-9]{3,40}_[A-Z0-9]{3,40}$')
+                    && request.resource.data.keys().hasOnly(['tipoPieza', 'partes', 'estado', 'creadoAt', 'actualizadoAt'])
+                    && request.resource.data.tipoPieza is string
+                    && request.resource.data.tipoPieza.size() <= 20
+                    && request.resource.data.partes is list
+                    && request.resource.data.partes.size() == 2
+                    && request.resource.data.estado == 'buscando'
+                    && request.resource.data.creadoAt == request.time
+                    && request.resource.data.actualizadoAt == request.time;
+      allow update: if (esServicio()
+                        && resource.data.estado == 'buscando'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'equivalentes', 'confianza', 'resumen', 'partesRelacionadas', 'fuentes', 'tokensEntrada', 'tokensSalida', 'busquedas', 'actualizadoAt'])
+                        && request.resource.data.estado in ['pendiente', 'sin_resultado', 'error']
+                        && (request.resource.data.equivalentes == null || request.resource.data.equivalentes is bool)
+                        && request.resource.data.confianza in ['alta', 'media', 'baja']
+                        && request.resource.data.resumen is string
+                        && request.resource.data.resumen.size() <= 600
+                        && request.resource.data.partesRelacionadas is list
+                        && request.resource.data.partesRelacionadas.size() <= 10
+                        && request.resource.data.fuentes is list
+                        && request.resource.data.fuentes.size() <= 5
+                        && request.resource.data.tokensEntrada is int
+                        && request.resource.data.tokensSalida is int
+                        && request.resource.data.busquedas is int
+                        && request.resource.data.actualizadoAt == request.time)
+                    || (esAdmin()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'revisadoAt'])
+                        && request.resource.data.estado in ['aprobada', 'descartada']
+                        && request.resource.data.revisadoAt == request.time);
       allow delete: if esAdmin();
     }
   }

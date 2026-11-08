@@ -4,6 +4,8 @@ import { manejadorComparador } from '../../lib/comparador/servicio';
 // Comparador de compatibilidad de piezas (ver lib/comparador/manejador.js). Los VIN viajan en el
 // cuerpo (POST), nunca en la dirección: así no quedan en registros ni en el historial.
 export const dynamic = 'force-dynamic';
+// La búsqueda automática (si está encendida) corre después de responder y puede tardar.
+export const maxDuration = 120;
 
 export async function POST(request) {
   let body = null;
