@@ -9,7 +9,7 @@ import { TIPOS_PIEZA, normalizarParte, parteValida } from './comparadorPiezas';
 
 export const COLECCION_EQUIVALENCIAS = 'equivalenciasPiezas';
 export const COLECCION_SUGERENCIAS = 'sugerenciasEquivalencia';
-export const MAX_PARTES = 20;
+export const MAX_PARTES = 100; // Ford agrupa 40+ calibraciones bajo una sola computadora de servicio
 export const MAX_NOTA = 500;
 
 // "12605843, 19210736 / 12-615-418" -> ['12605843', '19210736', '12615418'] (sin repetidos).

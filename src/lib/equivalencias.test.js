@@ -19,6 +19,9 @@ describe('equivalencias de piezas', () => {
     expect(validarEquivalencia({ textoPartes: '12605843, 12-605-843' }).ok).toBe(false);
     expect(validarEquivalencia({ tipoPieza: 'frenos', textoPartes: '12605843, 19210736' }).ok).toBe(false);
     expect(validarEquivalencia({ textoPartes: '12605843, 19210736', nota: 'x'.repeat(501) }).ok).toBe(false);
+    const muchos = (n) => Array.from({ length: n }, (_, i) => `AL3Z12A650${String(i).padStart(3, '0')}`).join(', ');
+    expect(validarEquivalencia({ textoPartes: muchos(100) }).ok).toBe(true);
+    expect(validarEquivalencia({ textoPartes: muchos(101) })).toEqual({ ok: false, mensaje: 'Máximo 100 números por registro.' });
   });
 
   it('idSugerencia: la misma pareja en cualquier orden da el mismo ID', () => {
