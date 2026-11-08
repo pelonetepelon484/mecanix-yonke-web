@@ -106,3 +106,69 @@ export function notaDesdeSugerencia(s) {
   const fuente = s?.fuentes?.[0]?.url ? ` Fuente: ${s.fuentes[0].url}` : '';
   return `Aprobada desde sugerencia automática.${fuente}`.slice(0, MAX_NOTA);
 }
+
+// ---------- Pegar tabla (varios registros de un jalón) ----------
+// Acepta lo que se copia de Google, Excel, una hoja de cálculo o una tabla de texto: columnas
+// separadas por tabulación, por "|" o por dos o más espacios. Una celda es de "números de parte" si
+// TODOS sus pedazos (separados por coma) parecen número de parte; el resto de las celdas (modelo,
+// años, motor) se juntan como nota. Un renglón sin números (los títulos) se ignora.
+export const MAX_RENGLONES_TABLA = 50;
+const esAnio = (t) => /^\d{4}$/.test(t) && Number(t) >= 1950 && Number(t) <= 2035;
+
+function pareceParte(pedazo) {
+  const t = pedazo.trim();
+  if (!t || /\s/.test(t) || !/^[A-Za-z0-9./_-]+$/.test(t) || !/\d/.test(t) || esAnio(t)) return false;
+  const n = normalizarParte(t);
+  return n.length >= 5 && parteValida(n);
+}
+
+function partesDeCelda(celda) {
+  const pedazos = celda.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+  return pedazos.length && pedazos.every(pareceParte) ? pedazos.map(normalizarParte) : null;
+}
+
+function columnasDe(linea) {
+  if (linea.includes('\t')) return linea.split('\t');
+  if (linea.includes('|')) return linea.split('|');
+  return linea.split(/\s{2,}/);
+}
+
+const mismaClase = (a, b) => (a || '') === (b || '');
+// ¿Ya hay un registro (del mismo tipo) que trae todos estos números?
+function yaRegistrado(partes, tipoPieza, existentes) {
+  return existentes.some((e) => mismaClase(e.tipoPieza, tipoPieza) && Array.isArray(e.partes) && partes.every((p) => e.partes.includes(p)));
+}
+
+// Devuelve { renglones, demasiados }. Cada renglón: { numero, partes, nota, estado, mensaje, datos }
+// con estado 'ok' (se guarda), 'repetido' (ya existe), 'error' (no se puede guardar) o 'ignorado'.
+export function parsearTabla(texto, { tipoPieza = '', existentes = [] } = {}) {
+  const lineas = (typeof texto === 'string' ? texto.split(/\r?\n/) : [])
+    .map((l, i) => ({ linea: l, numero: i + 1 }))
+    .filter(({ linea }) => linea.trim() && !/^[\s|:+-]+$/.test(linea)); // sin vacías ni rayas de tabla
+  const renglones = [];
+  const vistos = [];
+  for (const { linea, numero } of lineas) {
+    const partes = [];
+    const notas = [];
+    for (const celda of columnasDe(linea).map((c) => c.trim()).filter(Boolean)) {
+      const p = partesDeCelda(celda);
+      if (p) { for (const x of p) if (!partes.includes(x)) partes.push(x); } else notas.push(celda);
+    }
+    const nota = notas.join(' · ').slice(0, MAX_NOTA);
+    if (!partes.length) {
+      renglones.push({ numero, partes, nota, estado: 'ignorado', mensaje: 'Sin números de parte (títulos u otro texto).' });
+      continue;
+    }
+    const r = validarEquivalencia({ tipoPieza, textoPartes: partes.join(','), nota });
+    if (!r.ok) {
+      renglones.push({ numero, partes, nota, estado: 'error', mensaje: r.mensaje });
+    } else if (yaRegistrado(r.datos.partes, tipoPieza, [...existentes, ...vistos])) {
+      renglones.push({ numero, partes: r.datos.partes, nota, estado: 'repetido', mensaje: 'Ya está registrado.' });
+    } else {
+      vistos.push({ tipoPieza, partes: r.datos.partes });
+      renglones.push({ numero, partes: r.datos.partes, nota, estado: 'ok', mensaje: '', datos: r.datos });
+    }
+  }
+  const conDatos = renglones.filter((r) => r.estado !== 'ignorado').length;
+  return { renglones, demasiados: conDatos > MAX_RENGLONES_TABLA };
+}

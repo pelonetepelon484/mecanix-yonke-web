@@ -87,4 +87,20 @@ describe('admin/equivalencias', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Borrar' }));
     await waitFor(() => expect(deleteDoc).toHaveBeenCalledWith('sugerenciasEquivalencia/bcm_AAA111_BBB222'));
   });
+
+  it('pegar tabla: vista previa y guarda solo los nuevos', async () => {
+    equivalencias = [{ id: 'E1', tipoPieza: 'computadora', partes: ['12605843', '19210736'] }]; sugerencias = [];
+    render(<AdminEquivalencias />);
+    fireEvent.click(await screen.findByRole('button', { name: /Pegar tabla/ }));
+    fireEvent.change(screen.getByLabelText(/Tipo de pieza \(para toda/), { target: { value: 'computadora' } });
+    fireEvent.change(screen.getByLabelText('Tabla'), { target: { value: 'Modelo\tBase\tReemplazo\nSaturn\t12605843\t19210736\nVersa\t23710-3HC0A\t23710-3HC0B' } });
+    expect(addDoc).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver vista previa' }));
+    expect(screen.getByText(/1 por guardar · 1 ya registrados · 0 con problema/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar 1 registros' }));
+    await waitFor(() => expect(addDoc).toHaveBeenCalledTimes(1));
+    expect(addDoc.mock.calls[0][1]).toEqual({ clase: 'equivalencia', tipoPieza: 'computadora', partes: ['237103HC0A', '237103HC0B'], nota: 'Versa', creadoAt: 'AHORA' });
+    expect(await screen.findByText('Listo: se guardaron 1 registros.')).toBeInTheDocument();
+    expect(screen.getByText('237103HC0A = 237103HC0B')).toBeInTheDocument();
+  });
 });
