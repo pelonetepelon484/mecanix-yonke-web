@@ -15,6 +15,7 @@ import {
   COLECCION_EQUIVALENCIAS, COLECCION_SUGERENCIAS, ESTADOS_SUGERENCIA, MAX_NOTA, notaDesdeSugerencia, validarEquivalencia,
 } from '../../../lib/equivalencias';
 import { leerConfigComparador } from '../../../lib/configComparador';
+import PegarTabla from './PegarTabla';
 
 const VACIO = { tipoPieza: '', textoPartes: '', nota: '' };
 const segundos = (t) => t?.seconds || 0;
@@ -171,6 +172,12 @@ export default function AdminEquivalenciasPage() {
                 {deSugerencia && <button type="button" onClick={() => { setF(VACIO); setDeSugerencia(null); setMensaje(null); }} style={botonSecundario}>Cancelar</button>}
               </div>
             </form>
+
+            <PegarTabla
+              existentes={registradas}
+              SelectorTipo={SelectorTipo}
+              alGuardar={(nuevos) => setRegistradas((x) => [...nuevos.reverse(), ...x])}
+            />
 
             <div style={{ ...caja, marginTop: '14px' }}>
               <label htmlFor="eq-filtro" style={etiqueta}>Buscar un número</label>
