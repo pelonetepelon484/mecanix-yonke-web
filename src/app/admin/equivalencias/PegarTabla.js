@@ -31,7 +31,7 @@ export default function PegarTabla({ existentes, SelectorTipo, alGuardar }) {
     try {
       for (const r of porGuardar) {
         const ref = await addDoc(collection(db, COLECCION_EQUIVALENCIAS), { ...r.datos, creadoAt: serverTimestamp() });
-        guardados.push({ id: ref.id, ...r.datos, creadoAt: { seconds: Date.now() / 1000 } });
+        guardados.push({ id: ref.id, ...r.datos }); // la fecha se ve al recargar
       }
       setAviso({ tipo: 'ok', texto: `Listo: se guardaron ${guardados.length} registros.` });
       setTexto(''); setVista(null);
