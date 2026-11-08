@@ -11,6 +11,7 @@ import {
   MENSAJES_COMPARADOR, claveVin, compararVehiculos, resultadoPorPieza, validarEntrada, vehiculoDesdeVpic, vinParaMostrar,
 } from '../../../lib/comparadorPiezas';
 import { ROLES_CON_CUENTA } from '../../../lib/configComparador';
+import { ameritaSugerencia } from '../../../lib/equivalencias';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 export const dispositivoValido = (d) => typeof d === 'string' && /^[A-Za-z0-9_-]{16,64}$/.test(d);
@@ -109,6 +110,12 @@ export function crearManejadorComparador(deps) {
       // Si vPIC no respondió, esta consulta no cuenta contra el límite de nadie.
       if (uso.vinFallos > 0) for (const id of cobrados) await deps.devolverLimite(db, id).catch(() => {});
       await deps.sumarUso(db, dia, uso).catch((error) => console.warn('[comparador] No se pudo sumar el uso', error?.code || error?.message));
+
+      // Búsqueda automática (apagada por defecto): solo dos números distintos sin registro. Corre
+      // después de responder; el cliente ve su resultado igual y nunca ve la sugerencia.
+      if (config.sugerenciasIA && deps.enSegundoPlano && ameritaSugerencia({ parteA, parteB, registros, resultadoKey: resultado.resultado.key })) {
+        deps.enSegundoPlano(() => deps.sugerirEquivalencia(db, { tipo, parteA, parteB, dia, limiteDiario: config.limiteDiarioIA }));
+      }
 
       const lado = (vin, parte, r) => ({
         vin: vinParaMostrar(vin), parte,

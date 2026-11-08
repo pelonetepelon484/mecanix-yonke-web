@@ -11,6 +11,7 @@
     "test:rules": "npm --prefix tests/rules test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.6.0",
     "@svg-maps/mexico": "^2.0.0",
     "@vercel/analytics": "^2.0.1",
     "fflate": "^0.8.3",

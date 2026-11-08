@@ -34,6 +34,8 @@ function armar(cambios = {}, config = { habilitado: true }) {
     decodificar: vi.fn(async () => ({ estado: 'ok', fila: FILA })),
     buscarRegistros: vi.fn(async () => ({ equivalentes: false, aplicacion: false })),
     sumarUso: vi.fn(async () => {}),
+    sugerirEquivalencia: vi.fn(async () => {}),
+    enSegundoPlano: vi.fn((tarea) => tarea()),
     ahora: () => AHORA,
     ...cambios,
   };
@@ -183,5 +185,40 @@ describe('registros "aplicacion"', () => {
     expect(aplicaA({ marca: 'nissan', modelo: 'versa', anioDesde: 2012, anioHasta: 2019 }, null, veh)).toBe(true);
     expect(aplicaA({ marca: 'NISSAN', modelo: 'Versa', anioDesde: 2016, anioHasta: 2019 }, null, veh)).toBe(false);
     expect(aplicaA({ marca: 'NISSAN', modelo: 'Versa' }, null, veh)).toBe(false);
+  });
+
+  describe('búsqueda automática de equivalencias', () => {
+    const partes = (extra = {}) => ({ tipo: 'computadora', parteA: '12605843', parteB: '19210736', dispositivo: 'disp-1234567890abcdef', ...extra });
+
+    it('apagada por defecto: no busca aunque los números sean distintos', async () => {
+      const { deps, atender } = armar();
+      const r = await atender(peticion(), partes());
+      expect(r.json.resultado.key).toBe('indeterminado');
+      expect(deps.enSegundoPlano).not.toHaveBeenCalled();
+      expect(deps.sugerirEquivalencia).not.toHaveBeenCalled();
+    });
+
+    it('encendida: busca la pareja después de responder, con el límite diario de la config', async () => {
+      const { deps, atender } = armar({}, { habilitado: true, sugerenciasIA: true, limiteDiarioIA: 7 });
+      const r = await atender(peticion(), partes());
+      expect(r.status).toBe(200);
+      expect(r.json.resultado.key).toBe('indeterminado');
+      expect(JSON.stringify(r.json)).not.toMatch(/sugerencia/i);
+      expect(deps.sugerirEquivalencia).toHaveBeenCalledWith({}, { tipo: 'computadora', parteA: '12605843', parteB: '19210736', dia: '2026-11-07', limiteDiario: 7 });
+    });
+
+    it('encendida: no busca si ya hay registro, si los números son iguales o si es por VIN', async () => {
+      const conRegistro = armar({ buscarRegistros: vi.fn(async () => ({ equivalentes: true, aplicacion: false })) }, { habilitado: true, sugerenciasIA: true });
+      await conRegistro.atender(peticion(), partes());
+      expect(conRegistro.deps.sugerirEquivalencia).not.toHaveBeenCalled();
+
+      const iguales = armar({}, { habilitado: true, sugerenciasIA: true });
+      await iguales.atender(peticion(), partes({ parteB: '12605843' }));
+      expect(iguales.deps.sugerirEquivalencia).not.toHaveBeenCalled();
+
+      const porVin = armar({}, { habilitado: true, sugerenciasIA: true });
+      await porVin.atender(peticion(), cuerpo());
+      expect(porVin.deps.sugerirEquivalencia).not.toHaveBeenCalled();
+    });
   });
 });
