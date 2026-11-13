@@ -128,7 +128,7 @@ describe('resultados', () => {
     const a = vehiculoDesdeVpic({ Make: 'NISSAN', Model: 'Versa', ModelYear: '2015', DisplacementL: '1.6', EngineCylinders: '4' });
     const b = vehiculoDesdeVpic({ Make: 'NISSAN', Model: 'Versa', ModelYear: '2016', DisplacementL: '1.6', EngineCylinders: '4' });
     render(<ResultadosComparador resultado={{
-      tipo: 'suspension', resultado: RESULTADOS.indeterminado, nota: null, motivos: [],
+      tipo: 'motor', resultado: RESULTADOS.indeterminado, nota: null, motivos: [],
       vehiculoA: { vin: 'X', estado: 'ok', datos: a }, vehiculoB: { vin: 'Y', estado: 'ok', datos: b }, comparacion: compararVehiculos(a, b),
     }} />);
     expect(screen.getByText(/4 de 5 campos comparados coinciden/)).toBeInTheDocument();

@@ -16,6 +16,7 @@ import {
 } from '../../../lib/equivalencias';
 import { leerConfigComparador } from '../../../lib/configComparador';
 import PegarTabla from './PegarTabla';
+import SubirArchivo from './SubirArchivo';
 
 const VACIO = { tipoPieza: '', textoPartes: '', nota: '' };
 const segundos = (t) => t?.seconds || 0;
@@ -178,6 +179,8 @@ export default function AdminEquivalenciasPage() {
               SelectorTipo={SelectorTipo}
               alGuardar={(nuevos) => setRegistradas((x) => [...nuevos.reverse(), ...x])}
             />
+
+            <SubirArchivo existentes={registradas} alGuardar={(nuevos) => setRegistradas((x) => [...nuevos.reverse(), ...x])} />
 
             <div style={{ ...caja, marginTop: '14px' }}>
               <label htmlFor="eq-filtro" style={etiqueta}>Buscar un número</label>

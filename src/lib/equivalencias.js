@@ -172,3 +172,56 @@ export function parsearTabla(texto, { tipoPieza = '', existentes = [] } = {}) {
   const conDatos = renglones.filter((r) => r.estado !== 'ignorado').length;
   return { renglones, demasiados: conDatos > MAX_RENGLONES_TABLA };
 }
+
+// ---------- Subir archivo (muchos registros, de cualquier tipo de pieza) ----------
+// Un renglón por registro: "tipo | nota | número, número, …". El tipo es la clave de la lista
+// (computadora, tcm, bcm, cluster, motor, transmision). Líneas vacías o que empiezan con # se ignoran.
+export const MAX_RENGLONES_ARCHIVO = 3000;
+
+export function parsearArchivo(texto, { existentes = [] } = {}) {
+  const renglones = [];
+  const vistos = [];
+  const lineas = typeof texto === 'string' ? texto.split(/\r?\n/) : [];
+  lineas.forEach((linea, i) => {
+    const numero = i + 1;
+    if (!linea.trim() || linea.trim().startsWith('#')) return;
+    const celdas = linea.split('|').map((c) => c.trim());
+    if (celdas.length !== 3) {
+      renglones.push({ numero, tipo: '', partes: [], nota: '', estado: 'error', mensaje: 'Debe tener 3 partes separadas por "|": tipo | nota | números.' });
+      return;
+    }
+    const [tipoPieza, nota, textoPartes] = celdas;
+    if (!TIPOS_PIEZA.some((t) => t.key === tipoPieza)) {
+      renglones.push({ numero, tipo: tipoPieza, partes: [], nota, estado: 'error', mensaje: `Tipo desconocido: "${tipoPieza}".` });
+      return;
+    }
+    const r = validarEquivalencia({ tipoPieza, textoPartes, nota });
+    if (!r.ok) {
+      renglones.push({ numero, tipo: tipoPieza, partes: [], nota, estado: 'error', mensaje: r.mensaje });
+    } else if (yaRegistrado(r.datos.partes, tipoPieza, [...existentes, ...vistos])) {
+      renglones.push({ numero, tipo: tipoPieza, partes: r.datos.partes, nota, estado: 'repetido', mensaje: 'Ya está registrado.' });
+    } else {
+      vistos.push({ tipoPieza, partes: r.datos.partes });
+      renglones.push({ numero, tipo: tipoPieza, partes: r.datos.partes, nota, estado: 'ok', mensaje: '', datos: r.datos });
+    }
+  });
+  return { renglones, demasiados: renglones.length > MAX_RENGLONES_ARCHIVO };
+}
+
+// ID fijo por (tipo + números ordenados): si el mismo archivo se sube dos veces, se sobrescribe el
+// mismo documento en lugar de duplicarlo, sin tener que leer toda la colección antes.
+function hash53(texto) {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < texto.length; i += 1) {
+    const c = texto.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, '0');
+}
+export function idEquivalencia(tipoPieza, partes) {
+  return `${tipoPieza || 'todos'}_${hash53([...partes].sort().join(','))}`;
+}
