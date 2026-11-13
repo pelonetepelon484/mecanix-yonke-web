@@ -12,6 +12,7 @@ export const SIN_DATOS = 'Sin datos';
 
 // Dos grupos: mecánicas (el VIN orienta) y electrónicas (el VIN nunca basta: se necesita el número de
 // parte y casi siempre programación al VIN del vehículo). Sin bolsas de aire (pieza de seguridad).
+// Mecánica: solo motor y transmisión completos (decisión de David, 2026-11-12).
 export const GRUPOS_PIEZA = [
   { key: 'mecanica', label: '🔧 Compatibilidad mecánica' },
   { key: 'electronica', label: '💻 Compatibilidad electrónica' },
@@ -19,9 +20,6 @@ export const GRUPOS_PIEZA = [
 export const TIPOS_PIEZA = [
   { key: 'motor', label: 'Motor', grupo: 'mecanica' },
   { key: 'transmision', label: 'Transmisión', grupo: 'mecanica' },
-  { key: 'suspension', label: 'Suspensión y tren delantero', grupo: 'mecanica' },
-  { key: 'accesorios', label: 'Accesorios del motor (alternador, marcha, radiador, compresor de A/C)', grupo: 'mecanica' },
-  { key: 'carroceria', label: 'Carrocería (puertas, cofre, defensas, faros, calaveras)', grupo: 'mecanica' },
   { key: 'computadora', label: 'Computadora del motor (ECM / PCM)', grupo: 'electronica' },
   { key: 'tcm', label: 'Computadora de transmisión (TCM)', grupo: 'electronica' },
   { key: 'bcm', label: 'Módulo de carrocería (BCM)', grupo: 'electronica' },
@@ -130,10 +128,6 @@ const ALERTAS = { cluster: ALERTA_CLUSTER };
 const REGLAS_VIN = {
   motor: { requeridos: ['cilindrada', 'cilindros'], opcionales: ['combustible'], anio: 'cercano' },
   transmision: { requeridos: ['transmision', 'traccion', 'cilindrada', 'cilindros'], opcionales: [], anio: null },
-  suspension: { requeridos: ['marca', 'modelo', 'traccion'], opcionales: [], anio: 'igual' },
-  // Alternador, marcha, radiador y compresor dependen del motor: misma regla que el motor.
-  accesorios: { requeridos: ['cilindrada', 'cilindros'], opcionales: ['combustible'], anio: 'cercano' },
-  carroceria: { requeridos: ['marca', 'modelo', 'carroceria'], opcionales: [], anio: 'igual' },
 };
 const SOLO_PARTE = new Set(TIPOS_PIEZA.filter((t) => t.grupo === 'electronica').map((t) => t.key));
 

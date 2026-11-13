@@ -86,13 +86,6 @@ describe('resultado por pieza', () => {
     expect(resultadoPorPieza({ tipo: 'transmision' }, v(auto), v({ TransmissionStyle: 'Manual/Standard' })).resultado).toBe(RESULTADOS.noCompatible);
     expect(resultadoPorPieza({ tipo: 'transmision' }, v(auto), v({ ...auto, DriveType: 'AWD/All-Wheel Drive' })).resultado).toBe(RESULTADOS.noCompatible);
   });
-  it('suspensión: mismo modelo y tracción; año distinto = no se puede determinar (sin generación)', () => {
-    expect(resultadoPorPieza({ tipo: 'suspension' }, v(), v()).resultado).toBe(RESULTADOS.probable);
-    const r = resultadoPorPieza({ tipo: 'suspension' }, v(), v({ ModelYear: '2016' }));
-    expect(r.resultado).toBe(RESULTADOS.indeterminado);
-    expect(r.motivos.join(' ')).toMatch(/generación/);
-    expect(resultadoPorPieza({ tipo: 'suspension' }, v(), v({ Model: 'Sentra' })).resultado).toBe(RESULTADOS.noCompatible);
-  });
   it('sin datos de VIN: no se puede determinar', () => {
     expect(resultadoPorPieza({ tipo: 'motor' }, v(), null).resultado).toBe(RESULTADOS.indeterminado);
     expect(resultadoPorPieza({ tipo: 'motor' }, { sinDatos: true }, v()).resultado).toBe(RESULTADOS.indeterminado);
@@ -100,19 +93,9 @@ describe('resultado por pieza', () => {
 });
 
 describe('lista de piezas (2026-11-07)', () => {
-  it('dos grupos, sin discos de freno ni bolsas de aire', () => {
-    expect(TIPOS_PIEZA.map((t) => t.key)).toEqual(['motor', 'transmision', 'suspension', 'accesorios', 'carroceria', 'computadora', 'tcm', 'bcm', 'cluster']);
+  it('dos grupos: mecánica solo motor y transmisión; sin discos de freno ni bolsas de aire', () => {
+    expect(TIPOS_PIEZA.map((t) => t.key)).toEqual(['motor', 'transmision', 'computadora', 'tcm', 'bcm', 'cluster']);
     expect(JSON.stringify(TIPOS_PIEZA)).not.toMatch(/freno|bolsa|airbag/i);
-  });
-  it('accesorios del motor: misma regla que el motor', () => {
-    expect(resultadoPorPieza({ tipo: 'accesorios' }, v(), v({ ModelYear: '2017' })).resultado).toBe(RESULTADOS.probable);
-    expect(resultadoPorPieza({ tipo: 'accesorios' }, v(), v({ DisplacementL: '2.0' })).resultado).toBe(RESULTADOS.noCompatible);
-  });
-  it('carrocería: marca, modelo, tipo de carrocería y mismo año', () => {
-    expect(resultadoPorPieza({ tipo: 'carroceria' }, v(), v()).resultado).toBe(RESULTADOS.probable);
-    expect(resultadoPorPieza({ tipo: 'carroceria' }, v(), v({ BodyClass: 'Hatchback/Liftback/Notchback' })).resultado).toBe(RESULTADOS.noCompatible);
-    expect(resultadoPorPieza({ tipo: 'carroceria' }, v(), v({ ModelYear: '2014' })).resultado).toBe(RESULTADOS.indeterminado);
-    expect(resultadoPorPieza({ tipo: 'carroceria' }, v(), v({ BodyClass: '' })).resultado).toBe(RESULTADOS.indeterminado);
   });
   it('tablero: siempre la alerta del kilometraje del carro donante; las demás, sin alerta', () => {
     expect(resultadoPorPieza({ tipo: 'cluster', parteA: 'A11', parteB: 'A11' }).alerta).toBe(ALERTA_CLUSTER);

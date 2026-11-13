@@ -7,6 +7,8 @@ import '@testing-library/jest-dom/vitest';
 const addDoc = vi.fn(async () => ({ id: 'NUEVA' }));
 const updateDoc = vi.fn(async () => {});
 const deleteDoc = vi.fn(async () => {});
+const loteSet = vi.fn();
+const loteCommit = vi.fn(async () => {});
 let equivalencias = [];
 let sugerencias = [];
 let config = {};
@@ -25,6 +27,7 @@ vi.mock('firebase/firestore', () => ({
   getDoc: vi.fn(async () => ({ exists: () => true, data: () => config })),
   addDoc: (...a) => addDoc(...a), updateDoc: (...a) => updateDoc(...a), deleteDoc: (...a) => deleteDoc(...a),
   serverTimestamp: () => 'AHORA',
+  writeBatch: () => ({ set: loteSet, commit: loteCommit }),
 }));
 
 const { default: AdminEquivalencias } = await import('./page.js');
@@ -102,5 +105,20 @@ describe('admin/equivalencias', () => {
     expect(addDoc.mock.calls[0][1]).toEqual({ clase: 'equivalencia', tipoPieza: 'computadora', partes: ['237103HC0A', '237103HC0B'], nota: 'Versa', creadoAt: 'AHORA' });
     expect(await screen.findByText('Listo: se guardaron 1 registros.')).toBeInTheDocument();
     expect(screen.getByText('237103HC0A = 237103HC0B')).toBeInTheDocument();
+  });
+
+  it('subir archivo: vista previa con conteos y guarda en lote con ID fijo', async () => {
+    equivalencias = []; sugerencias = [];
+    render(<AdminEquivalencias />);
+    fireEvent.click(await screen.findByRole('button', { name: /Subir archivo/ }));
+    const archivo = new File(['tcm | GM 2010 | 24256525, 24254911\ncluster | Nissan | 24810-9HM1A, 24810-3TM0B\nmalo'], 'equiv.txt', { type: 'text/plain' });
+    fireEvent.change(screen.getByLabelText('Archivo'), { target: { files: [archivo] } });
+    expect(await screen.findByText(/2 por guardar · 0 ya registrados · 1 con problema/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar 2 registros' }));
+    await waitFor(() => expect(loteCommit).toHaveBeenCalledTimes(1));
+    expect(loteSet).toHaveBeenCalledTimes(2);
+    expect(loteSet.mock.calls[0][0]).toMatch(/^equivalenciasPiezas\/tcm_[0-9a-f]{14}$/);
+    expect(loteSet.mock.calls[0][1]).toEqual({ clase: 'equivalencia', tipoPieza: 'tcm', partes: ['24256525', '24254911'], nota: 'GM 2010', creadoAt: 'AHORA' });
+    expect(await screen.findByText('Listo: se guardaron 2 registros.')).toBeInTheDocument();
   });
 });
